@@ -2,13 +2,13 @@ name:                odil
 version:             0.1.0.0
 -- synopsis:
 -- description:
-homepage:            https://kawu@bitbucket.org/kawu/odil.git
-license:             BSD3
+homepage:            https://bitbucket.org/kawu/odil
+license:             BSD2
 license-file:        LICENSE
-author:              Author name here
-maintainer:          example@example.com
-copyright:           2017 Author name here
-category:            Web
+author:              Jakub Waszczuk
+maintainer:          waszczuk.kuba@gmail.com
+copyright:           2017 Jakub Waszczuk
+category:            NLP
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
