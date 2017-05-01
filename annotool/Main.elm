@@ -7,6 +7,7 @@ import Json.Decode as Decode
 import Mouse exposing (Position)
 import Svg as Svg
 import Svg.Attributes as Svg
+import Set as S
 
 import Rose as R
 
@@ -44,21 +45,25 @@ circleHeight : Int
 circleHeight = 50
 
 
--- tree1 : R.Tree Int
--- tree1 = R.Node 1
+-- testTree : R.Tree Int
+-- testTree = R.Node 1
 --   [ R.Node 2 [R.Node 3 []]
 --   , R.Node 4 [R.Node 5 []]
 --   ]
 
 
-tree1 : R.Tree Int
-tree1 = R.Node 1
-  [ R.Node 2 [R.Node 3 []]
-  , R.Node 4 [R.Node 5 []]
-  , R.Node 6 []
-  , R.Node 7
-    [R.Node 8 [], R.Node 9 [], R.Node 10 []]
-  ]
+testTree : R.Tree Node
+testTree =
+  let
+    node i xs = R.Node {nodeId = i, nodeVal = i} xs
+  in
+    node 1
+      [ node 2 [node 3 []]
+      , node 4 [node 5 []]
+      , node 6 []
+      , node 7
+        [node 8 [], node 9 [], node 10 []]
+      ]
 
 
 ---------------------------------------------------
@@ -82,10 +87,18 @@ main =
 
 
 type alias Model =
-    { position : Position
-    , tree : R.Tree Int
+    { tree : R.Tree Node
+    , selected : S.Set Id
+    , position : Position
     , drag : Maybe Drag
     }
+
+
+type alias Id = Int
+
+
+-- Node in a syntactic tree.
+type alias Node = {nodeId : Id, nodeVal : Int}
 
 
 type alias Drag =
@@ -94,10 +107,20 @@ type alias Drag =
     }
 
 
+getPosition : Model -> Position
+getPosition {position, drag} =
+  case drag of
+    Nothing ->
+      position
+    Just {start,current} ->
+      Position
+        (position.x + current.x - start.x)
+        (position.y + current.y - start.y)
+
+
 init : ( Model, Cmd Msg )
 init =
-  ( Model (Position 640 200) tree1 Nothing, Cmd.none )
-
+  ( Model testTree S.empty (Position 640 200) Nothing, Cmd.none )
 
 
 ---------------------------------------------------
@@ -109,6 +132,7 @@ type Msg
     = DragStart Position
     | DragAt Position
     | DragEnd Position
+    | Select Id
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -117,23 +141,19 @@ update msg model =
 
 
 updateHelp : Msg -> Model -> Model
-updateHelp msg ({position, tree, drag} as model) =
+updateHelp msg model =
   case msg of
     DragStart xy ->
-       { position = model.position
-       , tree = model.tree
-       , drag = Just (Drag xy xy) }
-
+      { model | drag = Just (Drag xy xy) }
     DragAt xy ->
-       { position = model.position
-       , tree = model.tree
-       , drag = Maybe.map (\{start} -> Drag start xy) drag }
-
+      { model | drag = Maybe.map (\{start} -> Drag start xy) model.drag }
     DragEnd _ ->
-       { position = getPosition model
-       , tree = model.tree
-       , drag = Nothing }
-
+      { model | position = getPosition model, drag = Nothing }
+    Select i ->
+      { model | selected =
+          case S.member i model.selected of
+            True  -> S.remove i model.selected
+            False -> S.insert i model.selected }
 
 
 ---------------------------------------------------
@@ -165,6 +185,7 @@ view model =
   Html.div []
     [ background
     , drawTree
+        model.selected
         (getPosition model)
         (R.withWidth (\_ -> stdWidth) model.tree)
     ]
@@ -204,33 +225,8 @@ drawLine beg end =
       [svg]
 
 
--- drawTree : Position -> R.Tree Int -> Html.Html Msg
--- drawTree pos node =
---   let
---     toLeft pos  = {x = pos.x - moveLeft, y = pos.y + moveDown}
---     toRight pos = {x = pos.x + moveRight, y = pos.y + moveDown}
---   in
---     case node of
---       -- Empty -> Html.div [] []
---       R.Node x [l] -> Html.div []
---         [ drawCircle x pos
---         , drawLine pos (toLeft pos)
---         , drawTree (toLeft pos) l
---         ]
---       R.Node x [l, r] -> Html.div []
---         [ drawCircle x pos
---         , drawLine pos (toLeft pos)
---         , drawTree (toLeft pos) l
---         , drawLine pos (toRight pos)
---         , drawTree (toRight pos) r
---         ]
---       R.Node x _ -> Html.div []
---         [ drawCircle x pos
---         ]
-
-
-drawTree : Position -> R.Tree (Int, R.Width) -> Html.Html Msg
-drawTree pos (R.Node (label, width) subTrees) =
+drawTree : S.Set Id -> Position -> R.Tree (Node, R.Width) -> Html.Html Msg
+drawTree select pos (R.Node (node, width) subTrees) =
   let
     drawSub w0 forest = case forest of
       [] -> []
@@ -240,20 +236,22 @@ drawTree pos (R.Node (label, width) subTrees) =
           tpos = {x = w0 + tw // 2, y = pos.y + moveDown}
           -- toLeft pos  = {x = pos.x - 50, y = pos.y + moveDown}
         in
-          drawTree tpos t :: drawLine pos tpos :: drawSub (w0 + tw) ts
+          drawTree select tpos t :: drawLine pos tpos :: drawSub (w0 + tw) ts
   in
     Html.div []
-      (  drawCircle label pos
+      (  drawNode select pos node
       :: drawSub (pos.x - width // 2) subTrees )
 
 
-drawCircle : Int -> Position -> Html.Html Msg
-drawCircle x at =
+drawNode : S.Set Id -> Position -> Node -> Html.Html Msg
+drawNode select at node =
     Html.div
-      -- [ onMouseDown
-      [ Atts.style
-          [ "background-color" => "#3C8D2F"
-          -- , "cursor" => "move"
+      [ nodeMouseDown node
+      , Atts.style
+          [ if S.member node.nodeId select
+              then "background-color" => "#BC0000"
+              else "background-color" => "#3C8D2F"
+          , "cursor" => "pointer"
 
           , "width" => "50px"
           , "height" => "50px"
@@ -268,18 +266,8 @@ drawCircle x at =
           , "justify-content" => "center"
           ]
       ]
-      [ Html.text (toString x) -- "Go!"
+      [ Html.text (toString node.nodeVal) -- "Go!"
       ]
-
-
--- getCirclePosition : Int -> Position -> Model -> Position
--- getCirclePosition x at model =
---   let
---     realPosition =
---       getPosition model
---   in
---     { x = at.x + realPosition.x
---     , y = at.y + realPosition.y }
 
 
 px : Int -> String
@@ -287,31 +275,10 @@ px number =
   toString number ++ "px"
 
 
--- getPosition : Model -> Position
--- getPosition {position, drag} =
---   case drag of
---     Nothing ->
---       position
---     Just {start,current} ->
---       Position
---         (position.x - current.x + start.x)
---         (position.y - current.y + start.y)
-
-
-getPosition : Model -> Position
-getPosition {position, drag} =
-  case drag of
-    Nothing ->
-      position
-    Just {start,current} ->
-      Position
-        (position.x + current.x - start.x)
-        (position.y + current.y - start.y)
-
-
--- onMouseDown : Html.Attribute Msg
--- onMouseDown =
---   Events.on "mousedown" (Decode.map DragStart Mouse.position)
+nodeMouseDown : Node -> Html.Attribute Msg
+nodeMouseDown x =
+  Events.onMouseDown (Select x.nodeId)
+  -- Events.on "mousedown" (Decode.map DragStart Mouse.position)
 
 
 
@@ -323,7 +290,7 @@ getPosition {position, drag} =
 background : Html.Html Msg
 background =
     Html.div
-      [ onMouseDown
+      [ backMouseDown
       , Atts.style
           -- thanks to 1.0 opacity and #fff background color,
           -- drawing artefacts are not visible
@@ -339,33 +306,6 @@ background =
       []
 
 
-onMouseDown : Html.Attribute Msg
-onMouseDown =
+backMouseDown : Html.Attribute Msg
+backMouseDown =
   Events.on "mousedown" (Decode.map DragStart Mouse.position)
-
-
--- main = beginnerProgram { model = 0, view = view, update = update }
---
---
--- view model =
---   div []
---     [ button [ onClick Decrement ] [ text "-" ]
---     , div [] [ text (toString model) ]
---     , button [ onClick Increment ] [ text "+" ]
---     , button [ onClick Reset ] [ text "RESET" ]
---     ]
---
---
--- type Msg = Increment | Decrement | Reset
---
---
--- update msg model =
---   case msg of
---     Increment ->
---       model + 1
---
---     Decrement ->
---       model - 1
---
---     Reset ->
---       0
