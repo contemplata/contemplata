@@ -7,21 +7,58 @@ import Json.Decode as Decode
 import Mouse exposing (Position)
 import Svg as Svg
 import Svg.Attributes as Svg
-import Svg.Attributes as SvgAtts
+
+import Rose as R
 
 
 ---------------------------------------------------
--- Trees
+-- Config
 ---------------------------------------------------
 
 
-type Tree a
-    = Empty
-    | Node a (Tree a) (Tree a)
+-- -- | How far to move left for the next level.
+-- moveLeft : Int
+-- moveLeft = 100
+--
+--
+-- -- | How far to move right for the next level.
+-- moveRight : Int
+-- moveRight = 100
 
 
-tree1 : Tree Int
-tree1 = Node 1 (Node 2 Empty (Node 5 Empty Empty)) (Node 3 Empty (Node 4 Empty Empty))
+-- | Standard width of a leaf.
+stdWidth : Int
+stdWidth = 100
+
+
+-- | How far to move down for the next level.
+moveDown : Int
+moveDown = 100
+
+
+circleWidth : Int
+circleWidth = 50
+
+
+circleHeight : Int
+circleHeight = 50
+
+
+-- tree1 : R.Tree Int
+-- tree1 = R.Node 1
+--   [ R.Node 2 [R.Node 3 []]
+--   , R.Node 4 [R.Node 5 []]
+--   ]
+
+
+tree1 : R.Tree Int
+tree1 = R.Node 1
+  [ R.Node 2 [R.Node 3 []]
+  , R.Node 4 [R.Node 5 []]
+  , R.Node 6 []
+  , R.Node 7
+    [R.Node 8 [], R.Node 9 [], R.Node 10 []]
+  ]
 
 
 ---------------------------------------------------
@@ -46,7 +83,7 @@ main =
 
 type alias Model =
     { position : Position
-    , tree : Tree Int
+    , tree : R.Tree Int
     , drag : Maybe Drag
     }
 
@@ -59,7 +96,7 @@ type alias Drag =
 
 init : ( Model, Cmd Msg )
 init =
-  ( Model (Position 200 200) tree1 Nothing, Cmd.none )
+  ( Model (Position 640 200) tree1 Nothing, Cmd.none )
 
 
 
@@ -114,7 +151,6 @@ subscriptions model =
       Sub.batch [ Mouse.moves DragAt, Mouse.ups DragEnd ]
 
 
-
 ---------------------------------------------------
 -- View
 ---------------------------------------------------
@@ -126,54 +162,35 @@ subscriptions model =
 
 view : Model -> Html.Html Msg
 view model =
-  Html.div [] [background, showTree (Position 0 0) model.tree model]
-  -- roundRect
+  Html.div []
+    [ background
+    , drawTree
+        (getPosition model)
+        (R.withWidth (\_ -> stdWidth) model.tree)
+    ]
 
 
--- roundRect : Html.Html msg
--- roundRect =
---   let
---     line = Svg.line
---       [ Svg.stroke "black", Svg.strokeWidth "2"
---       , Svg.x1 "50", Svg.y1 "50", Svg.x2 "200", Svg.y2 "200" ] []
---     -- rect = Svg.rect
---     --   [ Svg.x "10", Svg.y "10", Svg.width "100", Svg.height "100" ] []
---     -- group = Svg.g
---     -- [ ]
---     svg = Svg.svg
---       -- [ Svg.width "1000", Svg.height "1000" ] --, Svg.viewBox "100 100 300 300" ]
---       -- []
---       [ Svg.width "200"
---       , Svg.height "200"
---       ]
---       [ line
---       ]
---   in
---     Html.div
---       [ Atts.style
---           [ "position" => "absolute"
---           , "left" => px 200
---           , "top" => px 200
---           ]
---       ]
---       [svg]
-
-
-showLine : Position -> Position -> Html.Html Msg
-showLine beg end =
+drawLine : Position -> Position -> Html.Html Msg
+drawLine beg end =
   let
-    width  = toString <| abs <| end.y - beg.y
-    height = toString <| abs <| end.x - beg.x
+    -- Note that the width is handled in a tricky way. This is to handle the
+    -- case where the line is vertical. The case where the line is horizontal is
+    -- not handled.
+    width  = (\x->x+1) <| abs <| end.x - beg.x
+    height = abs <| end.y - beg.y
     (x1, x2) = case end.x >= beg.x of
-             True  -> ("0", width)
-             False -> (width, "0")
+             True  -> ("1", toString width)
+             False -> (toString width, "1")
     (y1, y2) = case end.y >= beg.y of
-             True  -> ("0", height)
-             False -> (height, "0")
+             True  -> ("0", toString height)
+             False -> (toString height, "0")
     line = Svg.line
       [ Svg.stroke "black", Svg.strokeWidth "2"
       , Svg.x1 x1, Svg.y1 y1, Svg.x2 x2, Svg.y2 y2 ] []
-    svg = Svg.svg [Svg.width width, Svg.height height] [line]
+    svg = Svg.svg
+      [ Svg.width (toString <| (\x->x+1) <| width)
+      , Svg.height (toString height)
+      ] [line]
   in
     Html.div
       [ Atts.style
@@ -181,38 +198,57 @@ showLine beg end =
           , "left" => px (min beg.x end.x)
           , "top" => px (min beg.y end.y)
           , "pointer-events" => "none"
+          , "z-index" => "-1"
           ]
       ]
       [svg]
 
 
-showTree : Position -> Tree Int -> Model -> Html.Html Msg
-showTree pos node model =
-  let
-    toLeft pos  = {x = pos.x - 100, y = pos.y + 100}
-    toRight pos = {x = pos.x + 100, y = pos.y + 100}
-  in
-    case node of
-      Empty -> Html.div [] []
-      Node x l r -> Html.div []
-        [ circle x pos model
-        , showLine
-            (getCirclePosition x pos model)
-            (getCirclePosition x (toLeft pos) model)
-        , showTree (toLeft pos) l model
-        , showLine
-            (getCirclePosition x pos model)
-            (getCirclePosition x (toRight pos) model)
-        , showTree (toRight pos) r model
-        ]
+-- drawTree : Position -> R.Tree Int -> Html.Html Msg
+-- drawTree pos node =
+--   let
+--     toLeft pos  = {x = pos.x - moveLeft, y = pos.y + moveDown}
+--     toRight pos = {x = pos.x + moveRight, y = pos.y + moveDown}
+--   in
+--     case node of
+--       -- Empty -> Html.div [] []
+--       R.Node x [l] -> Html.div []
+--         [ drawCircle x pos
+--         , drawLine pos (toLeft pos)
+--         , drawTree (toLeft pos) l
+--         ]
+--       R.Node x [l, r] -> Html.div []
+--         [ drawCircle x pos
+--         , drawLine pos (toLeft pos)
+--         , drawTree (toLeft pos) l
+--         , drawLine pos (toRight pos)
+--         , drawTree (toRight pos) r
+--         ]
+--       R.Node x _ -> Html.div []
+--         [ drawCircle x pos
+--         ]
 
 
-circle : Int -> Position -> Model -> Html.Html Msg
-circle x at model =
+drawTree : Position -> R.Tree (Int, R.Width) -> Html.Html Msg
+drawTree pos (R.Node (label, width) subTrees) =
   let
-    realPosition =
-      getCirclePosition x at model
+    drawSub w0 forest = case forest of
+      [] -> []
+      t :: ts ->
+        let
+          tw = R.getWidth t
+          tpos = {x = w0 + tw // 2, y = pos.y + moveDown}
+          -- toLeft pos  = {x = pos.x - 50, y = pos.y + moveDown}
+        in
+          drawTree tpos t :: drawLine pos tpos :: drawSub (w0 + tw) ts
   in
+    Html.div []
+      (  drawCircle label pos
+      :: drawSub (pos.x - width // 2) subTrees )
+
+
+drawCircle : Int -> Position -> Html.Html Msg
+drawCircle x at =
     Html.div
       -- [ onMouseDown
       [ Atts.style
@@ -223,8 +259,8 @@ circle x at model =
           , "height" => "50px"
           , "border-radius" => "50%" -- "4px"
           , "position" => "absolute"
-          , "left" => px realPosition.x
-          , "top" => px realPosition.y
+          , "left" => px (at.x - circleWidth // 2)
+          , "top" => px (at.y - circleHeight // 2)
 
           , "color" => "white"
           , "display" => "flex"
@@ -236,14 +272,14 @@ circle x at model =
       ]
 
 
-getCirclePosition : Int -> Position -> Model -> Position
-getCirclePosition x at model =
-  let
-    realPosition =
-      getPosition model
-  in
-    { x = at.x + realPosition.x
-    , y = at.y + realPosition.y }
+-- getCirclePosition : Int -> Position -> Model -> Position
+-- getCirclePosition x at model =
+--   let
+--     realPosition =
+--       getPosition model
+--   in
+--     { x = at.x + realPosition.x
+--     , y = at.y + realPosition.y }
 
 
 px : Int -> String
@@ -289,8 +325,10 @@ background =
     Html.div
       [ onMouseDown
       , Atts.style
-          [ "opacity" => "0.1"
-          , "background-color" => "#ccc"
+          -- thanks to 1.0 opacity and #fff background color,
+          -- drawing artefacts are not visible
+          [ "opacity" => "1.0"
+          , "background-color" => "#fff"
           , "position" => "fixed"
           , "width" => "100%"
           , "height" => "100%"
