@@ -142,9 +142,9 @@ init =
   let
     model =
       { trees = D.fromList
-          [ ("t1", testTree1)
+          [ ("t1", testTree3)
           , ("t2", testTree2)
-          , ("t3", testTree3)
+          , ("t3", testTree1)
           ]
       , topTree = "t1"
       , botTree = "t2"
