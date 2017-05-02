@@ -1,6 +1,7 @@
 TODO:
 * Make selection tree-dependent
 * Rose trees with actual words
+* Make drawing artefacts disappear
 * Make it possible to modify node labels
 * Make it possible to link two nodes in two viewports.
   Generally, it should also work if the two nodes are
@@ -16,3 +17,4 @@ DONE:
 * Make it possible to work with several trees
 * Make one of the windows focused
 * Make it possible to switch between trees
+* Show the tree id

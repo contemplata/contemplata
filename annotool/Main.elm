@@ -210,34 +210,62 @@ subscriptions model =
 --     ]
 
 
+-- | View tree in the specified window.
+viewTree : M.Window -> M.Model -> Html.Html Msg
+viewTree win model =
+  let
+    selTree = case win of
+      M.Top -> case D.get model.topTree model.trees of
+        Nothing -> testTree1
+        Just x  -> x
+      M.Bot -> case D.get model.botTree model.trees of
+        Nothing -> testTree1
+        Just x  -> x
+  in
+    drawTree
+      model.selected
+      (M.getPosition win model)
+      (R.withWidth (\_ -> stdWidth) selTree)
+
+
+-- | Determine the background color.
+backColor : M.Window -> M.Model -> String
+backColor win model =
+  if win == model.focus
+    then "#ddd"
+    else "#eee"
+
+
+viewTreeId : M.Window -> M.Model -> Html.Html Msg
+viewTreeId win model =
+  let
+    txt = toString (M.treePos win model)
+       ++ "/"
+       ++ toString (M.treeNum model)
+  in
+    Html.div
+      [ Atts.style
+        [ "position" => "absolute"
+        -- , "width" => "5%"
+        -- , "height" => "5%"
+        , "top" => px 10
+        , "left" => px 10
+        ]
+      ]
+      [ Html.text txt ]
+
+
 view : M.Model -> Html.Html Msg
 view model =
+
   let
-    tr win =
-      let
-        selTree = case win of
-          M.Top -> case D.get model.topTree model.trees of
-            Nothing -> testTree1
-            Just x  -> x
-          M.Bot -> case D.get model.botTree model.trees of
-            Nothing -> testTree1
-            Just x  -> x
-      in
-        drawTree
-          model.selected
-          (M.getPosition win model)
-          (R.withWidth (\_ -> stdWidth) selTree)
-    backColor win =
-      if win == model.focus
-        then "#ddd"
-        else "#eee"
+
     top = Html.div
       [ backMouseDown M.Top
       , backOnFocus M.Top
 
       -- @tabindex required to make the div register keyboard events
       , Atts.attribute "tabindex" "1"
-      -- , onKeyDown KeyDown
       , backKeyDown
 
       , Atts.style
@@ -249,7 +277,7 @@ view model =
         -- appear and which makes sure that the trees do not go beyond the
         -- specified subwindows.
         , "overflow" => "auto"
-        , "background-color" => backColor M.Top
+        , "background-color" => backColor M.Top model
         , "opacity" => "1.0"
         -- z-index important because of its interactions with how the edges are
         -- drawn.
@@ -258,14 +286,15 @@ view model =
         ]
       ]
       -- [background, tr]
-      [tr M.Top]
+      [ viewTree M.Top model
+      , viewTreeId M.Top model ]
+
     bottom = Html.div
       [ backMouseDown M.Bot
       , backOnFocus M.Bot
 
       -- @tabindex required to make the div register keyboard events
       , Atts.attribute "tabindex" "1"
-      -- , onKeyDown KeyDown
       , backKeyDown
 
       , Atts.style
@@ -274,14 +303,16 @@ view model =
         , "height" => "50%"
         , "bottom" => "0"
         , "overflow" => "auto"
-        , "background-color" => backColor M.Bot
+        , "background-color" => backColor M.Bot model
         , "opacity" => "1.0"
         , "z-index" => "-1"
         -- , "border" => "1px black solid"
         ]
       ]
       -- [background, tr]
-      [tr M.Bot]
+      [ viewTree M.Bot model
+      , viewTreeId M.Bot model ]
+
   in
     Html.div
       [ Atts.style
@@ -369,11 +400,6 @@ drawNode select at node =
       ]
 
 
-px : Int -> String
-px number =
-  toString number ++ "px"
-
-
 nodeMouseDown : M.Node -> Html.Attribute Msg
 nodeMouseDown x =
   Events.onMouseDown (Select x.nodeId)
@@ -423,6 +449,11 @@ backKeyDown =
 onKeyDown : (Int -> msg) -> Html.Attribute msg
 onKeyDown tagger =
   Events.on "keydown" (Decode.map tagger Events.keyCode)
+
+
+px : Int -> String
+px number =
+  toString number ++ "px"
 
 
 ---------------------------------------------------

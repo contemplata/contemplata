@@ -1,6 +1,7 @@
 module Model exposing
   ( Model, NodeId, Node, Drag, Window(..)
-  , getPosition, nextTree, prevTree, moveCursor )
+  , getPosition, nextTree, prevTree, moveCursor
+  , treeNum, treePos )
 
 
 import Mouse exposing (Position)
@@ -105,6 +106,7 @@ prevTree x model =
     go (D.keys model.trees)
 
 
+-- | Wrapper for prevTree and nextTree.
 moveCursor : Bool -> Model -> Model
 moveCursor next model =
   case (next, model.focus) of
@@ -112,3 +114,22 @@ moveCursor next model =
     (False, Top) -> { model | topTree = prevTree model.topTree model }
     (True, Bot)  -> { model | botTree = nextTree model.botTree model }
     (False, Bot) -> { model | botTree = prevTree model.botTree model }
+
+
+treePos : Window -> Model -> Int
+treePos win model =
+  let
+    tree = case win of
+      Top -> model.topTree
+      Bot -> model.botTree
+    go i keys = case keys of
+      [] -> 0
+      hd :: tl -> if tree == hd
+        then i
+        else go (i + 1) tl
+  in
+    go 1 (D.keys model.trees)
+
+
+treeNum : Model -> Int
+treeNum model = D.size model.trees
