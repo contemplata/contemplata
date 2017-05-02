@@ -9,6 +9,7 @@ import Svg as Svg
 import Svg.Attributes as Svg
 import Set as S
 import Dict as D
+import List as L
 import Mouse exposing (Position)
 
 import Rose as R
@@ -209,15 +210,15 @@ drawTree
   -> Position -- ^ Start position
   -> R.Tree (M.Node, R.Width) -- ^ Tree to draw
   -> Html.Html Msg
-drawTree win select pos (R.Node (node, width) subTrees) =
+drawTree win select pos (R.Node (node, _) subTrees) =
   let
+    forestWidth = List.sum <| L.map R.getWidth subTrees
     drawSub w0 forest = case forest of
       [] -> []
       t :: ts ->
         let
           tw = R.getWidth t
           tpos = {x = w0 + tw // 2, y = pos.y + Cfg.moveDown}
-          -- toLeft pos  = {x = pos.x - 50, y = pos.y + Cfg.moveDown}
         in
           drawTree win select tpos t
             :: drawLine pos tpos
@@ -225,7 +226,7 @@ drawTree win select pos (R.Node (node, width) subTrees) =
   in
     Html.div []
       (  drawNode select win pos node
-      :: drawSub (pos.x - width // 2) subTrees )
+      :: drawSub (pos.x - forestWidth // 2) subTrees )
 
 
 drawNode : S.Set M.NodeId -> M.Window -> Position -> M.Node -> Html.Html Msg
