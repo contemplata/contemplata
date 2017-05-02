@@ -313,6 +313,7 @@ backKeyDown =
       33 -> Previous
       34 -> Next
       46 -> Delete
+      65 -> Add
       _  -> Dummy
   in
     onKeyDown tag

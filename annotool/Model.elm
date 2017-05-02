@@ -2,7 +2,7 @@ module Model exposing
   ( Model, NodeId, Node, Drag, Window(..)
   , getPosition, nextTree, prevTree, moveCursor
   , treeNum, treePos, select, getLabel, setLabel
-  , deleteSel )
+  , deleteSel, addSel )
 
 
 import Mouse exposing (Position)
@@ -222,15 +222,17 @@ setLabel nodeId win newLabel model =
 
 
 ---------------------------------------------------
--- Delete
+-- Process selected
 ---------------------------------------------------
 
 
 -- | Delete selected nodes in a given window.
-deleteSel : Window -> Model -> Model
-deleteSel win model =
+procSel
+  :  (S.Set NodeId -> R.Tree Node -> R.Tree Node)
+  -> Window -> Model -> Model
+procSel f win model =
   let
-    selected = S.toList <| case win of
+    selected = case win of
       Top -> model.topSelect
       Bot -> model.botSelect
     tree = case win of
@@ -241,23 +243,23 @@ deleteSel win model =
       Nothing -> model
       Just t  ->
         let
-          newTree = L.foldl deleteNode t selected
+          newTree = f selected t
           newTrees = case win of
             Top -> D.insert model.topTree newTree model.trees
             Bot -> D.insert model.botTree newTree model.trees
-          newTopSel = case win of
-            Top -> S.empty
-            Bot -> if model.topTree == model.botTree
-                   then S.empty else model.topSelect
-          newBotSel = case win of
-            Bot -> S.empty
-            Top -> if model.topTree == model.botTree
-                   then S.empty else model.botSelect
         in
-          { model
-              | trees = newTrees
-              , topSelect = newTopSel
-              , botSelect = newBotSel }
+          updateSelect win <| { model | trees = newTrees }
+
+---------------------------------------------------
+-- Delete
+---------------------------------------------------
+
+
+-- | Delete selected nodes in a given window.
+deleteSel : Window -> Model -> Model
+deleteSel =
+  let f ids t = L.foldl deleteNode t (S.toList ids)
+  in  procSel f
 
 
 -- | Delete a given node, provided that it is not a root.
@@ -279,3 +281,107 @@ deleteNode nodeId tree =
 ---------------------------------------------------
 -- Add
 ---------------------------------------------------
+
+
+-- | Add selected nodes in a given window.
+addSel : Window -> Model -> Model
+addSel = procSel addNode
+
+
+-- | Add a parent to a given node.
+addNode : S.Set NodeId -> R.Tree Node -> R.Tree Node
+addNode ids tree =
+  let
+    rootId (R.Node x _) = x.nodeId
+    split ts =
+      let
+        (ls, tl) = find (\x -> S.member (rootId x) ids) ts
+        (ms, rs) = find (\x -> not <| S.member (rootId x) ids) tl
+      in
+        (ls, ms, rs)
+    update (R.Node x ts) =
+      let
+        (ls, ms, rs) = split ts
+      in
+        if L.isEmpty ms
+          then R.Node (Just x) (updateF ts)
+          else R.Node (Just x)
+            (  updateF ls
+            ++ [R.Node Nothing (updateF ms)]
+            ++ updateF rs )
+    updateF = L.map update
+  in
+    identify "?" <| update tree
+
+
+-- | Add missing identifiers.
+identify : String -> R.Tree (Maybe Node) -> R.Tree Node
+identify dummyVal tree =
+  let
+    findMaxMay =
+        List.maximum
+          <| L.map (\x -> x.nodeId)
+          <| catMaybes
+          <| R.flatten tree
+    newId1 = case findMaxMay of
+       Nothing -> 1
+       Just ix -> ix + 1
+    update newId nodeMay =
+      case nodeMay of
+        Nothing -> (newId+1, {nodeId=newId, nodeVal=dummyVal})
+        Just x  -> (newId, x)
+  in
+    Tuple.second <| R.mapAccum update newId1 tree
+
+
+---------------------------------------------------
+-- Utils
+---------------------------------------------------
+
+
+-- | Update the set of the selected nodes depending on the window in which the
+-- tree was modified.
+updateSelect : Window -> Model -> Model
+updateSelect win model =
+  let
+    newTopSel = case win of
+      Top -> S.empty
+      Bot -> if model.topTree == model.botTree
+             then S.empty else model.topSelect
+    newBotSel = case win of
+      Bot -> S.empty
+      Top -> if model.topTree == model.botTree
+             then S.empty else model.botSelect
+  in
+    { model | topSelect = newTopSel, botSelect = newBotSel }
+
+
+
+-- | The results is (ls, rs) where `ls` are all the left-most elements which do
+-- | not satisfy the given predicate, while `rs` is the rest. In particular, the
+-- | first element of `rs` satisfies the predicate.
+find : (a -> Bool) -> List a -> (List a, List a)
+find p xs =
+  let
+    ys = case xs of
+      [] -> ([], [])
+      hd :: tl ->
+        if p hd
+          then ([], xs)
+          else
+            let (ls, rs) = find p tl
+            in  (hd :: ls, rs)
+     -- revFst (x, y) = (List.reverse x, y)
+  in
+    -- revFst ys
+    ys
+
+
+catMaybes : List (Maybe a) -> List a
+catMaybes xs =
+  case xs of
+    [] -> []
+    hd :: tl ->
+      case hd of
+        Nothing -> catMaybes tl
+        Just x  -> x :: catMaybes tl

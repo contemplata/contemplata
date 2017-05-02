@@ -16,6 +16,7 @@ type Msg
     | ChangeLabel M.NodeId M.Window String
     | Dummy
     | Delete -- ^ Delete the selected nodes in the focused window
+    | Add -- ^ Delete the selected nodes in the focused window
 
 
 update : Msg -> M.Model -> ( M.Model, Cmd Msg )
@@ -53,4 +54,5 @@ updateHelp msg model =
     Previous -> M.moveCursor False model
     ChangeLabel nodeId win newLabel -> M.setLabel nodeId win newLabel model
     Delete -> M.deleteSel model.focus model
+    Add -> M.addSel model.focus model
     Dummy -> model -- it would be better to avoid this...

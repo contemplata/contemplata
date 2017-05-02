@@ -1,5 +1,6 @@
 module Rose exposing
-  (Tree(..), Forest, Width, leaf, withWidth, getWidth, mapAccum)
+  ( Tree(..), Forest, Width, leaf, withWidth, getWidth
+  , map, flatten, mapAccum )
 
 
 import List as List
@@ -21,6 +22,20 @@ type alias Forest a = List (Tree a)
 -- | Create a leaf.
 leaf : a -> Tree a
 leaf x = Node x []
+
+
+map : (a -> b) -> Tree a -> Tree b
+map f t =
+  let
+    g acc x = (acc, f x)
+  in
+    Tuple.second <| mapAccum g 0 t
+
+
+flatten : Tree a -> List a
+flatten t =
+  let g acc x = (x :: acc, x)
+  in  Tuple.first <| mapAccum g [] t
 
 
 mapAccum : (acc -> a -> (acc, b)) -> acc -> Tree a -> (acc, Tree b)
