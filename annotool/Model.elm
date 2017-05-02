@@ -1,13 +1,14 @@
 module Model exposing
   ( Model, NodeId, Node, Drag, Window(..)
   , getPosition, nextTree, prevTree, moveCursor
-  , treeNum, treePos, select )
+  , treeNum, treePos, select, getLabel, setLabel )
 
 
 import Mouse exposing (Position)
 import Set as S
 import Dict as D
 import List as L
+import Maybe as Maybe
 import Rose as R
 
 
@@ -160,3 +161,48 @@ select win i model =
       case S.member i model.botSelect of
         True  -> S.remove i model.botSelect
         False -> S.insert i model.botSelect }
+
+
+---------------------------------------------------
+-- Labels
+---------------------------------------------------
+
+
+getLabel : NodeId -> Window -> Model -> String
+getLabel nodeId win model =
+  let
+    search (R.Node x ts) = if nodeId == x.nodeId
+      then Just x.nodeVal
+      else searchF ts
+    searchF ts = case ts of
+      [] -> Nothing
+      hd :: tl -> or (search hd) (searchF tl)
+    or x y = case (x, y) of
+      (Just v, _)  -> Just v
+      (Nothing, v) -> v
+    tree = case win of
+      Top -> D.get model.topTree model.trees
+      Bot -> D.get model.botTree model.trees
+  in
+    Maybe.withDefault "?" <|
+      Maybe.andThen search tree
+
+
+setLabel : NodeId -> Window -> String -> Model -> Model
+setLabel nodeId win newLabel model =
+  let
+    update (R.Node x ts) = if nodeId == x.nodeId
+      then R.Node {x | nodeVal = newLabel} ts
+      else R.Node x (updateF ts)
+    updateF ts = case ts of
+      [] -> []
+      hd :: tl -> update hd :: updateF tl
+    tree = case win of
+      Top -> D.get model.topTree model.trees
+      Bot -> D.get model.botTree model.trees
+    newTrees = case (win, tree) of
+      (_, Nothing)  -> model.trees
+      (Top, Just t) -> D.insert model.topTree (update t) model.trees
+      (Bot, Just t) -> D.insert model.botTree (update t) model.trees
+  in
+    {model | trees = newTrees}

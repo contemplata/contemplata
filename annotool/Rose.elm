@@ -60,7 +60,7 @@ type alias Width = Int
 
 
 -- | Calculate the width of the individual subtrees. The first argument is used
--- to calculate the width of leaves.
+-- to calculate the width of nodes.
 withWidth
    : (a -> Width) -- ^ Width of a node
   -> Width -- ^ Additional margin
@@ -72,8 +72,9 @@ withWidth f margin (Node x subTrees) = case subTrees of
     let
       ts = List.map (withWidth f margin) subTrees
       ws = List.map getWidth ts
+      width = max (List.sum ws) (f x + margin)
     in
-      Node (x, List.sum ws) ts
+      Node (x, width) ts
 
 
 -- | Retrieve the widgth stored in the root.

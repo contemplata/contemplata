@@ -7,6 +7,7 @@ import Json.Decode as Decode
 import Mouse exposing (Position)
 import Svg as Svg
 import Svg.Attributes as Svg
+-- import List as L
 import Set as S
 import Dict as D
 import String as String
@@ -38,7 +39,7 @@ import Model as M
 
 -- | Width of a node.
 stdWidth : M.Node -> Int
-stdWidth x = max 30 <| (String.length x.nodeVal * 12)
+stdWidth x = max 30 <| (String.length x.nodeVal * 10)
 -- stdWidth x = 100
 
 -- nodeWidth : Int
@@ -172,6 +173,7 @@ type Msg
     | Focus M.Window
     | Previous
     | Next
+    | ChangeLabel M.NodeId M.Window String
     | Dummy
 
 
@@ -201,10 +203,6 @@ updateHelp msg model =
               _ -> model.botPos
       }
     Select win i -> M.select win i model
---       { model | selected =
---           case S.member i model.selected of
---             True  -> S.remove i model.selected
---             False -> S.insert i model.selected }
     Focus win -> { model | focus = win }
 --     KeyDown key -> case key of
 --       33 -> { model | focus = M.Top } -- Previous
@@ -212,6 +210,7 @@ updateHelp msg model =
 --       _  -> { model | focus = M.Top }
     Next -> M.moveCursor True model
     Previous -> M.moveCursor False model
+    ChangeLabel nodeId win newLabel -> M.setLabel nodeId win newLabel model
     Dummy -> model -- it would be better to avoid this...
 
 
@@ -303,7 +302,7 @@ view model =
 
       , Atts.style
         [ "position" => "absolute"
-        , "width" => "100%"
+        , "width" => "85%"
         , "height" => "50%"
         , "top" => "0"
         -- overflow is a very important attribute which makes the scrollbars to
@@ -321,6 +320,37 @@ view model =
       -- [background, tr]
       [ viewTree M.Top model
       , viewTreeId M.Top model ]
+
+    topFS =
+      let
+        (condAtts, event) = case S.toList model.topSelect of
+          [nodeId] ->
+            ( [Atts.value (M.getLabel nodeId M.Top model)]
+            , ChangeLabel nodeId M.Top )
+          _ ->
+            ( [Atts.disabled True, Atts.placeholder "<label>"]
+            , \_ -> Dummy )
+      in
+        Html.div
+          [ Atts.style
+            [ "position" => "absolute"
+            , "width" => "15%"
+            , "height" => "50%"
+            , "right" => "0"
+            ]
+          ]
+          [ Html.input
+              -- ( [ Events.onInput (\_ -> Dummy)
+              -- ( [ Events.onInput (ChangeLabel M.Top)
+              ( [ Events.onInput event
+                , Atts.style
+                  [ "position" => "absolute"
+                  , "width" => "100%"
+                  ]
+                ] ++ condAtts
+              )
+              []
+          ]
 
     bottom = Html.div
       [ backMouseDown M.Bot
@@ -351,7 +381,7 @@ view model =
       [ Atts.style
           ["width" => "100%", "height" => "100%"]
       ]
-      [top, bottom]
+      [top, topFS, bottom]
 
 
 drawLine : Position -> Position -> Html.Html Msg
@@ -445,8 +475,11 @@ drawNode select win at node =
           , "justify-content" => "center"
           ]
       ]
-      [ Html.text node.nodeVal -- "Go!"
-      ]
+      [ Html.text node.nodeVal ]
+--       [ Html.div
+--           [ Atts.attribute "contenteditable" "true" ]
+--           [ Html.text node.nodeVal ]
+--       ]
 
 
 -- drawNode : S.Set M.NodeId -> M.Window -> Position -> M.Node -> Html.Html Msg
