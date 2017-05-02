@@ -1,4 +1,6 @@
-module Model exposing (Model, NodeId, Node, Drag, Window(..), getPosition, nextTree)
+module Model exposing
+  ( Model, NodeId, Node, Drag, Window(..)
+  , getPosition, nextTree, prevTree, moveCursor )
 
 
 import Mouse exposing (Position)
@@ -86,3 +88,27 @@ nextTree x model =
         else go (hd2 :: tl)
   in
     go (D.keys model.trees)
+
+
+-- | Retrieve the next tree in the underlying model.
+-- Return the argument tree ID if not possible.
+prevTree : TreeId -> Model -> TreeId
+prevTree x model =
+  let
+    go keys = case keys of
+      [] -> x
+      hd1 :: []  -> x
+      hd1 :: hd2 :: tl -> if x == hd2
+        then hd1
+        else go (hd2 :: tl)
+  in
+    go (D.keys model.trees)
+
+
+moveCursor : Bool -> Model -> Model
+moveCursor next model =
+  case (next, model.focus) of
+    (True, Top)  -> { model | topTree = nextTree model.topTree model }
+    (False, Top) -> { model | topTree = prevTree model.topTree model }
+    (True, Bot)  -> { model | botTree = nextTree model.botTree model }
+    (False, Bot) -> { model | botTree = prevTree model.botTree model }

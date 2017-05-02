@@ -129,10 +129,9 @@ type Msg
     | DragEnd Position
     | Select M.NodeId
     | Focus M.Window
-    | KeyDown Int
---     | Previous
---     | Next
---     | Dummy
+    | Previous
+    | Next
+    | Dummy
 
 
 update : Msg -> M.Model -> ( M.Model, Cmd Msg )
@@ -167,14 +166,13 @@ updateHelp msg model =
             False -> S.insert i model.selected }
     Focus win ->
       { model | focus = win }
-    KeyDown key -> case key of
-      33 -> { model | focus = M.Top } -- Previous
-      34 -> { model | focus = M.Bot } -- Next
-      _  -> { model | focus = M.Top }
---     Next ->
---       { model | topTree = M.nextTree model.topTree model }
---     Previous -> model
---     Dummy -> model -- it would be better to avoid this...
+--     KeyDown key -> case key of
+--       33 -> { model | focus = M.Top } -- Previous
+--       34 -> { model | focus = M.Bot } -- Next
+--       _  -> { model | focus = M.Top }
+    Next -> M.moveCursor True model
+    Previous -> M.moveCursor False model
+    Dummy -> model -- it would be better to avoid this...
 
 
 ---------------------------------------------------
@@ -235,11 +233,12 @@ view model =
         else "#eee"
     top = Html.div
       [ backMouseDown M.Top
-      , backDoubleClick M.Top
+      , backOnFocus M.Top
 
       -- @tabindex required to make the div register keyboard events
       , Atts.attribute "tabindex" "1"
-      , onKeyDown KeyDown
+      -- , onKeyDown KeyDown
+      , backKeyDown
 
       , Atts.style
         [ "position" => "absolute"
@@ -262,11 +261,12 @@ view model =
       [tr M.Top]
     bottom = Html.div
       [ backMouseDown M.Bot
-      , backDoubleClick M.Bot
+      , backOnFocus M.Bot
 
       -- @tabindex required to make the div register keyboard events
       , Atts.attribute "tabindex" "1"
-      , onKeyDown KeyDown
+      -- , onKeyDown KeyDown
+      , backKeyDown
 
       , Atts.style
         [ "position" => "absolute"
@@ -389,25 +389,25 @@ backMouseDown win =
   Events.on "mousedown" (Decode.map (DragStart win) Mouse.position)
 
 
-backDoubleClick : M.Window -> Html.Attribute Msg
-backDoubleClick win =
-  Events.onDoubleClick (Focus win)
+-- backDoubleClick : M.Window -> Html.Attribute Msg
+-- backDoubleClick win =
+--   Events.onDoubleClick (Focus win)
 
 
----------------------------------------------------
--- Top-level events
----------------------------------------------------
+backOnFocus : M.Window -> Html.Attribute Msg
+backOnFocus win =
+  Events.onFocus (Focus win)
 
 
--- keyUp : Html.Attribute Msg
--- keyUp =
---   let
---     tag code = case code of
---       33 -> Focus M.Top -- Previous
---       34 -> Focus M.Bot -- Next
---       _  -> Focus M.Top
---   in
---     onKeyUp tag
+backKeyDown : Html.Attribute Msg
+backKeyDown =
+  let
+    tag code = case code of
+      33 -> Previous
+      34 -> Next
+      _  -> Dummy
+  in
+    onKeyDown tag
 
 
 ---------------------------------------------------
