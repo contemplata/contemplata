@@ -1,5 +1,5 @@
 module Rose exposing
-  (Tree(..), Forest, Width, withWidth, getWidth)
+  (Tree(..), Forest, Width, leaf, withWidth, getWidth)
 
 
 import List as List
@@ -16,6 +16,11 @@ type Tree a = Node a (Forest a)
 
 -- | A rose forest.
 type alias Forest a = List (Tree a)
+
+
+-- | Create a leaf.
+leaf : a -> Tree a
+leaf x = Node x []
 
 
 ---------------------------------------------------

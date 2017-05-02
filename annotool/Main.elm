@@ -8,8 +8,11 @@ import Mouse exposing (Position)
 import Svg as Svg
 import Svg.Attributes as Svg
 import Set as S
+import Dict as D
 
 import Rose as R
+-- import Model exposing (Model)
+import Model as M
 
 
 ---------------------------------------------------
@@ -45,15 +48,24 @@ circleHeight : Int
 circleHeight = 50
 
 
--- testTree : R.Tree Int
--- testTree = R.Node 1
---   [ R.Node 2 [R.Node 3 []]
---   , R.Node 4 [R.Node 5 []]
---   ]
+---------------------------------------------------
+-- Test trees
+---------------------------------------------------
 
 
-testTree : R.Tree Node
-testTree =
+testTree1 : R.Tree M.Node
+testTree1 =
+  let
+    node i xs = R.Node {nodeId = i, nodeVal = i} xs
+  in
+    node 1
+      [ node 2 [node 3 []]
+      , node 4 [node 5 []]
+      ]
+
+
+testTree2 : R.Tree M.Node
+testTree2 =
   let
     node i xs = R.Node {nodeId = i, nodeVal = i} xs
   in
@@ -71,7 +83,7 @@ testTree =
 ---------------------------------------------------
 
 
-main : Program Never Model Msg
+main : Program Never M.Model Msg
 main =
   Html.program
     { init = init
@@ -86,57 +98,21 @@ main =
 ---------------------------------------------------
 
 
-type alias Model =
-    { tree : R.Tree Node
-    , selected : S.Set Id
-
-    , topPos : Position
-    , botPos : Position
-    , drag : Maybe (Window, Drag)
-    }
-
-
-type alias Id = Int
-
-
--- Node in a syntactic tree.
-type alias Node = {nodeId : Id, nodeVal : Int}
-
-
-type alias Drag =
-    { start : Position
-    , current : Position
-    }
-
-
--- Windows selector
-type Window = Top | Bot
-
-
-getPosition : Window -> Model -> Position
-getPosition win model =
-  case (win, model.drag) of
-    (Top, Just (Top, {start, current})) ->
-      Position
-        (model.topPos.x + current.x - start.x)
-        (model.topPos.y + current.y - start.y)
-    (Top, _) -> model.topPos
-    (Bot, Just (Bot, {start, current})) ->
-      Position
-        (model.botPos.x + current.x - start.x)
-        (model.botPos.y + current.y - start.y)
-    (Bot, _) -> model.botPos
-
-
-init : ( Model, Cmd Msg )
+init : ( M.Model, Cmd Msg )
 init =
   let
     model =
-      { tree = testTree
+      { trees = D.fromList
+          [ ("t1", testTree1)
+          , ("t2", testTree2)
+          ]
+      , topTree = "t1"
+      , botTree = "t2"
       , selected = S.empty
       , topPos = Position 640 200
       , botPos = Position 640 200
       , drag = Nothing
+      , focus = M.Top
       }
   in
     (model, Cmd.none)
@@ -148,35 +124,40 @@ init =
 
 
 type Msg
-    = DragStart Window Position
+    = DragStart M.Window Position
     | DragAt Position
     | DragEnd Position
-    | Select Id
+    | Select M.NodeId
+    | Focus M.Window
+    | KeyDown Int
+--     | Previous
+--     | Next
+--     | Dummy
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> M.Model -> ( M.Model, Cmd Msg )
 update msg model =
   ( updateHelp msg model, Cmd.none )
 
 
-updateHelp : Msg -> Model -> Model
+updateHelp : Msg -> M.Model -> M.Model
 updateHelp msg model =
   case msg of
     DragStart win xy ->
-      { model | drag = Just (win, Drag xy xy) }
+      { model | drag = Just (win, M.Drag xy xy) }
     DragAt xy ->
       { model
-          | drag = Maybe.map (\(win, {start}) -> (win, Drag start xy)) model.drag
+          | drag = Maybe.map (\(win, {start}) -> (win, M.Drag start xy)) model.drag
       }
     DragEnd _ ->
-      -- { model | drag = Nothing, position = getPosition model }
+      -- { model | drag = Nothing, position = M.getPosition model }
       { model
           | drag = Nothing
           , topPos = case model.drag of
-              Just (Top, _) -> getPosition Top model
+              Just (M.Top, _) -> M.getPosition M.Top model
               _ -> model.topPos
           , botPos = case model.drag of
-              Just (Bot, _) -> getPosition Bot model
+              Just (M.Bot, _) -> M.getPosition M.Bot model
               _ -> model.botPos
       }
     Select i ->
@@ -184,6 +165,16 @@ updateHelp msg model =
           case S.member i model.selected of
             True  -> S.remove i model.selected
             False -> S.insert i model.selected }
+    Focus win ->
+      { model | focus = win }
+    KeyDown key -> case key of
+      33 -> { model | focus = M.Top } -- Previous
+      34 -> { model | focus = M.Bot } -- Next
+      _  -> { model | focus = M.Top }
+--     Next ->
+--       { model | topTree = M.nextTree model.topTree model }
+--     Previous -> model
+--     Dummy -> model -- it would be better to avoid this...
 
 
 ---------------------------------------------------
@@ -191,7 +182,7 @@ updateHelp msg model =
 ---------------------------------------------------
 
 
-subscriptions : Model -> Sub Msg
+subscriptions : M.Model -> Sub Msg
 subscriptions model =
   case model.drag of
     Nothing ->
@@ -210,26 +201,46 @@ subscriptions model =
 (=>) = (,)
 
 
--- view : Model -> Html.Html Msg
+-- view : M.Model -> Html.Html Msg
 -- view model =
 --   Html.div []
 --     [ background
 --     , drawTree
 --         model.selected
---         (getPosition model)
+--         (M.getPosition model)
 --         (R.withWidth (\_ -> stdWidth) model.tree)
 --     ]
 
 
-view : Model -> Html.Html Msg
+view : M.Model -> Html.Html Msg
 view model =
   let
-    tr win = drawTree
-        model.selected
-        (getPosition win model)
-        (R.withWidth (\_ -> stdWidth) model.tree)
+    tr win =
+      let
+        selTree = case win of
+          M.Top -> case D.get model.topTree model.trees of
+            Nothing -> testTree1
+            Just x  -> x
+          M.Bot -> case D.get model.botTree model.trees of
+            Nothing -> testTree1
+            Just x  -> x
+      in
+        drawTree
+          model.selected
+          (M.getPosition win model)
+          (R.withWidth (\_ -> stdWidth) selTree)
+    backColor win =
+      if win == model.focus
+        then "#ddd"
+        else "#eee"
     top = Html.div
-      [ backMouseDown Top
+      [ backMouseDown M.Top
+      , backDoubleClick M.Top
+
+      -- @tabindex required to make the div register keyboard events
+      , Atts.attribute "tabindex" "1"
+      , onKeyDown KeyDown
+
       , Atts.style
         [ "position" => "absolute"
         , "width" => "100%"
@@ -239,7 +250,7 @@ view model =
         -- appear and which makes sure that the trees do not go beyond the
         -- specified subwindows.
         , "overflow" => "auto"
-        , "background-color" => "#ddd"
+        , "background-color" => backColor M.Top
         , "opacity" => "1.0"
         -- z-index important because of its interactions with how the edges are
         -- drawn.
@@ -248,26 +259,34 @@ view model =
         ]
       ]
       -- [background, tr]
-      [tr Top]
+      [tr M.Top]
     bottom = Html.div
-      [ backMouseDown Bot
+      [ backMouseDown M.Bot
+      , backDoubleClick M.Bot
+
+      -- @tabindex required to make the div register keyboard events
+      , Atts.attribute "tabindex" "1"
+      , onKeyDown KeyDown
+
       , Atts.style
         [ "position" => "absolute"
         , "width" => "100%"
         , "height" => "50%"
         , "bottom" => "0"
         , "overflow" => "auto"
-        , "background-color" => "#eee"
+        , "background-color" => backColor M.Bot
         , "opacity" => "1.0"
         , "z-index" => "-1"
         -- , "border" => "1px black solid"
         ]
       ]
       -- [background, tr]
-      [tr Bot]
+      [tr M.Bot]
   in
     Html.div
-      [Atts.style ["width" => "100%", "height" => "100%"]]
+      [ Atts.style
+          ["width" => "100%", "height" => "100%"]
+      ]
       [top, bottom]
 
 
@@ -305,7 +324,7 @@ drawLine beg end =
       [svg]
 
 
-drawTree : S.Set Id -> Position -> R.Tree (Node, R.Width) -> Html.Html Msg
+drawTree : S.Set M.NodeId -> Position -> R.Tree (M.Node, R.Width) -> Html.Html Msg
 drawTree select pos (R.Node (node, width) subTrees) =
   let
     drawSub w0 forest = case forest of
@@ -323,7 +342,7 @@ drawTree select pos (R.Node (node, width) subTrees) =
       :: drawSub (pos.x - width // 2) subTrees )
 
 
-drawNode : S.Set Id -> Position -> Node -> Html.Html Msg
+drawNode : S.Set M.NodeId -> Position -> M.Node -> Html.Html Msg
 drawNode select at node =
     Html.div
       [ nodeMouseDown node
@@ -355,16 +374,55 @@ px number =
   toString number ++ "px"
 
 
-nodeMouseDown : Node -> Html.Attribute Msg
+nodeMouseDown : M.Node -> Html.Attribute Msg
 nodeMouseDown x =
   Events.onMouseDown (Select x.nodeId)
-  -- Events.on "mousedown" (Decode.map DragStart Mouse.position)
 
 
-backMouseDown : Window -> Html.Attribute Msg
+---------------------------------------------------
+-- Background events
+---------------------------------------------------
+
+
+backMouseDown : M.Window -> Html.Attribute Msg
 backMouseDown win =
   Events.on "mousedown" (Decode.map (DragStart win) Mouse.position)
 
+
+backDoubleClick : M.Window -> Html.Attribute Msg
+backDoubleClick win =
+  Events.onDoubleClick (Focus win)
+
+
+---------------------------------------------------
+-- Top-level events
+---------------------------------------------------
+
+
+-- keyUp : Html.Attribute Msg
+-- keyUp =
+--   let
+--     tag code = case code of
+--       33 -> Focus M.Top -- Previous
+--       34 -> Focus M.Bot -- Next
+--       _  -> Focus M.Top
+--   in
+--     onKeyUp tag
+
+
+---------------------------------------------------
+-- Utils
+---------------------------------------------------
+
+
+-- onKeyUp : (Int -> msg) -> Html.Attribute msg
+-- onKeyUp tagger =
+--   Events.on "keydown" (Decode.map tagger Events.keyCode)
+
+
+onKeyDown : (Int -> msg) -> Html.Attribute msg
+onKeyDown tagger =
+  Events.on "keydown" (Decode.map tagger Events.keyCode)
 
 
 ---------------------------------------------------
