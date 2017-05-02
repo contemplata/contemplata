@@ -42,7 +42,9 @@ type alias TreeId = String
 
 
 -- Node in a syntactic tree
-type alias Node = {nodeId : NodeId, nodeVal : Int}
+type alias Node =
+  { nodeId : NodeId
+  , nodeVal : String }
 
 
 -- Information about a drag

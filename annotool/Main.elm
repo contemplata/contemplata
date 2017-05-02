@@ -9,6 +9,7 @@ import Svg as Svg
 import Svg.Attributes as Svg
 import Set as S
 import Dict as D
+import String as String
 
 import Rose as R
 -- import Model exposing (Model)
@@ -30,22 +31,35 @@ import Model as M
 -- moveRight = 100
 
 
--- | Standard width of a leaf.
-stdWidth : Int
-stdWidth = 100
+-- -- | Standard width of a leaf.
+-- stdWidth : Int
+-- stdWidth = 100
+
+
+-- | Width of a node.
+stdWidth : M.Node -> Int
+stdWidth x = max 30 <| (String.length x.nodeVal * 12)
+-- stdWidth x = 100
+
+-- nodeWidth : Int
+-- nodeWidth = 50
+
+
+-- | Horizontal margin before and after the node.
+stdMargin : Int
+stdMargin = 10
+-- stdWidth x = 100
+
+
+nodeHeight : Int
+nodeHeight = 25
 
 
 -- | How far to move down for the next level.
 moveDown : Int
-moveDown = 100
+moveDown = 40
 
 
-circleWidth : Int
-circleWidth = 50
-
-
-circleHeight : Int
-circleHeight = 50
 
 
 ---------------------------------------------------
@@ -56,7 +70,7 @@ circleHeight = 50
 testTree1 : R.Tree M.Node
 testTree1 =
   let
-    node i xs = R.Node {nodeId = i, nodeVal = i} xs
+    node i xs = R.Node {nodeId = i, nodeVal = toString i} xs
   in
     node 1
       [ node 2 [node 3 []]
@@ -67,7 +81,7 @@ testTree1 =
 testTree2 : R.Tree M.Node
 testTree2 =
   let
-    node i xs = R.Node {nodeId = i, nodeVal = i} xs
+    node i xs = R.Node {nodeId = i, nodeVal = toString i} xs
   in
     node 1
       [ node 2 [node 3 []]
@@ -76,6 +90,31 @@ testTree2 =
       , node 7
         [node 8 [], node 9 [], node 10 []]
       ]
+
+
+testTree3 : R.Tree M.Node
+testTree3 =
+  let
+    node x xs = R.Node x xs
+    tree =
+      node "SENT"
+        [ node "Ssub"
+            [ node "CS" [node "Quand" []]
+            , node "VN"
+                [ node "CLS" [node "vous" []]
+                , node "V" [node "savez" []] ]
+            , node "VPinf"
+                [ node "VN"
+                    [ node "CLO" [node "vous" []]
+                    , node "VINF" [node "venez" []] ]
+                ]
+            ]
+        , node "PUNC" [node "." []]
+        ]
+    addId i x = (i+1, {nodeId = i, nodeVal = x})
+    snd (x, y) = y
+  in
+    snd <| R.mapAccum addId 1 <| tree
 
 
 ---------------------------------------------------
@@ -105,6 +144,7 @@ init =
       { trees = D.fromList
           [ ("t1", testTree1)
           , ("t2", testTree2)
+          , ("t3", testTree3)
           ]
       , topTree = "t1"
       , botTree = "t2"
@@ -217,7 +257,8 @@ viewTree win model =
     drawTree
       win selNodes
       (M.getPosition win model)
-      (R.withWidth (\_ -> stdWidth) selTree)
+      -- (R.withWidth (\_ -> stdWidth) selTree)
+      (R.withWidth stdWidth stdMargin selTree)
 
 
 -- | Determine the background color.
@@ -374,20 +415,29 @@ drawTree win select pos (R.Node (node, width) subTrees) =
 
 drawNode : S.Set M.NodeId -> M.Window -> Position -> M.Node -> Html.Html Msg
 drawNode select win at node =
+  let
+    -- width = nodeWidth
+    width = stdWidth node
+    height = nodeHeight
+  in
     Html.div
       [ nodeMouseDown win node
       , Atts.style
-          [ if S.member node.nodeId select
+          [
+            if S.member node.nodeId select
               then "background-color" => "#BC0000"
               else "background-color" => "#3C8D2F"
           , "cursor" => "pointer"
+          -- , "opacity" => "1.0"
 
-          , "width" => "50px"
-          , "height" => "50px"
-          , "border-radius" => "50%" -- "4px"
+          , "width" => px width
+          , "height" => px height
+          , "border-radius" => "40%" -- "4px"
           , "position" => "absolute"
-          , "left" => px (at.x - circleWidth // 2)
-          , "top" => px (at.y - circleHeight // 2)
+          -- , "left" => px (at.x - nodeWidth // 2)
+          -- , "top" => px (at.y - nodeHeight // 2)
+          , "left" => px (at.x - width // 2)
+          , "top" => px (at.y - height // 2)
 
           , "color" => "white"
           , "display" => "flex"
@@ -395,8 +445,35 @@ drawNode select win at node =
           , "justify-content" => "center"
           ]
       ]
-      [ Html.text (toString node.nodeVal) -- "Go!"
+      [ Html.text node.nodeVal -- "Go!"
       ]
+
+
+-- drawNode : S.Set M.NodeId -> M.Window -> Position -> M.Node -> Html.Html Msg
+-- drawNode select win at node =
+--     Html.div
+--       [ nodeMouseDown win node
+--       , Atts.style
+--           [ if S.member node.nodeId select
+--               then "background-color" => "#BC0000"
+--               else "background-color" => "#3C8D2F"
+--           , "cursor" => "pointer"
+--
+--           , "width" => "50px"
+--           , "height" => "50px"
+--           , "border-radius" => "50%" -- "4px"
+--           , "position" => "absolute"
+--           , "left" => px (at.x - nodeWidth // 2)
+--           , "top" => px (at.y - nodeHeight // 2)
+--
+--           , "color" => "white"
+--           , "display" => "flex"
+--           , "align-items" => "center"
+--           , "justify-content" => "center"
+--           ]
+--       ]
+--       [ Html.text node.nodeVal -- "Go!"
+--       ]
 
 
 nodeMouseDown : M.Window -> M.Node -> Html.Attribute Msg

@@ -1,5 +1,5 @@
 module Rose exposing
-  (Tree(..), Forest, Width, leaf, withWidth, getWidth)
+  (Tree(..), Forest, Width, leaf, withWidth, getWidth, mapAccum)
 
 
 import List as List
@@ -23,6 +23,34 @@ leaf : a -> Tree a
 leaf x = Node x []
 
 
+mapAccum : (acc -> a -> (acc, b)) -> acc -> Tree a -> (acc, Tree b)
+mapAccum f acc (Node x ts) =
+  let
+    (acc1, y) = f acc x
+    (acc2, ys) = mapAccumL (mapAccum f) acc1 ts
+  in
+    (acc2, Node y ys)
+
+
+-- mapAccumF : (acc -> a -> (acc, b)) -> acc -> Forest a -> (acc, Forest b)
+-- mapAccumF f acc (Node x ts) =
+--   let
+--     (acc1, y) = f acc x
+--     (acc2, ts1) = List.foldl
+
+
+mapAccumL : (acc -> a -> (acc, b)) -> acc -> List a -> (acc, List b)
+mapAccumL f acc xs =
+  case xs of
+    [] -> (acc, [])
+    x :: tl ->
+      let
+        (acc1, y) = f acc x
+        (acc2, ys) = mapAccumL f acc1 tl
+      in
+        (acc2, y :: ys)
+
+
 ---------------------------------------------------
 -- Width
 ---------------------------------------------------
@@ -33,12 +61,16 @@ type alias Width = Int
 
 -- | Calculate the width of the individual subtrees. The first argument is used
 -- to calculate the width of leaves.
-withWidth : (a -> Width) -> Tree a -> Tree (a, Width)
-withWidth f (Node x subTrees) = case subTrees of
-  [] -> Node (x, f x) []
+withWidth
+   : (a -> Width) -- ^ Width of a node
+  -> Width -- ^ Additional margin
+  -> Tree a
+  -> Tree (a, Width)
+withWidth f margin (Node x subTrees) = case subTrees of
+  [] -> Node (x, f x + margin) []
   _  ->
     let
-      ts = List.map (withWidth f) subTrees
+      ts = List.map (withWidth f margin) subTrees
       ws = List.map getWidth ts
     in
       Node (x, List.sum ws) ts

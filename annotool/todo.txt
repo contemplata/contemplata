@@ -1,5 +1,4 @@
 TODO:
-* Rose trees with actual words
 * Make drawing artefacts disappear
 * Make it possible to link two nodes in two viewports.
   Generally, it should also work if the two nodes are
@@ -19,3 +18,4 @@ DONE:
 * Make it possible to switch between trees
 * Show the tree id
 * Make selection tree-dependent
+* Rose trees with actual words
