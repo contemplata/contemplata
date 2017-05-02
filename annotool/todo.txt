@@ -3,12 +3,12 @@ TODO:
 * Make it possible to link two nodes in two viewports.
   Generally, it should also work if the two nodes are
   in the same tree.
+* Make the scrollbar on the bottom disappear
 * Make a flat message window on the bottom
 
 
 LATER:
 * Show a sentence on top of a given viewport
-* Make drawing artefacts disappear
 
 
 DONE:
@@ -20,3 +20,5 @@ DONE:
 * Make selection tree-dependent
 * Rose trees with actual words
 * Make it possible to modify node labels
+* Make drawing artefacts disappear
+* Better code organization in the View module

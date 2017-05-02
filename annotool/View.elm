@@ -19,7 +19,6 @@ import Message exposing (Msg(..))
 import Config as Cfg
 
 
-
 (=>) : a -> b -> (a, b)
 (=>) = (,)
 
@@ -73,101 +72,86 @@ viewTreeId win model =
       [ Html.text txt ]
 
 
-view : M.Model -> Html.Html Msg
-view model =
+ -- | The view of the top window.
+viewWindow : M.Window -> M.Model -> Html.Html Msg
+viewWindow win model = Html.div
+  [ backMouseDown win
+  , backOnFocus win
 
+  -- @tabindex required to make the div register keyboard events
+  , Atts.attribute "tabindex" "1"
+  , backKeyDown
+
+  , Atts.style
+    [ "position" => "absolute"
+    , "width" => "85%"
+    , "height" => "50%"
+    , case win of
+        M.Top -> "top" => "0"
+        M.Bot -> "bottom" => "0"
+    -- overflow is a very important attribute which makes the scrollbars to
+    -- appear and which makes sure that the trees do not go beyond the
+    -- specified subwindows.
+    , "overflow" => "auto"
+    , "background-color" => backColor win model
+    , "opacity" => "1.0"
+    -- z-index important because of its interactions with how the edges are
+    -- drawn.
+    , "z-index" => "-1"
+    -- , "border" => "1px black solid"
+    ]
+  ]
+  -- [background, tr]
+  [ viewTree win model
+  , viewTreeId win model ]
+
+
+ -- | The view of the top-side window.
+viewSideWindow : M.Window -> M.Model -> Html.Html Msg
+viewSideWindow win model =
   let
-
-    top = Html.div
-      [ backMouseDown M.Top
-      , backOnFocus M.Top
-
-      -- @tabindex required to make the div register keyboard events
-      , Atts.attribute "tabindex" "1"
-      , backKeyDown
-
-      , Atts.style
-        [ "position" => "absolute"
-        , "width" => "85%"
-        , "height" => "50%"
-        , "top" => "0"
-        -- overflow is a very important attribute which makes the scrollbars to
-        -- appear and which makes sure that the trees do not go beyond the
-        -- specified subwindows.
-        , "overflow" => "auto"
-        , "background-color" => backColor M.Top model
-        , "opacity" => "1.0"
-        -- z-index important because of its interactions with how the edges are
-        -- drawn.
-        , "z-index" => "-1"
-        -- , "border" => "1px black solid"
-        ]
-      ]
-      -- [background, tr]
-      [ viewTree M.Top model
-      , viewTreeId M.Top model ]
-
-    topFS =
-      let
-        (condAtts, event) = case S.toList model.topSelect of
-          [nodeId] ->
-            ( [Atts.value (M.getLabel nodeId M.Top model)]
-            , ChangeLabel nodeId M.Top )
-          _ ->
-            ( [Atts.disabled True, Atts.placeholder "<label>"]
-            , \_ -> Dummy )
-      in
-        Html.div
-          [ Atts.style
-            [ "position" => "absolute"
-            , "width" => "15%"
-            , "height" => "50%"
-            , "right" => "0"
-            ]
-          ]
-          [ Html.input
-              -- ( [ Events.onInput (\_ -> Dummy)
-              -- ( [ Events.onInput (ChangeLabel M.Top)
-              ( [ Events.onInput event
-                , Atts.style
-                  [ "position" => "absolute"
-                  , "width" => "100%"
-                  ]
-                ] ++ condAtts
-              )
-              []
-          ]
-
-    bottom = Html.div
-      [ backMouseDown M.Bot
-      , backOnFocus M.Bot
-
-      -- @tabindex required to make the div register keyboard events
-      , Atts.attribute "tabindex" "1"
-      , backKeyDown
-
-      , Atts.style
-        [ "position" => "absolute"
-        , "width" => "100%"
-        , "height" => "50%"
-        , "bottom" => "0"
-        , "overflow" => "auto"
-        , "background-color" => backColor M.Bot model
-        , "opacity" => "1.0"
-        , "z-index" => "-1"
-        -- , "border" => "1px black solid"
-        ]
-      ]
-      -- [background, tr]
-      [ viewTree M.Bot model
-      , viewTreeId M.Bot model ]
-
+    selected = case win of
+      M.Top -> model.topSelect
+      M.Bot -> model.botSelect
+    (condAtts, event) = case S.toList selected of
+      [nodeId] ->
+        ( [Atts.value (M.getLabel nodeId win model)]
+        , ChangeLabel nodeId win )
+      _ ->
+        ( [Atts.disabled True, Atts.placeholder "<label>"]
+        , \_ -> Dummy )
   in
     Html.div
       [ Atts.style
-          ["width" => "100%", "height" => "100%"]
+        [ "position" => "absolute"
+        , "width" => "15%"
+        , "height" => "50%"
+        , "right" => "0"
+        , case win of
+            M.Top -> "top" => "0"
+            M.Bot -> "bottom" => "0"
+        ]
       ]
-      [top, topFS, bottom]
+      [ Html.input
+          ( [ Events.onInput event
+            , Atts.style
+              [ "position" => "absolute"
+              , "width" => "100%"
+              ]
+            ] ++ condAtts
+          )
+          []
+      ]
+
+
+view : M.Model -> Html.Html Msg
+view model =
+  Html.div
+    [ Atts.style
+        ["width" => "100%", "height" => "100%"]
+    ]
+    [ viewWindow M.Top model, viewSideWindow M.Top model
+    , viewWindow M.Bot model, viewSideWindow M.Bot model ]
 
 
 drawLine : Position -> Position -> Html.Html Msg
