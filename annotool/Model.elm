@@ -1,7 +1,8 @@
 module Model exposing
   ( Model, NodeId, Node, Drag, Window(..)
   , getPosition, nextTree, prevTree, moveCursor
-  , treeNum, treePos, select, getLabel, setLabel )
+  , treeNum, treePos, select, getLabel, setLabel
+  , deleteSel )
 
 
 import Mouse exposing (Position)
@@ -137,10 +138,22 @@ prevTree x model =
 moveCursor : Bool -> Model -> Model
 moveCursor next model =
   case (next, model.focus) of
-    (True, Top)  -> { model | topTree = nextTree model.topTree model }
-    (False, Top) -> { model | topTree = prevTree model.topTree model }
-    (True, Bot)  -> { model | botTree = nextTree model.botTree model }
-    (False, Bot) -> { model | botTree = prevTree model.botTree model }
+    (True, Top)  ->
+      { model
+          | topTree = nextTree model.topTree model
+          , topSelect = S.empty }
+    (False, Top) ->
+      { model
+          | topTree = prevTree model.topTree model
+          , topSelect = S.empty }
+    (True, Bot)  ->
+      { model
+          | botTree = nextTree model.botTree model
+          , botSelect = S.empty }
+    (False, Bot) ->
+      { model
+          | botTree = prevTree model.botTree model
+          , botSelect = S.empty }
 
 
 ---------------------------------------------------
@@ -206,3 +219,63 @@ setLabel nodeId win newLabel model =
       (Bot, Just t) -> D.insert model.botTree (update t) model.trees
   in
     {model | trees = newTrees}
+
+
+---------------------------------------------------
+-- Delete
+---------------------------------------------------
+
+
+-- | Delete selected nodes in a given window.
+deleteSel : Window -> Model -> Model
+deleteSel win model =
+  let
+    selected = S.toList <| case win of
+      Top -> model.topSelect
+      Bot -> model.botSelect
+    tree = case win of
+      Top -> D.get model.topTree model.trees
+      Bot -> D.get model.botTree model.trees
+  in
+    case tree of
+      Nothing -> model
+      Just t  ->
+        let
+          newTree = L.foldl deleteNode t selected
+          newTrees = case win of
+            Top -> D.insert model.topTree newTree model.trees
+            Bot -> D.insert model.botTree newTree model.trees
+          newTopSel = case win of
+            Top -> S.empty
+            Bot -> if model.topTree == model.botTree
+                   then S.empty else model.topSelect
+          newBotSel = case win of
+            Bot -> S.empty
+            Top -> if model.topTree == model.botTree
+                   then S.empty else model.botSelect
+        in
+          { model
+              | trees = newTrees
+              , topSelect = newTopSel
+              , botSelect = newBotSel }
+
+
+-- | Delete a given node, provided that it is not a root.
+deleteNode : NodeId -> R.Tree Node -> R.Tree Node
+deleteNode nodeId tree =
+  let
+    update (R.Node x ts) = if nodeId == x.nodeId
+      then ts
+      else [R.Node x (updateF ts)]
+    updateF ts = case ts of
+      [] -> []
+      hd :: tl -> update hd ++ updateF tl
+  in
+    case update tree of
+      [hd] -> hd
+      _ -> tree -- A situation which can occur if you delete a root
+
+
+---------------------------------------------------
+-- Add
+---------------------------------------------------

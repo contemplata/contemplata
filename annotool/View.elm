@@ -152,6 +152,8 @@ view model =
     ]
     [ viewWindow M.Top model, viewSideWindow M.Top model
     , viewWindow M.Bot model, viewSideWindow M.Bot model ]
+    -- [ viewWindow M.Top model
+    -- , viewWindow M.Bot model ]
 
 
 drawLine : Position -> Position -> Html.Html Msg
@@ -310,6 +312,7 @@ backKeyDown =
     tag code = case code of
       33 -> Previous
       34 -> Next
+      46 -> Delete
       _  -> Dummy
   in
     onKeyDown tag
