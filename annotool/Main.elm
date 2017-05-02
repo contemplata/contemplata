@@ -89,8 +89,10 @@ main =
 type alias Model =
     { tree : R.Tree Node
     , selected : S.Set Id
-    , position : Position
-    , drag : Maybe Drag
+
+    , topPos : Position
+    , botPos : Position
+    , drag : Maybe (Window, Drag)
     }
 
 
@@ -107,20 +109,37 @@ type alias Drag =
     }
 
 
-getPosition : Model -> Position
-getPosition {position, drag} =
-  case drag of
-    Nothing ->
-      position
-    Just {start,current} ->
+-- Windows selector
+type Window = Top | Bot
+
+
+getPosition : Window -> Model -> Position
+getPosition win model =
+  case (win, model.drag) of
+    (Top, Just (Top, {start, current})) ->
       Position
-        (position.x + current.x - start.x)
-        (position.y + current.y - start.y)
+        (model.topPos.x + current.x - start.x)
+        (model.topPos.y + current.y - start.y)
+    (Top, _) -> model.topPos
+    (Bot, Just (Bot, {start, current})) ->
+      Position
+        (model.botPos.x + current.x - start.x)
+        (model.botPos.y + current.y - start.y)
+    (Bot, _) -> model.botPos
 
 
 init : ( Model, Cmd Msg )
 init =
-  ( Model testTree S.empty (Position 640 200) Nothing, Cmd.none )
+  let
+    model =
+      { tree = testTree
+      , selected = S.empty
+      , topPos = Position 640 200
+      , botPos = Position 640 200
+      , drag = Nothing
+      }
+  in
+    (model, Cmd.none)
 
 
 ---------------------------------------------------
@@ -129,7 +148,7 @@ init =
 
 
 type Msg
-    = DragStart Position
+    = DragStart Window Position
     | DragAt Position
     | DragEnd Position
     | Select Id
@@ -143,12 +162,23 @@ update msg model =
 updateHelp : Msg -> Model -> Model
 updateHelp msg model =
   case msg of
-    DragStart xy ->
-      { model | drag = Just (Drag xy xy) }
+    DragStart win xy ->
+      { model | drag = Just (win, Drag xy xy) }
     DragAt xy ->
-      { model | drag = Maybe.map (\{start} -> Drag start xy) model.drag }
+      { model
+          | drag = Maybe.map (\(win, {start}) -> (win, Drag start xy)) model.drag
+      }
     DragEnd _ ->
-      { model | position = getPosition model, drag = Nothing }
+      -- { model | drag = Nothing, position = getPosition model }
+      { model
+          | drag = Nothing
+          , topPos = case model.drag of
+              Just (Top, _) -> getPosition Top model
+              _ -> model.topPos
+          , botPos = case model.drag of
+              Just (Bot, _) -> getPosition Bot model
+              _ -> model.botPos
+      }
     Select i ->
       { model | selected =
           case S.member i model.selected of
@@ -180,15 +210,65 @@ subscriptions model =
 (=>) = (,)
 
 
+-- view : Model -> Html.Html Msg
+-- view model =
+--   Html.div []
+--     [ background
+--     , drawTree
+--         model.selected
+--         (getPosition model)
+--         (R.withWidth (\_ -> stdWidth) model.tree)
+--     ]
+
+
 view : Model -> Html.Html Msg
 view model =
-  Html.div []
-    [ background
-    , drawTree
+  let
+    tr win = drawTree
         model.selected
-        (getPosition model)
+        (getPosition win model)
         (R.withWidth (\_ -> stdWidth) model.tree)
-    ]
+    top = Html.div
+      [ backMouseDown Top
+      , Atts.style
+        [ "position" => "absolute"
+        , "width" => "100%"
+        , "height" => "50%"
+        , "top" => "0"
+        -- overflow is a very important attribute which makes the scrollbars to
+        -- appear and which makes sure that the trees do not go beyond the
+        -- specified subwindows.
+        , "overflow" => "auto"
+        , "background-color" => "#ddd"
+        , "opacity" => "1.0"
+        -- z-index important because of its interactions with how the edges are
+        -- drawn.
+        , "z-index" => "-1"
+        -- , "border" => "1px black solid"
+        ]
+      ]
+      -- [background, tr]
+      [tr Top]
+    bottom = Html.div
+      [ backMouseDown Bot
+      , Atts.style
+        [ "position" => "absolute"
+        , "width" => "100%"
+        , "height" => "50%"
+        , "bottom" => "0"
+        , "overflow" => "auto"
+        , "background-color" => "#eee"
+        , "opacity" => "1.0"
+        , "z-index" => "-1"
+        -- , "border" => "1px black solid"
+        ]
+      ]
+      -- [background, tr]
+      [tr Bot]
+  in
+    Html.div
+      [Atts.style ["width" => "100%", "height" => "100%"]]
+      [top, bottom]
 
 
 drawLine : Position -> Position -> Html.Html Msg
@@ -281,31 +361,56 @@ nodeMouseDown x =
   -- Events.on "mousedown" (Decode.map DragStart Mouse.position)
 
 
+backMouseDown : Window -> Html.Attribute Msg
+backMouseDown win =
+  Events.on "mousedown" (Decode.map (DragStart win) Mouse.position)
+
+
 
 ---------------------------------------------------
 -- Background
 ---------------------------------------------------
 
 
-background : Html.Html Msg
-background =
-    Html.div
-      [ backMouseDown
-      , Atts.style
-          -- thanks to 1.0 opacity and #fff background color,
-          -- drawing artefacts are not visible
-          [ "opacity" => "1.0"
-          , "background-color" => "#fff"
-          , "position" => "fixed"
-          , "width" => "100%"
-          , "height" => "100%"
-          , "top" => "0px"
-          , "left" => "0px"
-          , "z-index" => "-1" ]
-      ]
-      []
+-- background : Html.Html Msg
+-- background =
+--     Html.div
+--       [ backMouseDown
+--       , Atts.style
+--           -- thanks to 1.0 opacity and #fff background color,
+--           -- drawing artefacts are less visible.
+--           [ "opacity" => "1.0"
+--           , "background-color" => "#ccc"
+--           , "position" => "fixed"
+--           , "width" => "100%"
+--           , "height" => "100%"
+--           , "top" => "0px"
+--           , "left" => "0px"
+--           , "z-index" => "-1" ]
+--       ]
+--       []
 
 
-backMouseDown : Html.Attribute Msg
-backMouseDown =
-  Events.on "mousedown" (Decode.map DragStart Mouse.position)
+-- background : Html.Html Msg
+-- background =
+--     Html.div
+--       [ backMouseDown
+--       , Atts.style
+--           -- thanks to 1.0 opacity and #fff background color,
+--           -- drawing artefacts are less visible.
+--           [ "opacity" => "1.0"
+--           , "background-color" => "#ccc"
+--           , "position" => "absolute"
+--           , "width" => "100%"
+--           , "height" => "100%"
+--           , "border" => "1px black solid"
+-- --           , "top" => "0px"
+-- --           , "left" => "0px"
+--           , "z-index" => "-1" ]
+--       ]
+--       []
+--
+--
+-- backMouseDown : Html.Attribute Msg
+-- backMouseDown =
+--   Events.on "mousedown" (Decode.map DragStart Mouse.position)

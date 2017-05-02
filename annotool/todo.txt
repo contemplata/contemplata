@@ -1,0 +1,13 @@
+TODO:
+* Make it possible to work with several trees
+* Show sentence on top of a given viewport
+* Rose trees with actual words
+* Make it possible to switch between trees
+* Make it possible to modify node labels
+* Make it possible to link two nodes in two viewports.
+  Generally, it should also work if the two nodes are
+  in the same tree.
+
+
+DONE:
+* Make dragging independent in both windows
