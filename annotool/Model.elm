@@ -1,7 +1,7 @@
 module Model exposing
   ( Model, NodeId, Node, Drag, Window(..)
   , getPosition, nextTree, prevTree, moveCursor
-  , treeNum, treePos )
+  , treeNum, treePos, select )
 
 
 import Mouse exposing (Position)
@@ -28,7 +28,8 @@ type alias Model =
     -- which window the focus is on
     , focus : Window
 
-    , selected : S.Set NodeId
+    , topSelect : S.Set NodeId
+    , botSelect : S.Set NodeId
     }
 
 
@@ -56,8 +57,27 @@ type Window = Top | Bot
 
 
 ---------------------------------------------------
--- Functions
+-- Position
 ---------------------------------------------------
+
+
+treePos : Window -> Model -> Int
+treePos win model =
+  let
+    tree = case win of
+      Top -> model.topTree
+      Bot -> model.botTree
+    go i keys = case keys of
+      [] -> 0
+      hd :: tl -> if tree == hd
+        then i
+        else go (i + 1) tl
+  in
+    go 1 (D.keys model.trees)
+
+
+treeNum : Model -> Int
+treeNum model = D.size model.trees
 
 
 getPosition : Window -> Model -> Position
@@ -74,6 +94,10 @@ getPosition win model =
         (model.botPos.y + current.y - start.y)
     (Bot, _) -> model.botPos
 
+
+---------------------------------------------------
+-- Cursor
+---------------------------------------------------
 
 
 -- | Retrieve the next tree in the underlying model.
@@ -116,20 +140,21 @@ moveCursor next model =
     (False, Bot) -> { model | botTree = prevTree model.botTree model }
 
 
-treePos : Window -> Model -> Int
-treePos win model =
-  let
-    tree = case win of
-      Top -> model.topTree
-      Bot -> model.botTree
-    go i keys = case keys of
-      [] -> 0
-      hd :: tl -> if tree == hd
-        then i
-        else go (i + 1) tl
-  in
-    go 1 (D.keys model.trees)
+---------------------------------------------------
+-- Select
+---------------------------------------------------
 
 
-treeNum : Model -> Int
-treeNum model = D.size model.trees
+-- We bypass the focus of the model since the node can be possibly selected
+-- before the window it is in is even focused on!
+select : Window -> NodeId -> Model -> Model
+select win i model =
+  case win of
+    Top -> { model | topSelect =
+      case S.member i model.topSelect of
+        True  -> S.remove i model.topSelect
+        False -> S.insert i model.topSelect }
+    Bot -> { model | botSelect =
+      case S.member i model.botSelect of
+        True  -> S.remove i model.botSelect
+        False -> S.insert i model.botSelect }

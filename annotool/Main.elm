@@ -108,11 +108,12 @@ init =
           ]
       , topTree = "t1"
       , botTree = "t2"
-      , selected = S.empty
       , topPos = Position 640 200
       , botPos = Position 640 200
       , drag = Nothing
       , focus = M.Top
+      , topSelect = S.empty
+      , botSelect = S.empty
       }
   in
     (model, Cmd.none)
@@ -127,7 +128,7 @@ type Msg
     = DragStart M.Window Position
     | DragAt Position
     | DragEnd Position
-    | Select M.NodeId
+    | Select M.Window M.NodeId
     | Focus M.Window
     | Previous
     | Next
@@ -159,13 +160,12 @@ updateHelp msg model =
               Just (M.Bot, _) -> M.getPosition M.Bot model
               _ -> model.botPos
       }
-    Select i ->
-      { model | selected =
-          case S.member i model.selected of
-            True  -> S.remove i model.selected
-            False -> S.insert i model.selected }
-    Focus win ->
-      { model | focus = win }
+    Select win i -> M.select win i model
+--       { model | selected =
+--           case S.member i model.selected of
+--             True  -> S.remove i model.selected
+--             False -> S.insert i model.selected }
+    Focus win -> { model | focus = win }
 --     KeyDown key -> case key of
 --       33 -> { model | focus = M.Top } -- Previous
 --       34 -> { model | focus = M.Bot } -- Next
@@ -199,17 +199,6 @@ subscriptions model =
 (=>) = (,)
 
 
--- view : M.Model -> Html.Html Msg
--- view model =
---   Html.div []
---     [ background
---     , drawTree
---         model.selected
---         (M.getPosition model)
---         (R.withWidth (\_ -> stdWidth) model.tree)
---     ]
-
-
 -- | View tree in the specified window.
 viewTree : M.Window -> M.Model -> Html.Html Msg
 viewTree win model =
@@ -221,9 +210,12 @@ viewTree win model =
       M.Bot -> case D.get model.botTree model.trees of
         Nothing -> testTree1
         Just x  -> x
+    selNodes = case win of
+      M.Top -> model.topSelect
+      M.Bot -> model.botSelect
   in
     drawTree
-      model.selected
+      win selNodes
       (M.getPosition win model)
       (R.withWidth (\_ -> stdWidth) selTree)
 
@@ -355,8 +347,13 @@ drawLine beg end =
       [svg]
 
 
-drawTree : S.Set M.NodeId -> Position -> R.Tree (M.Node, R.Width) -> Html.Html Msg
-drawTree select pos (R.Node (node, width) subTrees) =
+drawTree
+   : M.Window -- ^ Which window is it in?
+  -> S.Set M.NodeId -- ^ Selected nodes
+  -> Position -- ^ Start position
+  -> R.Tree (M.Node, R.Width) -- ^ Tree to draw
+  -> Html.Html Msg
+drawTree win select pos (R.Node (node, width) subTrees) =
   let
     drawSub w0 forest = case forest of
       [] -> []
@@ -366,17 +363,19 @@ drawTree select pos (R.Node (node, width) subTrees) =
           tpos = {x = w0 + tw // 2, y = pos.y + moveDown}
           -- toLeft pos  = {x = pos.x - 50, y = pos.y + moveDown}
         in
-          drawTree select tpos t :: drawLine pos tpos :: drawSub (w0 + tw) ts
+          drawTree win select tpos t
+            :: drawLine pos tpos
+            :: drawSub (w0 + tw) ts
   in
     Html.div []
-      (  drawNode select pos node
+      (  drawNode select win pos node
       :: drawSub (pos.x - width // 2) subTrees )
 
 
-drawNode : S.Set M.NodeId -> Position -> M.Node -> Html.Html Msg
-drawNode select at node =
+drawNode : S.Set M.NodeId -> M.Window -> Position -> M.Node -> Html.Html Msg
+drawNode select win at node =
     Html.div
-      [ nodeMouseDown node
+      [ nodeMouseDown win node
       , Atts.style
           [ if S.member node.nodeId select
               then "background-color" => "#BC0000"
@@ -400,9 +399,9 @@ drawNode select at node =
       ]
 
 
-nodeMouseDown : M.Node -> Html.Attribute Msg
-nodeMouseDown x =
-  Events.onMouseDown (Select x.nodeId)
+nodeMouseDown : M.Window -> M.Node -> Html.Attribute Msg
+nodeMouseDown win x =
+  Events.onMouseDown (Select win x.nodeId)
 
 
 ---------------------------------------------------
