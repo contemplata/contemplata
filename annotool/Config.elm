@@ -1,10 +1,16 @@
 module Config exposing
-  ( stdWidth, stdMargin, nodeHeight, moveDown
-  , testTree1, testTree2, testTree3 )
+  ( stdWidth, stdMargin, nodeHeight, moveDown, sideSpace
+  , testTree1, testTree2, testTree3
+  , increaseSpeed )
 
 
 import Rose as R
 import Model as M
+
+
+---------------------------------------------------
+-- Basic
+---------------------------------------------------
 
 
 -- -- | How far to move left for the next level.
@@ -44,6 +50,16 @@ nodeHeight = 25
 -- | How far to move down for the next level.
 moveDown : Int
 moveDown = 40
+
+
+-- | Space for side windows.
+sideSpace : Int
+sideSpace = 15
+
+
+-- | Space for side windows.
+increaseSpeed : Int
+increaseSpeed = 5
 
 
 ---------------------------------------------------

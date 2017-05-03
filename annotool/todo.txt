@@ -2,11 +2,11 @@ TODO:
 * Make it possible to link two nodes in two viewports.
   Generally, it should also work if the two nodes are
   in the same tree.
-* Make the scrollbar on the bottom disappear
 * Make a flat message window on the bottom
 
 
 LATER:
+* Improve indentation when editing elm files
 * Show a sentence on top of a given viewport
 
 
@@ -23,3 +23,6 @@ DONE:
 * Better code organization in the View module
 * Delete chosen node(s), provided that they are not roots
 * Add common parent to a group of nodes
+* Make the scrollbar on the bottom disappear
+* Make the proportion between the two windows configurable
+* Compute the absolute size of the entire window

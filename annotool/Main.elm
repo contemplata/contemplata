@@ -1,6 +1,9 @@
 -- import Html exposing (beginnerProgram, div, button, text)
 -- import Html exposing (..)
 import Html as Html
+import Task as Task
+-- import Dom as Dom
+import Window as Window
 import Mouse exposing (Position)
 -- import List as L
 import Set as S
@@ -46,15 +49,20 @@ init =
           ]
       , topTree = "t1"
       , botTree = "t2"
-      , topPos = Position 640 200
-      , botPos = Position 640 200
+      , topPos = Position 400 50
+      , botPos = Position 400 50
       , drag = Nothing
       , focus = M.Top
       , topSelect = S.empty
       , botSelect = S.empty
+      , links = S.empty
+      , winHeight = 0
+      , winProp = 50
       }
+    initHeight = Task.perform Resize Window.height
   in
-    (model, Cmd.none)
+    -- (model, Cmd.none)
+    (model, initHeight)
 
 
 ---------------------------------------------------
@@ -64,8 +72,11 @@ init =
 
 subscriptions : M.Model -> Sub Msg
 subscriptions model =
-  case model.drag of
-    Nothing ->
-      Sub.none
-    Just _ ->
-      Sub.batch [ Mouse.moves DragAt, Mouse.ups DragEnd ]
+  let
+    resize = Window.resizes (\x -> Resize x.height)
+  in
+    case model.drag of
+      Nothing ->
+        Sub.batch [resize]
+      Just _ ->
+        Sub.batch [resize, Mouse.moves DragAt, Mouse.ups DragEnd]

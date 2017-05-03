@@ -56,9 +56,12 @@ backColor win model =
 viewTreeId : M.Window -> M.Model -> Html.Html Msg
 viewTreeId win model =
   let
-    txt = toString (M.treePos win model)
-       ++ "/"
-       ++ toString (M.treeNum model)
+    txt0 = toString (M.treePos win model)
+      ++ "/"
+      ++ toString (M.treeNum model)
+    txt = txt0 ++ case win of
+      M.Top -> " (" ++ toString model.winHeight ++ ")"
+      M.Bot -> "" -- " (" ++ toString (model.allHeight - model.topHeight) ++ ")"
   in
     Html.div
       [ Atts.style
@@ -72,11 +75,59 @@ viewTreeId win model =
       [ Html.text txt ]
 
 
+--  -- | The view of the top window.
+-- viewWindow : M.Window -> M.Model -> Html.Html Msg
+-- viewWindow win model = Html.div
+--   [ backMouseDown win
+--   , winOnFocus win
+-- --   , case win of
+-- --       M.Top -> Atts.autofocus True
+-- --       M.Bot -> Atts.autofocus False
+-- --   , case win of
+-- --       M.Top -> Atts.id "top"
+-- --       M.Bot -> Atts.id "bot"
+--
+--   -- @tabindex required to make the div register keyboard events
+--   , Atts.attribute "tabindex" "1"
+--   , backKeyDown
+--
+--   , Atts.style
+--     [ "position" => "absolute"
+--     , "width" => "85%"
+--     , "height" => "50%"
+--     , case win of
+--         M.Top -> "top" => "0"
+--         M.Bot -> "bottom" => "0"
+--     -- overflow is a very important attribute which makes the scrollbars to
+--     -- appear and which makes sure that the trees do not go beyond the
+--     -- specified subwindows.
+--     , "overflow" => "auto"
+--     , "background-color" => backColor win model
+--     , "opacity" => "1.0"
+--     -- z-index important because of its interactions with how the edges are
+--     -- drawn.
+--     , "z-index" => "-1"
+--     -- , "border" => "1px black solid"
+--     ]
+--   ]
+--   -- [background, tr]
+--   [ viewTree win model
+--   , viewTreeId win model ]
+
+
  -- | The view of the top window.
 viewWindow : M.Window -> M.Model -> Html.Html Msg
-viewWindow win model = Html.div
+viewWindow win model =
+  Html.div
   [ backMouseDown win
-  , backOnFocus win
+  , winOnFocus win
+  -- , topOnResize
+--   , case win of
+--       M.Top -> Atts.autofocus True
+--       M.Bot -> Atts.autofocus False
+  , case win of
+      M.Top -> Atts.id "top"
+      M.Bot -> Atts.id "bot"
 
   -- @tabindex required to make the div register keyboard events
   , Atts.attribute "tabindex" "1"
@@ -84,8 +135,11 @@ viewWindow win model = Html.div
 
   , Atts.style
     [ "position" => "absolute"
-    , "width" => "85%"
-    , "height" => "50%"
+    , "width" => (toString (100 - Cfg.sideSpace) ++ "%") -- "100%"
+    -- , "height" => "50%"
+    , "height" => case win of
+        M.Top -> toString model.winProp ++ "%"
+        M.Bot -> toString (100 - model.winProp) ++ "%"
     , case win of
         M.Top -> "top" => "0"
         M.Bot -> "bottom" => "0"
@@ -119,24 +173,28 @@ viewSideWindow win model =
         , ChangeLabel nodeId win )
       _ ->
         ( [Atts.disabled True, Atts.placeholder "<label>"]
-        , \_ -> Dummy )
+        , \_ -> Msg.dummy )
   in
     Html.div
       [ Atts.style
         [ "position" => "absolute"
-        , "width" => "15%"
-        , "height" => "50%"
+        , "width" => (toString Cfg.sideSpace ++ "%")
+        -- , "height" => "50%"
+        , "height" => case win of
+            M.Top -> toString model.winProp ++ "%"
+            M.Bot -> toString (100 - model.winProp) ++ "%"
         , "right" => "0"
         , case win of
             M.Top -> "top" => "0"
             M.Bot -> "bottom" => "0"
+        , "overflow" => "auto"
         ]
       ]
       [ Html.input
           ( [ Events.onInput event
             , Atts.style
-              [ "position" => "absolute"
-              , "width" => "100%"
+              [ -- "position" => "absolute"
+                "width" => "95%"
               ]
             ] ++ condAtts
           )
@@ -151,9 +209,13 @@ view model =
         ["width" => "100%", "height" => "100%"]
     ]
     [ viewWindow M.Top model, viewSideWindow M.Top model
-    , viewWindow M.Bot model, viewSideWindow M.Bot model ]
-    -- [ viewWindow M.Top model
-    -- , viewWindow M.Bot model ]
+    , viewWindow M.Bot model, viewSideWindow M.Bot model
+    ]
+
+
+-- viewMetaLine Position -> Position -> Html.Html Msg
+-- viewMetaLine beg end =
+
 
 
 drawLine : Position -> Position -> Html.Html Msg
@@ -301,11 +363,6 @@ backMouseDown win =
 --   Events.onDoubleClick (Focus win)
 
 
-backOnFocus : M.Window -> Html.Attribute Msg
-backOnFocus win =
-  Events.onFocus (Focus win)
-
-
 backKeyDown : Html.Attribute Msg
 backKeyDown =
   let
@@ -314,9 +371,52 @@ backKeyDown =
       34 -> Next
       46 -> Delete
       65 -> Add
-      _  -> Dummy
+      107 -> Increase True
+      109 -> Increase False
+      _  -> Msg.dummy
   in
     onKeyDown tag
+
+
+-- winOnFocus : M.Window -> Html.Attribute Msg
+-- winOnFocus win =
+--   let
+--     focus height =
+--       case win of
+--         M.Top -> Many [Focus win, Resize height]
+--         M.Bot -> Focus win
+--   in
+--     Events.on "focus" (Decode.map focus offsetHeight)
+
+
+winOnFocus : M.Window -> Html.Attribute Msg
+winOnFocus win =
+  Events.onFocus (Focus win)
+
+
+-- | Code below does not work...
+-- topOnResize : Html.Attribute Msg
+-- topOnResize =
+--   Events.on "resize" (Decode.map Resize offsetHeight)
+
+
+-- | Decode the height of a given element.
+offsetHeight : Decode.Decoder Int
+offsetHeight =
+  Decode.at ["target", "offsetHeight"] Decode.int
+
+
+---------------------------------------------------
+-- Top-level events
+---------------------------------------------------
+
+
+-- onLoadEvent : Html.Attribute Msg
+-- onLoadEvent =
+--   -- Events.on "load" (Decode.map Resize offsetHeight)
+--   -- Events.on "load" (Decode.succeed <| Focus M.Bot 0)
+--   -- Events.on "load" (Decode.succeed Next)
+--   Events.on "DOMContentLoaded" (Decode.succeed <| Focus M.Bot 0)
 
 
 ---------------------------------------------------

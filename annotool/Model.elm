@@ -32,7 +32,19 @@ type alias Model =
 
     , topSelect : S.Set NodeId
     , botSelect : S.Set NodeId
+
+    , links : S.Set Link
+
+    -- size of the top window and proportion between the top/bottom sizes
+    , winHeight : Int
+    , winProp : Int
     }
+
+
+-- | Link between two trees.
+type alias Link =
+  { from : (TreeId, NodeId)
+  , to : (TreeId, NodeId) }
 
 
 -- Node identifier
