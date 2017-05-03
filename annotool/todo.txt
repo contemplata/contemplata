@@ -26,3 +26,4 @@ DONE:
 * Make the scrollbar on the bottom disappear
 * Make the proportion between the two windows configurable
 * Compute the absolute size of the entire window
+* Make it possible to focus on the edit field

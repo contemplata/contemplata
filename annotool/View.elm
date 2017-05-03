@@ -192,6 +192,9 @@ viewSideWindow win model =
       ]
       [ Html.input
           ( [ Events.onInput event
+            , Atts.id <| case win of
+                M.Top -> Cfg.editLabelName True
+                M.Bot -> Cfg.editLabelName False
             , Atts.style
               [ -- "position" => "absolute"
                 "width" => "95%"
@@ -367,12 +370,23 @@ backKeyDown : Html.Attribute Msg
 backKeyDown =
   let
     tag code = case code of
+      -- "PgUp" and "PgDown"
       33 -> Previous
       34 -> Next
+
+      -- "Del"
       46 -> Delete
+
+      -- "a"
       65 -> Add
+
+      -- "+" and "-"
       107 -> Increase True
       109 -> Increase False
+
+      -- "e"
+      69 -> EditLabel
+
       _  -> Msg.dummy
   in
     onKeyDown tag

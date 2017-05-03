@@ -1,7 +1,7 @@
 module Config exposing
   ( stdWidth, stdMargin, nodeHeight, moveDown, sideSpace
   , testTree1, testTree2, testTree3
-  , increaseSpeed )
+  , increaseSpeed, editLabelName )
 
 
 import Rose as R
@@ -60,6 +60,13 @@ sideSpace = 15
 -- | Space for side windows.
 increaseSpeed : Int
 increaseSpeed = 5
+
+
+-- | The name of the edit label field.
+editLabelName : Bool -> String
+editLabelName flag = case flag of
+  True  -> "topEdit"
+  False -> "botEdit"
 
 
 ---------------------------------------------------
