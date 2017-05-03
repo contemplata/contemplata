@@ -27,3 +27,6 @@ DONE:
 * Make the proportion between the two windows configurable
 * Compute the absolute size of the entire window
 * Make it possible to focus on the edit field
+* A function which returns a position of the node with
+  a given ID in a given tree.  Once you have it, it should
+  be possible to draw a line between two positions.

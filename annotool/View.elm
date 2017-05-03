@@ -75,46 +75,6 @@ viewTreeId win model =
       [ Html.text txt ]
 
 
---  -- | The view of the top window.
--- viewWindow : M.Window -> M.Model -> Html.Html Msg
--- viewWindow win model = Html.div
---   [ backMouseDown win
---   , winOnFocus win
--- --   , case win of
--- --       M.Top -> Atts.autofocus True
--- --       M.Bot -> Atts.autofocus False
--- --   , case win of
--- --       M.Top -> Atts.id "top"
--- --       M.Bot -> Atts.id "bot"
---
---   -- @tabindex required to make the div register keyboard events
---   , Atts.attribute "tabindex" "1"
---   , backKeyDown
---
---   , Atts.style
---     [ "position" => "absolute"
---     , "width" => "85%"
---     , "height" => "50%"
---     , case win of
---         M.Top -> "top" => "0"
---         M.Bot -> "bottom" => "0"
---     -- overflow is a very important attribute which makes the scrollbars to
---     -- appear and which makes sure that the trees do not go beyond the
---     -- specified subwindows.
---     , "overflow" => "auto"
---     , "background-color" => backColor win model
---     , "opacity" => "1.0"
---     -- z-index important because of its interactions with how the edges are
---     -- drawn.
---     , "z-index" => "-1"
---     -- , "border" => "1px black solid"
---     ]
---   ]
---   -- [background, tr]
---   [ viewTree win model
---   , viewTreeId win model ]
-
-
  -- | The view of the top window.
 viewWindow : M.Window -> M.Model -> Html.Html Msg
 viewWindow win model =
@@ -205,20 +165,59 @@ viewSideWindow win model =
       ]
 
 
+viewLinks : M.Model -> List (Html.Html Msg)
+viewLinks model =
+  L.concatMap
+    (viewLink model)
+    (S.toList model.links)
+
+
+viewLink : M.Model -> (M.Addr, M.Addr) -> List (Html.Html Msg)
+viewLink model (from, to) =
+  if not ( model.topTree == Tuple.first from
+        && model.botTree == Tuple.first to )
+  then []
+  else
+    let
+      -- toPos (v, w) = {x=v, y=w}
+      nodePos1 nodeId pos tree = nodePos nodeId pos
+        (R.withWidth Cfg.stdWidth Cfg.stdMargin tree)
+      begPos = Maybe.andThen
+        (nodePos1 (Tuple.second from) model.topPos)
+        (D.get model.topTree model.trees)
+      endPos0 = Maybe.andThen
+        (nodePos1 (Tuple.second to) model.botPos)
+        (D.get model.botTree model.trees)
+      topHeight = (model.winHeight * model.winProp) // 100
+      endPos = Maybe.map
+        (\pos -> {pos | y = pos.y + topHeight})
+        endPos0
+--       shift pos1 pos2 =
+--         { x = pos1.x + pos2.x
+--         , y = pos1.y + pos2.y }
+    in
+      case (begPos, endPos) of
+        (Just p, Just q) ->
+          [ drawLine p q
+--               (shift model.topPos p)
+--               (shift model.botPos q)
+          ]
+        _ -> []
+
+
 view : M.Model -> Html.Html Msg
 view model =
   Html.div
     [ Atts.style
         ["width" => "100%", "height" => "100%"]
     ]
-    [ viewWindow M.Top model, viewSideWindow M.Top model
-    , viewWindow M.Bot model, viewSideWindow M.Bot model
-    ]
+    ( [ viewWindow M.Top model, viewSideWindow M.Top model
+      , viewWindow M.Bot model, viewSideWindow M.Bot model
+      ] ++ viewLinks model )
 
 
 -- viewMetaLine Position -> Position -> Html.Html Msg
 -- viewMetaLine beg end =
-
 
 
 drawLine : Position -> Position -> Html.Html Msg
@@ -253,6 +252,27 @@ drawLine beg end =
           ]
       ]
       [svg]
+
+
+-- | Retrieve the position of a node in a given tree.
+nodePos : M.NodeId -> Position -> R.Tree (M.Node, R.Width) -> Maybe Position
+nodePos nodeId pos (R.Node (node, rootWidth) subTrees) =
+  let
+    forestWidth = List.sum <| L.map R.getWidth subTrees
+    nodePosF w0 forest = case forest of
+      [] -> Nothing
+      t :: ts ->
+        let
+          tw = R.getWidth t
+          tpos = {x = w0 + tw // 2, y = pos.y + Cfg.moveDown}
+        in
+          case nodePos nodeId tpos t of
+            Nothing -> nodePosF (w0 + tw) ts
+            Just x  -> Just x
+  in
+    if nodeId == node.nodeId
+    then Just pos
+    else nodePosF (pos.x - forestWidth // 2) subTrees
 
 
 drawTree
@@ -316,33 +336,6 @@ drawNode select win at node =
 --       [ Html.div
 --           [ Atts.attribute "contenteditable" "true" ]
 --           [ Html.text node.nodeVal ]
---       ]
-
-
--- drawNode : S.Set M.NodeId -> M.Window -> Position -> M.Node -> Html.Html Msg
--- drawNode select win at node =
---     Html.div
---       [ nodeMouseDown win node
---       , Atts.style
---           [ if S.member node.nodeId select
---               then "background-color" => "#BC0000"
---               else "background-color" => "#3C8D2F"
---           , "cursor" => "pointer"
---
---           , "width" => "50px"
---           , "height" => "50px"
---           , "border-radius" => "50%" -- "4px"
---           , "position" => "absolute"
---           , "left" => px (at.x - nodeWidth // 2)
---           , "top" => px (at.y - nodeHeight // 2)
---
---           , "color" => "white"
---           , "display" => "flex"
---           , "align-items" => "center"
---           , "justify-content" => "center"
---           ]
---       ]
---       [ Html.text node.nodeVal -- "Go!"
 --       ]
 
 

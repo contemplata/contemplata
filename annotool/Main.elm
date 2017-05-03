@@ -46,6 +46,8 @@ init =
           [ ("t1", Cfg.testTree3)
           , ("t2", Cfg.testTree2)
           , ("t3", Cfg.testTree1)
+          , ("t4", Cfg.testTree4)
+          , ("t5", Cfg.testTree5)
           ]
       , topTree = "t1"
       , botTree = "t2"
@@ -55,7 +57,7 @@ init =
       , focus = M.Top
       , topSelect = S.empty
       , botSelect = S.empty
-      , links = S.empty
+      , links = S.fromList [(("t4", 3), ("t5", 9))]
       , winHeight = 0
       , winProp = 50
       }

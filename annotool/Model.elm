@@ -1,5 +1,5 @@
 module Model exposing
-  ( Model, NodeId, Node, Drag, Window(..)
+  ( Model, NodeId, Node, Drag, Link, Addr, Window(..)
   , getPosition, nextTree, prevTree, moveCursor
   , treeNum, treePos, select, getLabel, setLabel
   , deleteSel, addSel )
@@ -33,6 +33,7 @@ type alias Model =
     , topSelect : S.Set NodeId
     , botSelect : S.Set NodeId
 
+    -- links between the nodes
     , links : S.Set Link
 
     -- size of the top window and proportion between the top/bottom sizes
@@ -41,10 +42,15 @@ type alias Model =
     }
 
 
+-- -- | Link between two trees.
+-- type alias Link =
+--   { from : (TreeId, NodeId)
+--   , to : (TreeId, NodeId) }
+
+
 -- | Link between two trees.
-type alias Link =
-  { from : (TreeId, NodeId)
-  , to : (TreeId, NodeId) }
+type alias Link = (Addr, Addr)
+type alias Addr = (TreeId, NodeId)
 
 
 -- Node identifier

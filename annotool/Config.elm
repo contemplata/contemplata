@@ -1,6 +1,6 @@
 module Config exposing
   ( stdWidth, stdMargin, nodeHeight, moveDown, sideSpace
-  , testTree1, testTree2, testTree3
+  , testTree1, testTree2, testTree3, testTree4, testTree5
   , increaseSpeed, editLabelName )
 
 
@@ -116,6 +116,48 @@ testTree3 =
                     , node "VINF" [node "venez" []] ]
                 ]
             ]
+        , node "PUNC" [node "." []]
+        ]
+    addId i x = (i+1, {nodeId = i, nodeVal = x})
+    snd (x, y) = y
+  in
+    snd <| R.mapAccum addId 1 <| tree
+
+
+
+testTree4 : R.Tree M.Node
+testTree4 =
+  let
+    node x xs = R.Node x xs
+    tree =
+      node "SENT"
+        [ node "NP"
+            [ node "NPP" [node "Jean" []] ]
+        , node "VN"
+            [ node "V" [node "est" []]
+            , node "VPP" [node "parti" []] ]
+        , node "PUNC" [node "." []]
+        ]
+    addId i x = (i+1, {nodeId = i, nodeVal = x})
+    snd (x, y) = y
+  in
+    snd <| R.mapAccum addId 1 <| tree
+
+
+testTree5 : R.Tree M.Node
+testTree5 =
+  let
+    node x xs = R.Node x xs
+    tree =
+      node "SENT"
+        [ node "ADV" [node "Ensuite" []]
+        , node "PUNC" [node "," []]
+        , node "VN"
+            [ node "CLS" [node "il" []]
+            , node "V" [node "est" []]
+            , node "VPP" [node "allé" []] ]
+        , node "VPinf"
+            [ node "VN" [node "VINF" [node "manger" []]] ]
         , node "PUNC" [node "." []]
         ]
     addId i x = (i+1, {nodeId = i, nodeVal = x})
