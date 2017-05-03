@@ -5,21 +5,24 @@ import List as L
 import Mouse exposing (Position)
 import Task as Task
 import Dom as Dom
+import Focus exposing ((=>))
+import Focus as Focus
+
 import Model as M
 import Config as Cfg
 
 
 type Msg
-    = DragStart M.Window Position
+    = DragStart M.Focus Position
     | DragAt Position
     | DragEnd Position
-    | Select M.Window M.NodeId
-    | Focus M.Window
+    | Select M.Focus M.NodeId
+    | Focus M.Focus
     | Resize Int -- ^ The height of the entire window
     | Increase Bool -- ^ Increase the size of the top window
     | Previous
     | Next
-    | ChangeLabel M.NodeId M.Window String
+    | ChangeLabel M.NodeId M.Focus String
     | EditLabel
     | Delete -- ^ Delete the selected nodes in the focused window
     | Add -- ^ Delete the selected nodes in the focused window
@@ -47,17 +50,27 @@ update msg model =
           | drag = Maybe.map (\(win, {start}) -> (win, M.Drag start xy)) model.drag
       }
 
-    DragEnd _ -> idle <|
+    DragEnd _ -> idle
+        <| Focus.set M.drag Nothing
+        <| Focus.set (M.top => M.pos)
+             (case model.drag of
+                Just (M.Top, _) -> M.getPosition M.Top model
+                _ -> model.top.pos)
+        <| Focus.set (M.bot => M.pos)
+             (case model.drag of
+                Just (M.Bot, _) -> M.getPosition M.Bot model
+                _ -> model.bot.pos)
+        <| model
       -- { model | drag = Nothing, position = M.getPosition model }
-      { model
-          | drag = Nothing
-          , topPos = case model.drag of
-              Just (M.Top, _) -> M.getPosition M.Top model
-              _ -> model.topPos
-          , botPos = case model.drag of
-              Just (M.Bot, _) -> M.getPosition M.Bot model
-              _ -> model.botPos
-      }
+--       { model
+--           | drag = Nothing
+--           , topPos = case model.drag of
+--               Just (M.Top, _) -> M.getPosition M.Top model
+--               _ -> model.topPos
+--           , botPos = case model.drag of
+--               Just (M.Bot, _) -> M.getPosition M.Bot model
+--               _ -> model.botPos
+--       }
 
     Focus win -> idle <| {model | focus = win}
 
@@ -73,7 +86,7 @@ update msg model =
       in
         {model | winProp = newProp}
 
-    Select win i -> idle <| M.select win i model
+    Select win i -> idle <| M.selectNode win i model
 --     KeyDown key -> case key of
 --       33 -> { model | focus = M.Top } -- Previous
 --       34 -> { model | focus = M.Bot } -- Next

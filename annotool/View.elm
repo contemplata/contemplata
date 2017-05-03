@@ -23,20 +23,24 @@ import Config as Cfg
 (=>) = (,)
 
 
+--
+-- viewTree: window (top/bottom) + trees + drag (note that drag could be a part of window)
+--
+
 -- | View tree in the specified window.
-viewTree : M.Window -> M.Model -> Html.Html Msg
+viewTree : M.Focus -> M.Model -> Html.Html Msg
 viewTree win model =
   let
     selTree = case win of
-      M.Top -> case D.get model.topTree model.trees of
+      M.Top -> case D.get model.top.tree model.trees of
         Nothing -> Cfg.testTree1
         Just x  -> x
-      M.Bot -> case D.get model.botTree model.trees of
+      M.Bot -> case D.get model.bot.tree model.trees of
         Nothing -> Cfg.testTree1
         Just x  -> x
     selNodes = case win of
-      M.Top -> model.topSelect
-      M.Bot -> model.botSelect
+      M.Top -> model.top.select
+      M.Bot -> model.bot.select
   in
     drawTree
       win selNodes
@@ -45,15 +49,23 @@ viewTree win model =
       (R.withWidth Cfg.stdWidth Cfg.stdMargin selTree)
 
 
+--
+-- backColor: isFocus
+--
+
 -- | Determine the background color.
-backColor : M.Window -> M.Model -> String
+backColor : M.Focus -> M.Model -> String
 backColor win model =
   if win == model.focus
     then "#ddd"
     else "#eee"
 
 
-viewTreeId : M.Window -> M.Model -> Html.Html Msg
+--
+-- viewTreeId: window (M.treePos) + trees (M.treeNum)
+--
+
+viewTreeId : M.Focus -> M.Model -> Html.Html Msg
 viewTreeId win model =
   let
     txt0 = toString (M.treePos win model)
@@ -75,8 +87,12 @@ viewTreeId win model =
       [ Html.text txt ]
 
 
+--
+-- viewTree: window + isFocus + trees + drag + ..?
+--
+
  -- | The view of the top window.
-viewWindow : M.Window -> M.Model -> Html.Html Msg
+viewWindow : M.Focus -> M.Model -> Html.Html Msg
 viewWindow win model =
   Html.div
   [ backMouseDown win
@@ -121,12 +137,12 @@ viewWindow win model =
 
 
  -- | The view of the top-side window.
-viewSideWindow : M.Window -> M.Model -> Html.Html Msg
+viewSideWindow : M.Focus -> M.Model -> Html.Html Msg
 viewSideWindow win model =
   let
     selected = case win of
-      M.Top -> model.topSelect
-      M.Bot -> model.botSelect
+      M.Top -> model.top.select
+      M.Bot -> model.bot.select
     (condAtts, event) = case S.toList selected of
       [nodeId] ->
         ( [Atts.value (M.getLabel nodeId win model)]
@@ -174,8 +190,8 @@ viewLinks model =
 
 viewLink : M.Model -> (M.Addr, M.Addr) -> List (Html.Html Msg)
 viewLink model (from, to) =
-  if not ( model.topTree == Tuple.first from
-        && model.botTree == Tuple.first to )
+  if not ( model.top.tree == Tuple.first from
+        && model.bot.tree == Tuple.first to )
   then []
   else
     let
@@ -183,11 +199,11 @@ viewLink model (from, to) =
       nodePos1 nodeId pos tree = nodePos nodeId pos
         (R.withWidth Cfg.stdWidth Cfg.stdMargin tree)
       begPos = Maybe.andThen
-        (nodePos1 (Tuple.second from) model.topPos)
-        (D.get model.topTree model.trees)
+        (nodePos1 (Tuple.second from) model.top.pos)
+        (D.get model.top.tree model.trees)
       endPos0 = Maybe.andThen
-        (nodePos1 (Tuple.second to) model.botPos)
-        (D.get model.botTree model.trees)
+        (nodePos1 (Tuple.second to) model.bot.pos)
+        (D.get model.bot.tree model.trees)
       topHeight = (model.winHeight * model.winProp) // 100
       endPos = Maybe.map
         (\pos -> {pos | y = pos.y + topHeight})
@@ -276,7 +292,7 @@ nodePos nodeId pos (R.Node (node, rootWidth) subTrees) =
 
 
 drawTree
-   : M.Window -- ^ Which window is it in?
+   : M.Focus -- ^ Which window is it in?
   -> S.Set M.NodeId -- ^ Selected nodes
   -> Position -- ^ Start position
   -> R.Tree (M.Node, R.Width) -- ^ Tree to draw
@@ -300,7 +316,7 @@ drawTree win select pos (R.Node (node, _) subTrees) =
       :: drawSub (pos.x - forestWidth // 2) subTrees )
 
 
-drawNode : S.Set M.NodeId -> M.Window -> Position -> M.Node -> Html.Html Msg
+drawNode : S.Set M.NodeId -> M.Focus -> Position -> M.Node -> Html.Html Msg
 drawNode select win at node =
   let
     -- width = nodeWidth
@@ -339,7 +355,7 @@ drawNode select win at node =
 --       ]
 
 
-nodeMouseDown : M.Window -> M.Node -> Html.Attribute Msg
+nodeMouseDown : M.Focus -> M.Node -> Html.Attribute Msg
 nodeMouseDown win x =
   Events.onMouseDown (Select win x.nodeId)
 
@@ -349,12 +365,12 @@ nodeMouseDown win x =
 ---------------------------------------------------
 
 
-backMouseDown : M.Window -> Html.Attribute Msg
+backMouseDown : M.Focus -> Html.Attribute Msg
 backMouseDown win =
   Events.on "mousedown" (Decode.map (DragStart win) Mouse.position)
 
 
--- backDoubleClick : M.Window -> Html.Attribute Msg
+-- backDoubleClick : M.Focus -> Html.Attribute Msg
 -- backDoubleClick win =
 --   Events.onDoubleClick (Focus win)
 
@@ -385,7 +401,7 @@ backKeyDown =
     onKeyDown tag
 
 
--- winOnFocus : M.Window -> Html.Attribute Msg
+-- winOnFocus : M.Focus -> Html.Attribute Msg
 -- winOnFocus win =
 --   let
 --     focus height =
@@ -396,7 +412,7 @@ backKeyDown =
 --     Events.on "focus" (Decode.map focus offsetHeight)
 
 
-winOnFocus : M.Window -> Html.Attribute Msg
+winOnFocus : M.Focus -> Html.Attribute Msg
 winOnFocus win =
   Events.onFocus (Focus win)
 

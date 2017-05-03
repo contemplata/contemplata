@@ -41,6 +41,16 @@ main =
 init : ( M.Model, Cmd Msg )
 init =
   let
+    top =
+      { tree = "t1"
+      , pos = Position 400 50
+      , select = S.empty
+      }
+    bot =
+      { tree = "t2"
+      , pos = Position 400 50
+      , select = S.empty
+      }
     model =
       { trees = D.fromList
           [ ("t1", Cfg.testTree3)
@@ -49,14 +59,10 @@ init =
           , ("t4", Cfg.testTree4)
           , ("t5", Cfg.testTree5)
           ]
-      , topTree = "t1"
-      , botTree = "t2"
-      , topPos = Position 400 50
-      , botPos = Position 400 50
+      , top = top
+      , bot = bot
       , drag = Nothing
       , focus = M.Top
-      , topSelect = S.empty
-      , botSelect = S.empty
       , links = S.fromList [(("t4", 3), ("t5", 9))]
       , winHeight = 0
       , winProp = 50
