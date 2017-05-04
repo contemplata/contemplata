@@ -1,5 +1,5 @@
 module Rose exposing
-  ( Tree(..), Forest, Width, leaf, withWidth, getWidth
+  ( Tree(..), Forest, Width, leaf, withWidth, getRootSnd
   , map, flatten, mapAccum )
 
 
@@ -98,12 +98,12 @@ withWidth f margin (Node x subTrees) = case subTrees of
   _  ->
     let
       ts = List.map (withWidth f margin) subTrees
-      ws = List.map getWidth ts
+      ws = List.map getRootSnd ts
       width = max (List.sum ws) (f x + margin)
     in
       Node (x, width) ts
 
 
 -- | Retrieve the widgth stored in the root.
-getWidth : Tree (a, Int) -> Int
-getWidth (Node (x, w) _) = w
+getRootSnd : Tree (a, b) -> b
+getRootSnd (Node (x, w) _) = w

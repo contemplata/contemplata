@@ -30,17 +30,13 @@ viewTree : M.Focus -> M.Model -> Html.Html Msg
 viewTree focus model =
   let
     win = M.selectWin focus model
-    selTree = M.getTree win.tree model
+    tree = M.getTree win.tree model
   in
     drawTree
       focus win.select
-      (M.getPosition win)
-      (R.withWidth Cfg.stdWidth Cfg.stdMargin selTree)
+      <| positionTree (M.getPosition win)
+      <| R.withWidth Cfg.stdWidth Cfg.stdMargin tree
 
-
---
--- backColor: isFocus
---
 
 -- | Determine the background color.
 backColor : M.Focus -> M.Model -> String
@@ -49,10 +45,6 @@ backColor win model =
     then "#ddd"
     else "#eee"
 
-
---
--- viewTreeId: window (M.treePos) + trees (M.treeNum)
---
 
 viewTreeId : M.Focus -> M.Model -> Html.Html Msg
 viewTreeId win model =
@@ -75,10 +67,6 @@ viewTreeId win model =
       ]
       [ Html.text txt ]
 
-
---
--- viewTree: window + isFocus + trees + drag + ..?
---
 
  -- | The view of the top window.
 viewWindow : M.Focus -> M.Model -> Html.Html Msg
@@ -184,15 +172,18 @@ viewLink model (from, to) =
   then []
   else
     let
-      -- toPos (v, w) = {x=v, y=w}
-      nodePos1 nodeId pos tree = nodePos nodeId (position pos tree)
-        (R.withWidth Cfg.stdWidth Cfg.stdMargin tree)
-      begPos = Maybe.andThen
-        (nodePos1 (Tuple.second from) model.top.pos)
-        (D.get model.top.tree model.trees)
-      endPos0 = Maybe.andThen
-        (nodePos1 (Tuple.second to) model.bot.pos)
-        (D.get model.bot.tree model.trees)
+      nodePos1 nodeId pos tree = nodePos nodeId
+        <| positionTree pos
+        <| R.withWidth Cfg.stdWidth Cfg.stdMargin tree
+      begPos = nodePos1
+        (Tuple.second from)
+        -- model.top.pos
+        (M.getPosition model.top)
+        (M.getTree model.top.tree model)
+      endPos0 = nodePos1
+        (Tuple.second to)
+        (M.getPosition model.bot)
+        (M.getTree model.bot.tree model)
       topHeight = (model.winHeight * model.winProp) // 100
       endPos = Maybe.map
         (\pos -> {pos | y = pos.y + topHeight})
@@ -261,18 +252,18 @@ drawLine beg end =
 
 -- | Position a given tree. This function calculates the positions of the
 -- individual nodes in the given tree.
-position : Position -> R.Tree (M.Node, R.Width) -> R.Tree (M.Node, Position)
-position pos (R.Node (node, rootWidth) subTrees) =
+positionTree : Position -> R.Tree (M.Node, R.Width) -> R.Tree (M.Node, Position)
+positionTree pos (R.Node (node, rootWidth) subTrees) =
   let
-    forestWidth = List.sum <| L.map R.getWidth subTrees
+    forestWidth = List.sum <| L.map R.getRootSnd subTrees
     positionF w0 forest = case forest of
       [] -> []
       t :: ts ->
         let
-          tw = R.getWidth t
+          tw = R.getRootSnd t
           tpos = {x = w0 + tw // 2, y = pos.y + Cfg.moveDown}
         in
-          position tpos t :: positionF (w0 + tw) ts
+          positionTree tpos t :: positionF (w0 + tw) ts
   in
     R.Node (node, pos) (positionF (pos.x - forestWidth // 2) subTrees)
 
@@ -285,61 +276,34 @@ nodePos nodeId tree = Maybe.map Tuple.second <|
     (R.flatten tree)
 
 
--- -- | Retrieve the position of a node in a given tree.
--- nodePos : M.NodeId -> Position -> R.Tree (M.Node, R.Width) -> Maybe Position
--- nodePos nodeId pos (R.Node (node, rootWidth) subTrees) =
---   let
---     forestWidth = List.sum <| L.map R.getWidth subTrees
---     nodePosF w0 forest = case forest of
---       [] -> Nothing
---       t :: ts ->
---         let
---           tw = R.getWidth t
---           tpos = {x = w0 + tw // 2, y = pos.y + Cfg.moveDown}
---         in
---           case nodePos nodeId tpos t of
---             Nothing -> nodePosF (w0 + tw) ts
---             Just x  -> Just x
---   in
---     if nodeId == node.nodeId
---     then Just pos
---     else nodePosF (pos.x - forestWidth // 2) subTrees
-
-
 drawTree
    : M.Focus -- ^ Which window is it in?
   -> S.Set M.NodeId -- ^ Selected nodes
-  -> Position -- ^ Start position
-  -> R.Tree (M.Node, R.Width) -- ^ Tree to draw
+  -> R.Tree (M.Node, Position) -- ^ Tree to draw
   -> Html.Html Msg
-drawTree win select pos (R.Node (node, _) subTrees) =
+drawTree focus select (R.Node (node, pos) subTrees) =
   let
-    forestWidth = List.sum <| L.map R.getWidth subTrees
-    drawSub w0 forest = case forest of
+    drawForest forest = case forest of
       [] -> []
       t :: ts ->
-        let
-          tw = R.getWidth t
-          tpos = {x = w0 + tw // 2, y = pos.y + Cfg.moveDown}
-        in
-          drawTree win select tpos t
-            :: drawLine pos tpos
-            :: drawSub (w0 + tw) ts
+        drawTree focus select t
+          :: drawLine pos (R.getRootSnd t)
+          :: drawForest ts
   in
     Html.div []
-      (  drawNode select win pos node
-      :: drawSub (pos.x - forestWidth // 2) subTrees )
+      (  drawNode select focus pos node
+      :: drawForest subTrees )
 
 
 drawNode : S.Set M.NodeId -> M.Focus -> Position -> M.Node -> Html.Html Msg
-drawNode select win at node =
+drawNode select focus at node =
   let
     -- width = nodeWidth
     width = Cfg.stdWidth node
     height = Cfg.nodeHeight
   in
     Html.div
-      [ nodeMouseDown win node
+      [ nodeMouseDown focus node
       , Atts.style
           [
             if S.member node.nodeId select
