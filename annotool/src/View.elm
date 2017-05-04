@@ -7,6 +7,7 @@ import Html.Events as Events
 import Json.Decode as Decode
 import Svg as Svg
 import Svg.Attributes as Svg
+-- import Svg as SVG -- to avoid ambiguity in a couple of places
 import Set as S
 import Dict as D
 import List as L
@@ -22,55 +23,35 @@ import Message exposing (Msg(..))
 import Config as Cfg
 
 
-(=>) : a -> b -> (a, b)
-(=>) = (,)
-
-
--- | View tree in the specified window.
-viewTree : M.Focus -> M.Model -> Html.Html Msg
-viewTree focus model =
-  let
-    win = M.selectWin focus model
-    tree = M.getTree win.tree model
-  in
-    drawTree
-      focus win.select
-      <| positionTree (M.getPosition win)
-      <| R.withWidth Cfg.stdWidth Cfg.stdMargin tree
-
-
--- | Determine the background color.
-backColor : M.Focus -> M.Model -> String
-backColor win model =
-  if win == model.focus
-    then "#ddd"
-    else "#eee"
-
-
-viewTreeId : M.Focus -> M.Model -> Html.Html Msg
-viewTreeId win model =
-  let
-    txt0 = toString (M.treePos win model)
-      ++ "/"
-      ++ toString (M.treeNum model)
-    txt = txt0 ++ case win of
-      M.Top -> " (" ++ toString model.dim.height ++ ")"
-      M.Bot -> " (" ++ toString model.dim.width ++ ")"
-  in
-    Html.div
-      [ Atts.class "noselect"
-      , Atts.style
-        [ "position" => "absolute"
-        -- , "width" => "5%"
-        -- , "height" => "5%"
-        , "top" => px 10
-        , "left" => px 10
+view : M.Model -> Html.Html Msg
+view model =
+  Html.div
+    [ Atts.style
+        [ "width" => "100%"
+        , "height" => "100%"
         ]
+    ]
+    ( [ stylesheet
+      , viewWindow M.Top model, viewSideWindow M.Top model
+      , viewWindow M.Bot model, viewSideWindow M.Bot model
+      ] ++ viewLinks model )
+
+
+stylesheet =
+  let
+    tag = "link"
+    attrs =
+      [ Atts.attribute "rel" "stylesheet"
+      , Atts.attribute "property" "stylesheet"
+      -- , attribute "href"      "//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css"
+      , Atts.attribute "href" "style.css"
       ]
-      [ Html.text txt ]
+    children = []
+  in
+    Html.node tag attrs children
 
 
- -- | The view of the top window.
+-- | The view of the top window.
 viewWindow : M.Focus -> M.Model -> Html.Html Msg
 viewWindow win model =
   Html.div
@@ -116,6 +97,119 @@ viewWindow win model =
   , viewTreeId win model ]
 
 
+-- | Determine the background color.
+backColor : M.Focus -> M.Model -> String
+backColor win model =
+  if win == model.focus
+    then "#ddd"
+    else "#eee"
+
+
+
+-- | View tree in the specified window.
+viewTree : M.Focus -> M.Model -> Html.Html Msg
+viewTree focus model =
+  let
+    win = M.selectWin focus model
+    tree = M.getTree win.tree model
+  in
+    drawTree
+      focus win.select
+      <| positionTree (M.getPosition win)
+      <| R.withWidth Cfg.stdWidth Cfg.stdMargin tree
+
+
+viewTreeId : M.Focus -> M.Model -> Html.Html Msg
+viewTreeId win model =
+  let
+    txt0 = toString (M.treePos win model)
+      ++ "/"
+      ++ toString (M.treeNum model)
+    txt = txt0 ++ case win of
+      M.Top -> " (" ++ toString model.dim.height ++ ")"
+      M.Bot -> " (" ++ toString model.dim.width ++ ")"
+  in
+    Html.div
+      [ Atts.class "noselect"
+      , Atts.style
+        [ "position" => "absolute"
+        -- , "width" => "5%"
+        -- , "height" => "5%"
+        , "top" => px 10
+        , "left" => px 10
+        ]
+      ]
+      [ Html.text txt ]
+
+
+drawTree
+   : M.Focus -- ^ Which window is it in?
+  -> S.Set M.NodeId -- ^ Selected nodes
+  -> R.Tree (M.Node, Position) -- ^ Tree to draw
+  -> Html.Html Msg
+drawTree focus select (R.Node (node, pos) subTrees) =
+  let
+    lineCfg = { defLineCfg
+      | strokeWidth = 2
+      , opacity = "0.7" }
+      -- , color = "gray" }
+    drawForest forest = case forest of
+      [] -> []
+      t :: ts ->
+        drawTree focus select t
+          :: viewLine lineCfg pos (R.getRootSnd t)
+          :: drawForest ts
+  in
+    Html.div []
+      (  drawNode select focus pos node
+      :: drawForest subTrees )
+
+
+drawNode : S.Set M.NodeId -> M.Focus -> Position -> M.Node -> Html.Html Msg
+drawNode select focus at node =
+  let
+    -- width = nodeWidth
+    width = Cfg.stdWidth node
+    height = Cfg.nodeHeight
+  in
+    Html.div
+      [ nodeMouseDown focus node
+      , Atts.class "noselect"
+      , Atts.style
+          [
+            if S.member node.nodeId select
+              then "background-color" => "#BC0000"
+              else "background-color" => "#3C8D2F"
+          , "cursor" => "pointer"
+          -- , "opacity" => "1.0"
+
+          , "width" => px width
+          , "height" => px height
+          , "border-radius" => "40%" -- "4px"
+          , "position" => "absolute"
+          -- , "left" => px (at.x - nodeWidth // 2)
+          -- , "top" => px (at.y - nodeHeight // 2)
+          , "left" => px (at.x - width // 2)
+          , "top" => px (at.y - height // 2)
+
+          , "color" => "white"
+          , "display" => "flex"
+          , "align-items" => "center"
+          , "justify-content" => "center"
+          ]
+      ]
+      [ Html.text node.nodeVal ]
+--       [ Html.div
+--           [ Atts.attribute "contenteditable" "true" ]
+--           [ Html.text node.nodeVal ]
+--       ]
+
+
+---------------------------------------------------
+-- Side windows
+---------------------------------------------------
+
+
  -- | The view of the top-side window.
 viewSideWindow : M.Focus -> M.Model -> Html.Html Msg
 viewSideWindow win model =
@@ -159,6 +253,11 @@ viewSideWindow win model =
           )
           []
       ]
+
+
+---------------------------------------------------
+-- Links
+---------------------------------------------------
 
 
 viewLinks : M.Model -> List (Html.Html Msg)
@@ -234,48 +333,95 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to) =
       (second to)
       (M.getPosition bot)
       (M.getTree bot.tree model)
+    lineCfg = { defLineCfg
+      | strokeDasharray = Just Cfg.linkDasharray
+      , strokeWidth = Cfg.linkWidth
+      , opacity = Cfg.linkOpacity }
+    circleCfg = { defCircleCfg
+      | opacity = Cfg.linkOpacity
+      , width = Cfg.linkHeadSize
+      , height = Cfg.linkHeadSize }
   in
     case (begPos, endPos) of
       (Just p, Just q) ->
-        [ drawLine p q
-        ]
+        let
+          v1 = trimBeg Cfg.linkTailDist
+            <| trimEnd (first Cfg.linkHeadDist)
+            <| {beg=p, end=q}
+          v2 = trimEnd (second Cfg.linkHeadDist) {beg=p, end=q}
+        in
+          [ viewLine lineCfg v1.beg v1.end
+          , drawCircle circleCfg v2.end ]
       _ -> []
 
 
-stylesheet =
-  let
-    tag = "link"
-    attrs =
-      [ Atts.attribute "rel" "stylesheet"
-      , Atts.attribute "property" "stylesheet"
-      -- , attribute "href"      "//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css"
-      , Atts.attribute "href" "style.css"
-      ]
-    children = []
-  in
-    Html.node tag attrs children
+---------------------------------------------------
+-- Circles
+---------------------------------------------------
 
 
-view : M.Model -> Html.Html Msg
-view model =
+type alias CircleCfg =
+  { color : String
+  , opacity : String
+  , height : Int
+  , width : Int
+  }
+
+
+defCircleCfg : CircleCfg
+defCircleCfg =
+  { color = "black"
+  , opacity = "1"
+  , height = 10
+  , width = 10
+  }
+
+
+drawCircle : CircleCfg -> Position -> Html.Html msg
+drawCircle cfg at =
   Html.div
     [ Atts.style
-        [ "width" => "100%"
-        , "height" => "100%"
+        [ "background-color" => cfg.color
+        , "opacity" => cfg.opacity
+        , "width" => px cfg.width
+        , "height" => px cfg.height
+        , "border-radius" => "50%"
+        , "position" => "absolute"
+        , "left" => px (at.x - cfg.width // 2)
+        , "top" => px (at.y - cfg.height // 2)
         ]
     ]
-    ( [ stylesheet
-      , viewWindow M.Top model, viewSideWindow M.Top model
-      , viewWindow M.Bot model, viewSideWindow M.Bot model
-      ] ++ viewLinks model )
+    []
 
 
--- viewMetaLine Position -> Position -> Html.Html Msg
--- viewMetaLine beg end =
+---------------------------------------------------
+-- Lines
+---------------------------------------------------
 
 
-drawLine : Position -> Position -> Html.Html Msg
-drawLine beg end =
+type alias LineCfg =
+  { color : String
+  , strokeWidth : Int
+  , zindex : Int
+  , strokeDasharray : Maybe String
+  , opacity : String
+  , isArrow : Bool
+  }
+
+
+defLineCfg : LineCfg
+defLineCfg =
+  { color = "black"
+  , strokeWidth = 1
+  , zindex = -1
+  , strokeDasharray = Nothing
+  , opacity = "1"
+  , isArrow = False
+  }
+
+
+viewLine : LineCfg -> Position -> Position -> Html.Html Msg
+viewLine cfg beg end =
   let
     -- Note that the width is handled in a tricky way. This is to handle the
     -- case where the line is vertical. The case where the line is horizontal is
@@ -288,9 +434,17 @@ drawLine beg end =
     (y1, y2) = case end.y >= beg.y of
              True  -> ("0", toString height)
              False -> (toString height, "0")
+    dash = case cfg.strokeDasharray of
+      Nothing -> []
+      Just x  -> [Svg.strokeDasharray x]
     line = Svg.line
-      [ Svg.stroke "black", Svg.strokeWidth "2"
-      , Svg.x1 x1, Svg.y1 y1, Svg.x2 x2, Svg.y2 y2 ] []
+      ( [ Svg.stroke cfg.color
+        , Svg.strokeWidth (toString cfg.strokeWidth)
+        , Svg.opacity cfg.opacity
+        , Svg.x1 x1, Svg.y1 y1, Svg.x2 x2, Svg.y2 y2 ]
+        ++ dash
+      )
+      []
     svg = Svg.svg
       [ Svg.width (toString <| (\x->x+1) <| width)
       , Svg.height (toString height)
@@ -302,105 +456,20 @@ drawLine beg end =
           , "left" => px (min beg.x end.x)
           , "top" => px (min beg.y end.y)
           , "pointer-events" => "none"
-          , "z-index" => "-1"
+          , "z-index" => toString cfg.zindex
           ]
       ]
       [svg]
 
 
--- | Position a given tree. This function calculates the positions of the
--- individual nodes in the given tree.
-positionTree : Position -> R.Tree (M.Node, R.Width) -> R.Tree (M.Node, Position)
-positionTree pos (R.Node (node, rootWidth) subTrees) =
-  let
-    forestWidth = List.sum <| L.map R.getRootSnd subTrees
-    positionF w0 forest = case forest of
-      [] -> []
-      t :: ts ->
-        let
-          tw = R.getRootSnd t
-          tpos = {x = w0 + tw // 2, y = pos.y + Cfg.moveDown}
-        in
-          positionTree tpos t :: positionF (w0 + tw) ts
-  in
-    R.Node (node, pos) (positionF (pos.x - forestWidth // 2) subTrees)
-
-
--- | Retrieve the position of a node in a given tree.
-nodePos : M.NodeId -> R.Tree (M.Node, Position) -> Maybe Position
-nodePos nodeId tree = Maybe.map second <|
-  Util.find
-    (\node -> (first node).nodeId == nodeId)
-    (R.flatten tree)
-
-
-drawTree
-   : M.Focus -- ^ Which window is it in?
-  -> S.Set M.NodeId -- ^ Selected nodes
-  -> R.Tree (M.Node, Position) -- ^ Tree to draw
-  -> Html.Html Msg
-drawTree focus select (R.Node (node, pos) subTrees) =
-  let
-    drawForest forest = case forest of
-      [] -> []
-      t :: ts ->
-        drawTree focus select t
-          :: drawLine pos (R.getRootSnd t)
-          :: drawForest ts
-  in
-    Html.div []
-      (  drawNode select focus pos node
-      :: drawForest subTrees )
-
-
-drawNode : S.Set M.NodeId -> M.Focus -> Position -> M.Node -> Html.Html Msg
-drawNode select focus at node =
-  let
-    -- width = nodeWidth
-    width = Cfg.stdWidth node
-    height = Cfg.nodeHeight
-  in
-    Html.div
-      [ nodeMouseDown focus node
-      , Atts.class "noselect"
-      , Atts.style
-          [
-            if S.member node.nodeId select
-              then "background-color" => "#BC0000"
-              else "background-color" => "#3C8D2F"
-          , "cursor" => "pointer"
-          -- , "opacity" => "1.0"
-
-          , "width" => px width
-          , "height" => px height
-          , "border-radius" => "40%" -- "4px"
-          , "position" => "absolute"
-          -- , "left" => px (at.x - nodeWidth // 2)
-          -- , "top" => px (at.y - nodeHeight // 2)
-          , "left" => px (at.x - width // 2)
-          , "top" => px (at.y - height // 2)
-
-          , "color" => "white"
-          , "display" => "flex"
-          , "align-items" => "center"
-          , "justify-content" => "center"
-          ]
-      ]
-      [ Html.text node.nodeVal ]
---       [ Html.div
---           [ Atts.attribute "contenteditable" "true" ]
---           [ Html.text node.nodeVal ]
---       ]
+---------------------------------------------------
+-- Events
+---------------------------------------------------
 
 
 nodeMouseDown : M.Focus -> M.Node -> Html.Attribute Msg
 nodeMouseDown win x =
   Events.onMouseDown (Select win x.nodeId)
-
-
----------------------------------------------------
--- Background events
----------------------------------------------------
 
 
 backMouseDown : M.Focus -> Html.Attribute Msg
@@ -439,26 +508,19 @@ backKeyDown =
     onKeyDown tag
 
 
--- winOnFocus : M.Focus -> Html.Attribute Msg
--- winOnFocus win =
---   let
---     focus height =
---       case win of
---         M.Top -> Many [Focus win, Resize height]
---         M.Bot -> Focus win
---   in
---     Events.on "focus" (Decode.map focus offsetHeight)
+-- onKeyUp : (Int -> msg) -> Html.Attribute msg
+-- onKeyUp tagger =
+--   Events.on "keydown" (Decode.map tagger Events.keyCode)
+
+
+onKeyDown : (Int -> msg) -> Html.Attribute msg
+onKeyDown tagger =
+  Events.on "keydown" (Decode.map tagger Events.keyCode)
 
 
 winOnFocus : M.Focus -> Html.Attribute Msg
 winOnFocus win =
   Events.onFocus (Focus win)
-
-
--- | Code below does not work...
--- topOnResize : Html.Attribute Msg
--- topOnResize =
---   Events.on "resize" (Decode.map Resize offsetHeight)
 
 
 -- | Decode the height of a given element.
@@ -468,16 +530,74 @@ offsetHeight =
 
 
 ---------------------------------------------------
--- Top-level events
+-- Positioning
 ---------------------------------------------------
 
 
--- onLoadEvent : Html.Attribute Msg
--- onLoadEvent =
---   -- Events.on "load" (Decode.map Resize offsetHeight)
---   -- Events.on "load" (Decode.succeed <| Focus M.Bot 0)
---   -- Events.on "load" (Decode.succeed Next)
---   Events.on "DOMContentLoaded" (Decode.succeed <| Focus M.Bot 0)
+-- | Position a given tree. This function calculates the positions of the
+-- individual nodes in the given tree.
+positionTree : Position -> R.Tree (M.Node, R.Width) -> R.Tree (M.Node, Position)
+positionTree pos (R.Node (node, rootWidth) subTrees) =
+  let
+    forestWidth = List.sum <| L.map R.getRootSnd subTrees
+    positionF w0 forest = case forest of
+      [] -> []
+      t :: ts ->
+        let
+          tw = R.getRootSnd t
+          tpos = {x = w0 + tw // 2, y = pos.y + Cfg.moveDown}
+        in
+          positionTree tpos t :: positionF (w0 + tw) ts
+  in
+    R.Node (node, pos) (positionF (pos.x - forestWidth // 2) subTrees)
+
+
+-- | Retrieve the position of a node in a given tree.
+nodePos : M.NodeId -> R.Tree (M.Node, Position) -> Maybe Position
+nodePos nodeId tree = Maybe.map second <|
+  Util.find
+    (\node -> (first node).nodeId == nodeId)
+    (R.flatten tree)
+
+
+---------------------------------------------------
+-- Vectors
+---------------------------------------------------
+
+
+type alias Vect = {beg : Position, end : Position}
+
+
+-- | Length of a vector.
+length : Vect -> Float
+length {beg, end} =
+  let
+    x = end.x - beg.x
+    y = end.y - beg.y
+  in
+    sqrt <| toFloat (x*x + y*y)
+
+
+-- | Inverse a vector.
+inverse : Vect -> Vect
+inverse {beg, end} = {beg=end, end=beg}
+
+
+-- | Shorten the end of a given vector by a given length.
+trimEnd : Int -> Vect -> Vect
+trimEnd trim ({beg, end} as v) =
+  let
+    trimProp = toFloat trim / length v
+    restProp = 1.0 - trimProp
+    x = beg.x + round (toFloat (end.x - beg.x) * restProp)
+    y = beg.y + round (toFloat (end.y - beg.y) * restProp)
+  in
+    {beg=beg, end={x=x, y=y}}
+
+
+-- | Shorten the beinning of a given vector by a given length.
+trimBeg : Int -> Vect -> Vect
+trimBeg trim v = inverse <| trimEnd trim <| inverse v
 
 
 ---------------------------------------------------
@@ -485,14 +605,8 @@ offsetHeight =
 ---------------------------------------------------
 
 
--- onKeyUp : (Int -> msg) -> Html.Attribute msg
--- onKeyUp tagger =
---   Events.on "keydown" (Decode.map tagger Events.keyCode)
-
-
-onKeyDown : (Int -> msg) -> Html.Attribute msg
-onKeyDown tagger =
-  Events.on "keydown" (Decode.map tagger Events.keyCode)
+(=>) : a -> b -> (a, b)
+(=>) = (,)
 
 
 px : Int -> String

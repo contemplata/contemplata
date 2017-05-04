@@ -1,7 +1,9 @@
 module Config exposing
   ( stdWidth, stdMargin, nodeHeight, moveDown, sideSpace
   , testTree1, testTree2, testTree3, testTree4, testTree5
-  , increaseSpeed, editLabelName, dmzSize )
+  , increaseSpeed, editLabelName, dmzSize
+  , linkDasharray, linkWidth, linkOpacity
+  , linkHeadSize, linkHeadDist, linkTailDist )
 
 
 import Rose as R
@@ -72,6 +74,34 @@ editLabelName : Bool -> String
 editLabelName flag = case flag of
   True  -> "topEdit"
   False -> "botEdit"
+
+---------------------------------------------------
+-- Links
+---------------------------------------------------
+
+
+linkDasharray : String
+linkDasharray = "10 10"
+
+
+linkWidth : Int
+linkWidth = 2
+
+
+linkOpacity : String
+linkOpacity = "0.4"
+
+
+linkHeadSize : Int
+linkHeadSize = 15
+
+
+linkHeadDist : (Int, Int)
+linkHeadDist = (30, 20)
+
+
+linkTailDist : Int
+linkTailDist = 15
 
 
 ---------------------------------------------------

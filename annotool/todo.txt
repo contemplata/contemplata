@@ -1,5 +1,5 @@
 TODO:
-* Update the style of links
+* Check if in your code, "display = flex" is used for something
 * Simplify Model.moveCursor
 * Make it possible to link two nodes in two viewports.
   Generally, it should also work if the two nodes are
@@ -38,3 +38,4 @@ DONE:
 * Show links in both directions, unless the same tree ID
 * Do not show links if they go beyond the windows
 * Make the text in the main windows non-selectable
+* Update the style of links
