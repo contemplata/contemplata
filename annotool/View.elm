@@ -14,6 +14,7 @@ import Maybe as Maybe
 import Mouse exposing (Position)
 
 import Rose as R
+import Util as Util
 import Model as M
 import Message as Msg
 import Message exposing (Msg(..))
@@ -24,24 +25,15 @@ import Config as Cfg
 (=>) = (,)
 
 
---
--- viewTree: window (top/bottom) + trees + drag (note that drag could be a part of window)
---
-
 -- | View tree in the specified window.
 viewTree : M.Focus -> M.Model -> Html.Html Msg
 viewTree focus model =
   let
-    -- win = M.focusOn model
-    win = case focus of
-      M.Top -> model.top
-      M.Bot -> model.bot
-    selTree = Maybe.withDefault Cfg.testTree1
-      <| D.get win.tree model.trees
+    win = M.selectWin focus model
+    selTree = M.getTree win.tree model
   in
     drawTree
       focus win.select
-      -- (M.getPosition focus model)
       (M.getPosition win)
       (R.withWidth Cfg.stdWidth Cfg.stdMargin selTree)
 
@@ -193,7 +185,7 @@ viewLink model (from, to) =
   else
     let
       -- toPos (v, w) = {x=v, y=w}
-      nodePos1 nodeId pos tree = nodePos nodeId pos
+      nodePos1 nodeId pos tree = nodePos nodeId (position pos tree)
         (R.withWidth Cfg.stdWidth Cfg.stdMargin tree)
       begPos = Maybe.andThen
         (nodePos1 (Tuple.second from) model.top.pos)
@@ -267,25 +259,51 @@ drawLine beg end =
       [svg]
 
 
--- | Retrieve the position of a node in a given tree.
-nodePos : M.NodeId -> Position -> R.Tree (M.Node, R.Width) -> Maybe Position
-nodePos nodeId pos (R.Node (node, rootWidth) subTrees) =
+-- | Position a given tree. This function calculates the positions of the
+-- individual nodes in the given tree.
+position : Position -> R.Tree (M.Node, R.Width) -> R.Tree (M.Node, Position)
+position pos (R.Node (node, rootWidth) subTrees) =
   let
     forestWidth = List.sum <| L.map R.getWidth subTrees
-    nodePosF w0 forest = case forest of
-      [] -> Nothing
+    positionF w0 forest = case forest of
+      [] -> []
       t :: ts ->
         let
           tw = R.getWidth t
           tpos = {x = w0 + tw // 2, y = pos.y + Cfg.moveDown}
         in
-          case nodePos nodeId tpos t of
-            Nothing -> nodePosF (w0 + tw) ts
-            Just x  -> Just x
+          position tpos t :: positionF (w0 + tw) ts
   in
-    if nodeId == node.nodeId
-    then Just pos
-    else nodePosF (pos.x - forestWidth // 2) subTrees
+    R.Node (node, pos) (positionF (pos.x - forestWidth // 2) subTrees)
+
+
+-- | Retrieve the position of a node in a given tree.
+nodePos : M.NodeId -> R.Tree (M.Node, Position) -> Maybe Position
+nodePos nodeId tree = Maybe.map Tuple.second <|
+  Util.find
+    (\node -> (Tuple.first node).nodeId == nodeId)
+    (R.flatten tree)
+
+
+-- -- | Retrieve the position of a node in a given tree.
+-- nodePos : M.NodeId -> Position -> R.Tree (M.Node, R.Width) -> Maybe Position
+-- nodePos nodeId pos (R.Node (node, rootWidth) subTrees) =
+--   let
+--     forestWidth = List.sum <| L.map R.getWidth subTrees
+--     nodePosF w0 forest = case forest of
+--       [] -> Nothing
+--       t :: ts ->
+--         let
+--           tw = R.getWidth t
+--           tpos = {x = w0 + tw // 2, y = pos.y + Cfg.moveDown}
+--         in
+--           case nodePos nodeId tpos t of
+--             Nothing -> nodePosF (w0 + tw) ts
+--             Just x  -> Just x
+--   in
+--     if nodeId == node.nodeId
+--     then Just pos
+--     else nodePosF (pos.x - forestWidth // 2) subTrees
 
 
 drawTree

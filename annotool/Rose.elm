@@ -24,6 +24,18 @@ leaf : a -> Tree a
 leaf x = Node x []
 
 
+-- -- | Find the first occurence of a node which satisfies a given predicate.
+-- find : (a -> Bool) -> Tree a -> Maybe a
+-- find p (Node x ts) =
+--   let
+--     (acc1, y) = f acc x
+--     (acc2, ys) = mapAccumL (mapAccum f) acc1 ts
+--   in
+--     case p x of
+--       True -> Just x
+--       False -> List.
+
+
 map : (a -> b) -> Tree a -> Tree b
 map f t =
   let

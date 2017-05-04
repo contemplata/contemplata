@@ -1,6 +1,6 @@
 module Model exposing
   ( Model, NodeId, Node, Drag, Link, Addr, Focus(..)
-  , selectWin, dragOn
+  , selectWin, dragOn, getTree
   , getPosition, nextTree, prevTree, moveCursor
   , treeNum, treePos, selectNode, getLabel, setLabel
   , deleteSel, addSel
@@ -15,6 +15,7 @@ import Focus exposing ((=>))
 import Focus as Focus
 import Maybe as Maybe
 
+import Util as Util
 import Rose as R
 
 
@@ -153,6 +154,14 @@ dragOn model =
 --     _ -> Nothing
 
 
+-- | Get a tree under a given ID.
+getTree : TreeId -> Model -> R.Tree Node
+getTree tree model =
+  case D.get tree model.trees of
+    Nothing -> Debug.crash "Model.getTree: no tree with the given ID"
+    Just t  -> t
+
+
 ---------------------------------------------------
 -- Position
 ---------------------------------------------------
@@ -289,7 +298,7 @@ selectNode win i model =
 
 
 getLabel : NodeId -> Focus -> Model -> String
-getLabel nodeId win model =
+getLabel nodeId focus model =
   let
     search (R.Node x ts) = if nodeId == x.nodeId
       then Just x.nodeVal
@@ -300,16 +309,13 @@ getLabel nodeId win model =
     or x y = case (x, y) of
       (Just v, _)  -> Just v
       (Nothing, v) -> v
-    tree = case win of
-      Top -> D.get model.top.tree model.trees
-      Bot -> D.get model.bot.tree model.trees
+    tree = getTree (selectWin focus model).tree model
   in
-    Maybe.withDefault "?" <|
-      Maybe.andThen search tree
+    Maybe.withDefault "?" <| search tree
 
 
 setLabel : NodeId -> Focus -> String -> Model -> Model
-setLabel nodeId win newLabel model =
+setLabel nodeId focus newLabel model =
   let
     update (R.Node x ts) = if nodeId == x.nodeId
       then R.Node {x | nodeVal = newLabel} ts
@@ -317,13 +323,9 @@ setLabel nodeId win newLabel model =
     updateF ts = case ts of
       [] -> []
       hd :: tl -> update hd :: updateF tl
-    tree = case win of
-      Top -> D.get model.top.tree model.trees
-      Bot -> D.get model.bot.tree model.trees
-    newTrees = case (win, tree) of
-      (_, Nothing)  -> model.trees
-      (Top, Just t) -> D.insert model.top.tree (update t) model.trees
-      (Bot, Just t) -> D.insert model.bot.tree (update t) model.trees
+    win = selectWin focus model
+    tree = getTree win.tree model
+    newTrees = D.insert win.tree (update tree) model.trees
   in
     {model | trees = newTrees}
 
@@ -337,25 +339,15 @@ setLabel nodeId win newLabel model =
 procSel
   :  (S.Set NodeId -> R.Tree Node -> R.Tree Node)
   -> Focus -> Model -> Model
-procSel f win model =
+procSel f focus model =
   let
-    selected = case win of
-      Top -> model.top.select
-      Bot -> model.bot.select
-    tree = case win of
-      Top -> D.get model.top.tree model.trees
-      Bot -> D.get model.bot.tree model.trees
+    win = selectWin focus model
+    tree = getTree win.tree model
+    newTree = f win.select tree
+    newTrees = D.insert win.tree newTree model.trees
   in
-    case tree of
-      Nothing -> model
-      Just t  ->
-        let
-          newTree = f selected t
-          newTrees = case win of
-            Top -> D.insert model.top.tree newTree model.trees
-            Bot -> D.insert model.bot.tree newTree model.trees
-        in
-          updateSelect win <| { model | trees = newTrees }
+    updateSelect focus <| { model | trees = newTrees }
+
 
 ---------------------------------------------------
 -- Delete
@@ -400,15 +392,15 @@ addNode : S.Set NodeId -> R.Tree Node -> R.Tree Node
 addNode ids tree =
   let
     rootId (R.Node x _) = x.nodeId
-    split ts =
+    split3 ts =
       let
-        (ls, tl) = find (\x -> S.member (rootId x) ids) ts
-        (ms, rs) = find (\x -> not <| S.member (rootId x) ids) tl
+        (ls, tl) = Util.split (\x -> S.member (rootId x) ids) ts
+        (ms, rs) = Util.split (\x -> not <| S.member (rootId x) ids) tl
       in
         (ls, ms, rs)
     update (R.Node x ts) =
       let
-        (ls, ms, rs) = split ts
+        (ls, ms, rs) = split3 ts
       in
         if L.isEmpty ms
           then R.Node (Just x) (updateF ts)
@@ -428,7 +420,7 @@ identify dummyVal tree =
     findMaxMay =
         List.maximum
           <| L.map (\x -> x.nodeId)
-          <| catMaybes
+          <| Util.catMaybes
           <| R.flatten tree
     newId1 = case findMaxMay of
        Nothing -> 1
@@ -466,34 +458,3 @@ updateSelect win model =
 --     { model
 --         | top = { model.top | select = newTopSel }
 --         , bot = { model.bot | select = newBotSel } }
-
-
-
--- | The results is (ls, rs) where `ls` are all the left-most elements which do
--- | not satisfy the given predicate, while `rs` is the rest. In particular, the
--- | first element of `rs` satisfies the predicate.
-find : (a -> Bool) -> List a -> (List a, List a)
-find p xs =
-  let
-    ys = case xs of
-      [] -> ([], [])
-      hd :: tl ->
-        if p hd
-          then ([], xs)
-          else
-            let (ls, rs) = find p tl
-            in  (hd :: ls, rs)
-     -- revFst (x, y) = (List.reverse x, y)
-  in
-    -- revFst ys
-    ys
-
-
-catMaybes : List (Maybe a) -> List a
-catMaybes xs =
-  case xs of
-    [] -> []
-    hd :: tl ->
-      case hd of
-        Nothing -> catMaybes tl
-        Just x  -> x :: catMaybes tl
