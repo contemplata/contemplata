@@ -1,10 +1,11 @@
 module Model exposing
-  ( Model, NodeId, Node, Drag, Link, Addr, Focus(..)
+  ( Model, Window, NodeId, Node, Drag, Link, Addr, Focus(..)
   , selectWin, dragOn, getTree
   , getPosition, nextTree, prevTree, moveCursor
   , treeNum, treePos, selectNode, getLabel, setLabel
   , deleteSel, addSel
-  , top, bot, winLens, drag, select, pos )
+  -- Lenses:
+  , top, bot, dim, winLens, drag, select, pos, height, heightProp )
 
 
 import Mouse exposing (Position)
@@ -39,29 +40,20 @@ type alias Model =
   -- links between the nodes
   , links : S.Set Link
 
-  -- size of the top window and proportion between the top/bottom sizes
-  , winHeight : Int
-  , winProp : Int
+  -- window dimensions
+  , dim : Dim
+
+--   -- size of the top window and proportion between the top/bottom sizes
+--   , winHeight : Int
+--   , winProp : Int
   }
 
 
-top : Focus.Focus { record | top : a } a
-top = Focus.create
-  .top
-  (\fn model -> {model | top = fn model.top})
-
-
-bot : Focus.Focus { record | bot : a } a
-bot = Focus.create
-  .bot
-  (\fn model -> {model | bot = fn model.bot})
-
-
-winLens : Focus -> Focus.Focus { record | bot : a, top : a } a
-winLens focus =
-  case focus of
-    Top -> top
-    Bot -> bot
+type alias Dim =
+  { width : Int
+  , height : Int
+  , heightProp : Int
+  }
 
 
 type alias Window =
@@ -70,24 +62,6 @@ type alias Window =
   , pos : Position
   , drag : Maybe Drag
   }
-
-
-select : Focus.Focus { record | select : a } a
-select = Focus.create
-  .select
-  (\fn model -> {model | select = fn model.select})
-
-
-pos : Focus.Focus { record | pos : a } a
-pos = Focus.create
-  .pos
-  (\fn model -> {model | pos = fn model.pos})
-
-
-drag : Focus.Focus { record | drag : a } a
-drag = Focus.create
-  .drag
-  (\fn model -> {model | drag = fn model.drag})
 
 
 -- -- | Link between two trees.
@@ -458,3 +432,64 @@ updateSelect win model =
 --     { model
 --         | top = { model.top | select = newTopSel }
 --         , bot = { model.bot | select = newBotSel } }
+
+
+
+---------------------------------------------------
+-- Lenses
+---------------------------------------------------
+
+
+top : Focus.Focus { record | top : a } a
+top = Focus.create
+  .top
+  (\fn model -> {model | top = fn model.top})
+
+
+bot : Focus.Focus { record | bot : a } a
+bot = Focus.create
+  .bot
+  (\fn model -> {model | bot = fn model.bot})
+
+
+winLens : Focus -> Focus.Focus { record | bot : a, top : a } a
+winLens focus =
+  case focus of
+    Top -> top
+    Bot -> bot
+
+
+dim : Focus.Focus { record | dim : a } a
+dim = Focus.create
+  .dim
+  (\fn model -> {model | dim = fn model.dim})
+
+
+select : Focus.Focus { record | select : a } a
+select = Focus.create
+  .select
+  (\fn model -> {model | select = fn model.select})
+
+
+pos : Focus.Focus { record | pos : a } a
+pos = Focus.create
+  .pos
+  (\fn model -> {model | pos = fn model.pos})
+
+
+drag : Focus.Focus { record | drag : a } a
+drag = Focus.create
+  .drag
+  (\fn model -> {model | drag = fn model.drag})
+
+
+height : Focus.Focus { record | height : a } a
+height = Focus.create
+  .height
+  (\fn model -> {model | height = fn model.height})
+
+
+heightProp : Focus.Focus { record | heightProp : a } a
+heightProp = Focus.create
+  .heightProp
+  (\fn model -> {model | heightProp = fn model.heightProp})

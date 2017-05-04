@@ -53,6 +53,11 @@ init =
       , select = S.empty
       , drag = Nothing
       }
+    dim =
+      { width = 0
+      , height = 0
+      , heightProp = 50
+      }
     model =
       { trees = D.fromList
           [ ("t1", Cfg.testTree3)
@@ -64,11 +69,13 @@ init =
       , top = top
       , bot = bot
       , focus = M.Top
-      , links = S.fromList [(("t4", 3), ("t5", 9))]
-      , winHeight = 0
-      , winProp = 50
+      , links = S.fromList
+          [ (("t4", 3), ("t5", 9))
+          , (("t1", 1), ("t1", 2))
+          ]
+      , dim = dim
       }
-    initHeight = Task.perform Resize Window.height
+    initHeight = Task.perform Resize Window.size
   in
     -- (model, Cmd.none)
     (model, initHeight)
@@ -82,7 +89,7 @@ init =
 subscriptions : M.Model -> Sub Msg
 subscriptions model =
   let
-    resize = Window.resizes (\x -> Resize x.height)
+    resize = Window.resizes Resize
     win = M.selectWin model.focus model
   in
     case win.drag of

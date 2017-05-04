@@ -1,4 +1,6 @@
 TODO:
+* Make the text in the main windows non-selectable
+* Update the style of links
 * Simplify Model.moveCursor
 * Make it possible to link two nodes in two viewports.
   Generally, it should also work if the two nodes are
@@ -34,3 +36,5 @@ DONE:
 * Simplify how the positions and grabbing are handled
 * Simplify the way positions in the trees are calculated
 * Simplify some functions related to windows
+* Show links in both directions, unless the same tree ID
+* Do not show links if they go beyond the windows

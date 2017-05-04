@@ -11,6 +11,7 @@ import Set as S
 import Dict as D
 import List as L
 import Maybe as Maybe
+import Tuple exposing (first, second)
 import Mouse exposing (Position)
 
 import Rose as R
@@ -53,8 +54,8 @@ viewTreeId win model =
       ++ "/"
       ++ toString (M.treeNum model)
     txt = txt0 ++ case win of
-      M.Top -> " (" ++ toString model.winHeight ++ ")"
-      M.Bot -> "" -- " (" ++ toString (model.allHeight - model.topHeight) ++ ")"
+      M.Top -> " (" ++ toString model.dim.height ++ ")"
+      M.Bot -> " (" ++ toString model.dim.width ++ ")"
   in
     Html.div
       [ Atts.style
@@ -91,15 +92,16 @@ viewWindow win model =
     , "width" => (toString (100 - Cfg.sideSpace) ++ "%") -- "100%"
     -- , "height" => "50%"
     , "height" => case win of
-        M.Top -> toString model.winProp ++ "%"
-        M.Bot -> toString (100 - model.winProp) ++ "%"
+        M.Top -> toString model.dim.heightProp ++ "%"
+        M.Bot -> toString (100 - model.dim.heightProp) ++ "%"
     , case win of
         M.Top -> "top" => "0"
         M.Bot -> "bottom" => "0"
-    -- overflow is a very important attribute which makes the scrollbars to
-    -- appear and which makes sure that the trees do not go beyond the
-    -- specified subwindows.
-    , "overflow" => "auto"
+    -- Overflow is a very important attribute (it makes the scrollbars to appear
+    -- if set to "auto") which makes sure that the trees do not go beyond the
+    -- specified subwindows.  We set to "hidden" so that tracing links is easy
+    -- (otherwise, special care has to be taken w.r.t. scrollbars).
+    , "overflow" => "hidden"
     , "background-color" => backColor win model
     , "opacity" => "1.0"
     -- z-index important because of its interactions with how the edges are
@@ -134,8 +136,8 @@ viewSideWindow win model =
         , "width" => (toString Cfg.sideSpace ++ "%")
         -- , "height" => "50%"
         , "height" => case win of
-            M.Top -> toString model.winProp ++ "%"
-            M.Bot -> toString (100 - model.winProp) ++ "%"
+            M.Top -> toString model.dim.heightProp ++ "%"
+            M.Bot -> toString (100 - model.dim.heightProp) ++ "%"
         , "right" => "0"
         , case win of
             M.Top -> "top" => "0"
@@ -165,47 +167,87 @@ viewLinks model =
     (S.toList model.links)
 
 
-viewLink : M.Model -> (M.Addr, M.Addr) -> List (Html.Html Msg)
+viewLink
+   : M.Model
+  -> (M.Addr, M.Addr)
+  -> List (Html.Html Msg)
 viewLink model (from, to) =
-  if not ( model.top.tree == Tuple.first from
-        && model.bot.tree == Tuple.first to )
-  then []
-  else
-    let
-      nodePos1 nodeId pos tree = nodePos nodeId
-        <| positionTree pos
-        <| R.withWidth Cfg.stdWidth Cfg.stdMargin tree
-      begPos = nodePos1
-        (Tuple.second from)
-        -- model.top.pos
-        (M.getPosition model.top)
-        (M.getTree model.top.tree model)
-      endPos0 = nodePos1
-        (Tuple.second to)
-        (M.getPosition model.bot)
-        (M.getTree model.bot.tree model)
-      topHeight = (model.winHeight * model.winProp) // 100
-      endPos = Maybe.map
-        (\pos -> {pos | y = pos.y + topHeight})
-        endPos0
---       shift pos1 pos2 =
---         { x = pos1.x + pos2.x
---         , y = pos1.y + pos2.y }
-    in
-      case (begPos, endPos) of
-        (Just p, Just q) ->
-          [ drawLine p q
---               (shift model.topPos p)
---               (shift model.botPos q)
-          ]
-        _ -> []
+  let
+    top = model.top
+    bot = model.bot
+    dim = model.dim
+
+    mainWidth = (dim.width * (100 - Cfg.sideSpace)) // 100
+    topHeight = (dim.height * dim.heightProp) // 100
+    botHeight = dim.height - topHeight
+
+    trimTop pos =
+      if pos.x >= 0 &&
+         pos.y >= 0 &&
+         pos.x <= mainWidth - Cfg.dmzSize &&
+         pos.y <= topHeight - Cfg.dmzSize
+      then Just pos
+      else Nothing
+
+    trimBot pos =
+      if pos.x >= 0 &&
+         pos.y >= 0 &&
+         pos.x <= mainWidth - Cfg.dmzSize &&
+         pos.y <= botHeight - Cfg.dmzSize
+      then Just {pos | y = pos.y + topHeight}
+      else Nothing
+
+  in
+
+    if
+      top.tree == first from &&
+      bot.tree == first to
+    then
+      viewLinkDir model (top, bot) (trimTop, trimBot) (from, to)
+    else if
+      bot.tree == first from &&
+      top.tree == first to &&
+      top.tree /= bot.tree
+    then
+      viewLinkDir model (bot, top) (trimBot, trimTop) (from, to)
+    else
+      []
+
+
+viewLinkDir
+   : M.Model
+  -> (M.Window, M.Window)
+  -> (Position -> Maybe Position, Position -> Maybe Position)
+  -> (M.Addr, M.Addr)
+  -> List (Html.Html Msg)
+viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to) =
+  let
+    nodePos1 nodeId pos tree = nodePos nodeId
+      <| positionTree pos
+      <| R.withWidth Cfg.stdWidth Cfg.stdMargin tree
+    begPos = Maybe.andThen shiftTop <| nodePos1
+      (second from)
+      (M.getPosition top)
+      (M.getTree top.tree model)
+    endPos = Maybe.andThen shiftBot <| nodePos1
+      (second to)
+      (M.getPosition bot)
+      (M.getTree bot.tree model)
+  in
+    case (begPos, endPos) of
+      (Just p, Just q) ->
+        [ drawLine p q
+        ]
+      _ -> []
 
 
 view : M.Model -> Html.Html Msg
 view model =
   Html.div
     [ Atts.style
-        ["width" => "100%", "height" => "100%"]
+        [ "width" => "100%"
+        , "height" => "100%"
+        ]
     ]
     ( [ viewWindow M.Top model, viewSideWindow M.Top model
       , viewWindow M.Bot model, viewSideWindow M.Bot model
@@ -270,9 +312,9 @@ positionTree pos (R.Node (node, rootWidth) subTrees) =
 
 -- | Retrieve the position of a node in a given tree.
 nodePos : M.NodeId -> R.Tree (M.Node, Position) -> Maybe Position
-nodePos nodeId tree = Maybe.map Tuple.second <|
+nodePos nodeId tree = Maybe.map second <|
   Util.find
-    (\node -> (Tuple.first node).nodeId == nodeId)
+    (\node -> (first node).nodeId == nodeId)
     (R.flatten tree)
 
 

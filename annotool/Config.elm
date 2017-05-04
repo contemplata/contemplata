@@ -1,7 +1,7 @@
 module Config exposing
   ( stdWidth, stdMargin, nodeHeight, moveDown, sideSpace
   , testTree1, testTree2, testTree3, testTree4, testTree5
-  , increaseSpeed, editLabelName )
+  , increaseSpeed, editLabelName, dmzSize )
 
 
 import Rose as R
@@ -52,9 +52,14 @@ moveDown : Int
 moveDown = 40
 
 
--- | Space for side windows.
+-- | Space (proportionally) for side windows.
 sideSpace : Int
 sideSpace = 15
+
+-- | Size of the demilitarized zone. Use so that scrollbars do
+-- not appear.
+dmzSize : Int
+dmzSize = 10
 
 
 -- | Space for side windows.

@@ -7,6 +7,7 @@ import Task as Task
 import Dom as Dom
 import Focus exposing ((=>))
 import Focus as Focus
+import Window as Window
 
 import Model as M
 import Config as Cfg
@@ -21,7 +22,7 @@ type Msg
     | DragEnd Position
     | Select M.Focus M.NodeId
     | Focus M.Focus
-    | Resize Int -- ^ The height of the entire window
+    | Resize Window.Size -- ^ The height and width of the entire window
     | Increase Bool -- ^ Increase the size of the top window
     | Previous
     | Next
@@ -64,17 +65,24 @@ update msg model =
 
     Focus win -> idle <| {model | focus = win}
 
-    Resize height -> idle <| {model | winHeight = height}
+    Resize x -> idle <|
+      Focus.update M.dim
+        (\dim -> {dim | height=x.height, width=x.width})
+        model
 
     Increase flag -> idle <|
       let
-        newProp = trim <| model.winProp + change
+        -- newProp = trim <| model.dim.heightProp + change
         trim x = max 0 <| min 100 <| x
         change = case flag of
           True  -> Cfg.increaseSpeed
           False -> -Cfg.increaseSpeed
       in
-        {model | winProp = newProp}
+        Focus.update
+          (M.dim => M.heightProp)
+          (\x -> trim <| x + change)
+          model
+        -- {model | winProp = newProp}
 
     Select win i -> idle <| M.selectNode win i model
 
