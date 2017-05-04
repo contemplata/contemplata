@@ -58,7 +58,8 @@ viewTreeId win model =
       M.Bot -> " (" ++ toString model.dim.width ++ ")"
   in
     Html.div
-      [ Atts.style
+      [ Atts.class "noselect"
+      , Atts.style
         [ "position" => "absolute"
         -- , "width" => "5%"
         -- , "height" => "5%"
@@ -241,6 +242,20 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to) =
       _ -> []
 
 
+stylesheet =
+  let
+    tag = "link"
+    attrs =
+      [ Atts.attribute "rel" "stylesheet"
+      , Atts.attribute "property" "stylesheet"
+      -- , attribute "href"      "//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css"
+      , Atts.attribute "href" "style.css"
+      ]
+    children = []
+  in
+    Html.node tag attrs children
+
+
 view : M.Model -> Html.Html Msg
 view model =
   Html.div
@@ -249,7 +264,8 @@ view model =
         , "height" => "100%"
         ]
     ]
-    ( [ viewWindow M.Top model, viewSideWindow M.Top model
+    ( [ stylesheet
+      , viewWindow M.Top model, viewSideWindow M.Top model
       , viewWindow M.Bot model, viewSideWindow M.Bot model
       ] ++ viewLinks model )
 
@@ -346,6 +362,7 @@ drawNode select focus at node =
   in
     Html.div
       [ nodeMouseDown focus node
+      , Atts.class "noselect"
       , Atts.style
           [
             if S.member node.nodeId select
