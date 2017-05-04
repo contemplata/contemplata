@@ -1,4 +1,7 @@
 TODO:
+* Simplify the way positions in the trees are calculated
+* Simplify some functions related to windows
+* Simplify Model.moveCursor
 * Make it possible to link two nodes in two viewports.
   Generally, it should also work if the two nodes are
   in the same tree.
@@ -30,3 +33,4 @@ DONE:
 * A function which returns a position of the node with
   a given ID in a given tree.  Once you have it, it should
   be possible to draw a line between two positions.
+* Simplify how the positions and grabbing are handled

@@ -45,11 +45,13 @@ init =
       { tree = "t1"
       , pos = Position 400 50
       , select = S.empty
+      , drag = Nothing
       }
     bot =
       { tree = "t2"
       , pos = Position 400 50
       , select = S.empty
+      , drag = Nothing
       }
     model =
       { trees = D.fromList
@@ -61,7 +63,6 @@ init =
           ]
       , top = top
       , bot = bot
-      , drag = Nothing
       , focus = M.Top
       , links = S.fromList [(("t4", 3), ("t5", 9))]
       , winHeight = 0
@@ -73,7 +74,7 @@ init =
     (model, initHeight)
 
 
----------------------------------------------------
+---------------------------------------------
 -- Subscriptions
 ---------------------------------------------------
 
@@ -82,9 +83,13 @@ subscriptions : M.Model -> Sub Msg
 subscriptions model =
   let
     resize = Window.resizes (\x -> Resize x.height)
+    win = M.selectWin model.focus model
   in
-    case model.drag of
+    case win.drag of
       Nothing ->
         Sub.batch [resize]
       Just _ ->
-        Sub.batch [resize, Mouse.moves DragAt, Mouse.ups DragEnd]
+        Sub.batch
+          [ resize
+          , Mouse.moves DragAt
+          , Mouse.ups DragEnd ]

@@ -10,6 +10,7 @@ import Svg.Attributes as Svg
 import Set as S
 import Dict as D
 import List as L
+import Maybe as Maybe
 import Mouse exposing (Position)
 
 import Rose as R
@@ -29,23 +30,19 @@ import Config as Cfg
 
 -- | View tree in the specified window.
 viewTree : M.Focus -> M.Model -> Html.Html Msg
-viewTree win model =
+viewTree focus model =
   let
-    selTree = case win of
-      M.Top -> case D.get model.top.tree model.trees of
-        Nothing -> Cfg.testTree1
-        Just x  -> x
-      M.Bot -> case D.get model.bot.tree model.trees of
-        Nothing -> Cfg.testTree1
-        Just x  -> x
-    selNodes = case win of
-      M.Top -> model.top.select
-      M.Bot -> model.bot.select
+    -- win = M.focusOn model
+    win = case focus of
+      M.Top -> model.top
+      M.Bot -> model.bot
+    selTree = Maybe.withDefault Cfg.testTree1
+      <| D.get win.tree model.trees
   in
     drawTree
-      win selNodes
-      (M.getPosition win model)
-      -- (R.withWidth (\_ -> stdWidth) selTree)
+      focus win.select
+      -- (M.getPosition focus model)
+      (M.getPosition win)
       (R.withWidth Cfg.stdWidth Cfg.stdMargin selTree)
 
 
@@ -460,52 +457,3 @@ onKeyDown tagger =
 px : Int -> String
 px number =
   toString number ++ "px"
-
-
----------------------------------------------------
--- Background
----------------------------------------------------
-
-
--- background : Html.Html Msg
--- background =
---     Html.div
---       [ backMouseDown
---       , Atts.style
---           -- thanks to 1.0 opacity and #fff background color,
---           -- drawing artefacts are less visible.
---           [ "opacity" => "1.0"
---           , "background-color" => "#ccc"
---           , "position" => "fixed"
---           , "width" => "100%"
---           , "height" => "100%"
---           , "top" => "0px"
---           , "left" => "0px"
---           , "z-index" => "-1" ]
---       ]
---       []
-
-
--- background : Html.Html Msg
--- background =
---     Html.div
---       [ backMouseDown
---       , Atts.style
---           -- thanks to 1.0 opacity and #fff background color,
---           -- drawing artefacts are less visible.
---           [ "opacity" => "1.0"
---           , "background-color" => "#ccc"
---           , "position" => "absolute"
---           , "width" => "100%"
---           , "height" => "100%"
---           , "border" => "1px black solid"
--- --           , "top" => "0px"
--- --           , "left" => "0px"
---           , "z-index" => "-1" ]
---       ]
---       []
---
---
--- backMouseDown : Html.Attribute Msg
--- backMouseDown =
---   Events.on "mousedown" (Decode.map DragStart Mouse.position)

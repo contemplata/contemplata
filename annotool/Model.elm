@@ -1,9 +1,10 @@
 module Model exposing
   ( Model, NodeId, Node, Drag, Link, Addr, Focus(..)
+  , selectWin, dragOn
   , getPosition, nextTree, prevTree, moveCursor
   , treeNum, treePos, selectNode, getLabel, setLabel
   , deleteSel, addSel
-  , top, bot, drag, select, pos )
+  , top, bot, winLens, drag, select, pos )
 
 
 import Mouse exposing (Position)
@@ -31,7 +32,8 @@ type alias Model =
   -- which window is the focus on
   , focus : Focus
 
-  , drag : Maybe (Focus, Drag)
+  -- , dragOn : Maybe (Focus, Drag)
+  -- , dragOn : Maybe Focus
 
   -- links between the nodes
   , links : S.Set Link
@@ -54,16 +56,18 @@ bot = Focus.create
   (\fn model -> {model | bot = fn model.bot})
 
 
-drag : Focus.Focus { record | drag : a } a
-drag = Focus.create
-  .drag
-  (\fn model -> {model | drag = fn model.drag})
+winLens : Focus -> Focus.Focus { record | bot : a, top : a } a
+winLens focus =
+  case focus of
+    Top -> top
+    Bot -> bot
 
 
 type alias Window =
   { tree : TreeId
-  , pos : Position
   , select : S.Set NodeId
+  , pos : Position
+  , drag : Maybe Drag
   }
 
 
@@ -77,6 +81,12 @@ pos : Focus.Focus { record | pos : a } a
 pos = Focus.create
   .pos
   (\fn model -> {model | pos = fn model.pos})
+
+
+drag : Focus.Focus { record | drag : a } a
+drag = Focus.create
+  .drag
+  (\fn model -> {model | drag = fn model.drag})
 
 
 -- -- | Link between two trees.
@@ -116,6 +126,34 @@ type Focus = Top | Bot
 
 
 ---------------------------------------------------
+-- Misc
+---------------------------------------------------
+
+
+-- | Return the window in focus.
+selectWin : Focus -> Model -> Window
+selectWin focus model =
+  case focus of
+    Top -> model.top
+    Bot -> model.bot
+
+
+-- | On which window the drag is activated?
+-- Return `Bot` if not activated.
+dragOn : Model -> Focus
+dragOn model =
+  case model.top.drag of
+    Just _ -> Top
+    _ -> Bot
+-- dragOn : Model -> Maybe Focus
+-- dragOn model =
+--   case (model.top.drag, model.bot.drag) of
+--     (Just _, _)  -> Just Top
+--     (_, Just _)  -> Just Bot
+--     _ -> Nothing
+
+
+---------------------------------------------------
 -- Position
 ---------------------------------------------------
 
@@ -139,33 +177,29 @@ treeNum : Model -> Int
 treeNum model = D.size model.trees
 
 
-getPosition : Focus -> Model -> Position
-getPosition win model =
-  case (win, model.drag) of
-    (Top, Just (Top, {start, current})) ->
-      Position
-        (model.top.pos.x + current.x - start.x)
-        (model.top.pos.y + current.y - start.y)
-    (Top, _) -> model.top.pos
-    (Bot, Just (Bot, {start, current})) ->
-      Position
-        (model.bot.pos.x + current.x - start.x)
-        (model.bot.pos.y + current.y - start.y)
-    (Bot, _) -> model.bot.pos
-
-
 -- getPosition : Focus -> Model -> Position
 -- getPosition win model =
---   let
---     pos = case win of
---       Top -> model.top.pos
---       Bot -> model.bot.pos
---   in
---     case model.drag of
---       Just (Top, {start, current}) ->
---         { x = pos.x + current.x - start.x
---         , y = pos.y + current.y - start.y }
---       _ -> pos
+--   case (win, model.drag) of
+--     (Top, Just (Top, {start, current})) ->
+--       Position
+--         (model.top.pos.x + current.x - start.x)
+--         (model.top.pos.y + current.y - start.y)
+--     (Top, _) -> model.top.pos
+--     (Bot, Just (Bot, {start, current})) ->
+--       Position
+--         (model.bot.pos.x + current.x - start.x)
+--         (model.bot.pos.y + current.y - start.y)
+--     (Bot, _) -> model.bot.pos
+
+
+getPosition : Window -> Position
+getPosition win =
+  case win.drag of
+    Just {start, current} ->
+      Position
+        (win.pos.x + current.x - start.x)
+        (win.pos.y + current.y - start.y)
+    Nothing -> win.pos
 
 
 ---------------------------------------------------

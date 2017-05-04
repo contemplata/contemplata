@@ -14,6 +14,9 @@ import Config as Cfg
 
 type Msg
     = DragStart M.Focus Position
+      -- ^ Neither `DragAt` nor `DragEnd` have their focus. This is on purpose.
+      -- Focus should be determined, in their case, on the basis of the drag in
+      -- the underlying model. We do not support concurrent drags at the moment.
     | DragAt Position
     | DragEnd Position
     | Select M.Focus M.NodeId
@@ -42,35 +45,22 @@ update msg model =
  in
   case msg of
 
-    DragStart win xy -> idle <|
-      { model | drag = Just (win, M.Drag xy xy) }
+    DragStart focus xy -> idle <|
+      Focus.set
+        (M.winLens focus => M.drag)
+        (Just (M.Drag xy xy))
+        model
 
     DragAt xy -> idle <|
-      { model
-          | drag = Maybe.map (\(win, {start}) -> (win, M.Drag start xy)) model.drag
-      }
+      Focus.update
+        (M.winLens (M.dragOn model) => M.drag)
+        (Maybe.map (\{start} -> M.Drag start xy))
+        model
 
     DragEnd _ -> idle
-        <| Focus.set M.drag Nothing
-        <| Focus.set (M.top => M.pos)
-             (case model.drag of
-                Just (M.Top, _) -> M.getPosition M.Top model
-                _ -> model.top.pos)
-        <| Focus.set (M.bot => M.pos)
-             (case model.drag of
-                Just (M.Bot, _) -> M.getPosition M.Bot model
-                _ -> model.bot.pos)
-        <| model
-      -- { model | drag = Nothing, position = M.getPosition model }
---       { model
---           | drag = Nothing
---           , topPos = case model.drag of
---               Just (M.Top, _) -> M.getPosition M.Top model
---               _ -> model.topPos
---           , botPos = case model.drag of
---               Just (M.Bot, _) -> M.getPosition M.Bot model
---               _ -> model.botPos
---       }
+      <| Focus.update (M.winLens (M.dragOn model))
+           (\win -> { win | drag = Nothing, pos = M.getPosition win})
+      <| model
 
     Focus win -> idle <| {model | focus = win}
 
@@ -87,10 +77,6 @@ update msg model =
         {model | winProp = newProp}
 
     Select win i -> idle <| M.selectNode win i model
---     KeyDown key -> case key of
---       33 -> { model | focus = M.Top } -- Previous
---       34 -> { model | focus = M.Bot } -- Next
---       _  -> { model | focus = M.Top }
 
     Next -> idle <| M.moveCursor True model
 
