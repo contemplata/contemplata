@@ -7,6 +7,8 @@ module Model exposing
   , getLabel, setLabel
   -- Node selection:
   , selectNode, selectNodeAux, deleteSel, addSel
+  -- Links
+  , connect -- LinkInfo
   -- Lenses:
   , top, bot, dim, winLens, drag, pos, height, heightProp )
 
@@ -270,10 +272,10 @@ selectNode focus i model =
   let
     alter win =
       { win
-          | selMain =
-              if win.selMain == Just i
-              then Nothing
-              else Just i
+          | selMain = Just i
+--               if win.selMain == Just i
+--               then Nothing
+--               else Just i
           , selAux = S.empty
       }
     update lens = Focus.update lens alter model
@@ -443,6 +445,44 @@ identify dummyVal tree =
 
 
 ---------------------------------------------------
+-- Add links
+---------------------------------------------------
+
+
+connect : Model -> Model
+connect model = model |>
+  case (model.focus, model.top.selMain, model.bot.selMain) of
+    (Top, Just topNode, Just botNode) ->
+      connectHelp {nodeFrom = botNode, nodeTo = topNode, focusTo = Top}
+    (Bot, Just topNode, Just botNode) ->
+      connectHelp {nodeFrom = topNode, nodeTo = botNode, focusTo = Bot}
+    _ -> identity
+    -- _ -> Debug.crash "ALALALAL"
+
+
+type alias LinkInfo =
+  { nodeFrom : NodeId
+  , nodeTo : NodeId
+  , focusTo : Focus }
+
+
+connectHelp : LinkInfo -> Model -> Model
+connectHelp {nodeFrom, nodeTo, focusTo} model =
+  let
+    focusFrom = case focusTo of
+      Top -> Bot
+      Bot -> Top
+    treeFrom = (selectWin focusFrom model).tree
+    treeTo = (selectWin focusTo model).tree
+    link = ((treeFrom, nodeFrom), (treeTo, nodeTo))
+    alter = case S.member link model.links of
+      False -> S.insert link
+      True  -> S.remove link
+  in
+    Focus.update links alter model
+
+
+---------------------------------------------------
 -- Utils
 ---------------------------------------------------
 
@@ -489,6 +529,11 @@ dim = Focus.create
   .dim
   (\fn model -> {model | dim = fn model.dim})
 
+
+links : Focus.Focus { record | links : a } a
+links = Focus.create
+  .links
+  (\fn model -> {model | links = fn model.links})
 
 -- select : Focus.Focus { record | select : a } a
 -- select = Focus.create

@@ -32,6 +32,7 @@ type Msg
     | Add -- ^ Delete the selected nodes in the focused window
     | CtrlDown
     | CtrlUp
+    | Connect
     | Many (List Msg)
 
 
@@ -114,6 +115,8 @@ update msg model =
 
     CtrlDown -> idle <| {model | ctrl=True}
     CtrlUp -> idle <| {model | ctrl=False}
+
+    Connect -> idle <| M.connect model
 
     Many ms ->
       let f msg (mdl0, cmds) =
