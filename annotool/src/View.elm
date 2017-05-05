@@ -529,6 +529,9 @@ backKeyDown =
       -- "c"
       67 -> Connect
 
+      -- "r"
+      82 -> Attach
+
       _  -> Msg.dummy
   in
     onKeyDown tag

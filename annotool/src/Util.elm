@@ -1,4 +1,8 @@
-module Util exposing (split, catMaybes, find, unless, or)
+module Util exposing
+  ( split, catMaybes, find, unless, mappend, guard, and, average)
+
+
+import List as L
 
 
 -- | The results is (ls, rs) where `ls` are all the left-most elements which do
@@ -48,7 +52,23 @@ unless flag x = case flag of
   False -> Just x
 
 
-or : Maybe a -> Maybe a -> Maybe a
-or x y = case (x, y) of
+mappend : Maybe a -> Maybe a -> Maybe a
+mappend x y = case (x, y) of
   (Just v, _)  -> Just v
   (Nothing, v) -> v
+
+
+guard : (a -> Bool) -> a -> Maybe a
+guard p x = case p x of
+  False -> Nothing
+  True  -> Just x
+
+
+and : List Bool -> Bool
+and xs = case xs of
+  [] -> True
+  hd :: tl -> hd && and tl
+
+
+average : List Float -> Float
+average xs = L.sum xs / toFloat (L.length xs)

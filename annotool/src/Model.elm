@@ -1,17 +1,20 @@
 module Model exposing
   ( Model, Window, NodeId, Node(..), Drag, Link, Addr, Focus(..)
+  , isNode, isLeaf
   , selectWin, dragOn, getTree, selAll
   , getPosition, nextTree, prevTree, moveCursor
   , treeNum, treePos
   -- Labels:
   , getLabel, setLabel
   -- Node selection:
-  , selectNode, selectNodeAux, deleteSel, addSel
+  , selectNode, selectNodeAux
   -- Links
   , connect -- LinkInfo
+  -- Tree modifications:
+  , attachSel, deleteSel, addSel
   -- Lenses:
   , top, bot, dim, winLens, drag, pos, height, heightProp
-  , nodeId, nodeVal
+  , nodeId, nodeVal, trees
   )
 
 
@@ -112,6 +115,16 @@ type Node
       -- | The position of the leaf in the underlying sentence.
       -- The positions do not have to be consecutive.
     , leafPos : Int }
+
+
+isNode : Node -> Bool
+isNode x = case x of
+  Node _ -> True
+  _ -> False
+
+
+isLeaf : Node -> Bool
+isLeaf = not << isNode
 
 
 -- Information about dragging.
@@ -329,7 +342,7 @@ getLabel id focus model =
       else searchF ts
     searchF ts = case ts of
       [] -> Nothing
-      hd :: tl -> Util.or (search hd) (searchF tl)
+      hd :: tl -> Util.mappend (search hd) (searchF tl)
     tree = getTree (selectWin focus model).tree model
   in
     Maybe.withDefault "?" <| search tree
@@ -498,35 +511,76 @@ connectHelp {nodeFrom, nodeTo, focusTo} model =
 ---------------------------------------------------
 
 
--- -- | Copy a tree from a given place and paste it in another place in a given
--- -- tree.
--- attach
---    : NodeId -- ^ From
---   -> NodeId -- ^ To
---   -> R.Tree Node -- ^ In
---   -> Maybe (R.Tree Node)
--- attach from to tree =
---   Util.unless
---     (isSubTree from to tree || isSubTree to from tree)
---     (putSubTree (getSubTree from tree) to tree)
+-- | Perform attachement based on the selected node.
+attachSel : Model -> Model
+attachSel model =
+  let
+    focus = model.focus
+    win = selectWin focus model
+    fromMay = win.selMain
+    toMay = case S.toList win.selAux of
+      [to] -> Just to
+      _    -> Nothing
+    inTree = getTree win.tree model
+  in
+    updateSelect focus <|
+      case (fromMay, toMay) of
+        (Just from, Just to) ->
+          case attach from to inTree of
+            Just newTree ->
+              Lens.update trees (D.insert win.tree newTree) model
+            Nothing -> model
+        _ -> model
 
 
--- getSubTree
---    : NodeId
---   -> R.Tree Node
---   -> Maybe (R.Tree Node)
--- getSubTree
+-- | Copy a tree from a given place and paste it in another place in a given
+-- tree.
+attach
+   : NodeId -- ^ From
+  -> NodeId -- ^ To
+  -> R.Tree Node -- ^ In
+  -> Maybe (R.Tree Node)
+attach from to tree =
+  let
+    p id x = Lens.get nodeId x == id
+    putSubTree sub id = R.putSubTree sub (p id)
+    getSubTree id = R.getSubTree (p id)
+    delSubTree id = R.delSubTree (p id)
+    correct (R.Node x ts) =
+      Util.and (L.map correct ts) &&
+      case ts of
+        [] -> isLeaf x
+        _  -> isNode x
+  in
+    if isSubTree to from tree
+    then Nothing
+    else getSubTree from tree
+      |> Maybe.andThen (\sub -> delSubTree from tree
+      |> Maybe.map (\tree1 -> putSubTree sub to tree1)
+      |> Maybe.andThen (Util.guard correct << sortTree))
+      -- |> Maybe.andThen (Util.guard correct))
+
+
+sortTree : R.Tree Node -> R.Tree Node
+sortTree =
+  let
+    pos x = case x of
+      Leaf r -> r.leafPos
+      _ -> Debug.crash "sortTree: should never happen"
+  in
+    R.sortTree pos
 
 
 isSubTree
-   : NodeId
-  -> NodeId
-  -> R.Tree Node
-  -> Bool
+   : NodeId -- ^ x
+  -> NodeId -- ^ y
+  -> R.Tree Node -- ^ the underlying tree
+  -> Bool   -- ^ is `x` in a subtree rooted in `y`?
 isSubTree subId ofId tree =
   S.member ofId (ancestors subId tree)
 
 
+-- | The set of ancestors (IDs) of a given node in a given tree.
 ancestors : NodeId -> R.Tree Node -> S.Set NodeId
 ancestors id tree =
   let
@@ -535,7 +589,7 @@ ancestors id tree =
       then Just acc
       else
         let newAcc = S.insert (Lens.get nodeId x) acc
-        in  L.foldl Util.or Nothing (L.map (go newAcc) ts)
+        in  L.foldl Util.mappend Nothing (L.map (go newAcc) ts)
   in
     Maybe.withDefault S.empty <| go S.empty tree
 
@@ -574,6 +628,12 @@ bot : Lens.Focus { record | bot : a } a
 bot = Lens.create
   .bot
   (\fn model -> {model | bot = fn model.bot})
+
+
+trees : Lens.Focus { record | trees : a } a
+trees = Lens.create
+  .trees
+  (\fn model -> {model | trees = fn model.trees})
 
 
 winLens : Focus -> Lens.Focus { record | bot : a, top : a } a

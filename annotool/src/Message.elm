@@ -33,6 +33,7 @@ type Msg
     | CtrlDown
     | CtrlUp
     | Connect
+    | Attach
     | Many (List Msg)
 
 
@@ -117,6 +118,8 @@ update msg model =
     CtrlUp -> idle <| {model | ctrl=False}
 
     Connect -> idle <| M.connect model
+
+    Attach -> idle <| M.attachSel model
 
     Many ms ->
       let f msg (mdl0, cmds) =

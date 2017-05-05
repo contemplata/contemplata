@@ -1,5 +1,5 @@
 TASK:
-* Attach a subtree to different node
+* Attach a subtree to different node: bug! try attaching VN to a dot...
 
 
 TODO:
@@ -47,3 +47,4 @@ DONE:
 * Make it possible to link two nodes in two viewports
 * Make the order of the terminal nodes explicit and distinguish terminal from
   non-terminal nodes
+* Attach a subtree to different node

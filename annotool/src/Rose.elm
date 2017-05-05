@@ -1,11 +1,15 @@
 module Rose exposing
   ( Tree(..), Forest, Width, leaf, withWidth, getRootSnd
-  , map, flatten, mapAccum, getSubTree )
+  , map, flatten, mapAccum
+  , getSubTree, delSubTree, putSubTree
+  , sortTree
+  )
 
 
 import Util
+import Tuple exposing (first, second)
 
-import List as List
+import List as L
 
 
 ---------------------------------------------------
@@ -88,9 +92,57 @@ getSubTree p t =
       if p x
       then Just (Node x ts)
       else goF ts
-    goF ts = List.foldl Util.or Nothing (List.map goT ts)
+    goF ts = L.foldl Util.mappend Nothing (L.map goT ts)
   in
     goT t
+
+
+-- | Returns the tree without the tree identified by `getSubTree`.
+delSubTree : (a -> Bool) -> Tree a -> Maybe (Tree a)
+delSubTree p t =
+  let
+    goT (Node x ts) =
+      if p x
+      then Nothing
+      else Just (Node x (goF ts))
+    goF ts = Util.catMaybes (L.map goT ts)
+  in
+    goT t
+
+
+-- | Put the first tree under the node of the second tree satisfying the given
+-- predicate.
+putSubTree : Tree a -> (a -> Bool) -> Tree a -> Tree a
+putSubTree s p t =
+  let
+    goT (Node x ts) = Node x <|
+      if p x then s :: ts else goF ts
+    goF ts = L.map goT ts
+  in
+    goT t
+
+
+---------------------------------------------------
+-- Sorting
+---------------------------------------------------
+
+
+-- | Sort the tree based on the ints assigned to its leaves.
+sortTree : (a -> Int) -> Tree a -> Tree a
+sortTree f t =
+  let
+    goT (Node x ts) =
+      case ts of
+        [] -> (Node x ts, f x)
+        _ ->
+          let
+            tps = L.sortBy second <| L.map goT ts
+            ts1 = L.map first tps
+            pos = round <| Util.average <| L.map (toFloat << second) tps
+          in
+            (Node x ts1, pos)
+  in
+    first <| goT t
 
 
 ---------------------------------------------------
@@ -112,9 +164,9 @@ withWidth f margin (Node x subTrees) = case subTrees of
   [] -> Node (x, f x + margin) []
   _  ->
     let
-      ts = List.map (withWidth f margin) subTrees
-      ws = List.map getRootSnd ts
-      width = max (List.sum ws) (f x + margin)
+      ts = L.map (withWidth f margin) subTrees
+      ws = L.map getRootSnd ts
+      width = max (L.sum ws) (f x + margin)
     in
       Node (x, width) ts
 
