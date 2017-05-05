@@ -1,5 +1,4 @@
 TASK:
-* Distinguish main selected node from auxiliary selected nodes
 * Make it possible to link two nodes in two viewports
 * Attach a subtree to different node
 
@@ -44,3 +43,4 @@ DONE:
 * Make the text in the main windows non-selectable
 * Update the style of links
 * Simplify Model.moveCursor
+* Distinguish main selected node from auxiliary selected nodes

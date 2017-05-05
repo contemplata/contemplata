@@ -30,6 +30,8 @@ type Msg
     | EditLabel
     | Delete -- ^ Delete the selected nodes in the focused window
     | Add -- ^ Delete the selected nodes in the focused window
+    | CtrlDown
+    | CtrlUp
     | Many (List Msg)
 
 
@@ -84,7 +86,10 @@ update msg model =
           model
         -- {model | winProp = newProp}
 
-    Select win i -> idle <| M.selectNode win i model
+    Select win i -> idle <|
+      if model.ctrl
+        then M.selectNodeAux win i model
+        else M.selectNode win i model
 
     Next -> idle <| M.moveCursor True model
 
@@ -106,6 +111,9 @@ update msg model =
     Delete -> idle <| M.deleteSel model.focus model
 
     Add -> idle <| M.addSel model.focus model
+
+    CtrlDown -> idle <| {model | ctrl=True}
+    CtrlUp -> idle <| {model | ctrl=False}
 
     Many ms ->
       let f msg (mdl0, cmds) =

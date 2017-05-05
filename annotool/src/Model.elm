@@ -1,11 +1,14 @@
 module Model exposing
   ( Model, Window, NodeId, Node, Drag, Link, Addr, Focus(..)
-  , selectWin, dragOn, getTree
+  , selectWin, dragOn, getTree, selAll
   , getPosition, nextTree, prevTree, moveCursor
-  , treeNum, treePos, selectNode, getLabel, setLabel
-  , deleteSel, addSel
+  , treeNum, treePos
+  -- Labels:
+  , getLabel, setLabel
+  -- Node selection:
+  , selectNode, selectNodeAux, deleteSel, addSel
   -- Lenses:
-  , top, bot, dim, winLens, drag, select, pos, height, heightProp )
+  , top, bot, dim, winLens, drag, pos, height, heightProp )
 
 
 import Mouse exposing (Position)
@@ -43,20 +46,20 @@ type alias Model =
   -- window dimensions
   , dim : Dim
 
---   -- size of the top window and proportion between the top/bottom sizes
---   , winHeight : Int
---   , winProp : Int
+  -- is CTRL key pressed
+  , ctrl : Bool
   }
 
 
 type alias Window =
   { tree : TreeId
 
---   , mainSel : Maybe NodeId
---     -- ^ Main selected node (if any)
---   , auxSel : S.Set NodeId
---     -- ^ Auxiliary selected nodes
-  , select : S.Set NodeId
+  -- , select : S.Set NodeId
+  , selMain : Maybe NodeId
+    -- ^ Main selected node (if any)
+  , selAux : S.Set NodeId
+    -- ^ Auxiliary selected nodes;
+    -- invariant: selMain not in selAux
 
   -- , select : S.Set NodeId
   , pos : Position
@@ -141,6 +144,15 @@ getTree tree model =
   case D.get tree model.trees of
     Nothing -> Debug.crash "Model.getTree: no tree with the given ID"
     Just t  -> t
+
+
+-- | Retrieve all selected nodes.
+selAll : Window -> S.Set NodeId
+selAll win =
+  S.union win.selAux <|
+    case win.selMain of
+      Nothing -> S.empty
+      Just x  -> S.singleton x
 
 
 ---------------------------------------------------
@@ -235,7 +247,9 @@ moveCursor next model =
     alter win =
       { win
           | tree = switch win.tree model
-          , select = S.empty
+          -- , select = S.empty
+          , selMain = Nothing
+          , selAux = S.empty
       }
     update foc = Focus.update foc alter model
   in
@@ -252,15 +266,39 @@ moveCursor next model =
 -- We bypass the focus of the model since the node can be possibly selected
 -- before the window it is in is even focused on!
 selectNode : Focus -> NodeId -> Model -> Model
-selectNode win i model =
+selectNode focus i model =
   let
-    update sel = case S.member i sel of
-      True  -> S.remove i sel
-      False -> S.insert i sel
+    alter win =
+      { win
+          | selMain =
+              if win.selMain == Just i
+              then Nothing
+              else Just i
+          , selAux = S.empty
+      }
+    update lens = Focus.update lens alter model
   in
-    case win of
-      Top -> Focus.update (top => select) update model
-      Bot -> Focus.update (bot => select) update model
+    case focus of
+      Top -> update top
+      Bot -> update bot
+
+
+-- We bypass the focus of the model since the node can be possibly selected
+-- before the window it is in is even focused on!
+selectNodeAux : Focus -> NodeId -> Model -> Model
+selectNodeAux focus i model =
+  let
+    alter win =
+      if win.selMain == Just i
+      then win
+      else if S.member i win.selAux
+      then {win | selAux = S.remove i win.selAux}
+      else {win | selAux = S.insert i win.selAux}
+    update lens = Focus.update lens alter model
+  in
+    case focus of
+      Top -> update top
+      Bot -> update bot
 
 
 ---------------------------------------------------
@@ -314,7 +352,7 @@ procSel f focus model =
   let
     win = selectWin focus model
     tree = getTree win.tree model
-    newTree = f win.select tree
+    newTree = f (selAll win) tree
     newTrees = D.insert win.tree newTree model.trees
   in
     updateSelect focus <| { model | trees = newTrees }
@@ -412,24 +450,14 @@ identify dummyVal tree =
 -- | Update the set of the selected nodes depending on the window in which the
 -- tree was modified.
 updateSelect : Focus -> Model -> Model
-updateSelect win model =
+updateSelect foc model =
   let
-    newTopSel = case win of
-      Top -> S.empty
-      Bot -> if model.top.tree == model.bot.tree
-             then S.empty else model.top.select
-    newBotSel = case win of
-      Bot -> S.empty
-      Top -> if model.top.tree == model.bot.tree
-             then S.empty else model.bot.select
+    alter win =
+      {win | selMain = Nothing, selAux = S.empty}
   in
-    model
-      |> Focus.set (top => select) newTopSel
-      |> Focus.set (bot => select) newBotSel
---     { model
---         | top = { model.top | select = newTopSel }
---         , bot = { model.bot | select = newBotSel } }
-
+    model |> case foc of
+      Top -> Focus.update top alter
+      Bot -> Focus.update bot alter
 
 
 ---------------------------------------------------
@@ -462,10 +490,10 @@ dim = Focus.create
   (\fn model -> {model | dim = fn model.dim})
 
 
-select : Focus.Focus { record | select : a } a
-select = Focus.create
-  .select
-  (\fn model -> {model | select = fn model.select})
+-- select : Focus.Focus { record | select : a } a
+-- select = Focus.create
+--   .select
+--   (\fn model -> {model | select = fn model.select})
 
 
 pos : Focus.Focus { record | pos : a } a

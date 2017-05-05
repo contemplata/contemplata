@@ -68,6 +68,7 @@ viewWindow win model =
   -- @tabindex required to make the div register keyboard events
   , Atts.attribute "tabindex" "1"
   , backKeyDown
+  , backKeyUp
 
   , Atts.style
     [ "position" => "absolute"
@@ -112,9 +113,10 @@ viewTree focus model =
   let
     win = M.selectWin focus model
     tree = M.getTree win.tree model
+    -- select = M.selAll win
   in
     drawTree
-      focus win.select
+      focus win.selMain win.selAux
       <| positionTree (M.getPosition win)
       <| R.withWidth Cfg.stdWidth Cfg.stdMargin tree
 
@@ -142,12 +144,18 @@ viewTreeId win model =
       [ Html.text txt ]
 
 
+---------------------------------------------------
+-- Drawing trees
+---------------------------------------------------
+
+
 drawTree
    : M.Focus -- ^ Which window is it in?
-  -> S.Set M.NodeId -- ^ Selected nodes
+  -> Maybe M.NodeId -- ^ Selected main
+  -> S.Set M.NodeId -- ^ Selected auxiliaries
   -> R.Tree (M.Node, Position) -- ^ Tree to draw
   -> Html.Html Msg
-drawTree focus select (R.Node (node, pos) subTrees) =
+drawTree focus selMain selAux (R.Node (node, pos) subTrees) =
   let
     lineCfg = { defLineCfg
       | strokeWidth = 2
@@ -156,31 +164,41 @@ drawTree focus select (R.Node (node, pos) subTrees) =
     drawForest forest = case forest of
       [] -> []
       t :: ts ->
-        drawTree focus select t
+        drawTree focus selMain selAux t
           :: viewLine lineCfg pos (R.getRootSnd t)
           :: drawForest ts
   in
     Html.div []
-      (  drawNode select focus pos node
+      (  drawNode selMain selAux focus pos node
       :: drawForest subTrees )
 
 
-drawNode : S.Set M.NodeId -> M.Focus -> Position -> M.Node -> Html.Html Msg
-drawNode select focus at node =
+drawNode
+   : Maybe M.NodeId
+  -> S.Set M.NodeId
+  -> M.Focus
+  -> Position
+  -> M.Node
+  -> Html.Html Msg
+drawNode selMain selAux focus at node =
   let
     -- width = nodeWidth
     width = Cfg.stdWidth node
     height = Cfg.nodeHeight
+    auxStyle =
+      ( if S.member node.nodeId selAux || Just node.nodeId == selMain
+          then ["background-color" => "#BC0000"]
+          else ["background-color" => "#3C8D2F"] )
+      ++
+      ( if Just node.nodeId == selMain
+          then ["border" => "solid", "border-color" => "black"]
+          else ["border" => "none"] )
   in
     Html.div
       [ nodeMouseDown focus node
       , Atts.class "noselect"
-      , Atts.style
-          [
-            if S.member node.nodeId select
-              then "background-color" => "#BC0000"
-              else "background-color" => "#3C8D2F"
-          , "cursor" => "pointer"
+      , Atts.style <| auxStyle ++
+          [ "cursor" => "pointer"
           -- , "opacity" => "1.0"
 
           , "width" => px width
@@ -215,13 +233,13 @@ viewSideWindow : M.Focus -> M.Model -> Html.Html Msg
 viewSideWindow win model =
   let
     selected = case win of
-      M.Top -> model.top.select
-      M.Bot -> model.bot.select
-    (condAtts, event) = case S.toList selected of
-      [nodeId] ->
+      M.Top -> model.top.selMain
+      M.Bot -> model.bot.selMain
+    (condAtts, event) = case selected of
+      Just nodeId ->
         ( [Atts.value (M.getLabel nodeId win model)]
         , ChangeLabel nodeId win )
-      _ ->
+      Nothing ->
         ( [Atts.disabled True, Atts.placeholder "<label>"]
         , \_ -> Msg.dummy )
   in
@@ -503,14 +521,30 @@ backKeyDown =
       -- "e"
       69 -> EditLabel
 
+      -- "ctrl"
+      17 -> CtrlDown
+
       _  -> Msg.dummy
   in
     onKeyDown tag
 
 
--- onKeyUp : (Int -> msg) -> Html.Attribute msg
--- onKeyUp tagger =
---   Events.on "keydown" (Decode.map tagger Events.keyCode)
+backKeyUp : Html.Attribute Msg
+backKeyUp =
+  let
+    tag code = case code of
+
+      -- "ctrl"
+      17 -> CtrlUp
+
+      _  -> Msg.dummy
+  in
+    onKeyUp tag
+
+
+onKeyUp : (Int -> msg) -> Html.Attribute msg
+onKeyUp tagger =
+  Events.on "keyup" (Decode.map tagger Events.keyCode)
 
 
 onKeyDown : (Int -> msg) -> Html.Attribute msg

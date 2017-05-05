@@ -41,16 +41,13 @@ main =
 init : ( M.Model, Cmd Msg )
 init =
   let
-    top =
-      { tree = "t1"
+    top = win "t1"
+    bot = win "t2"
+    win name =
+      { tree = name
       , pos = Position 400 50
-      , select = S.empty
-      , drag = Nothing
-      }
-    bot =
-      { tree = "t2"
-      , pos = Position 400 50
-      , select = S.empty
+      , selMain = Nothing
+      , selAux = S.empty
       , drag = Nothing
       }
     dim =
@@ -74,6 +71,7 @@ init =
           , (("t1", 1), ("t1", 2))
           ]
       , dim = dim
+      , ctrl = False
       }
     initHeight = Task.perform Resize Window.size
   in
