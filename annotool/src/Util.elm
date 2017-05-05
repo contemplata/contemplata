@@ -1,4 +1,4 @@
-module Util exposing (split, catMaybes, find)
+module Util exposing (split, catMaybes, find, unless, or)
 
 
 -- | The results is (ls, rs) where `ls` are all the left-most elements which do
@@ -40,3 +40,15 @@ find p xs =
       case p hd of
         True  -> Just hd
         False -> find p tl
+
+
+unless : Bool -> a -> Maybe a
+unless flag x = case flag of
+  True -> Nothing
+  False -> Just x
+
+
+or : Maybe a -> Maybe a -> Maybe a
+or x y = case (x, y) of
+  (Just v, _)  -> Just v
+  (Nothing, v) -> v

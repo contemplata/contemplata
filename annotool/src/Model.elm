@@ -114,18 +114,6 @@ type Node
     , leafPos : Int }
 
 
--- nodeId : Node -> NodeId
--- nodeId node = case node of
---   Node r -> r.nodeId
---   Leaf r -> r.nodeId
---
---
--- nodeVal : Node -> String
--- nodeVal node = case node of
---   Node r -> r.nodeVal
---   Leaf r -> r.nodeVal
-
-
 -- Information about dragging.
 type alias Drag =
     { start : Position
@@ -341,10 +329,7 @@ getLabel id focus model =
       else searchF ts
     searchF ts = case ts of
       [] -> Nothing
-      hd :: tl -> or (search hd) (searchF tl)
-    or x y = case (x, y) of
-      (Just v, _)  -> Just v
-      (Nothing, v) -> v
+      hd :: tl -> Util.or (search hd) (searchF tl)
     tree = getTree (selectWin focus model).tree model
   in
     Maybe.withDefault "?" <| search tree
@@ -372,7 +357,7 @@ setLabel id focus newLabel model =
 ---------------------------------------------------
 
 
--- | Delete selected nodes in a given window.
+-- | Process selected nodes in a given window.
 procSel
   :  (S.Set NodeId -> R.Tree Node -> R.Tree Node)
   -> Focus -> Model -> Model
@@ -509,6 +494,53 @@ connectHelp {nodeFrom, nodeTo, focusTo} model =
 
 
 ---------------------------------------------------
+-- Attach subtree
+---------------------------------------------------
+
+
+-- -- | Copy a tree from a given place and paste it in another place in a given
+-- -- tree.
+-- attach
+--    : NodeId -- ^ From
+--   -> NodeId -- ^ To
+--   -> R.Tree Node -- ^ In
+--   -> Maybe (R.Tree Node)
+-- attach from to tree =
+--   Util.unless
+--     (isSubTree from to tree || isSubTree to from tree)
+--     (putSubTree (getSubTree from tree) to tree)
+
+
+-- getSubTree
+--    : NodeId
+--   -> R.Tree Node
+--   -> Maybe (R.Tree Node)
+-- getSubTree
+
+
+isSubTree
+   : NodeId
+  -> NodeId
+  -> R.Tree Node
+  -> Bool
+isSubTree subId ofId tree =
+  S.member ofId (ancestors subId tree)
+
+
+ancestors : NodeId -> R.Tree Node -> S.Set NodeId
+ancestors id tree =
+  let
+    go acc (R.Node x ts) =
+      if Lens.get nodeId x == id
+      then Just acc
+      else
+        let newAcc = S.insert (Lens.get nodeId x) acc
+        in  L.foldl Util.or Nothing (L.map (go newAcc) ts)
+  in
+    Maybe.withDefault S.empty <| go S.empty tree
+
+
+---------------------------------------------------
 -- Utils
 ---------------------------------------------------
 
@@ -524,6 +556,7 @@ updateSelect foc model =
     model |> case foc of
       Top -> Lens.update top alter
       Bot -> Lens.update bot alter
+
 
 
 ---------------------------------------------------

@@ -1,7 +1,9 @@
 module Rose exposing
   ( Tree(..), Forest, Width, leaf, withWidth, getRootSnd
-  , map, flatten, mapAccum )
+  , map, flatten, mapAccum, getSubTree )
 
+
+import Util
 
 import List as List
 
@@ -76,6 +78,19 @@ mapAccumL f acc xs =
         (acc2, ys) = mapAccumL f acc1 tl
       in
         (acc2, y :: ys)
+
+
+-- | Find the first subtree which satisfies the given predicate.
+getSubTree : (a -> Bool) -> Tree a -> Maybe (Tree a)
+getSubTree p t =
+  let
+    goT (Node x ts) =
+      if p x
+      then Just (Node x ts)
+      else goF ts
+    goF ts = List.foldl Util.or Nothing (List.map goT ts)
+  in
+    goT t
 
 
 ---------------------------------------------------
