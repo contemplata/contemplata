@@ -49,18 +49,25 @@ type alias Model =
   }
 
 
+type alias Window =
+  { tree : TreeId
+
+--   , mainSel : Maybe NodeId
+--     -- ^ Main selected node (if any)
+--   , auxSel : S.Set NodeId
+--     -- ^ Auxiliary selected nodes
+  , select : S.Set NodeId
+
+  -- , select : S.Set NodeId
+  , pos : Position
+  , drag : Maybe Drag
+  }
+
+
 type alias Dim =
   { width : Int
   , height : Int
   , heightProp : Int
-  }
-
-
-type alias Window =
-  { tree : TreeId
-  , select : S.Set NodeId
-  , pos : Position
-  , drag : Maybe Drag
   }
 
 
@@ -225,26 +232,16 @@ moveCursor : Bool -> Model -> Model
 moveCursor next model =
   let
     switch = if next then nextTree else prevTree
+    alter win =
+      { win
+          | tree = switch win.tree model
+          , select = S.empty
+      }
+    update foc = Focus.update foc alter model
   in
-  case model.focus of
-    Top  ->
-      let modelTop = model.top in
-      { model |
-          top = { modelTop
-            | tree = switch model.top.tree model
-            , select = S.empty }
-      }
-          -- | topTree = nextTree model.topTree model
---       { model
---           | topTree = nextTree model.topTree model
---           , topSelect = S.empty }
-    Bot  ->
-      let modelBot = model.bot in
-      { model |
-          bot = { modelBot
-            | tree = switch model.bot.tree model
-            , select = S.empty }
-      }
+    case model.focus of
+      Top -> update top
+      Bot -> update bot
 
 
 ---------------------------------------------------

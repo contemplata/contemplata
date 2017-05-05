@@ -1,9 +1,13 @@
+TASK:
+* Distinguish main selected node from auxiliary selected nodes
+* Make it possible to link two nodes in two viewports
+* Attach a subtree to different node
+
+
 TODO:
+* Mark an event
+* FS editing for an event
 * Check if in your code, "display = flex" is used for something
-* Simplify Model.moveCursor
-* Make it possible to link two nodes in two viewports.
-  Generally, it should also work if the two nodes are
-  in the same tree.
 * Make a flat message window on the bottom
 
 
@@ -39,3 +43,4 @@ DONE:
 * Do not show links if they go beyond the windows
 * Make the text in the main windows non-selectable
 * Update the style of links
+* Simplify Model.moveCursor
