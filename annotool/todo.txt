@@ -4,6 +4,7 @@ TASK:
 
 TODO:
 * Mark an event
+* When a node is deleted, the corresponding links should be deleted as well!
 * FS editing for an event
 * Check if in your code, "display = flex" is used for something
 * Make a flat message window on the bottom
@@ -44,3 +45,5 @@ DONE:
 * Simplify Model.moveCursor
 * Distinguish main selected node from auxiliary selected nodes
 * Make it possible to link two nodes in two viewports
+* Make the order of the terminal nodes explicit and distinguish terminal from
+  non-terminal nodes

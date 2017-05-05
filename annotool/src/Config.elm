@@ -6,6 +6,9 @@ module Config exposing
   , linkHeadSize, linkHeadDist, linkTailDist )
 
 
+import Focus as Lens
+import List as L
+
 import Rose as R
 import Model as M
 
@@ -32,7 +35,9 @@ import Model as M
 
 -- | Width of a node.
 stdWidth : M.Node -> Int
-stdWidth x = max 30 <| (String.length x.nodeVal * 10)
+stdWidth x =
+  let val = Lens.get M.nodeVal x
+  in  max 30 <| String.length val * 10
 -- stdWidth x = 100
 
 -- nodeWidth : Int
@@ -112,26 +117,43 @@ linkTailDist = 15
 testTree1 : R.Tree M.Node
 testTree1 =
   let
-    node i xs = R.Node {nodeId = i, nodeVal = toString i} xs
+    node i xs = R.Node (M.Node {nodeId = i, nodeVal = toString i}) xs
+    leaf i = R.Node (M.Leaf {nodeId = i, nodeVal = toString i, leafPos = i}) []
   in
     node 1
-      [ node 2 [node 3 []]
-      , node 4 [node 5 []]
+      [ node 2 [leaf 3]
+      , node 4 [leaf 5]
       ]
 
 
 testTree2 : R.Tree M.Node
 testTree2 =
   let
-    node i xs = R.Node {nodeId = i, nodeVal = toString i} xs
+    -- node i xs = R.Node {nodeId = i, nodeVal = toString i} xs
+    node i xs = R.Node (M.Node {nodeId = i, nodeVal = toString i}) xs
+    leaf i = R.Node (M.Leaf {nodeId = i, nodeVal = toString i, leafPos = i}) []
   in
     node 1
-      [ node 2 [node 3 []]
-      , node 4 [node 5 []]
-      , node 6 []
+      [ node 2 [leaf 3]
+      , node 4 [leaf 5]
+      , leaf 6
       , node 7
-        [node 8 [], node 9 [], node 10 []]
+        [leaf 8, leaf 9, leaf 10]
       ]
+
+
+mkSynTree
+   : R.Tree {nodeId : M.NodeId, nodeVal : String}
+  -> R.Tree M.Node
+mkSynTree (R.Node x ts) =
+  if not (L.isEmpty ts)
+  then R.Node (M.Node x) (L.map mkSynTree ts)
+  else
+    let leaf = M.Leaf
+          { nodeId = x.nodeId
+          , nodeVal = x.nodeVal
+          , leafPos = x.nodeId }
+    in  R.Node leaf []
 
 
 testTree3 : R.Tree M.Node
@@ -156,7 +178,7 @@ testTree3 =
     addId i x = (i+1, {nodeId = i, nodeVal = x})
     snd (x, y) = y
   in
-    snd <| R.mapAccum addId 1 <| tree
+    mkSynTree <| snd <| R.mapAccum addId 1 <| tree
 
 
 
@@ -176,7 +198,7 @@ testTree4 =
     addId i x = (i+1, {nodeId = i, nodeVal = x})
     snd (x, y) = y
   in
-    snd <| R.mapAccum addId 1 <| tree
+    mkSynTree <| snd <| R.mapAccum addId 1 <| tree
 
 
 testTree5 : R.Tree M.Node
@@ -198,4 +220,4 @@ testTree5 =
     addId i x = (i+1, {nodeId = i, nodeVal = x})
     snd (x, y) = y
   in
-    snd <| R.mapAccum addId 1 <| tree
+    mkSynTree <| snd <| R.mapAccum addId 1 <| tree

@@ -1,5 +1,5 @@
 module Model exposing
-  ( Model, Window, NodeId, Node, Drag, Link, Addr, Focus(..)
+  ( Model, Window, NodeId, Node(..), Drag, Link, Addr, Focus(..)
   , selectWin, dragOn, getTree, selAll
   , getPosition, nextTree, prevTree, moveCursor
   , treeNum, treePos
@@ -10,7 +10,9 @@ module Model exposing
   -- Links
   , connect -- LinkInfo
   -- Lenses:
-  , top, bot, dim, winLens, drag, pos, height, heightProp )
+  , top, bot, dim, winLens, drag, pos, height, heightProp
+  , nodeId, nodeVal
+  )
 
 
 import Mouse exposing (Position)
@@ -18,7 +20,7 @@ import Set as S
 import Dict as D
 import List as L
 import Focus exposing ((=>))
-import Focus as Focus
+import Focus as Lens
 import Maybe as Maybe
 
 import Util as Util
@@ -87,28 +89,51 @@ type alias Link = (Addr, Addr)
 type alias Addr = (TreeId, NodeId)
 
 
--- Node identifier
-type alias NodeId = Int
-
-
--- Tree identifier
+-- | Tree identifier
 type alias TreeId = String
 
 
--- Node in a syntactic tree
-type alias Node =
-  { nodeId : NodeId
-  , nodeVal : String }
+-- | Internal node identifier
+type alias NodeId = Int
 
 
--- Information about a drag
+-- -- | Leaf identifier
+-- type alias LeafId = Int
+
+
+-- | Node in a syntactic tree is either an internal node or a leaf.
+type Node
+  = Node
+    { nodeId : NodeId
+    , nodeVal : String }
+  | Leaf
+    { nodeId : NodeId
+    , nodeVal : String
+      -- | The position of the leaf in the underlying sentence.
+      -- The positions do not have to be consecutive.
+    , leafPos : Int }
+
+
+-- nodeId : Node -> NodeId
+-- nodeId node = case node of
+--   Node r -> r.nodeId
+--   Leaf r -> r.nodeId
+--
+--
+-- nodeVal : Node -> String
+-- nodeVal node = case node of
+--   Node r -> r.nodeVal
+--   Leaf r -> r.nodeVal
+
+
+-- Information about dragging.
 type alias Drag =
     { start : Position
     , current : Position
     }
 
 
--- Focus selector
+-- | Focus selector.
 type Focus = Top | Bot
 
 
@@ -253,7 +278,7 @@ moveCursor next model =
           , selMain = Nothing
           , selAux = S.empty
       }
-    update foc = Focus.update foc alter model
+    update foc = Lens.update foc alter model
   in
     case model.focus of
       Top -> update top
@@ -278,7 +303,7 @@ selectNode focus i model =
 --               else Just i
           , selAux = S.empty
       }
-    update lens = Focus.update lens alter model
+    update lens = Lens.update lens alter model
   in
     case focus of
       Top -> update top
@@ -296,7 +321,7 @@ selectNodeAux focus i model =
       else if S.member i win.selAux
       then {win | selAux = S.remove i win.selAux}
       else {win | selAux = S.insert i win.selAux}
-    update lens = Focus.update lens alter model
+    update lens = Lens.update lens alter model
   in
     case focus of
       Top -> update top
@@ -309,10 +334,10 @@ selectNodeAux focus i model =
 
 
 getLabel : NodeId -> Focus -> Model -> String
-getLabel nodeId focus model =
+getLabel id focus model =
   let
-    search (R.Node x ts) = if nodeId == x.nodeId
-      then Just x.nodeVal
+    search (R.Node x ts) = if id == Lens.get nodeId x
+      then Just (Lens.get nodeVal x)
       else searchF ts
     searchF ts = case ts of
       [] -> Nothing
@@ -326,10 +351,11 @@ getLabel nodeId focus model =
 
 
 setLabel : NodeId -> Focus -> String -> Model -> Model
-setLabel nodeId focus newLabel model =
+setLabel id focus newLabel model =
   let
-    update (R.Node x ts) = if nodeId == x.nodeId
-      then R.Node {x | nodeVal = newLabel} ts
+    update (R.Node x ts) = if id == Lens.get nodeId x
+      -- then R.Node {x | nodeVal = newLabel} ts
+      then R.Node (Lens.set nodeVal newLabel x) ts
       else R.Node x (updateF ts)
     updateF ts = case ts of
       [] -> []
@@ -374,9 +400,9 @@ deleteSel =
 
 -- | Delete a given node, provided that it is not a root.
 deleteNode : NodeId -> R.Tree Node -> R.Tree Node
-deleteNode nodeId tree =
+deleteNode id tree =
   let
-    update (R.Node x ts) = if nodeId == x.nodeId
+    update (R.Node x ts) = if id == Lens.get nodeId x
       then ts
       else [R.Node x (updateF ts)]
     updateF ts = case ts of
@@ -402,7 +428,7 @@ addSel = procSel addNode
 addNode : S.Set NodeId -> R.Tree Node -> R.Tree Node
 addNode ids tree =
   let
-    rootId (R.Node x _) = x.nodeId
+    rootId (R.Node x _) = Lens.get nodeId x
     split3 ts =
       let
         (ls, tl) = Util.split (\x -> S.member (rootId x) ids) ts
@@ -430,7 +456,7 @@ identify dummyVal tree =
   let
     findMaxMay =
         List.maximum
-          <| L.map (\x -> x.nodeId)
+          <| L.map (\x -> Lens.get nodeId x)
           <| Util.catMaybes
           <| R.flatten tree
     newId1 = case findMaxMay of
@@ -438,7 +464,7 @@ identify dummyVal tree =
        Just ix -> ix + 1
     update newId nodeMay =
       case nodeMay of
-        Nothing -> (newId+1, {nodeId=newId, nodeVal=dummyVal})
+        Nothing -> (newId+1, Node {nodeId=newId, nodeVal=dummyVal})
         Just x  -> (newId, x)
   in
     Tuple.second <| R.mapAccum update newId1 tree
@@ -479,7 +505,7 @@ connectHelp {nodeFrom, nodeTo, focusTo} model =
       False -> S.insert link
       True  -> S.remove link
   in
-    Focus.update links alter model
+    Lens.update links alter model
 
 
 ---------------------------------------------------
@@ -496,8 +522,8 @@ updateSelect foc model =
       {win | selMain = Nothing, selAux = S.empty}
   in
     model |> case foc of
-      Top -> Focus.update top alter
-      Bot -> Focus.update bot alter
+      Top -> Lens.update top alter
+      Bot -> Lens.update bot alter
 
 
 ---------------------------------------------------
@@ -505,61 +531,87 @@ updateSelect foc model =
 ---------------------------------------------------
 
 
-top : Focus.Focus { record | top : a } a
-top = Focus.create
+top : Lens.Focus { record | top : a } a
+top = Lens.create
   .top
   (\fn model -> {model | top = fn model.top})
 
 
-bot : Focus.Focus { record | bot : a } a
-bot = Focus.create
+bot : Lens.Focus { record | bot : a } a
+bot = Lens.create
   .bot
   (\fn model -> {model | bot = fn model.bot})
 
 
-winLens : Focus -> Focus.Focus { record | bot : a, top : a } a
+winLens : Focus -> Lens.Focus { record | bot : a, top : a } a
 winLens focus =
   case focus of
     Top -> top
     Bot -> bot
 
 
-dim : Focus.Focus { record | dim : a } a
-dim = Focus.create
+dim : Lens.Focus { record | dim : a } a
+dim = Lens.create
   .dim
   (\fn model -> {model | dim = fn model.dim})
 
 
-links : Focus.Focus { record | links : a } a
-links = Focus.create
+links : Lens.Focus { record | links : a } a
+links = Lens.create
   .links
   (\fn model -> {model | links = fn model.links})
 
--- select : Focus.Focus { record | select : a } a
--- select = Focus.create
+-- select : Lens.Focus { record | select : a } a
+-- select = Lens.create
 --   .select
 --   (\fn model -> {model | select = fn model.select})
 
 
-pos : Focus.Focus { record | pos : a } a
-pos = Focus.create
+pos : Lens.Focus { record | pos : a } a
+pos = Lens.create
   .pos
   (\fn model -> {model | pos = fn model.pos})
 
 
-drag : Focus.Focus { record | drag : a } a
-drag = Focus.create
+drag : Lens.Focus { record | drag : a } a
+drag = Lens.create
   .drag
   (\fn model -> {model | drag = fn model.drag})
 
 
-height : Focus.Focus { record | height : a } a
-height = Focus.create
+height : Lens.Focus { record | height : a } a
+height = Lens.create
   .height
   (\fn model -> {model | height = fn model.height})
 
 
-heightProp : Focus.Focus { record | heightProp : a } a
-heightProp = Focus.create
+heightProp : Lens.Focus { record | heightProp : a } a
+heightProp = Lens.create
   .heightProp
   (\fn model -> {model | heightProp = fn model.heightProp})
+
+
+nodeId : Lens.Focus Node NodeId
+nodeId =
+  let
+    get node = case node of
+      Node r -> r.nodeId
+      Leaf r -> r.nodeId
+    update f node = case node of
+      Node r -> Node {r | nodeId = f r.nodeId}
+      Leaf r -> Leaf {r | nodeId = f r.nodeId}
+  in
+    Lens.create get update
+
+
+nodeVal : Lens.Focus Node String
+nodeVal =
+  let
+    get node = case node of
+      Node r -> r.nodeVal
+      Leaf r -> r.nodeVal
+    update f node = case node of
+      Node r -> Node {r | nodeVal = f r.nodeVal}
+      Leaf r -> Leaf {r | nodeVal = f r.nodeVal}
+  in
+    Lens.create get update

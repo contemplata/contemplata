@@ -14,6 +14,7 @@ import List as L
 import Maybe as Maybe
 import Tuple exposing (first, second)
 import Mouse exposing (Position)
+import Focus as Lens
 
 import Rose as R
 import Util as Util
@@ -185,12 +186,13 @@ drawNode selMain selAux focus at node =
     -- width = nodeWidth
     width = Cfg.stdWidth node
     height = Cfg.nodeHeight
+    nodeId = Lens.get M.nodeId node
     auxStyle =
-      ( if S.member node.nodeId selAux || Just node.nodeId == selMain
+      ( if S.member nodeId selAux || Just nodeId == selMain
           then ["background-color" => "#BC0000"]
           else ["background-color" => "#3C8D2F"] )
       ++
-      ( if Just node.nodeId == selMain
+      ( if Just nodeId == selMain
           then ["border" => "solid", "border-color" => "black"]
           else ["border" => "none"] )
   in
@@ -216,7 +218,7 @@ drawNode selMain selAux focus at node =
           , "justify-content" => "center"
           ]
       ]
-      [ Html.text node.nodeVal ]
+      [ Html.text (Lens.get M.nodeVal node) ]
 --       [ Html.div
 --           [ Atts.attribute "contenteditable" "true" ]
 --           [ Html.text node.nodeVal ]
@@ -487,7 +489,7 @@ viewLine cfg beg end =
 
 nodeMouseDown : M.Focus -> M.Node -> Html.Attribute Msg
 nodeMouseDown win x =
-  Events.onMouseDown (Select win x.nodeId)
+  Events.onMouseDown (Select win <| Lens.get M.nodeId x)
 
 
 backMouseDown : M.Focus -> Html.Attribute Msg
@@ -593,7 +595,7 @@ positionTree pos (R.Node (node, rootWidth) subTrees) =
 nodePos : M.NodeId -> R.Tree (M.Node, Position) -> Maybe Position
 nodePos nodeId tree = Maybe.map second <|
   Util.find
-    (\node -> (first node).nodeId == nodeId)
+    (\node -> Lens.get M.nodeId (first node) == nodeId)
     (R.flatten tree)
 
 
