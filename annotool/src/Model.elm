@@ -127,6 +127,14 @@ isLeaf : Node -> Bool
 isLeaf = not << isNode
 
 
+-- | Verify the basic well-formedness properties.
+wellFormed : R.Tree Node -> Bool
+wellFormed (R.Node x ts) =
+  case ts of
+    [] -> isLeaf x
+    _  -> isNode x && Util.and (L.map wellFormed ts)
+
+
 -- Information about dragging.
 type alias Drag =
     { start : Position
@@ -546,19 +554,15 @@ attach from to tree =
     putSubTree sub id = R.putSubTree sub (p id)
     getSubTree id = R.getSubTree (p id)
     delSubTree id = R.delSubTree (p id)
-    correct (R.Node x ts) =
-      Util.and (L.map correct ts) &&
-      case ts of
-        [] -> isLeaf x
-        _  -> isNode x
   in
     if isSubTree to from tree
     then Nothing
     else getSubTree from tree
       |> Maybe.andThen (\sub -> delSubTree from tree
       |> Maybe.map (\tree1 -> putSubTree sub to tree1)
-      |> Maybe.andThen (Util.guard correct << sortTree))
-      -- |> Maybe.andThen (Util.guard correct))
+      |> Maybe.andThen (Util.guard wellFormed)
+      |> Maybe.map sortTree)
+      -- |> Maybe.andThen (Util.guard wellFormed))
 
 
 sortTree : R.Tree Node -> R.Tree Node

@@ -1,5 +1,4 @@
 TASK:
-* Attach a subtree to different node: bug! try attaching VN to a dot...
 
 
 TODO:
@@ -48,3 +47,4 @@ DONE:
 * Make the order of the terminal nodes explicit and distinguish terminal from
   non-terminal nodes
 * Attach a subtree to different node
+* Attach a subtree to different node: bug! try attaching VN to a dot...
