@@ -1,17 +1,33 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
 
 
 -- | The annotation server.
 
 
-module Odil.Server (runServer) where
+module Odil.Server
+(
+-- * Types
+  module Odil.Server.Types
+
+-- * Server
+, runServer
+) where
 
 
 import Control.Monad (forM_, forever)
 import qualified Control.Concurrent as C
+import qualified Data.Map.Strict as M
+import qualified Data.Tree as R
 
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
+-- import qualified Data.ByteString.Lazy as LBS
 import qualified Network.WebSockets as WS
+import qualified Data.Aeson as JSON
+
+import Odil.Server.Types
+import qualified Odil.Server.Config as Cfg
 
 
 -----------
@@ -19,13 +35,11 @@ import qualified Network.WebSockets as WS
 -----------
 
 
--- | The only thing the server has to know for know is the connection (if any).
--- For the moment only one connection is allowed.
-type ServerState = ()
+type ServerState = M.Map FileId File
 
 
 newServerState :: ServerState
-newServerState = ()
+newServerState = Cfg.tempModel
 
 
 -----------
@@ -35,8 +49,8 @@ newServerState = ()
 
 runServer :: IO ()
 runServer = do
-    state <- C.newMVar newServerState
-    WS.runServer "127.0.0.1" 9160 $ application state
+  state <- C.newMVar newServerState
+  WS.runServer Cfg.serverAddr Cfg.serverPort $ application state
 
 
 -----------
@@ -57,6 +71,21 @@ application state pending = do
 talk :: WS.Connection -> C.MVar ServerState -> IO ()
 talk conn state = forever $ do
   msg <- WS.receiveData conn
-  WS.sendTextData conn $ msg `T.append` ", meow"
---   C.readMVar state >>= broadcast
---     (user `mappend` ": " `mappend` msg)
+  T.putStrLn msg
+  fileMap <- C.readMVar state
+  case msg of
+    "files" -> WS.sendTextData conn $
+      T.intercalate ", " (M.keys fileMap)
+    (getFile fileMap -> Just treeMap) -> WS.sendTextData conn $
+      JSON.encode treeMap
+    _ -> WS.sendTextData conn $
+      msg `T.append` ", meow"
+
+
+-- getFile :: M.Map FileId File -> T.Text -> Maybe LBS.ByteString
+getFile :: M.Map FileId File -> T.Text -> Maybe File
+getFile fileMap txt = do
+  fileId <- T.stripPrefix "want" txt
+  M.lookup fileId fileMap
+  -- treeMap <- M.lookup fildId fileMap
+  -- return $ JSON.encode treeMap

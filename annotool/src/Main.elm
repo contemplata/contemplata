@@ -1,25 +1,72 @@
 -- import Html exposing (beginnerProgram, div, button, text)
 -- import Html exposing (..)
 import Html as Html
-import Task as Task
+import Task
 -- import Dom as Dom
-import Window as Window
+import Window
 import Mouse exposing (Position)
 -- import List as L
 import Set as S
 import Dict as D
 import String as String
-import WebSocket
 -- import Focus exposing ((=>))
 -- import Focus as Lens
 
 import Rose as R
 import Config as Cfg
-import Edit.Model
-import Edit.Message as Msg
-import Edit.Message exposing (Msg(..))
-import Edit.View
+
 import Menu
+
+import Edit.Model
+import Edit.Message
+import Edit.View
+import Edit.Subs
+
+
+---------------------------------------------------
+-- Switch
+---------------------------------------------------
+
+
+type Switch a b
+  = Edit a
+  | Menu b
+
+
+getEdit : Switch a b -> Maybe a
+getEdit top =
+  case top of
+    Edit x -> Just x
+    _ -> Nothing
+
+
+setEdit : a -> Switch a b -> Switch a b
+setEdit mod top =
+  case top of
+    Edit _ -> Edit mod
+    _ -> top
+
+
+editLens : MayLens (Switch a b) a
+editLens = (getEdit, setEdit)
+
+
+getMenu : Switch a b -> Maybe b
+getMenu top =
+  case top of
+    Menu x -> Just x
+    _ -> Nothing
+
+
+setMenu : b -> Switch a b -> Switch a b
+setMenu mod top =
+  case top of
+    Menu _ -> Menu mod
+    _ -> top
+
+
+menuLens : MayLens (Switch a b) b
+menuLens = (getMenu, setMenu)
 
 
 ---------------------------------------------------
@@ -27,52 +74,83 @@ import Menu
 ---------------------------------------------------
 
 
-main : Program Never TopModel Msg
+main : Program Never TopModel TopMsg
 main =
   Html.program
-    { init = init
+    { init = topInit
     , view = topView
-    , update = updateOn modelLens Msg.update
+    , update = topUpdate
     , subscriptions = topSubscriptions
     }
 
 
 ---------------------------------------------------
--- Model
+-- Top
 ---------------------------------------------------
 
 
+-- -- | Top-level model.
+-- type TopModel
+--   = Edit Edit.Model.Model
+--   | Menu Menu.Menu
+
+
 -- | Top-level model.
-type TopModel
-  = Edit Edit.Model.Model
-  | Menu Menu.Menu
+type alias TopModel = Switch Edit.Model.Model Menu.Model
 
 
-type alias MayLens big small =
-  ( big -> Maybe small
-  , small -> big -> big )
+-- | Top-level message.
+type alias TopMsg = Switch Edit.Message.Msg Menu.Msg
 
 
-getEditModel : TopModel -> Maybe Edit.Model.Model
-getEditModel top =
-  case top of
-    Edit mod -> Just mod
-    _ -> Nothing
+---------------------------------------------------
+-- View
+---------------------------------------------------
 
 
-setEditModel : Edit.Model.Model -> TopModel -> TopModel
-setEditModel mod top =
-  case top of
-    Edit _ -> Edit mod
-    _ -> top
+topView : TopModel -> Html.Html TopMsg
+topView top = case top of
+  Edit mod -> Html.map Edit <| Edit.View.view mod
+  Menu mod -> Html.map Menu <| Menu.view mod
 
 
-modelLens : MayLens TopModel Edit.Model.Model
-modelLens = (getEditModel, setEditModel)
+---------------------------------------------------
+-- Update
+---------------------------------------------------
 
 
-init : ( TopModel, Cmd Msg )
-init =
+topUpdate : TopMsg -> TopModel -> ( TopModel, Cmd TopMsg )
+topUpdate top = case top of
+  Edit x -> updateOn editLens Edit (Edit.Message.update x)
+  Menu x -> updateOn menuLens Menu (Menu.update x)
+  -- Menu x -> \model -> (model, Cmd.none)
+
+
+---------------------------------------------------
+-- Subscriptions
+---------------------------------------------------
+
+
+topSubscriptions : TopModel -> Sub TopMsg
+topSubscriptions top = case top of
+  Edit mod -> Sub.map Edit <| Edit.Subs.editSubscriptions mod
+  Menu mod -> Sub.map Menu <| Menu.subscriptions mod
+  -- _ -> Sub.batch []
+
+
+---------------------------------------------------
+-- Initialization
+---------------------------------------------------
+
+
+topInit : (TopModel, Cmd TopMsg)
+topInit =
+  let (edit, cmd) = editInit
+  in  (Edit edit, Cmd.map Edit cmd)
+
+
+editInit : (Edit.Model.Model, Cmd Edit.Message.Msg)
+editInit =
   let
     top = win "t1"
     bot = win "t2"
@@ -107,49 +185,10 @@ init =
       , ctrl = False
       , testInput = ""
       }
-    initHeight = Task.perform Resize Window.size
+    initHeight = Task.perform Edit.Message.Resize Window.size
   in
     -- (model, Cmd.none)
-    (Edit model, initHeight)
-
-
----------------------------------------------------
--- View
----------------------------------------------------
-
-
-topView : TopModel -> Html.Html Msg
-topView top = case top of
-  Edit mod -> Edit.View.view mod
-  Menu mod -> Html.div [] []
-
-
----------------------------------------------------
--- Subscriptions
----------------------------------------------------
-
-
-subscriptions : Edit.Model.Model -> Sub Msg
-subscriptions model =
-  let
-    resize = Window.resizes Resize
-    win = Edit.Model.selectWin model.focus model
-    listen = WebSocket.listen Cfg.socketServer TestGet
-  in
-    case win.drag of
-      Nothing ->
-        Sub.batch [resize, listen]
-      Just _ ->
-        Sub.batch
-          [ resize, listen
-          , Mouse.moves DragAt
-          , Mouse.ups DragEnd ]
-
-
-topSubscriptions : TopModel -> Sub Msg
-topSubscriptions top = case top of
-  Edit mod -> subscriptions mod
-  _ -> Sub.batch []
+    (model, initHeight)
 
 
 ---------------------------------------------
@@ -159,14 +198,20 @@ topSubscriptions top = case top of
 
 -- | Perform update over the given element of the model.
 updateOn
-  : MayLens big small
-  -> (msg -> small -> (small, Cmd msg))
-  -> (msg -> big -> (big, Cmd msg))
-updateOn (get, set) upd = \msg big ->
+   : MayLens big small
+     -- ^ Lens which indicates the element that is updated
+  -> (smallMsg -> bigMsg)
+     -- ^ A function which translates the messages corresponding to the element
+     -- to the messages corresponding to the model
+  -> (small -> (small, Cmd smallMsg))
+     -- ^ The update function corresponding to the element
+  -> (big -> (big, Cmd bigMsg))
+     -- ^ The resulting update function
+updateOn (get, set) bigCmd upd = \big ->
   case get big of
     Just small ->
-      let (smallPrim, cmds) = upd msg small
-      in  (set smallPrim big, cmds)
+      let (smallPrim, cmds) = upd small
+      in  (set smallPrim big, Cmd.map bigCmd cmds)
     Nothing -> (big, Cmd.none)
 
 
@@ -181,3 +226,16 @@ updateOn (get, set) upd = \msg big ->
 --     (smallPrim, cmds) = upd msg small
 --   in
 --     (Lens.set lens smallPrim big, cmds)
+
+
+---------------------------------------------------
+-- Custom lenses
+---------------------------------------------------
+
+
+type alias MayLens big small =
+  ( big -> Maybe small
+    -- ^ Get maybe
+  , small -> big -> big
+    -- ^ Set
+  )

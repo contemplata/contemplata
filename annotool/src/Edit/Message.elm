@@ -15,31 +15,31 @@ import Config as Cfg
 
 
 type Msg
-    = DragStart M.Focus Position
-      -- ^ Neither `DragAt` nor `DragEnd` have their focus. This is on purpose.
-      -- Focus should be determined, in their case, on the basis of the drag in
-      -- the underlying model. We do not support concurrent drags at the moment.
-    | DragAt Position
-    | DragEnd Position
-    | Select M.Focus M.NodeId
-    | Focus M.Focus
-    | Resize Window.Size -- ^ The height and width of the entire window
-    | Increase Bool -- ^ Increase the size of the top window
-    | Previous
-    | Next
-    | ChangeLabel M.NodeId M.Focus String
-    | EditLabel
-    | Delete -- ^ Delete the selected nodes in the focused window
-    | Add -- ^ Delete the selected nodes in the focused window
-    | CtrlDown
-    | CtrlUp
-    | Connect
-    | Attach
-    | Many (List Msg)
-      -- ^ Tests
-    | TestInput String
-    | TestGet String
-    | TestSend
+  = DragStart M.Focus Position
+    -- ^ Neither `DragAt` nor `DragEnd` have their focus. This is on purpose.
+    -- Focus should be determined, in their case, on the basis of the drag in
+    -- the underlying model. We do not support concurrent drags at the moment.
+  | DragAt Position
+  | DragEnd Position
+  | Select M.Focus M.NodeId
+  | Focus M.Focus
+  | Resize Window.Size -- ^ The height and width of the entire window
+  | Increase Bool -- ^ Increase the size of the top window
+  | Previous
+  | Next
+  | ChangeLabel M.NodeId M.Focus String
+  | EditLabel
+  | Delete -- ^ Delete the selected nodes in the focused window
+  | Add -- ^ Delete the selected nodes in the focused window
+  | CtrlDown
+  | CtrlUp
+  | Connect
+  | Attach
+  | Many (List Msg)
+    -- ^ Tests
+  | TestInput String
+  | TestGet String
+  | TestSend
 
 
 -- update : Msg -> M.Model -> ( M.Model, Cmd Msg )
