@@ -10,13 +10,16 @@ import Set as S
 import Dict as D
 import String as String
 import WebSocket
+-- import Focus exposing ((=>))
+-- import Focus as Lens
 
 import Rose as R
-import Model as M
-import Message as Msg
-import Message exposing (Msg(..))
-import View as V
 import Config as Cfg
+import Edit.Model
+import Edit.Message as Msg
+import Edit.Message exposing (Msg(..))
+import Edit.View
+import Menu
 
 
 ---------------------------------------------------
@@ -24,13 +27,13 @@ import Config as Cfg
 ---------------------------------------------------
 
 
-main : Program Never M.Model Msg
+main : Program Never TopModel Msg
 main =
   Html.program
     { init = init
-    , view = V.view
-    , update = Msg.update
-    , subscriptions = subscriptions
+    , view = topView
+    , update = updateOn modelLens Msg.update
+    , subscriptions = topSubscriptions
     }
 
 
@@ -39,7 +42,36 @@ main =
 ---------------------------------------------------
 
 
-init : ( M.Model, Cmd Msg )
+-- | Top-level model.
+type TopModel
+  = Edit Edit.Model.Model
+  | Menu Menu.Menu
+
+
+type alias MayLens big small =
+  ( big -> Maybe small
+  , small -> big -> big )
+
+
+getEditModel : TopModel -> Maybe Edit.Model.Model
+getEditModel top =
+  case top of
+    Edit mod -> Just mod
+    _ -> Nothing
+
+
+setEditModel : Edit.Model.Model -> TopModel -> TopModel
+setEditModel mod top =
+  case top of
+    Edit _ -> Edit mod
+    _ -> top
+
+
+modelLens : MayLens TopModel Edit.Model.Model
+modelLens = (getEditModel, setEditModel)
+
+
+init : ( TopModel, Cmd Msg )
 init =
   let
     top = win "t1"
@@ -66,7 +98,7 @@ init =
           ]
       , top = top
       , bot = bot
-      , focus = M.Top
+      , focus = Edit.Model.Top
       , links = S.fromList
           [ (("t4", 3), ("t5", 9))
           , (("t1", 1), ("t1", 2))
@@ -78,19 +110,30 @@ init =
     initHeight = Task.perform Resize Window.size
   in
     -- (model, Cmd.none)
-    (model, initHeight)
+    (Edit model, initHeight)
 
 
----------------------------------------------
+---------------------------------------------------
+-- View
+---------------------------------------------------
+
+
+topView : TopModel -> Html.Html Msg
+topView top = case top of
+  Edit mod -> Edit.View.view mod
+  Menu mod -> Html.div [] []
+
+
+---------------------------------------------------
 -- Subscriptions
 ---------------------------------------------------
 
 
-subscriptions : M.Model -> Sub Msg
+subscriptions : Edit.Model.Model -> Sub Msg
 subscriptions model =
   let
     resize = Window.resizes Resize
-    win = M.selectWin model.focus model
+    win = Edit.Model.selectWin model.focus model
     listen = WebSocket.listen Cfg.socketServer TestGet
   in
     case win.drag of
@@ -101,3 +144,40 @@ subscriptions model =
           [ resize, listen
           , Mouse.moves DragAt
           , Mouse.ups DragEnd ]
+
+
+topSubscriptions : TopModel -> Sub Msg
+topSubscriptions top = case top of
+  Edit mod -> subscriptions mod
+  _ -> Sub.batch []
+
+
+---------------------------------------------
+-- Utils
+---------------------------------------------------
+
+
+-- | Perform update over the given element of the model.
+updateOn
+  : MayLens big small
+  -> (msg -> small -> (small, Cmd msg))
+  -> (msg -> big -> (big, Cmd msg))
+updateOn (get, set) upd = \msg big ->
+  case get big of
+    Just small ->
+      let (smallPrim, cmds) = upd msg small
+      in  (set smallPrim big, cmds)
+    Nothing -> (big, Cmd.none)
+
+
+-- -- | Perform update over the given element of the model.
+-- updateOn
+--   : Lens.Focus b a
+--   -> (msg -> a -> (a, cmd))
+--   -> (msg -> b -> (b, cmd))
+-- updateOn lens upd = \msg big ->
+--   let
+--     small = Lens.get lens big
+--     (smallPrim, cmds) = upd msg small
+--   in
+--     (Lens.set lens smallPrim big, cmds)

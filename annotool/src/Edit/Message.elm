@@ -1,4 +1,4 @@
-module Message exposing (Msg(..), update, dummy)
+module Edit.Message exposing (Msg(..), update, dummy)
 
 
 import List as L
@@ -10,7 +10,7 @@ import Focus as Focus
 import Window as Window
 import WebSocket
 
-import Model as M
+import Edit.Model as M
 import Config as Cfg
 
 

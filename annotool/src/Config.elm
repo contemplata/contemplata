@@ -11,7 +11,7 @@ import Focus as Lens
 import List as L
 
 import Rose as R
-import Model as M
+import Edit.Model as M
 
 
 ---------------------------------------------------
@@ -230,4 +230,4 @@ testTree5 =
 
 
 socketServer : String
-socketServer = "ws://127.0.0.1:9160"
+socketServer = "ws://127.0.0.1:9161"

@@ -4,6 +4,10 @@ TODO:
 * FS editing for an event
 * Check if in your code, "display = flex" is used for something
 * Make a flat message window on the bottom
+* Based on the elm-lang online editor (see e.g.
+  http://elm-lang.org/examples/websockets), make it possible to drag the edges
+  between the editing windows.
+* Make the connections show depending on which window is in focus
 
 
 LATER:

@@ -1,4 +1,4 @@
-module View exposing (view)
+module Edit.View exposing (view)
 
 
 import Html as Html
@@ -18,10 +18,10 @@ import Focus as Lens
 
 import Rose as R
 import Util as Util
-import Model as M
-import Message as Msg
-import Message exposing (Msg(..))
 import Config as Cfg
+import Edit.Model as M
+import Edit.Message as Msg
+import Edit.Message exposing (Msg(..))
 
 
 view : M.Model -> Html.Html Msg

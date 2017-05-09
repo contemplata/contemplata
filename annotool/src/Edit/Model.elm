@@ -1,4 +1,4 @@
-module Model exposing
+module Edit.Model exposing
   ( Model, Window, NodeId, Node(..), Drag, Link, Addr, Focus(..)
   , isNode, isLeaf
   , selectWin, dragOn, getTree, selAll
