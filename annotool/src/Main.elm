@@ -9,6 +9,7 @@ import Mouse exposing (Position)
 import Set as S
 import Dict as D
 import String as String
+import WebSocket
 
 import Rose as R
 import Model as M
@@ -72,6 +73,7 @@ init =
           ]
       , dim = dim
       , ctrl = False
+      , testInput = ""
       }
     initHeight = Task.perform Resize Window.size
   in
@@ -89,12 +91,13 @@ subscriptions model =
   let
     resize = Window.resizes Resize
     win = M.selectWin model.focus model
+    listen = WebSocket.listen Cfg.socketServer TestGet
   in
     case win.drag of
       Nothing ->
-        Sub.batch [resize]
+        Sub.batch [resize, listen]
       Just _ ->
         Sub.batch
-          [ resize
+          [ resize, listen
           , Mouse.moves DragAt
           , Mouse.ups DragEnd ]

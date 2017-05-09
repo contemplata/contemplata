@@ -272,6 +272,10 @@ viewSideWindow win model =
             ] ++ condAtts
           )
           []
+      , Html.input
+          [Events.onInput TestInput, Atts.value model.testInput] []
+      , Html.button [Events.onClick TestSend] [Html.text "Send"]
+      -- , Html.div [] (List.map viewMessage (List.reverse model.messages))
       ]
 
 

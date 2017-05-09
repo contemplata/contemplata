@@ -8,6 +8,7 @@ import Dom as Dom
 import Focus exposing ((=>))
 import Focus as Focus
 import Window as Window
+import WebSocket
 
 import Model as M
 import Config as Cfg
@@ -35,6 +36,10 @@ type Msg
     | Connect
     | Attach
     | Many (List Msg)
+      -- ^ Tests
+    | TestInput String
+    | TestGet String
+    | TestSend
 
 
 -- update : Msg -> M.Model -> ( M.Model, Cmd Msg )
@@ -120,6 +125,14 @@ update msg model =
     Connect -> idle <| M.connect model
 
     Attach -> idle <| M.attachSel model
+
+    -- Testing websockets
+    TestInput x -> idle <| {model | testInput=x}
+    TestGet x -> idle <| {model | testInput=x}
+    TestSend ->
+      ( {model | testInput=""}
+      , WebSocket.send Cfg.socketServer model.testInput )
+
 
     Many ms ->
       let f msg (mdl0, cmds) =

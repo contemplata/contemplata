@@ -1,6 +1,3 @@
-TASK:
-
-
 TODO:
 * Mark an event
 * When a node is deleted, the corresponding links should be deleted as well!
@@ -48,3 +45,4 @@ DONE:
   non-terminal nodes
 * Attach a subtree to different node
 * Attach a subtree to different node: bug! try attaching VN to a dot...
+* Make a simple websocket connection with a Haskell websockets server

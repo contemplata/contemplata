@@ -3,7 +3,8 @@ module Config exposing
   , testTree1, testTree2, testTree3, testTree4, testTree5
   , increaseSpeed, editLabelName, dmzSize
   , linkDasharray, linkWidth, linkOpacity
-  , linkHeadSize, linkHeadDist, linkTailDist )
+  , linkHeadSize, linkHeadDist, linkTailDist
+  , socketServer )
 
 
 import Focus as Lens
@@ -221,3 +222,12 @@ testTree5 =
     snd (x, y) = y
   in
     mkSynTree <| snd <| R.mapAccum addId 1 <| tree
+
+
+---------------------------------------------------
+-- Server
+---------------------------------------------------
+
+
+socketServer : String
+socketServer = "ws://127.0.0.1:9160"

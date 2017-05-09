@@ -55,6 +55,9 @@ type alias Model =
 
   -- is CTRL key pressed
   , ctrl : Bool
+
+  -- test
+  , testInput : String
   }
 
 
