@@ -6,7 +6,7 @@ TODO:
 * Make a flat message window on the bottom
 * Based on the elm-lang online editor (see e.g.
   http://elm-lang.org/examples/websockets), make it possible to drag the edges
-  between the editing windows.
+  of the editing windows.
 * Make the connections show depending on which window is in focus
 
 
@@ -50,3 +50,4 @@ DONE:
 * Attach a subtree to different node
 * Attach a subtree to different node: bug! try attaching VN to a dot...
 * Make a simple websocket connection with a Haskell websockets server
+* Provisional: make it possible to load a tree from a server

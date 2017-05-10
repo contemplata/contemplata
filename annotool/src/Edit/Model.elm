@@ -17,6 +17,10 @@ module Edit.Model exposing
   -- Lenses:
   , top, bot, dim, winLens, drag, pos, height, heightProp
   , nodeId, nodeVal, trees
+  -- Pseudo-lenses:
+  , setTrees
+  -- JSON:
+  , fileDecoder, treeDecoder, nodeDecoder
   )
 
 
@@ -27,6 +31,9 @@ import List as L
 import Focus exposing ((=>))
 import Focus as Lens
 import Maybe as Maybe
+
+import Json.Decode as Decode
+-- import Json.Decode.Pipeline as DePipe
 
 import Util as Util
 import Rose as R
@@ -680,6 +687,12 @@ drag = Lens.create
   (\fn model -> {model | drag = fn model.drag})
 
 
+tree : Lens.Focus { record | tree : a } a
+tree = Lens.create
+  .tree
+  (\fn model -> {model | tree = fn model.tree})
+
+
 height : Lens.Focus { record | height : a } a
 height = Lens.create
   .height
@@ -716,6 +729,58 @@ nodeVal =
       Leaf r -> Leaf {r | nodeVal = f r.nodeVal}
   in
     Lens.create get update
+
+
+---------------------------------------------------
+-- Pseudo-lenses
+---------------------------------------------------
+
+
+-- | A pseudo-lens.
+setTrees : D.Dict TreeId (R.Tree Node) -> Model -> Model
+setTrees treeDict model =
+  let
+    treeId = case D.toList treeDict of
+      (id, tree) :: _ -> id
+      _ -> Debug.crash "setTrees: empty tree dictionary"
+  in
+    {model | trees = treeDict}
+      |> Lens.set (top => tree) treeId
+      |> Lens.set (bot => tree) treeId
+      |> updateSelect Top
+      |> updateSelect Bot
+
+
+---------------------------------------------------
+-- JSON
+---------------------------------------------------
+
+
+fileDecoder : Decode.Decoder (D.Dict TreeId (R.Tree Node))
+fileDecoder = Decode.dict treeDecoder
+
+
+treeDecoder : Decode.Decoder (R.Tree Node)
+treeDecoder = R.treeDecoder nodeDecoder
+
+
+nodeDecoder : Decode.Decoder Node
+nodeDecoder = Decode.oneOf [internalDecoder, leafDecoder]
+
+
+internalDecoder : Decode.Decoder Node
+internalDecoder =
+  Decode.map2 (\id val -> Node {nodeId=id, nodeVal=val})
+    (Decode.field "nodeId" Decode.int)
+    (Decode.field "nodeVal" Decode.string)
+
+
+leafDecoder : Decode.Decoder Node
+leafDecoder =
+  Decode.map3 (\id val pos -> Leaf {nodeId=id, nodeVal=val, leafPos=pos})
+    (Decode.field "leafId" Decode.int)
+    (Decode.field "leafVal" Decode.string)
+    (Decode.field "leafPos" Decode.int)
 
 
 ---------------------------------------------------

@@ -9,6 +9,7 @@ import Focus exposing ((=>))
 import Focus as Focus
 import Window as Window
 import WebSocket
+import Json.Decode as Decode
 
 import Edit.Model as M
 import Config as Cfg
@@ -128,7 +129,9 @@ update msg model =
 
     -- Testing websockets
     TestInput x -> idle <| {model | testInput=x}
-    TestGet x -> idle <| {model | testInput=x}
+    TestGet x -> idle <| case Decode.decodeString M.fileDecoder x of
+      Ok ts -> M.setTrees ts model
+      Err err -> {model | testInput=err}
     TestSend ->
       ( {model | testInput=""}
       , WebSocket.send Cfg.socketServer model.testInput )

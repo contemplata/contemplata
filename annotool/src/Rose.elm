@@ -3,11 +3,14 @@ module Rose exposing
   , map, flatten, mapAccum
   , getSubTree, delSubTree, putSubTree
   , sortTree
+  -- JSON
+  , treeDecoder
   )
 
 
 import Util
 import Tuple exposing (first, second)
+import Json.Decode as Decode
 
 import List as L
 
@@ -174,3 +177,22 @@ withWidth f margin (Node x subTrees) = case subTrees of
 -- | Retrieve the widgth stored in the root.
 getRootSnd : Tree (a, b) -> b
 getRootSnd (Node (x, w) _) = w
+
+
+---------------------------------------------------
+-- JSON
+---------------------------------------------------
+
+
+treeDecoder : Decode.Decoder a -> Decode.Decoder (Tree a)
+treeDecoder elemDecoder =
+  let
+    forestDecoder =
+      Decode.list
+        (Decode.lazy
+          (\_ -> treeDecoder elemDecoder)
+        )
+  in
+    Decode.map2 Node
+      (Decode.index 0 elemDecoder)
+      (Decode.index 1 forestDecoder)
