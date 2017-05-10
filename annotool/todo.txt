@@ -1,13 +1,17 @@
+TODAY:
+* Move implementation of the websocket communication from menu to top-level
+
+
 TODO:
 * Mark an event
 * When a node is deleted, the corresponding links should be deleted as well!
 * FS editing for an event
 * Check if in your code, "display = flex" is used for something
 * Make a flat message window on the bottom
+* Make the connections show depending on which window is in focus
 * Based on the elm-lang online editor (see e.g.
   http://elm-lang.org/examples/websockets), make it possible to drag the edges
   of the editing windows.
-* Make the connections show depending on which window is in focus
 
 
 LATER:
@@ -52,3 +56,7 @@ DONE:
 * Make a simple websocket connection with a Haskell websockets server
 * Provisional: make it possible to load a tree from a server
 * Navigation between the files (menu) window and the editing window
+* Store on the server information about the links
+* Make it possible to save a file
+* Listen to websocket from top-level! Note that you send some request form the
+  editing tree, too...

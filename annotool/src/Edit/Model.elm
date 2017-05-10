@@ -1,7 +1,7 @@
 module Edit.Model exposing
   (
   -- Data types:
-    File, NodeId, TreeId, Node(..), Link, Addr
+    TreeMap, FileId, File, NodeId, TreeId, Node(..), Link, Addr
   , isNode, isLeaf
   -- Model types:
   , Model, Window, Drag, Focus(..)
@@ -24,8 +24,10 @@ module Edit.Model exposing
   , nodeId, nodeVal, trees
   -- Pseudo-lenses:
   , setTrees
-  -- JSON:
-  , fileDecoder, treeDecoder, nodeDecoder
+  -- JSON decoding:
+  , treeMapDecoder, fileDecoder, treeDecoder, nodeDecoder
+  -- JSON encoding:
+  , encodeFile
   )
 
 
@@ -39,6 +41,7 @@ import Focus as Lens
 import Maybe as Maybe
 
 import Json.Decode as Decode
+import Json.Encode as Encode
 -- import Json.Decode.Pipeline as DePipe
 
 import Util as Util
@@ -50,7 +53,15 @@ import Rose as R
 ---------------------------------------------------
 
 
-type alias File = D.Dict TreeId (R.Tree Node)
+type alias FileId = String
+
+
+type alias File =
+  { treeMap : TreeMap
+  , linkSet : S.Set Link }
+
+
+type alias TreeMap = D.Dict TreeId (R.Tree Node)
 
 
 -- | Link between two trees.
@@ -107,7 +118,9 @@ wellFormed (R.Node x ts) =
 
 
 type alias Model =
-  { trees : File
+  { fileId : FileId
+
+  , trees : TreeMap
 
   , top : Window
   , bot : Window
@@ -751,7 +764,7 @@ nodeVal =
 
 
 -- | A pseudo-lens.
-setTrees : File -> Model -> Model
+setTrees : TreeMap -> Model -> Model
 setTrees treeDict model =
   let
     treeId = case D.toList treeDict of
@@ -766,12 +779,37 @@ setTrees treeDict model =
 
 
 ---------------------------------------------------
--- JSON
+-- JSON Decoding
 ---------------------------------------------------
 
 
 fileDecoder : Decode.Decoder File
-fileDecoder = Decode.dict treeDecoder
+fileDecoder =
+  Decode.map2 File
+    (Decode.field "treeMap" treeMapDecoder)
+    (Decode.field "linkSet" linkSetDecoder )
+
+
+linkSetDecoder : Decode.Decoder (S.Set Link)
+linkSetDecoder = Decode.map S.fromList <| Decode.list linkDecoder
+
+
+linkDecoder : Decode.Decoder Link
+linkDecoder =
+  Decode.map2 (\from to -> (from, to))
+    (Decode.field "from" addrDecoder)
+    (Decode.field "to" addrDecoder)
+
+
+addrDecoder : Decode.Decoder Addr
+addrDecoder =
+  Decode.map2 (\treeId nodeId -> (treeId, nodeId))
+    (Decode.index 0 Decode.string)
+    (Decode.index 1 Decode.int)
+
+
+treeMapDecoder : Decode.Decoder TreeMap
+treeMapDecoder = Decode.dict treeDecoder
 
 
 treeDecoder : Decode.Decoder (R.Tree Node)
@@ -795,3 +833,62 @@ leafDecoder =
     (Decode.field "leafId" Decode.int)
     (Decode.field "leafVal" Decode.string)
     (Decode.field "leafPos" Decode.int)
+
+
+---------------------------------------------------
+-- JSON Encoding
+---------------------------------------------------
+
+
+encodeFile : File -> Encode.Value
+encodeFile file =
+  Encode.object
+    [ ("tag", Encode.string "File")
+    , ("treeMap", encodeTreeMap file.treeMap)
+    , ("linkSet", encodeLinkSet file.linkSet)
+    ]
+
+
+encodeLinkSet : S.Set Link -> Encode.Value
+encodeLinkSet =
+  Encode.list << L.map encodeLink << S.toList
+
+
+encodeLink : Link -> Encode.Value
+encodeLink (from, to) =
+  Encode.object
+    [ ("tag", Encode.string "Link")
+    , ("from", encodeAddr from)
+    , ("to", encodeAddr to)
+    ]
+
+
+encodeAddr : Addr -> Encode.Value
+encodeAddr (treeId, nodeId) = Encode.list
+  [ Encode.string treeId
+  , Encode.int nodeId ]
+
+
+encodeTreeMap : TreeMap -> Encode.Value
+encodeTreeMap =
+  let encodePair (treeId, tree) = (treeId, encodeTree tree)
+  in Encode.object << L.map encodePair << D.toList
+
+
+encodeTree : R.Tree Node -> Encode.Value
+encodeTree = R.encodeTree encodeNode
+
+
+encodeNode : Node -> Encode.Value
+encodeNode node = case node of
+  Leaf r -> Encode.object
+    [ ("tag", Encode.string "Leaf")
+    , ("leafId", Encode.int r.nodeId)
+    , ("leafVal", Encode.string r.nodeVal)
+    , ("leafPos", Encode.int r.leafPos)
+    ]
+  Node r -> Encode.object
+    [ ("tag", Encode.string "Node")
+    , ("nodeId", Encode.int r.nodeId)
+    , ("nodeVal", Encode.string r.nodeVal)
+    ]

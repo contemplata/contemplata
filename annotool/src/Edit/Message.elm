@@ -12,6 +12,7 @@ import WebSocket
 import Json.Decode as Decode
 
 import Edit.Model as M
+import Menu
 import Config as Cfg
 
 
@@ -37,6 +38,7 @@ type Msg
   | Connect
   | Attach
   | Files -- ^ Go back to files menu
+  | SaveFile  -- ^ Save the current file
   | Many (List Msg)
 --     -- ^ Tests
 --   | TestInput String
@@ -129,6 +131,14 @@ update msg model =
     Attach -> idle <| M.attachSel model
 
     Files -> idle <| model -- ^ Handled upstream
+
+    SaveFile ->
+      let
+        fileId = model.fileId
+        file = {treeMap = model.trees, linkSet = model.links}
+        req = Menu.encodeReq (Menu.SaveFile fileId file)
+        save = WebSocket.send Cfg.socketServer req
+      in  (model, save)
 
 --     -- Testing websockets
 --     TestInput x -> idle <| {model | testInput=x}

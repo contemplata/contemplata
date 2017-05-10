@@ -9,7 +9,7 @@ import Task
 import Dict as D
 import Set as S
 
-import Edit.Model exposing (Model, Focus(..), File)
+import Edit.Model exposing (Model, Focus(..), File, FileId)
 import Edit.Message exposing (Msg(..))
 
 
@@ -18,10 +18,10 @@ import Edit.Message exposing (Msg(..))
 ---------------------------------------------------
 
 
-mkEdit : File -> (Model, Cmd Msg)
-mkEdit treeDict =
+mkEdit : FileId -> File -> (Model, Cmd Msg)
+mkEdit fileId file =
   let
-    treeId = case D.toList treeDict of
+    treeId = case D.toList file.treeMap of
       (id, tree) :: _ -> id
       _ -> Debug.crash "setTrees: empty tree dictionary"
     top = win treeId
@@ -39,11 +39,12 @@ mkEdit treeDict =
       , heightProp = 50
       }
     model =
-      { trees = treeDict
+      { fileId = fileId
+      , trees = file.treeMap
       , top = top
       , bot = bot
       , focus = Top
-      , links = S.empty
+      , links = file.linkSet
       , dim = dim
       , ctrl = False
       , testInput = ""

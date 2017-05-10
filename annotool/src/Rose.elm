@@ -4,13 +4,14 @@ module Rose exposing
   , getSubTree, delSubTree, putSubTree
   , sortTree
   -- JSON
-  , treeDecoder
+  , treeDecoder, encodeTree
   )
 
 
 import Util
 import Tuple exposing (first, second)
 import Json.Decode as Decode
+import Json.Encode as Encode
 
 import List as L
 
@@ -196,3 +197,16 @@ treeDecoder elemDecoder =
     Decode.map2 Node
       (Decode.index 0 elemDecoder)
       (Decode.index 1 forestDecoder)
+
+
+
+encodeTree : (a -> Encode.Value) -> Tree a -> Encode.Value
+encodeTree encodeElem =
+  let
+    encodeForest = Encode.list
+      << List.map (encodeTree encodeElem)
+  in
+    \(Node x subTrees) ->
+      Encode.list
+        [ encodeElem x
+        , encodeForest subTrees ]

@@ -1,7 +1,7 @@
 module Menu exposing
   (
   -- Model
-    Model, FileId
+    Model
   -- Messages
   , Msg(..), update
   -- View
@@ -9,7 +9,7 @@ module Menu exposing
   -- Subscriptions
   , subscriptions
   -- Server communication
-  , Request(..) , Answer (..), answerDecoder
+  , Request(..) , Answer (..), answerDecoder, encodeReq
   -- Initialization
   , mkMenu
   )
@@ -34,10 +34,7 @@ import Edit.Model as M
 
 
 type alias Model =
-  { fileIds : List FileId }
-
-
-type alias FileId = String
+  { fileIds : List M.FileId }
 
 
 ---------------------------------------------------
@@ -46,7 +43,7 @@ type alias FileId = String
 
 
 type Msg
-  = Choice FileId -- ^ Edit a specific file
+  = Choice M.FileId -- ^ Edit a specific file
   | ServerMsg Answer -- ^ Get message from the websocket
   | Error String  -- ^ An error message
 
@@ -59,6 +56,7 @@ update msg model =
       let cmd = WebSocket.send Cfg.socketServer <| encodeReq (GetFile fileId)
       in  (model, cmd)
     ServerMsg (Files ids) -> idle <| {model | fileIds = ids}
+    Error err -> Debug.crash err
     _ -> idle <| model
 
 
@@ -80,7 +78,7 @@ view model =
     ]
 
 
-viewFileId : FileId -> Html.Html Msg
+viewFileId : M.FileId -> Html.Html Msg
 viewFileId x = Html.li [] <| single <|
   Html.div
     [ Atts.class "noselect"
@@ -96,14 +94,7 @@ viewFileId x = Html.li [] <| single <|
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ = -- Sub.none
-  let
-    listen = WebSocket.listen Cfg.socketServer getMsg
-    getMsg x = case Decode.decodeString answerDecoder x of
-      Ok res -> ServerMsg res
-      Err err ->  Error err
-  in
-    Sub.batch [listen]
+subscriptions _ = Sub.none
 
 
 ---------------------------------------------------
@@ -114,7 +105,9 @@ subscriptions _ = -- Sub.none
 type Request
   = GetFiles
     -- ^ Obtain the list of files
-  | GetFile FileId
+  | GetFile M.FileId
+    -- ^ Request the contents of the given file
+  | SaveFile M.FileId M.File
     -- ^ Request the contents of the given file
 
 
@@ -130,12 +123,19 @@ encodeReqToVal req = case req of
     [ ("tag", Encode.string "GetFile")
     , ("contents", Encode.string id)
     ]
+  SaveFile fileId file -> Encode.object
+    [ ("tag", Encode.string "SaveFile")
+    , ("contents", Encode.list
+         [ Encode.string fileId
+         , M.encodeFile file ]
+      )
+    ]
 
 
 type Answer
-  = Files (List FileId)
+  = Files (List M.FileId)
     -- ^ The list of files
-  | NewFile FileId M.File
+  | NewFile M.FileId M.File
     -- ^ New file to edit
 
 

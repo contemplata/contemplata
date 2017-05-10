@@ -10,6 +10,7 @@ import String as String
 -- import Focus exposing ((=>))
 -- import Focus as Lens
 
+import WebSocket
 import Json.Decode as Decode
 
 import Rose as R
@@ -125,14 +126,12 @@ topUpdate topMsg =
   case topMsg of
     Edit msg -> case msg of
       Edit.Message.Files -> \model_ ->
-        -- let (edit, cmd) = Menu.mkEdit ts
-        -- in  (Edit edit, Cmd.map Edit cmd)
         let (model, cmd) = Menu.mkMenu
         in  (Menu model, Cmd.map Menu cmd)
       _ -> updateOn editLens Edit (Edit.Message.update msg)
     Menu msg -> case msg of
-      Menu.ServerMsg (Menu.NewFile _ ts) -> \model_ ->
-        let (edit, cmd) = Edit.Init.mkEdit ts
+      Menu.ServerMsg (Menu.NewFile fileId file) -> \model_ ->
+        let (edit, cmd) = Edit.Init.mkEdit fileId file
         in  (Edit edit, Cmd.map Edit cmd)
       _ -> updateOn menuLens Menu (Menu.update msg)
 
@@ -143,10 +142,17 @@ topUpdate topMsg =
 
 
 topSubscriptions : TopModel -> Sub TopMsg
-topSubscriptions top = case top of
-  Edit mod -> Sub.map Edit <| Edit.Subs.editSubscriptions mod
-  Menu mod -> Sub.map Menu <| Menu.subscriptions mod
-  -- _ -> Sub.batch []
+topSubscriptions top =
+  let
+    getMsg x = case Decode.decodeString Menu.answerDecoder x of
+      Ok res -> Menu.ServerMsg res
+      Err err -> Menu.Error err
+    listen = WebSocket.listen Cfg.socketServer getMsg
+    subordinate = case top of
+      Edit mod -> Sub.map Edit <| Edit.Subs.editSubscriptions mod
+      Menu mod -> Sub.map Menu <| Menu.subscriptions mod
+  in
+    Sub.batch [Sub.map Menu listen, subordinate]
 
 
 ---------------------------------------------------
