@@ -36,11 +36,12 @@ type Msg
   | CtrlUp
   | Connect
   | Attach
+  | Files -- ^ Go back to files menu
   | Many (List Msg)
-    -- ^ Tests
-  | TestInput String
-  | TestGet String
-  | TestSend
+--     -- ^ Tests
+--   | TestInput String
+--   | TestGet String
+--   | TestSend
 
 
 -- update : Msg -> M.Model -> ( M.Model, Cmd Msg )
@@ -127,14 +128,16 @@ update msg model =
 
     Attach -> idle <| M.attachSel model
 
-    -- Testing websockets
-    TestInput x -> idle <| {model | testInput=x}
-    TestGet x -> idle <| case Decode.decodeString M.fileDecoder x of
-      Ok ts -> M.setTrees ts model
-      Err err -> {model | testInput=err}
-    TestSend ->
-      ( {model | testInput=""}
-      , WebSocket.send Cfg.socketServer model.testInput )
+    Files -> idle <| model -- ^ Handled upstream
+
+--     -- Testing websockets
+--     TestInput x -> idle <| {model | testInput=x}
+--     TestGet x -> idle <| case Decode.decodeString M.fileDecoder x of
+--       Ok ts -> M.setTrees ts model
+--       Err err -> {model | testInput=err}
+--     TestSend ->
+--       ( {model | testInput=""}
+--       , WebSocket.send Cfg.socketServer model.testInput )
 
 
     Many ms ->

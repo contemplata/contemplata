@@ -94,9 +94,14 @@ viewWindow win model =
     -- , "border" => "1px black solid"
     ]
   ]
-  -- [background, tr]
+
+  <|
+
   [ viewTree win model
   , viewTreeId win model ]
+  ++ if win == model.focus
+     then [viewMenu]
+     else []
 
 
 -- | Determine the background color.
@@ -105,7 +110,6 @@ backColor win model =
   if win == model.focus
     then "#ddd"
     else "#eee"
-
 
 
 -- | View tree in the specified window.
@@ -138,11 +142,38 @@ viewTreeId win model =
         [ "position" => "absolute"
         -- , "width" => "5%"
         -- , "height" => "5%"
-        , "top" => px 10
+        , "bottom" => px 10
         , "left" => px 10
         ]
       ]
       [ Html.text txt ]
+
+
+---------------------------------------------------
+-- Menu
+---------------------------------------------------
+
+
+viewMenu : Html.Html Msg
+viewMenu =
+  let
+
+    menuElem onClick pos txt = Html.div
+      [ Atts.class "noselect"
+      , Events.onClick onClick
+      , Atts.style
+        [ "position" => "absolute"
+        , "top" => px 10
+        , "left" => px pos
+        , "cursor" => "pointer"
+        ]
+      ]
+      [ Html.text txt ]
+
+  in
+
+    Html.div []
+      [ menuElem Files 10 "Files" ]
 
 
 ---------------------------------------------------
@@ -272,10 +303,10 @@ viewSideWindow win model =
             ] ++ condAtts
           )
           []
-      , Html.input
-          [Events.onInput TestInput, Atts.value model.testInput] []
-      , Html.button [Events.onClick TestSend] [Html.text "Send"]
-      -- , Html.div [] (List.map viewMessage (List.reverse model.messages))
+--       , Html.input
+--           [Events.onInput TestInput, Atts.value model.testInput] []
+--       , Html.button [Events.onClick TestSend] [Html.text "Send"]
+--       -- , Html.div [] (List.map viewMessage (List.reverse model.messages))
       ]
 
 

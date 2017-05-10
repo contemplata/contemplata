@@ -51,3 +51,4 @@ DONE:
 * Attach a subtree to different node: bug! try attaching VN to a dot...
 * Make a simple websocket connection with a Haskell websockets server
 * Provisional: make it possible to load a tree from a server
+* Navigation between the files (menu) window and the editing window

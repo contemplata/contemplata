@@ -1,9 +1,7 @@
 -- import Html exposing (beginnerProgram, div, button, text)
 -- import Html exposing (..)
 import Html as Html
-import Task
 -- import Dom as Dom
-import Window
 import Mouse exposing (Position)
 -- import List as L
 import Set as S
@@ -12,12 +10,15 @@ import String as String
 -- import Focus exposing ((=>))
 -- import Focus as Lens
 
+import Json.Decode as Decode
+
 import Rose as R
 import Config as Cfg
 
 import Menu
 
 import Edit.Model
+import Edit.Init
 import Edit.Message
 import Edit.View
 import Edit.Subs
@@ -120,10 +121,20 @@ topView top = case top of
 
 
 topUpdate : TopMsg -> TopModel -> ( TopModel, Cmd TopMsg )
-topUpdate top = case top of
-  Edit x -> updateOn editLens Edit (Edit.Message.update x)
-  Menu x -> updateOn menuLens Menu (Menu.update x)
-  -- Menu x -> \model -> (model, Cmd.none)
+topUpdate topMsg =
+  case topMsg of
+    Edit msg -> case msg of
+      Edit.Message.Files -> \model_ ->
+        -- let (edit, cmd) = Menu.mkEdit ts
+        -- in  (Edit edit, Cmd.map Edit cmd)
+        let (model, cmd) = Menu.mkMenu
+        in  (Menu model, Cmd.map Menu cmd)
+      _ -> updateOn editLens Edit (Edit.Message.update msg)
+    Menu msg -> case msg of
+      Menu.ServerMsg (Menu.NewFile _ ts) -> \model_ ->
+        let (edit, cmd) = Edit.Init.mkEdit ts
+        in  (Edit edit, Cmd.map Edit cmd)
+      _ -> updateOn menuLens Menu (Menu.update msg)
 
 
 ---------------------------------------------------
@@ -145,50 +156,52 @@ topSubscriptions top = case top of
 
 topInit : (TopModel, Cmd TopMsg)
 topInit =
-  let (edit, cmd) = editInit
-  in  (Edit edit, Cmd.map Edit cmd)
+--   let (edit, cmd) = editInit
+--   in  (Edit edit, Cmd.map Edit cmd)
+  let (model, cmd) = Menu.mkMenu
+  in  (Menu model, Cmd.map Menu cmd)
 
 
-editInit : (Edit.Model.Model, Cmd Edit.Message.Msg)
-editInit =
-  let
-    top = win "t1"
-    bot = win "t2"
-    win name =
-      { tree = name
-      , pos = Position 400 50
-      , selMain = Nothing
-      , selAux = S.empty
-      , drag = Nothing
-      }
-    dim =
-      { width = 0
-      , height = 0
-      , heightProp = 50
-      }
-    model =
-      { trees = D.fromList
-          [ ("t1", Cfg.testTree3)
-          , ("t2", Cfg.testTree2)
-          , ("t3", Cfg.testTree1)
-          , ("t4", Cfg.testTree4)
-          , ("t5", Cfg.testTree5)
-          ]
-      , top = top
-      , bot = bot
-      , focus = Edit.Model.Top
-      , links = S.fromList
-          [ (("t4", 3), ("t5", 9))
-          , (("t1", 1), ("t1", 2))
-          ]
-      , dim = dim
-      , ctrl = False
-      , testInput = ""
-      }
-    initHeight = Task.perform Edit.Message.Resize Window.size
-  in
-    -- (model, Cmd.none)
-    (model, initHeight)
+-- editInit : (Edit.Model.Model, Cmd Edit.Message.Msg)
+-- editInit =
+--   let
+--     top = win "t1"
+--     bot = win "t2"
+--     win name =
+--       { tree = name
+--       , pos = Position 400 50
+--       , selMain = Nothing
+--       , selAux = S.empty
+--       , drag = Nothing
+--       }
+--     dim =
+--       { width = 0
+--       , height = 0
+--       , heightProp = 50
+--       }
+--     model =
+--       { trees = D.fromList
+--           [ ("t1", Cfg.testTree3)
+--           , ("t2", Cfg.testTree2)
+--           , ("t3", Cfg.testTree1)
+--           , ("t4", Cfg.testTree4)
+--           , ("t5", Cfg.testTree5)
+--           ]
+--       , top = top
+--       , bot = bot
+--       , focus = Edit.Model.Top
+--       , links = S.fromList
+--           [ (("t4", 3), ("t5", 9))
+--           , (("t1", 1), ("t1", 2))
+--           ]
+--       , dim = dim
+--       , ctrl = False
+--       , testInput = ""
+--       }
+--     initHeight = Task.perform Edit.Message.Resize Window.size
+--   in
+--     -- (model, Cmd.none)
+--     (model, initHeight)
 
 
 ---------------------------------------------

@@ -1,11 +1,16 @@
 module Edit.Model exposing
-  ( Model, Window, NodeId, Node(..), Drag, Link, Addr, Focus(..)
+  (
+  -- Data types:
+    File, NodeId, TreeId, Node(..), Link, Addr
   , isNode, isLeaf
+  -- Model types:
+  , Model, Window, Drag, Focus(..)
+  -- Other:
   , selectWin, dragOn, getTree, selAll
   , getPosition, nextTree, prevTree, moveCursor
   , treeNum, treePos
   -- Initialization:
-  -- , init
+  -- , mkEdit
   -- Labels:
   , getLabel, setLabel
   -- Node selection:
@@ -25,6 +30,7 @@ module Edit.Model exposing
 
 
 import Mouse exposing (Position)
+
 import Set as S
 import Dict as D
 import List as L
@@ -40,12 +46,68 @@ import Rose as R
 
 
 ---------------------------------------------------
--- Types
+-- Data types
+---------------------------------------------------
+
+
+type alias File = D.Dict TreeId (R.Tree Node)
+
+
+-- | Link between two trees.
+type alias Link = (Addr, Addr)
+type alias Addr = (TreeId, NodeId)
+
+
+-- | Tree identifier
+type alias TreeId = String
+
+
+-- | Internal node identifier
+type alias NodeId = Int
+
+
+-- -- | Leaf identifier
+-- type alias LeafId = Int
+
+
+-- | Node in a syntactic tree is either an internal node or a leaf.
+type Node
+  = Node
+    { nodeId : NodeId
+    , nodeVal : String }
+  | Leaf
+    { nodeId : NodeId
+    , nodeVal : String
+      -- | The position of the leaf in the underlying sentence.
+      -- The positions do not have to be consecutive.
+    , leafPos : Int }
+
+
+isNode : Node -> Bool
+isNode x = case x of
+  Node _ -> True
+  _ -> False
+
+
+isLeaf : Node -> Bool
+isLeaf = not << isNode
+
+
+-- | Verify the basic well-formedness properties.
+wellFormed : R.Tree Node -> Bool
+wellFormed (R.Node x ts) =
+  case ts of
+    [] -> isLeaf x
+    _  -> isNode x && Util.and (L.map wellFormed ts)
+
+
+---------------------------------------------------
+-- Model-related types
 ---------------------------------------------------
 
 
 type alias Model =
-  { trees : D.Dict TreeId (R.Tree Node)
+  { trees : File
 
   , top : Window
   , bot : Window
@@ -97,54 +159,6 @@ type alias Dim =
 -- type alias Link =
 --   { from : (TreeId, NodeId)
 --   , to : (TreeId, NodeId) }
-
-
--- | Link between two trees.
-type alias Link = (Addr, Addr)
-type alias Addr = (TreeId, NodeId)
-
-
--- | Tree identifier
-type alias TreeId = String
-
-
--- | Internal node identifier
-type alias NodeId = Int
-
-
--- -- | Leaf identifier
--- type alias LeafId = Int
-
-
--- | Node in a syntactic tree is either an internal node or a leaf.
-type Node
-  = Node
-    { nodeId : NodeId
-    , nodeVal : String }
-  | Leaf
-    { nodeId : NodeId
-    , nodeVal : String
-      -- | The position of the leaf in the underlying sentence.
-      -- The positions do not have to be consecutive.
-    , leafPos : Int }
-
-
-isNode : Node -> Bool
-isNode x = case x of
-  Node _ -> True
-  _ -> False
-
-
-isLeaf : Node -> Bool
-isLeaf = not << isNode
-
-
--- | Verify the basic well-formedness properties.
-wellFormed : R.Tree Node -> Bool
-wellFormed (R.Node x ts) =
-  case ts of
-    [] -> isLeaf x
-    _  -> isNode x && Util.and (L.map wellFormed ts)
 
 
 -- Information about dragging.
@@ -737,7 +751,7 @@ nodeVal =
 
 
 -- | A pseudo-lens.
-setTrees : D.Dict TreeId (R.Tree Node) -> Model -> Model
+setTrees : File -> Model -> Model
 setTrees treeDict model =
   let
     treeId = case D.toList treeDict of
@@ -756,7 +770,7 @@ setTrees treeDict model =
 ---------------------------------------------------
 
 
-fileDecoder : Decode.Decoder (D.Dict TreeId (R.Tree Node))
+fileDecoder : Decode.Decoder File
 fileDecoder = Decode.dict treeDecoder
 
 
@@ -781,50 +795,3 @@ leafDecoder =
     (Decode.field "leafId" Decode.int)
     (Decode.field "leafVal" Decode.string)
     (Decode.field "leafPos" Decode.int)
-
-
----------------------------------------------------
--- Initialization
----------------------------------------------------
-
-
--- init : (Model, Cmd Msg)
--- init =
---   let
---     top = win "t1"
---     bot = win "t2"
---     win name =
---       { tree = name
---       , pos = Position 400 50
---       , selMain = Nothing
---       , selAux = S.empty
---       , drag = Nothing
---       }
---     dim =
---       { width = 0
---       , height = 0
---       , heightProp = 50
---       }
---     model =
---       { trees = D.fromList
---           [ ("t1", Cfg.testTree3)
---           , ("t2", Cfg.testTree2)
---           , ("t3", Cfg.testTree1)
---           , ("t4", Cfg.testTree4)
---           , ("t5", Cfg.testTree5)
---           ]
---       , top = top
---       , bot = bot
---       , focus = Top
---       , links = S.fromList
---           [ (("t4", 3), ("t5", 9))
---           , (("t1", 1), ("t1", 2))
---           ]
---       , dim = dim
---       , ctrl = False
---       , testInput = ""
---       }
---     initHeight = Task.perform Resize Window.size
---   in
---     -- (model, Cmd.none)
---     (model, initHeight)
