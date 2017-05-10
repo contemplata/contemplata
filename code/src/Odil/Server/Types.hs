@@ -21,6 +21,7 @@ module Odil.Server.Types
 
 
 import GHC.Generics
+
 import qualified Data.Map.Strict as M
 import qualified Data.Tree as R
 import qualified Data.Text as T
@@ -78,5 +79,6 @@ type File = M.Map TreeId Tree
 -----------
 
 
+instance JSON.FromJSON Node
 instance JSON.ToJSON Node where
   toEncoding = JSON.genericToEncoding JSON.defaultOptions
