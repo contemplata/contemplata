@@ -1,5 +1,4 @@
 TODAY:
-* Move implementation of the websocket communication from menu to top-level
 
 
 TODO:
@@ -60,3 +59,4 @@ DONE:
 * Make it possible to save a file
 * Listen to websocket from top-level! Note that you send some request form the
   editing tree, too...
+* Move implementation of the websocket communication from menu to top-level

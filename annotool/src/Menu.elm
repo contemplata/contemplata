@@ -9,7 +9,7 @@ module Menu exposing
   -- Subscriptions
   , subscriptions
   -- Server communication
-  , Request(..) , Answer (..), answerDecoder, encodeReq
+  -- , Request(..) , Answer (..), answerDecoder, encodeReq
   -- Initialization
   , mkMenu
   )
@@ -26,6 +26,7 @@ import Dict as D
 import Config as Cfg
 import Rose as R
 import Edit.Model as M
+import Server
 
 
 ---------------------------------------------------
@@ -44,8 +45,9 @@ type alias Model =
 
 type Msg
   = Choice M.FileId -- ^ Edit a specific file
-  | ServerMsg Answer -- ^ Get message from the websocket
-  | Error String  -- ^ An error message
+  | ShowFiles (List M.FileId)
+--   | ServerMsg Answer -- ^ Get message from the websocket
+--   | Error String  -- ^ An error message
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -53,11 +55,10 @@ update msg model =
   let idle x = (x, Cmd.none) in
   case msg of
     Choice fileId ->
-      let cmd = WebSocket.send Cfg.socketServer <| encodeReq (GetFile fileId)
+      let cmd = WebSocket.send Cfg.socketServer <|
+                  Server.encodeReq (Server.GetFile fileId)
       in  (model, cmd)
-    ServerMsg (Files ids) -> idle <| {model | fileIds = ids}
-    Error err -> Debug.crash err
-    _ -> idle <| model
+    ShowFiles ids -> idle <| {model | fileIds = ids}
 
 
 ---------------------------------------------------
@@ -97,63 +98,63 @@ subscriptions : Model -> Sub Msg
 subscriptions _ = Sub.none
 
 
----------------------------------------------------
--- WebSocket communication
----------------------------------------------------
-
-
-type Request
-  = GetFiles
-    -- ^ Obtain the list of files
-  | GetFile M.FileId
-    -- ^ Request the contents of the given file
-  | SaveFile M.FileId M.File
-    -- ^ Request the contents of the given file
-
-
-encodeReq : Request -> String
-encodeReq = Encode.encode 0 << encodeReqToVal
-
-
-encodeReqToVal : Request -> Encode.Value
-encodeReqToVal req = case req of
-  -- GetFiles -> Encode.string "getfiles"
-  GetFiles -> Encode.object [("tag", Encode.string "GetFiles")]
-  GetFile id -> Encode.object
-    [ ("tag", Encode.string "GetFile")
-    , ("contents", Encode.string id)
-    ]
-  SaveFile fileId file -> Encode.object
-    [ ("tag", Encode.string "SaveFile")
-    , ("contents", Encode.list
-         [ Encode.string fileId
-         , M.encodeFile file ]
-      )
-    ]
-
-
-type Answer
-  = Files (List M.FileId)
-    -- ^ The list of files
-  | NewFile M.FileId M.File
-    -- ^ New file to edit
-
-
-answerDecoder : Decode.Decoder Answer
-answerDecoder = Decode.oneOf [filesDecoder, newFileDecoder]
-
-
-filesDecoder : Decode.Decoder Answer
-filesDecoder =
-  Decode.map Files
-    (Decode.field "files" <| Decode.list Decode.string)
-
-
-newFileDecoder : Decode.Decoder Answer
-newFileDecoder =
-  Decode.map2 NewFile
-    (Decode.field "fileId" Decode.string)
-    (Decode.field "file" M.fileDecoder)
+-- ---------------------------------------------------
+-- -- Server websocket communication
+-- ---------------------------------------------------
+--
+--
+-- type Request
+--   = GetFiles
+--     -- ^ Obtain the list of files
+--   | GetFile M.FileId
+--     -- ^ Request the contents of the given file
+--   | SaveFile M.FileId M.File
+--     -- ^ Request the contents of the given file
+--
+--
+-- encodeReq : Request -> String
+-- encodeReq = Encode.encode 0 << encodeReqToVal
+--
+--
+-- encodeReqToVal : Request -> Encode.Value
+-- encodeReqToVal req = case req of
+--   -- GetFiles -> Encode.string "getfiles"
+--   GetFiles -> Encode.object [("tag", Encode.string "GetFiles")]
+--   GetFile id -> Encode.object
+--     [ ("tag", Encode.string "GetFile")
+--     , ("contents", Encode.string id)
+--     ]
+--   SaveFile fileId file -> Encode.object
+--     [ ("tag", Encode.string "SaveFile")
+--     , ("contents", Encode.list
+--          [ Encode.string fileId
+--          , M.encodeFile file ]
+--       )
+--     ]
+--
+--
+-- type Answer
+--   = Files (List M.FileId)
+--     -- ^ The list of files
+--   | NewFile M.FileId M.File
+--     -- ^ New file to edit
+--
+--
+-- answerDecoder : Decode.Decoder Answer
+-- answerDecoder = Decode.oneOf [filesDecoder, newFileDecoder]
+--
+--
+-- filesDecoder : Decode.Decoder Answer
+-- filesDecoder =
+--   Decode.map Files
+--     (Decode.field "files" <| Decode.list Decode.string)
+--
+--
+-- newFileDecoder : Decode.Decoder Answer
+-- newFileDecoder =
+--   Decode.map2 NewFile
+--     (Decode.field "fileId" Decode.string)
+--     (Decode.field "file" M.fileDecoder)
 
 
 ---------------------------------------------------
@@ -165,7 +166,7 @@ mkMenu : (Model, Cmd Msg)
 mkMenu =
   let
     model = {fileIds = []}
-    init = WebSocket.send Cfg.socketServer (encodeReq GetFiles)
+    init = WebSocket.send Cfg.socketServer (Server.encodeReq Server.GetFiles)
   in
     (model, init)
 

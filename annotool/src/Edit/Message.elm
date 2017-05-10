@@ -11,9 +11,10 @@ import Window as Window
 import WebSocket
 import Json.Decode as Decode
 
+import Config as Cfg
 import Edit.Model as M
 import Menu
-import Config as Cfg
+import Server
 
 
 type Msg
@@ -134,11 +135,11 @@ update msg model =
 
     SaveFile ->
       let
-        fileId = model.fileId
         file = {treeMap = model.trees, linkSet = model.links}
-        req = Menu.encodeReq (Menu.SaveFile fileId file)
+        req = Server.encodeReq (Server.SaveFile model.fileId file)
         save = WebSocket.send Cfg.socketServer req
-      in  (model, save)
+      in
+        (model, save)
 
 --     -- Testing websockets
 --     TestInput x -> idle <| {model | testInput=x}

@@ -16,8 +16,9 @@ import Json.Decode as Decode
 import Rose as R
 import Config as Cfg
 
-import Menu
 
+import Server
+import Menu
 import Edit.Model
 import Edit.Init
 import Edit.Message
@@ -91,18 +92,39 @@ main =
 ---------------------------------------------------
 
 
--- -- | Top-level model.
--- type TopModel
---   = Edit Edit.Model.Model
---   | Menu Menu.Menu
+-- | Top-level model.
+type Either a b
+  = Left a
+  | Right b
 
 
 -- | Top-level model.
 type alias TopModel = Switch Edit.Model.Model Menu.Model
 
 
+-- | Top- or sub-level message.
+type alias TopMsg = Either (Switch Edit.Message.Msg Menu.Msg) Msg
+
+
 -- | Top-level message.
-type alias TopMsg = Switch Edit.Message.Msg Menu.Msg
+type Msg
+  = ServerMsg Server.Answer -- ^ Get message from the websocket
+  | Error String  -- ^ An error message
+
+
+-- | Make a top-level message from an edit message.
+editMsg : Edit.Message.Msg -> TopMsg
+editMsg = Left << Edit
+
+
+-- | Make a top-level message from a menu message.
+menuMsg : Menu.Msg -> TopMsg
+menuMsg = Left << Menu
+
+
+-- | Make a top-level message from a top message.
+topMsg : Msg -> TopMsg
+topMsg = Right
 
 
 ---------------------------------------------------
@@ -112,8 +134,8 @@ type alias TopMsg = Switch Edit.Message.Msg Menu.Msg
 
 topView : TopModel -> Html.Html TopMsg
 topView top = case top of
-  Edit mod -> Html.map Edit <| Edit.View.view mod
-  Menu mod -> Html.map Menu <| Menu.view mod
+  Edit mod -> Html.map editMsg <| Edit.View.view mod
+  Menu mod -> Html.map menuMsg <| Menu.view mod
 
 
 ---------------------------------------------------
@@ -124,16 +146,20 @@ topView top = case top of
 topUpdate : TopMsg -> TopModel -> ( TopModel, Cmd TopMsg )
 topUpdate topMsg =
   case topMsg of
-    Edit msg -> case msg of
+    Left (Edit msg) -> case msg of
       Edit.Message.Files -> \model_ ->
         let (model, cmd) = Menu.mkMenu
-        in  (Menu model, Cmd.map Menu cmd)
-      _ -> updateOn editLens Edit (Edit.Message.update msg)
-    Menu msg -> case msg of
-      Menu.ServerMsg (Menu.NewFile fileId file) -> \model_ ->
+        in  (Menu model, Cmd.map menuMsg cmd)
+      _ -> updateOn editLens editMsg (Edit.Message.update msg)
+    Left (Menu msg) ->
+      updateOn menuLens menuMsg (Menu.update msg)
+    Right (ServerMsg ans) -> case ans of
+      Server.Files xs -> updateOn menuLens menuMsg
+        (Menu.update <| Menu.ShowFiles xs)
+      Server.NewFile fileId file -> \model_ ->
         let (edit, cmd) = Edit.Init.mkEdit fileId file
-        in  (Edit edit, Cmd.map Edit cmd)
-      _ -> updateOn menuLens Menu (Menu.update msg)
+        in  (Edit edit, Cmd.map editMsg cmd)
+    Right (Error err) -> Debug.crash err
 
 
 ---------------------------------------------------
@@ -144,15 +170,15 @@ topUpdate topMsg =
 topSubscriptions : TopModel -> Sub TopMsg
 topSubscriptions top =
   let
-    getMsg x = case Decode.decodeString Menu.answerDecoder x of
-      Ok res -> Menu.ServerMsg res
-      Err err -> Menu.Error err
+    getMsg x = case Decode.decodeString Server.answerDecoder x of
+      Ok res -> ServerMsg res
+      Err err -> Error err
     listen = WebSocket.listen Cfg.socketServer getMsg
     subordinate = case top of
-      Edit mod -> Sub.map Edit <| Edit.Subs.editSubscriptions mod
-      Menu mod -> Sub.map Menu <| Menu.subscriptions mod
+      Edit mod -> Sub.map editMsg <| Edit.Subs.editSubscriptions mod
+      Menu mod -> Sub.map menuMsg <| Menu.subscriptions mod
   in
-    Sub.batch [Sub.map Menu listen, subordinate]
+    Sub.batch [Sub.map topMsg listen, subordinate]
 
 
 ---------------------------------------------------
@@ -165,7 +191,7 @@ topInit =
 --   let (edit, cmd) = editInit
 --   in  (Edit edit, Cmd.map Edit cmd)
   let (model, cmd) = Menu.mkMenu
-  in  (Menu model, Cmd.map Menu cmd)
+  in  (Menu model, Cmd.map menuMsg cmd)
 
 
 -- editInit : (Edit.Model.Model, Cmd Edit.Message.Msg)
