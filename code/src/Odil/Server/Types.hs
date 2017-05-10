@@ -14,7 +14,9 @@ module Odil.Server.Types
 , LeafId
 , Tree
 , Node (..)
-, File
+, File (..)
+, Link (..)
+, Addr
 
 -- * JSON
 ) where
@@ -22,6 +24,7 @@ module Odil.Server.Types
 
 import GHC.Generics
 
+import qualified Data.Set as S
 import qualified Data.Map.Strict as M
 import qualified Data.Tree as R
 import qualified Data.Text as T
@@ -66,7 +69,21 @@ data Node
 
 
 -- | A file.
-type File = M.Map TreeId Tree
+data File = File
+  { treeMap :: M.Map TreeId Tree
+  , linkSet :: S.Set Link }
+  deriving (Generic, Show, Eq)
+
+
+-- | A link between two nodes in a given file.
+data Link = Link
+  { from :: Addr
+  , to :: Addr }
+  deriving (Generic, Show, Eq, Ord)
+
+
+-- | A node address.
+type Addr = (TreeId, NodeId)
 
 
 -----------
@@ -81,4 +98,14 @@ type File = M.Map TreeId Tree
 
 instance JSON.FromJSON Node
 instance JSON.ToJSON Node where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+
+
+instance JSON.FromJSON Link
+instance JSON.ToJSON Link where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+
+
+instance JSON.FromJSON File
+instance JSON.ToJSON File where
   toEncoding = JSON.genericToEncoding JSON.defaultOptions

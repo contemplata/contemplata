@@ -15,6 +15,7 @@ module Odil.Server.Config
 -- import qualified Data.Text as T
 import qualified Data.Tree as R
 import qualified Data.List as L
+import qualified Data.Set as S
 import qualified Data.Map.Strict as M
 
 import qualified Odil.Server.Types as V
@@ -43,11 +44,14 @@ tempModel = M.fromList
   [ ("file1", file1)
   , ("file2", file2) ]
   where
-    file1 = M.fromList
-      [ ("tree3", testTree3) ]
-    file2 = M.fromList
-      [ ("tree4", testTree4)
-      , ("tree5", testTree5) ]
+    file1 = V.File
+      { treeMap = M.fromList [("tree3", testTree3)]
+      , linkSet = S.empty }
+    file2 = V.File
+      { treeMap = M.fromList
+          [ ("tree4", testTree4)
+          , ("tree5", testTree5) ]
+      , linkSet = S.empty }
 
 
 mkSynTree

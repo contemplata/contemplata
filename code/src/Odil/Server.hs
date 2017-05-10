@@ -49,6 +49,7 @@ import qualified Odil.Server.Config as Cfg
 data Request
   = GetFiles
   | GetFile FileId
+  | SaveFile FileId File
   deriving (Generic, Show)
 
 instance JSON.FromJSON Request
@@ -116,27 +117,30 @@ talk conn state = forever $ do
   msg <- WS.receiveData conn
   LBC.putStrLn msg
   fileMap <- C.readMVar state
-  case JSON.decode msg of
+  putStrLn $ "Talking; the size of the fileMap is " ++ show (M.size fileMap)
+  case JSON.eitherDecode msg of
 
-    Nothing -> return ()
+    Left err -> do
+      putStrLn "JSON decoding error:"
+      putStrLn err
 
-    Just GetFiles ->
+    Right GetFiles -> do
       let ret = Files (M.keys fileMap)
-      in  WS.sendTextData conn (JSON.encode ret)
---     "files" -> WS.sendTextData conn $
---       T.intercalate ", " (M.keys fileMap)
+      WS.sendTextData conn (JSON.encode ret)
 
 
-    Just (GetFile fileId) -> case M.lookup fileId fileMap of
+    Right (GetFile fileId) -> case M.lookup fileId fileMap of
       Nothing -> return ()
-      Just treeMap ->
+      Just treeMap -> do
         let ret = NewFile fileId treeMap
-        in  WS.sendTextData conn (JSON.encode ret)
---     (getFile fileMap -> Just treeMap) -> WS.sendTextData conn $
---       JSON.encode treeMap
+        WS.sendTextData conn (JSON.encode ret)
 
---     _ -> WS.sendTextData conn $
---       msg `T.append` ", meow"
+    Right (SaveFile fileId file) -> do
+      putStrLn "Saving file..."
+      C.modifyMVar_ state (return . M.insert fileId file)
+      putStrLn "Saved"
+      -- fileMapNow <- C.readMVar state
+      -- putStrLn $ "The size is now: " ++ show (M.size fileMapNow)
 
 
 -- -- getFile :: M.Map FileId File -> T.Text -> Maybe LBS.ByteString
