@@ -173,7 +173,7 @@ viewMenu =
   in
 
     Html.div []
-      [ menuElem Files 10 "Files"
+      [ menuElem Files 10 "Load"
       , menuElem SaveFile 70 "Save" ]
 
 
@@ -227,6 +227,15 @@ drawNode selMain selAux focus at node =
       ( if Just nodeId == selMain
           then ["border" => "solid", "border-color" => "black"]
           else ["border" => "none"] )
+--     nodeVal = case node of
+--       M.Node r -> r.nodeVal
+--       M.Leaf r -> r.nodeVal ++ " " ++ toString r.leafPos
+    htmlLeaf = case node of
+      M.Node r ->
+        [ Html.text r.nodeVal ]
+      M.Leaf r ->
+        [ Html.text r.nodeVal
+        , Html.sub [] [Html.text <| toString r.leafPos] ]
   in
     Html.div
       [ nodeMouseDown focus node
@@ -250,7 +259,8 @@ drawNode selMain selAux focus at node =
           , "justify-content" => "center"
           ]
       ]
-      [ Html.text (Lens.get M.nodeVal node) ]
+      [Html.p [] htmlLeaf]
+      -- htmlLeaf
 --       [ Html.div
 --           [ Atts.attribute "contenteditable" "true" ]
 --           [ Html.text node.nodeVal ]
@@ -546,8 +556,10 @@ backKeyDown =
       33 -> Previous
       34 -> Next
 
+      -- "d"
+      68 -> Delete
       -- "Del"
-      46 -> Delete
+      -- 46 -> Delete
 
       -- "a"
       65 -> Add

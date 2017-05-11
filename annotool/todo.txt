@@ -60,3 +60,5 @@ DONE:
 * Listen to websocket from top-level! Note that you send some request form the
   editing tree, too...
 * Move implementation of the websocket communication from menu to top-level
+* Improve re-attaching trees (sorting is done only on the tree being attached to)
+* Show leaf ids in subscript (concerns non-projective trees) 

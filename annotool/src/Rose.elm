@@ -131,16 +131,39 @@ putSubTree s p t =
 ---------------------------------------------------
 
 
+-- -- | Sort the tree based on the ints assigned to its leaves.
+-- sortTree : (a -> Int) -> Tree a -> Tree a
+-- sortTree f t =
+--   let
+--     goT (Node x ts) =
+--       case ts of
+--         [] -> (Node x ts, f x)
+--         _ ->
+--           let
+--             tps = L.sortBy second <| L.map goT ts
+--             ts1 = L.map first tps
+--             pos = round <| Util.average <| L.map (toFloat << second) tps
+--           in
+--             (Node x ts1, pos)
+--   in
+--     first <| goT t
+
+
 -- | Sort the tree based on the ints assigned to its leaves.
-sortTree : (a -> Int) -> Tree a -> Tree a
-sortTree f t =
+sortTree
+   : (a -> Int)  -- ^ Positions assigned to leaves
+  -> (a -> Bool) -- ^ Determines the nodes whose children will be sorted
+  -> Tree a
+  -> Tree a
+sortTree leafPos active t =
   let
     goT (Node x ts) =
       case ts of
-        [] -> (Node x ts, f x)
+        [] -> (Node x ts, leafPos x)
         _ ->
           let
-            tps = L.sortBy second <| L.map goT ts
+            sort = if active x then L.sortBy second else identity
+            tps = sort <| L.map goT ts
             ts1 = L.map first tps
             pos = round <| Util.average <| L.map (toFloat << second) tps
           in

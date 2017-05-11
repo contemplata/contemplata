@@ -447,7 +447,8 @@ deleteSel =
 deleteNode : NodeId -> R.Tree Node -> R.Tree Node
 deleteNode id tree =
   let
-    update (R.Node x ts) = if id == Lens.get nodeId x
+    update (R.Node x ts) =
+      if id == Lens.get nodeId x && not (isLeaf x)
       then ts
       else [R.Node x (updateF ts)]
     updateF ts = case ts of
@@ -456,6 +457,9 @@ deleteNode id tree =
   in
     case update tree of
       [hd] -> hd
+--         if wellFormed hd
+--         then hd
+--         else tree
       _ -> tree -- A situation which can occur if you delete a root
 
 
@@ -600,18 +604,19 @@ attach from to tree =
       |> Maybe.andThen (\sub -> delSubTree from tree
       |> Maybe.map (\tree1 -> putSubTree sub to tree1)
       |> Maybe.andThen (Util.guard wellFormed)
-      |> Maybe.map sortTree)
+      |> Maybe.map (sortTree to))
       -- |> Maybe.andThen (Util.guard wellFormed))
 
 
-sortTree : R.Tree Node -> R.Tree Node
-sortTree =
+sortTree : NodeId -> R.Tree Node -> R.Tree Node
+sortTree id =
   let
-    pos x = case x of
+    leafPos x = case x of
       Leaf r -> r.leafPos
       _ -> Debug.crash "sortTree: should never happen"
+    pred x = Lens.get nodeId x == id
   in
-    R.sortTree pos
+    R.sortTree leafPos pred
 
 
 isSubTree

@@ -37,8 +37,12 @@ import Edit.Model as M
 -- | Width of a node.
 stdWidth : M.Node -> Int
 stdWidth x =
-  let val = Lens.get M.nodeVal x
-  in  max 30 <| String.length val * 10
+  -- let val = Lens.get M.nodeVal x
+  let
+    (txt, ix) = case x of
+      M.Node r -> (r.nodeVal, "")
+      M.Leaf r -> (r.nodeVal, toString r.leafPos)
+  in  max 30 <| String.length txt * 10 + String.length ix * 6
 -- stdWidth x = 100
 
 -- nodeWidth : Int
