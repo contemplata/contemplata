@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 
-module Odil.Ancor.IO.Parse (parseAncor) where
+module Odil.Ancor.IO.Parse (parseAncor, parseTrans) where
 
 
 import Control.Applicative (optional, (*>), (<|>))
@@ -26,7 +26,11 @@ type Q a = PolySoup.Q (XmlTree T.Text) a
 
 
 ancorQ :: Q Episode
-ancorQ = named "ANCOR" `joinR` first (named "Trans" `joinR` first episodeQ)
+ancorQ = named "ANCOR" `joinR` first transQ
+
+
+transQ :: Q Episode
+transQ = named "Trans" `joinR` first episodeQ
 
 
 episodeQ :: Q Episode
@@ -39,21 +43,27 @@ sectionQ = named "Section" `joinR` every' turnQ
 
 turnQ :: Q Turn
 turnQ =
-    (named "Turn" *> optional (attr "speaker")) `join`
-    \spk ->
-         Turn spk <$> every' elemQ
+  (named "Turn" *> optional (attr "speaker")) `join`
+  \spk ->
+       Turn spk . cleanUp <$> every' elemQ
+  where
+    cleanUp = filter (not . T.null) . map T.strip
 
 
 elemQ :: Q Elem
-elemQ = anchorQ <|> regularQ
+elemQ = node text
 
 
-anchorQ :: Q Elem
-anchorQ = Anchor <$> named "anchor" `joinR` first (node text)
-
-
-regularQ :: Q Elem
-regularQ = Regular <$> node text
+-- elemQ :: Q Elem
+-- elemQ = anchorQ <|> regularQ
+--
+--
+-- anchorQ :: Q Elem
+-- anchorQ = Anchor <$> named "anchor" `joinR` first (node text)
+--
+--
+-- regularQ :: Q Elem
+-- regularQ = Regular <$> node text
 
 
 ---------------------------------------------------
@@ -66,6 +76,18 @@ regularQ = Regular <$> node text
 
 
 -- | Parse an entire Ancor file.
-parseAncor :: T.Text -> [Section]
+parseAncor :: T.Text -> Episode
 parseAncor =
-    concat . catMaybes . map (runQ ancorQ) . parseForest . TagSoup.parseTags
+  parseGen ancorQ
+
+
+-- | Parse an entire Trans file.
+parseTrans :: T.Text -> Episode
+parseTrans =
+  parseGen transQ
+
+
+-- | Genering parsing function.
+parseGen :: Q [a] -> T.Text -> [a]
+parseGen q =
+  concat . catMaybes . map (runQ q) . parseForest . TagSoup.parseTags

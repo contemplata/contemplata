@@ -21,12 +21,20 @@ data Turn = Turn
 
 
 -- | An element of a turn.
-data Elem
-    = Anchor T.Text
-    | Regular T.Text
-    deriving (Show, Eq, Ord)
+type Elem = T.Text
 
 
 unElem :: Elem -> T.Text
-unElem (Anchor x) = x
-unElem (Regular x) = x
+unElem = id
+
+
+-- -- | An element of a turn.
+-- data Elem
+--     = Anchor T.Text
+--     | Regular T.Text
+--     deriving (Show, Eq, Ord)
+--
+--
+-- unElem :: Elem -> T.Text
+-- unElem (Anchor x) = x
+-- unElem (Regular x) = x

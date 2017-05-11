@@ -10,7 +10,7 @@ import qualified Data.Text as T
 import Odil.Ancor.Types
 
 
-showAncor :: [Section] -> T.Text
+showAncor :: Episode -> T.Text
 showAncor = T.intercalate "\n\n" . map showSection
 
 
