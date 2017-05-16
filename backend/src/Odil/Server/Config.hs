@@ -7,6 +7,9 @@ module Odil.Server.Config
   serverAddr
 , serverPort
 
+-- * DB
+, dbRegName
+
 -- * Temporary
 , tempModel
 ) where
@@ -32,6 +35,15 @@ serverAddr = "127.0.0.1"
 
 serverPort :: Int
 serverPort = 9161
+
+
+---------------------------------------
+-- DB static config
+---------------------------------------
+
+
+dbRegName :: FilePath
+dbRegName = "reg.json"
 
 
 -----------
