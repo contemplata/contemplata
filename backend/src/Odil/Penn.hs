@@ -7,18 +7,29 @@ module Odil.Penn
 , parseForest
 , parseFile
 , dividePenn
+
+-- * Conversion
+, toOdilTree
+, convertPennFile
 ) where
 
 
 import Control.Monad (void)
 import Control.Applicative ((<|>))
+import qualified Control.Monad.Trans.State.Strict as ST
 
 import qualified Data.Attoparsec.Text as A
 import qualified Data.Tree as R
+import qualified Data.Set as S
+import qualified Data.Map.Strict as M
+import qualified Data.Traversable as Trav
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Char as C
 import qualified Data.List as L
+
+
+import qualified Odil.Server.Types as Odil
 
 
 ---------------------------------------------------
@@ -31,7 +42,64 @@ type Tree = R.Tree T.Text
 
 
 ---------------------------------------------------
+-- Conversion
+---------------------------------------------------
+
+
+-- | Conversion state.
+data Conv = Conv
+  { idAcc :: Int
+  , posAcc :: Int }
+
+
+-- | Conver a given Penn tree to an ODIL tree.
+toOdilTree :: Tree -> Odil.Tree
+toOdilTree =
+
+  flip ST.evalState
+    (Conv 0 0)
+  . Trav.traverse f
+  . markLeaves
+
+  where
+
+    f (x, isLeaf) =
+      if isLeaf then do
+        i <- newId
+        p <- newPos
+        return $ Odil.Leaf i x p
+      else do
+        i <- newId
+        return $ Odil.Node i x
+
+    markLeaves (R.Node x ts) = case ts of
+      [] -> R.Node (x, True) []
+      _  -> R.Node (x, False) (map markLeaves ts)
+
+    newId = do
+      conv <- ST.get
+      ST.put $ conv {idAcc = idAcc conv + 1}
+      return $ idAcc conv
+
+    newPos = do
+      conv <- ST.get
+      ST.put $ conv {posAcc = posAcc conv + 1}
+      return $ posAcc conv
+
+
+convertPennFile :: [Tree] -> Odil.File
+convertPennFile
+  = flip Odil.File S.empty
+  . M.fromList
+  . zip (map (T.pack . show) [1..])
+  . map toOdilTree
+  -- . parseForest
+
+
+---------------------------------------------------
+---------------------------------------------------
 -- Parsing
+---------------------------------------------------
 ---------------------------------------------------
 
 

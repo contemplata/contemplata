@@ -470,7 +470,18 @@ deleteNode id tree =
 
 -- | Add selected nodes in a given window.
 addSel : Focus -> Model -> Model
-addSel = procSel addNode
+addSel = procSel (\ids -> addNode ids >> addRoot ids)
+
+
+-- | Add parent to a root (if in the set of selected nodes).
+addRoot : S.Set NodeId -> R.Tree Node -> R.Tree Node
+addRoot ids t =
+  let
+    rootId (R.Node x _) = Lens.get nodeId x
+  in
+    if S.member (rootId t) ids
+    then identify "?" <| R.Node Nothing [R.map Just t]
+    else t
 
 
 -- | Add a parent to a given node.

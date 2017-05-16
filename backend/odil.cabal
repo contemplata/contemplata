@@ -45,6 +45,8 @@ executable odil
   build-depends:       base
                      , odil
                      , text >= 1.2 && < 1.3
+                     , bytestring >= 0.10 && < 0.11
+                     , aeson >= 1.0 && < 1.3
                      , optparse-applicative >= 0.13 && < 0.14
   default-language:    Haskell2010
 

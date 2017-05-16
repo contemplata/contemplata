@@ -558,15 +558,18 @@ backKeyDown =
 
       -- "d"
       68 -> Delete
-      -- "Del"
+      -- -- "Del"
       -- 46 -> Delete
 
       -- "a"
       65 -> Add
 
-      -- "+" and "-"
-      107 -> Increase True
-      109 -> Increase False
+      -- "up" and "down"
+      40 -> Increase True
+      38 -> Increase False
+      -- -- "+" and "-"
+      -- 107 -> Increase True
+      -- 109 -> Increase False
 
       -- "e"
       69 -> EditLabel
