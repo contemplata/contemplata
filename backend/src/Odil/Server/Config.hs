@@ -8,7 +8,9 @@ module Odil.Server.Config
 , serverPort
 
 -- * DB
-, dbRegName
+, dbPath
+, dbRegPath
+, dbStorePath
 
 -- * Temporary
 , tempModel
@@ -42,8 +44,16 @@ serverPort = 9161
 ---------------------------------------
 
 
-dbRegName :: FilePath
-dbRegName = "reg.json"
+dbPath :: FilePath
+dbPath = "/home/kuba/work/odil/bitbucket/backend/data/db-tmp"
+
+
+dbRegPath :: FilePath
+dbRegPath = "reg.json"
+
+
+dbStorePath :: FilePath
+dbStorePath = "store"
 
 
 -----------

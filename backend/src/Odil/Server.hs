@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
 
 
 -- | The annotation server.
@@ -23,8 +24,10 @@ module Odil.Server
 import GHC.Generics
 
 import Control.Monad (forM_, forever)
+import qualified Control.Exception as Exc
 import qualified Control.Concurrent as C
 import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 import qualified Data.Tree as R
 
 import qualified Data.Text as T
@@ -38,6 +41,7 @@ import Data.Aeson ((.=))
 
 import Odil.Server.Types
 import qualified Odil.Server.Config as Cfg
+import qualified Odil.Server.DB as DB
 
 
 -----------
@@ -79,11 +83,22 @@ instance JSON.ToJSON Answer where
 -----------
 
 
-type ServerState = M.Map FileId File
-
-
-newServerState :: ServerState
-newServerState = Cfg.tempModel
+loadDB :: IO DB.DB
+loadDB = do
+  let db = DB.DB
+        { DB.dbPath = Cfg.dbPath
+        , DB.regPath = Cfg.dbRegPath
+        , DB.storePath = Cfg.dbStorePath }
+  res <- DB.runDBT db $ do
+    DB.createDB
+    mapM_
+      (uncurry DB.saveFile)
+      (M.toList Cfg.tempModel)
+  case res of
+    Left err -> T.putStrLn $ "Could not load DB: " `T.append` err
+    Right _  -> return ()
+  return db
+  -- Cfg.tempModel
 
 
 -----------
@@ -93,7 +108,7 @@ newServerState = Cfg.tempModel
 
 runServer :: IO ()
 runServer = do
-  state <- C.newMVar newServerState
+  state <- C.newMVar =<< loadDB
   WS.runServer Cfg.serverAddr Cfg.serverPort $ application state
 
 
@@ -103,7 +118,7 @@ runServer = do
 
 
 -- | The server application.
-application :: C.MVar ServerState -> WS.ServerApp
+application :: C.MVar DB.DB -> WS.ServerApp
 application state pending = do
   conn <- WS.acceptRequest pending
   WS.forkPingThread conn 30
@@ -112,35 +127,58 @@ application state pending = do
   talk conn state
 
 
-talk :: WS.Connection -> C.MVar ServerState -> IO ()
+talk :: WS.Connection -> C.MVar DB.DB -> IO ()
 talk conn state = forever $ do
   msg <- WS.receiveData conn
   LBC.putStrLn msg
-  fileMap <- C.readMVar state
-  putStrLn $ "Talking; the size of the fileMap is " ++ show (M.size fileMap)
-  case JSON.eitherDecode msg of
 
-    Left err -> do
-      putStrLn "JSON decoding error:"
-      putStrLn err
+  db <- C.takeMVar state
+  flip Exc.finally (C.putMVar state db) $ do
 
-    Right GetFiles -> do
-      let ret = Files (M.keys fileMap)
-      WS.sendTextData conn (JSON.encode ret)
+    DB.runDBT db DB.fileNum >>= \case
+      Left err -> T.putStrLn err
+      Right k  -> putStrLn $
+        "Talking; the size of the fileMap is " ++ show k
+
+    case JSON.eitherDecode msg of
+
+      Left err -> do
+        putStrLn "JSON decoding error:"
+        putStrLn err
+
+      Right GetFiles -> do
+        DB.runDBT db DB.fileSet >>= \case
+          Left err -> T.putStrLn err
+          Right fs -> do
+            let ret = Files (S.toList fs)
+            WS.sendTextData conn (JSON.encode ret)
+
+      Right (GetFile fileId) -> do
+        DB.runDBT db (DB.loadFile fileId) >>= \case
+          Left err -> T.putStrLn err
+          Right file -> do
+            let ret = NewFile fileId file
+            WS.sendTextData conn (JSON.encode ret)
+
+  --     Right (GetFile fileId) -> case M.lookup fileId fileMap of
+  --       Nothing -> return ()
+  --       Just treeMap -> do
+  --         let ret = NewFile fileId treeMap
+  --         WS.sendTextData conn (JSON.encode ret)
+
+      Right (SaveFile fileId file) -> do
+        putStrLn "Saving file..."
+        DB.runDBT db (DB.saveFile fileId file) >>= \case
+          Left err -> T.putStrLn err
+          Right () -> putStrLn "Saved"
 
 
-    Right (GetFile fileId) -> case M.lookup fileId fileMap of
-      Nothing -> return ()
-      Just treeMap -> do
-        let ret = NewFile fileId treeMap
-        WS.sendTextData conn (JSON.encode ret)
-
-    Right (SaveFile fileId file) -> do
-      putStrLn "Saving file..."
-      C.modifyMVar_ state (return . M.insert fileId file)
-      putStrLn "Saved"
-      -- fileMapNow <- C.readMVar state
-      -- putStrLn $ "The size is now: " ++ show (M.size fileMapNow)
+  --     Right (SaveFile fileId file) -> do
+  --       putStrLn "Saving file..."
+  --       C.modifyMVar_ state (return . M.insert fileId file)
+  --       putStrLn "Saved"
+  --       -- fileMapNow <- C.readMVar state
+  --       -- putStrLn $ "The size is now: " ++ show (M.size fileMapNow)
 
 
 -- -- getFile :: M.Map FileId File -> T.Text -> Maybe LBS.ByteString
