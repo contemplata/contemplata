@@ -4,7 +4,7 @@ module Edit.Model exposing
     TreeMap, FileId, File, NodeId, TreeId, Node(..), Link, Addr
   , isNode, isLeaf
   -- Model types:
-  , Model, Window, Drag, Focus(..)
+  , Model, Dim, Window, SideWindow(..), Drag, Focus(..)
   -- Other:
   , selectWin, dragOn, getTree, selAll
   , getPosition, nextTree, prevTree, moveCursor
@@ -148,17 +148,29 @@ type alias Model =
 type alias Window =
   { tree : TreeId
 
-  -- , select : S.Set NodeId
+  -- | Main selected node (if any)
   , selMain : Maybe NodeId
-    -- ^ Main selected node (if any)
+  -- | Auxiliary selected nodes;
+  -- invariant: selMain not in selAux
   , selAux : S.Set NodeId
-    -- ^ Auxiliary selected nodes;
-    -- invariant: selMain not in selAux
 
-  -- , select : S.Set NodeId
+  -- | Window's position shift
   , pos : Position
+
+  -- | Window's drag
   , drag : Maybe Drag
+
+  -- | Information about the side window.
+  , side : SideWindow
   }
+
+
+-- | Possible states of the side window.
+type SideWindow
+  = SideEdit
+    -- ^ The main editing window
+  | SideContext
+    -- ^ Context window
 
 
 type alias Dim =

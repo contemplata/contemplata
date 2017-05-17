@@ -1,5 +1,5 @@
-module Util exposing
-  ( split, catMaybes, find, unless, mappend, guard, and, average)
+module Util exposing ( split, catMaybes, find, unless, mappend, guard, and,
+  average, single )
 
 
 import List as L
@@ -72,3 +72,7 @@ and xs = case xs of
 
 average : List Float -> Float
 average xs = L.sum xs / toFloat (L.length xs)
+
+
+single : a -> List a
+single x = [x]

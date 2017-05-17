@@ -23,6 +23,7 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import Dict as D
 
+import Util
 import Config as Cfg
 import Rose as R
 import Edit.Model as M
@@ -80,7 +81,7 @@ view model =
 
 
 viewFileId : M.FileId -> Html.Html Msg
-viewFileId x = Html.li [] <| single <|
+viewFileId x = Html.li [] <| Util.single <|
   Html.div
     [ Atts.class "noselect"
     , Events.onClick (Choice x)
@@ -119,7 +120,3 @@ mkMenu =
 
 (=>) : a -> b -> (a, b)
 (=>) = (,)
-
-
-single : a -> List a
-single x = [x]

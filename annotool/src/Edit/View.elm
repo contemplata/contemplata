@@ -33,8 +33,10 @@ view model =
         ]
     ]
     ( [ stylesheet
-      , viewWindow M.Top model, viewSideWindow M.Top model
-      , viewWindow M.Bot model, viewSideWindow M.Bot model
+      , viewWindow M.Top model
+      , viewSideWindow M.Top model
+      , viewWindow M.Bot model
+      , viewSideWindow M.Bot model
       ] ++ viewLinks model )
 
 
@@ -272,9 +274,35 @@ drawNode selMain selAux focus at node =
 ---------------------------------------------------
 
 
- -- | The view of the top-side window.
+-- | The view of a side window.
 viewSideWindow : M.Focus -> M.Model -> Html.Html Msg
-viewSideWindow win model =
+viewSideWindow focus model =
+  case (M.selectWin focus model).side of
+    M.SideEdit -> viewSideEdit focus model
+    M.SideContext -> viewSideContext focus model
+
+
+viewSideDiv : M.Focus -> M.Dim -> List (Html.Html Msg) -> Html.Html Msg
+viewSideDiv win dim = Html.div
+  [ Atts.style
+    [ "position" => "absolute"
+    , "width" => (toString Cfg.sideSpace ++ "%")
+    -- , "height" => "50%"
+    , "height" => case win of
+        M.Top -> toString dim.heightProp ++ "%"
+        M.Bot -> toString (100 - dim.heightProp) ++ "%"
+    , "right" => "0"
+    , case win of
+        M.Top -> "top" => "0"
+        M.Bot -> "bottom" => "0"
+    , "overflow" => "auto"
+    ]
+  ]
+
+
+-- | The view of a side window.
+viewSideEdit : M.Focus -> M.Model -> Html.Html Msg
+viewSideEdit win model =
   let
     selected = case win of
       M.Top -> model.top.selMain
@@ -287,21 +315,7 @@ viewSideWindow win model =
         ( [Atts.disabled True, Atts.placeholder "<label>"]
         , \_ -> Msg.dummy )
   in
-    Html.div
-      [ Atts.style
-        [ "position" => "absolute"
-        , "width" => (toString Cfg.sideSpace ++ "%")
-        -- , "height" => "50%"
-        , "height" => case win of
-            M.Top -> toString model.dim.heightProp ++ "%"
-            M.Bot -> toString (100 - model.dim.heightProp) ++ "%"
-        , "right" => "0"
-        , case win of
-            M.Top -> "top" => "0"
-            M.Bot -> "bottom" => "0"
-        , "overflow" => "auto"
-        ]
-      ]
+    viewSideDiv win model.dim
       [ Html.input
           ( [ Events.onInput event
             , Atts.id <| case win of
@@ -319,6 +333,25 @@ viewSideWindow win model =
 --       , Html.button [Events.onClick TestSend] [Html.text "Send"]
 --       -- , Html.div [] (List.map viewMessage (List.reverse model.messages))
       ]
+
+
+-- | The view of a side window.
+viewSideContext : M.Focus -> M.Model -> Html.Html Msg
+viewSideContext win model =
+  viewSideDiv win model.dim
+    [ Html.ul []
+        (List.map viewFileId <| D.keys model.trees)
+    ]
+
+
+viewFileId : M.TreeId -> Html.Html Msg
+viewFileId x = Html.li [] <| Util.single <|
+  Html.div
+    [ Atts.class "noselect"
+    -- , Events.onClick (Choice x)
+    , Atts.style ["cursor" => "pointer"]
+    ]
+    [Html.text x]
 
 
 ---------------------------------------------------
