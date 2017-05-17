@@ -340,15 +340,18 @@ viewSideContext : M.Focus -> M.Model -> Html.Html Msg
 viewSideContext win model =
   viewSideDiv win model.dim
     [ Html.ul []
-        (List.map viewFileId <| D.keys model.trees)
+        (List.map
+           (viewFileId win)
+           (D.keys model.trees)
+        )
     ]
 
 
-viewFileId : M.TreeId -> Html.Html Msg
-viewFileId x = Html.li [] <| Util.single <|
+viewFileId : M.Focus -> M.TreeId -> Html.Html Msg
+viewFileId foc x = Html.li [] <| Util.single <|
   Html.div
     [ Atts.class "noselect"
-    -- , Events.onClick (Choice x)
+    , Events.onClick (SelectTree foc x)
     , Atts.style ["cursor" => "pointer"]
     ]
     [Html.text x]

@@ -32,7 +32,7 @@ mkEdit fileId file =
       , selMain = Nothing
       , selAux = S.empty
       , drag = Nothing
-      , side = Edit.Model.SideEdit
+      , side = Edit.Model.SideContext
       }
     dim =
       { width = 0

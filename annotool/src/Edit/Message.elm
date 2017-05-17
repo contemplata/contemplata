@@ -25,6 +25,7 @@ type Msg
   | DragAt Position
   | DragEnd Position
   | Select M.Focus M.NodeId
+  | SelectTree M.Focus M.TreeId
   | Focus M.Focus
   | Resize Window.Size -- ^ The height and width of the entire window
   | Increase Bool -- ^ Increase the size of the top window
@@ -102,6 +103,8 @@ update msg model =
       if model.ctrl
         then M.selectNodeAux win i model
         else M.selectNode win i model
+
+    SelectTree win treeId -> idle <| model
 
     Next -> idle <| M.moveCursor True model
 
