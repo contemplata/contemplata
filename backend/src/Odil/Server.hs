@@ -86,10 +86,7 @@ instance JSON.ToJSON Answer where
 -- | Load the DB from a given directory.
 loadDB :: FilePath -> IO DB.DB
 loadDB dbPath = do
-  let db = DB.DB
-        { DB.dbPath = dbPath
-        , DB.regPath = Cfg.dbRegPath
-        , DB.storePath = Cfg.dbStorePath }
+  let db = DB.defaultConf dbPath
   res <- DB.runDBT db $ do
     DB.createDB
     mapM_

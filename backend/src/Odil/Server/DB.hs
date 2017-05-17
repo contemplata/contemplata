@@ -10,6 +10,7 @@ module Odil.Server.DB
 (
 -- * Configuration
   DB (..)
+, defaultConf
 
 -- * DB monad transformer
 , DBT
@@ -44,6 +45,30 @@ import qualified Data.Aeson as JSON
 
 
 ---------------------------------------
+-- DB config
+---------------------------------------
+
+
+-- | Database config.
+data DB = DB
+  { dbPath :: FilePath
+    -- ^ Directory in which the DB is stored.
+  , regPath :: FilePath
+    -- ^ Register path (relative w.r.t. `dbPath`)
+  , storePath :: FilePath
+    -- ^ Store (files) path (relative w.r.t. `dbPath`)
+  }
+
+
+-- | A default config given a `dbPath`.
+defaultConf :: FilePath -> DB
+defaultConf dbPath = DB
+  { dbPath = dbPath
+  , regPath = Cfg.dbRegPath
+  , storePath = Cfg.dbStorePath }
+
+
+---------------------------------------
 -- DB objects: pure functions only
 ---------------------------------------
 
@@ -68,22 +93,6 @@ regAddFile = S.insert
 -- | Size of the register.
 regSize :: Register -> Int
 regSize = S.size
-
-
----------------------------------------
--- DB config
----------------------------------------
-
-
--- | Database config.
-data DB = DB
-  { dbPath :: FilePath
-    -- ^ Directory in which the DB is stored.
-  , regPath :: FilePath
-    -- ^ Register path (relative w.r.t. `dbPath`)
-  , storePath :: FilePath
-    -- ^ Store (files) path (relative w.r.t. `dbPath`)
-  }
 
 
 ---------------------------------------

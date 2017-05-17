@@ -1,11 +1,14 @@
 TODO:
+* Create an empty DB using the cmdline tool.
+* Add a new file using the cmdline tool.  Its file ID should correspond to is name.
 
 
 LATER:
-* Configuration file which specifies the server directory,
-  or a cmdline argument?
+* Checking consistency of the DB
 
 
 DONE:
 * Store the JSON files on disk, for the moment
 * Write a cmdline tool to run the server
+* Configuration file which specifies the server directory,
+  or a cmdline argument?
