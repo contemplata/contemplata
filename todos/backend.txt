@@ -1,5 +1,11 @@
 TODO:
 
 
+LATER:
+* Configuration file which specifies the server directory,
+  or a cmdline argument?
+
+
 DONE:
 * Store the JSON files on disk, for the moment
+* Write a cmdline tool to run the server

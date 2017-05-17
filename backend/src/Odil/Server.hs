@@ -83,10 +83,11 @@ instance JSON.ToJSON Answer where
 -----------
 
 
-loadDB :: IO DB.DB
-loadDB = do
+-- | Load the DB from a given directory.
+loadDB :: FilePath -> IO DB.DB
+loadDB dbPath = do
   let db = DB.DB
-        { DB.dbPath = Cfg.dbPath
+        { DB.dbPath = dbPath
         , DB.regPath = Cfg.dbRegPath
         , DB.storePath = Cfg.dbStorePath }
   res <- DB.runDBT db $ do
@@ -106,9 +107,9 @@ loadDB = do
 -----------
 
 
-runServer :: IO ()
-runServer = do
-  state <- C.newMVar =<< loadDB
+runServer :: FilePath -> IO ()
+runServer dbPath = do
+  state <- C.newMVar =<< loadDB dbPath
   WS.runServer Cfg.serverAddr Cfg.serverPort $ application state
 
 

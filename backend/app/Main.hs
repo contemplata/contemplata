@@ -11,6 +11,7 @@ import qualified Data.Aeson as JSON
 import qualified Odil.Ancor.IO.Parse as Parse
 import qualified Odil.Ancor.IO.Show as Show
 import qualified Odil.Server.Types as Odil
+import qualified Odil.Server as Server
 import qualified Odil.Penn as Penn
 
 
@@ -24,6 +25,8 @@ data Command
       -- ^ Parse and show the sentences in the Ancor XML file
     | Penn2Odil
       -- ^ Convert the Penn file on input to an JSON file
+    | Server FilePath
+      -- ^ Run the backend annotation server
 
 
 --------------------------------------------------
@@ -44,6 +47,15 @@ penn2odilOptions :: Parser Command
 penn2odilOptions = pure Penn2Odil
 
 
+serverOptions :: Parser Command
+serverOptions = Server
+  <$> strOption
+        ( long "dbdir"
+       <> short 'd'
+       <> metavar "DIR"
+       <> help "DB directory" )
+
+
 opts :: Parser Command
 opts = subparser
   ( command "simplify"
@@ -53,6 +65,10 @@ opts = subparser
   <> command "penn2odil"
     (info (helper <*> penn2odilOptions)
       (progDesc "Convert Penn trees to Odil trees in JSON")
+    )
+  <> command "server"
+    (info (helper <*> serverOptions)
+      (progDesc "Run the backed annotation server")
     )
   )
 
@@ -68,6 +84,7 @@ run cmd =
       file <- Penn.convertPennFile . Penn.parseForest <$> T.getContents
       LBS.putStr (JSON.encode file)
       -- T.putStrLn . Show.showAncor . Parse.parseTrans $ file
+    Server dbPath -> Server.runServer dbPath
 
 
 main :: IO ()
@@ -76,5 +93,5 @@ main =
   where
     optsExt = info (helper <*> opts)
        ( fullDesc
-      <> progDesc "Working with Odil files"
+      <> progDesc "Working with ODIL files"
       <> header "odil" )

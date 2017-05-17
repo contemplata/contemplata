@@ -8,7 +8,7 @@ module Odil.Server.Config
 , serverPort
 
 -- * DB
-, dbPath
+-- , dbPath
 , dbRegPath
 , dbStorePath
 
@@ -44,8 +44,8 @@ serverPort = 9161
 ---------------------------------------
 
 
-dbPath :: FilePath
-dbPath = "/home/kuba/work/odil/bitbucket/backend/data/db-tmp"
+-- dbPath :: FilePath
+-- dbPath = "/home/kuba/work/odil/bitbucket/backend/data/db-tmp"
 
 
 dbRegPath :: FilePath

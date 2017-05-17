@@ -131,7 +131,7 @@ createDB :: DBT ()
 createDB = do
   DB{..} <- dbConf
   liftIO (Dir.doesPathExist dbPath) >>= \case
-    True -> Err.throwE "Directory exists"
+    True -> Err.throwE . T.pack $ "the directory '" ++ dbPath ++ "' exists"
     False -> do
       liftIO $ do
         Dir.createDirectoryIfMissing True dbPath
