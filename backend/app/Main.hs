@@ -1,9 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
 
 
 module Main where
 
 
+import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import qualified Control.Error as Err
 import qualified System.FilePath as FilePath
@@ -37,7 +39,7 @@ data Command
       -- ^ Run the backend annotation server
     | NewDB FilePath
       -- ^ Create a new DB under a given path
-    | AddFileDB FilePath FilePath
+    | AddFileDB Bool FilePath FilePath
       -- ^ Add a new file to a given DB
 
 
@@ -79,11 +81,15 @@ newDbOptions = NewDB
 
 addFileDbOptions :: Parser Command
 addFileDbOptions = AddFileDB
-  <$> strOption
-        ( long "file"
+  <$> switch
+        ( long "force"
        <> short 'f'
-       <> metavar "FILE"
-       <> help "File to add to DB" )
+       <> help "Add file even if already present in DB" )
+  <*> strOption
+        ( long "json"
+       <> short 'j'
+       <> metavar "JSON"
+       <> help "JSON file to add to DB" )
   <*> strOption
         ( long "dbdir"
        <> short 'd'
@@ -141,16 +147,19 @@ run cmd =
       case res of
         Left err -> T.putStrLn $ "Could not create DB: " `T.append` err
         Right _  -> return ()
-    AddFileDB filePath dbPath -> do
+    AddFileDB force jsonPath dbPath -> do
       let dbConf = DB.defaultConf dbPath
       res <- DB.runDBT dbConf $ do
-        let fileId = T.pack (FilePath.takeBaseName filePath)
-        cs <- liftIO $ LBS.readFile filePath
+        let fileId = T.pack (FilePath.takeBaseName jsonPath)
+        when (not force) $ DB.hasFile fileId >>= \case
+          True -> Err.throwE "file ID already present in DB"
+          _ -> return ()
+        cs <- liftIO $ LBS.readFile jsonPath
         case JSON.eitherDecode cs of
           Left err -> Err.throwE "JSON decoding failed"
-          Right file -> DB.saveFile fileId file
+          Right json -> DB.saveFile fileId json
       case res of
-        Left err -> T.putStrLn $ "Could not save the file: " `T.append` err
+        Left err -> T.putStrLn $ "Operation failed: " `T.append` err
         Right _  -> return ()
 
 

@@ -20,6 +20,7 @@ module Odil.Server.DB
 , createDB
 , fileNum
 , fileSet
+, hasFile
 , saveFile
 , loadFile
 ) where
@@ -156,6 +157,13 @@ fileNum = regSize <$> readReg
 -- | Return the set of files stored in the DB.
 fileSet :: DBT (S.Set FileId)
 fileSet = readReg
+
+
+-- | Add a file to a DB.
+hasFile :: FileId -> DBT Bool
+hasFile fid = do
+  reg <- readReg
+  return (regHasFile fid reg)
 
 
 -- | Add a file to a DB.
