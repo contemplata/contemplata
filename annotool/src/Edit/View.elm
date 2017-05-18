@@ -380,16 +380,18 @@ viewSideEdit win model =
 
 -- | The view of a side window.
 viewSideContext : M.Focus -> M.Model -> Html.Html Msg
-viewSideContext win model =
+viewSideContext foc model =
   let
-    div = viewSideDiv win model.dim
+    treeSelected = (M.selectWin foc model).tree
+    div = viewSideDiv foc model.dim
       [ Html.ul
           [Atts.style
              [ "position" => "absolute"
              , "top" => px Cfg.sideMenuHeight ]
           ]
           (List.map
-             (viewFileId win)
+             (\(treeId, tree) -> viewFileId foc (treeId == treeSelected) treeId tree)
+             -- (\(treeId, tree) -> viewFileId foc treeId tree )
              (D.toList model.trees)
           )
       ]
@@ -397,8 +399,8 @@ viewSideContext win model =
     div
 
 
-viewFileId : M.Focus -> (M.TreeId, R.Tree M.Node) -> Html.Html Msg
-viewFileId foc (treeId, tree) =
+viewFileId : M.Focus -> Bool -> M.TreeId -> R.Tree M.Node -> Html.Html Msg
+viewFileId foc isSelected treeId tree =
   let
     terminal node = case node of
       M.Node r -> Nothing
@@ -410,13 +412,19 @@ viewFileId foc (treeId, tree) =
       <| Util.catMaybes
       <| L.map terminal
       <| R.flatten tree
+    styl = if isSelected
+      then [Atts.style ["font-weight" => "bold"]]
+      else []
+    para = Html.p
+      -- [Atts.style ["font-weight" => "bold"]]
+      styl
+      [Html.text <| treeId ++ ":" ++ sent]
     li =  Html.li [] <| Util.single <|
       Html.div
         [ Atts.class "noselect"
         , Events.onClick (SelectTree foc treeId)
-        , Atts.style ["cursor" => "pointer"]
-        ]
-        [Html.text <| treeId ++ ":" ++ sent]
+        , Atts.style ["cursor" => "pointer"]]
+        [para]
   in
     li
 

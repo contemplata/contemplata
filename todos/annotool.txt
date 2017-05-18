@@ -11,6 +11,7 @@ TODO:
 * Based on the elm-lang online editor (see e.g.
   http://elm-lang.org/examples/websockets), make it possible to drag the edges
   of the editing windows.
+* Mark non-projective trees "en rouge/rose"
 
 
 LATER:
