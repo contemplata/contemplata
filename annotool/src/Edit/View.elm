@@ -283,21 +283,60 @@ viewSideWindow focus model =
 
 
 viewSideDiv : M.Focus -> M.Dim -> List (Html.Html Msg) -> Html.Html Msg
-viewSideDiv win dim = Html.div
-  [ Atts.style
-    [ "position" => "absolute"
-    , "width" => (toString Cfg.sideSpace ++ "%")
-    -- , "height" => "50%"
-    , "height" => case win of
-        M.Top -> toString dim.heightProp ++ "%"
-        M.Bot -> toString (100 - dim.heightProp) ++ "%"
-    , "right" => "0"
-    , case win of
-        M.Top -> "top" => "0"
-        M.Bot -> "bottom" => "0"
-    , "overflow" => "auto"
-    ]
-  ]
+viewSideDiv win dim children =
+  let
+    div = Html.div
+      [ Atts.style
+        [ "position" => "absolute"
+        , "width" => (toString Cfg.sideSpace ++ "%")
+        -- , "height" => "50%"
+        , "height" => case win of
+            M.Top -> toString dim.heightProp ++ "%"
+            M.Bot -> toString (100 - dim.heightProp) ++ "%"
+        , "right" => "0"
+        , case win of
+            M.Top -> "top" => "0"
+            M.Bot -> "bottom" => "0"
+        , "overflow" => "auto"
+        ]
+      ]
+    topHeight = (dim.height * dim.heightProp) // 100
+    menuPosY = case win of
+      M.Top -> 0
+      M.Bot -> topHeight
+    topChildren = [viewSideMenu win menuPosY]
+  in
+    div (topChildren ++ children)
+
+
+viewSideMenu : M.Focus -> Int -> Html.Html Msg
+viewSideMenu focus pos =
+  let
+
+    menuElem onClick txt = Html.span
+      [ Atts.class "noselect"
+      , Events.onClick onClick
+      , Atts.style
+        [ "cursor" => "pointer"
+        , "display" => "inline-block"
+        , "margin" => "5px"
+        ]
+      ]
+      [ Html.text txt ]
+
+  in
+
+    Html.div
+      [ Atts.style
+          [ "position" => "fixed"
+          , "background-color" => "white" -- "#eee"
+          -- , "width" => "100%" -- <- hids the scrollbar! hence opacity
+          , "opacity" => "0.9"
+          , "z-index" => "1"
+          , "top" => px pos ]
+      ]
+      [ menuElem (SideMenuEdit focus) "Edit"
+      , menuElem (SideMenuContext focus) "Context" ]
 
 
 -- | The view of a side window.
@@ -314,16 +353,17 @@ viewSideEdit win model =
       Nothing ->
         ( [Atts.disabled True, Atts.placeholder "<label>"]
         , \_ -> Msg.dummy )
-  in
-    viewSideDiv win model.dim
+    div = viewSideDiv win model.dim
       [ Html.input
           ( [ Events.onInput event
             , Atts.id <| case win of
                 M.Top -> Cfg.editLabelName True
                 M.Bot -> Cfg.editLabelName False
             , Atts.style
-              [ -- "position" => "absolute"
-                "width" => "95%"
+              [ "position" => "absolute"
+              -- , "width" => "50%"
+              , "top" => px Cfg.sideMenuHeight
+              , "margin" => px 5
               ]
             ] ++ condAtts
           )
@@ -333,28 +373,52 @@ viewSideEdit win model =
 --       , Html.button [Events.onClick TestSend] [Html.text "Send"]
 --       -- , Html.div [] (List.map viewMessage (List.reverse model.messages))
       ]
+    -- wrapper = Html.div [Atts.style ["text-align" => "center"]] [div]
+  in
+    div
 
 
 -- | The view of a side window.
 viewSideContext : M.Focus -> M.Model -> Html.Html Msg
 viewSideContext win model =
-  viewSideDiv win model.dim
-    [ Html.ul []
-        (List.map
-           (viewFileId win)
-           (D.keys model.trees)
-        )
-    ]
+  let
+    div = viewSideDiv win model.dim
+      [ Html.ul
+          [Atts.style
+             [ "position" => "absolute"
+             , "top" => px Cfg.sideMenuHeight ]
+          ]
+          (List.map
+             (viewFileId win)
+             (D.toList model.trees)
+          )
+      ]
+  in
+    div
 
 
-viewFileId : M.Focus -> M.TreeId -> Html.Html Msg
-viewFileId foc x = Html.li [] <| Util.single <|
-  Html.div
-    [ Atts.class "noselect"
-    , Events.onClick (SelectTree foc x)
-    , Atts.style ["cursor" => "pointer"]
-    ]
-    [Html.text x]
+viewFileId : M.Focus -> (M.TreeId, R.Tree M.Node) -> Html.Html Msg
+viewFileId foc (treeId, tree) =
+  let
+    terminal node = case node of
+      M.Node r -> Nothing
+      M.Leaf r -> Just r.nodeVal
+    sent
+       = String.concat
+      <| L.reverse
+      <| L.map (\x -> " " ++ x)
+      <| Util.catMaybes
+      <| L.map terminal
+      <| R.flatten tree
+    li =  Html.li [] <| Util.single <|
+      Html.div
+        [ Atts.class "noselect"
+        , Events.onClick (SelectTree foc treeId)
+        , Atts.style ["cursor" => "pointer"]
+        ]
+        [Html.text <| treeId ++ ":" ++ sent]
+  in
+    li
 
 
 ---------------------------------------------------

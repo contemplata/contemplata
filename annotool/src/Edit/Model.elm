@@ -20,7 +20,7 @@ module Edit.Model exposing
   -- Tree modifications:
   , attachSel, deleteSel, addSel
   -- Lenses:
-  , top, bot, dim, winLens, drag, pos, height, heightProp
+  , top, bot, dim, winLens, drag, side, pos, height, heightProp
   , nodeId, nodeVal, trees
   -- Pseudo-lenses:
   , setTrees
@@ -724,6 +724,7 @@ links = Lens.create
   .links
   (\fn model -> {model | links = fn model.links})
 
+
 -- select : Lens.Focus { record | select : a } a
 -- select = Lens.create
 --   .select
@@ -740,6 +741,12 @@ drag : Lens.Focus { record | drag : a } a
 drag = Lens.create
   .drag
   (\fn model -> {model | drag = fn model.drag})
+
+
+side : Lens.Focus { record | side : a } a
+side = Lens.create
+  .side
+  (\fn model -> {model | side = fn model.side})
 
 
 tree : Lens.Focus { record | tree : a } a

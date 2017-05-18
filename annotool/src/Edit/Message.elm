@@ -41,6 +41,8 @@ type Msg
   | Attach
   | Files -- ^ Go back to files menu
   | SaveFile  -- ^ Save the current file
+  | SideMenuEdit M.Focus
+  | SideMenuContext M.Focus
   | Many (List Msg)
 --     -- ^ Tests
 --   | TestInput String
@@ -143,6 +145,18 @@ update msg model =
         save = WebSocket.send Cfg.socketServer req
       in
         (model, save)
+
+    SideMenuEdit focus -> idle <|
+      Focus.set
+        (M.winLens focus => M.side)
+        M.SideEdit
+        model
+
+    SideMenuContext focus -> idle <|
+      Focus.set
+        (M.winLens focus => M.side)
+        M.SideContext
+        model
 
 --     -- Testing websockets
 --     TestInput x -> idle <| {model | testInput=x}

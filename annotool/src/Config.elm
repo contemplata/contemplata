@@ -1,5 +1,5 @@
 module Config exposing
-  ( stdWidth, stdMargin, nodeHeight, moveDown, sideSpace
+  ( stdWidth, stdMargin, nodeHeight, moveDown, sideSpace, sideMenuHeight
   , testTree1, testTree2, testTree3, testTree4, testTree5
   , increaseSpeed, editLabelName, dmzSize
   , linkDasharray, linkWidth, linkOpacity
@@ -68,6 +68,12 @@ moveDown = 40
 sideSpace : Int
 sideSpace = 15
 
+
+-- | Height of the side menu.
+sideMenuHeight : Int
+sideMenuHeight = 25
+
+
 -- | Size of the demilitarized zone. Use so that scrollbars do
 -- not appear.
 dmzSize : Int
@@ -84,6 +90,7 @@ editLabelName : Bool -> String
 editLabelName flag = case flag of
   True  -> "topEdit"
   False -> "botEdit"
+
 
 ---------------------------------------------------
 -- Links
