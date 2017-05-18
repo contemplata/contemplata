@@ -1,3 +1,5 @@
 TODO:
 * Consider the quesion of "speech turns" -- should they be represented as separate trees?
   I suppose so (issue raised during the TLN meeting, Mai 18, Blois)
+* Compute the number of words in the files pre-selected by JY, too see what portion
+  of 20000 words does it make.
