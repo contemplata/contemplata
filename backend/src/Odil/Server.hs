@@ -67,6 +67,8 @@ data Answer
     -- ^ The list of files
   | NewFile FileId File
     -- ^ New file to edit
+  | Notification T.Text
+    -- ^ New file to edit
   deriving (Show)
 
 instance JSON.ToJSON Answer where
@@ -76,6 +78,8 @@ instance JSON.ToJSON Answer where
     NewFile fileId file -> JSON.object
       [ "fileId" .= fileId
       , "file" .= file ]
+    Notification msg -> JSON.object
+      [ "notification" .= msg ]
 
 
 -----------
@@ -167,8 +171,14 @@ talk conn state = forever $ do
       Right (SaveFile fileId file) -> do
         putStrLn "Saving file..."
         DB.runDBT db (DB.saveFile fileId file) >>= \case
-          Left err -> T.putStrLn err
-          Right () -> putStrLn "Saved"
+          Left err -> do
+            T.putStrLn err
+            let msg = T.concat ["Could not save file; ", err]
+            WS.sendTextData conn . JSON.encode $ Notification msg
+          Right () -> do
+            putStrLn "Saved"
+            let msg = T.concat ["File ", fileId, " saved"]
+            WS.sendTextData conn . JSON.encode $ Notification msg
 
 
   --     Right (SaveFile fileId file) -> do
