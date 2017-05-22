@@ -106,7 +106,8 @@ update msg model =
         then M.selectNodeAux win i model
         else M.selectNode win i model
 
-    SelectTree win treeId -> idle <| model
+    -- SelectTree win treeId -> idle <| model
+    SelectTree win treeId -> idle <| M.moveCursorTo win treeId model
 
     Next -> idle <| M.moveCursor True model
 

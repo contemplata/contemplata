@@ -7,7 +7,7 @@ module Edit.Model exposing
   , Model, Dim, Window, SideWindow(..), Drag, Focus(..)
   -- Other:
   , selectWin, dragOn, getTree, selAll
-  , getPosition, nextTree, prevTree, moveCursor
+  , getPosition, nextTree, prevTree, moveCursor, moveCursorTo
   , treeNum, treePos
   -- Initialization:
   -- , mkEdit
@@ -341,6 +341,24 @@ moveCursor next model =
     update foc = Lens.update foc alter model
   in
     case model.focus of
+      Top -> update top
+      Bot -> update bot
+
+
+-- | Similar to `moveCursor`, but the tree ID as well as the focus are directly
+-- specified.
+moveCursorTo : Focus -> TreeId -> Model -> Model
+moveCursorTo focus treeId model =
+  let
+    alter win =
+      { win
+          | tree = treeId
+          , selMain = Nothing
+          , selAux = S.empty
+      }
+    update foc = Lens.update foc alter model
+  in
+    case focus of
       Top -> update top
       Bot -> update bot
 

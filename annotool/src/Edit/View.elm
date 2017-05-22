@@ -399,7 +399,12 @@ viewSideContext foc model =
     div
 
 
-viewFileId : M.Focus -> Bool -> M.TreeId -> R.Tree M.Node -> Html.Html Msg
+viewFileId
+  : M.Focus -- ^ Where is the focus on
+  -> Bool -- ^ Is the tree currently viewed?
+  -> M.TreeId -- ^ The tree ID ...
+  -> R.Tree M.Node -- ^ ... and the tree itself
+  -> Html.Html Msg
 viewFileId foc isSelected treeId tree =
   let
     terminal node = case node of
