@@ -280,6 +280,7 @@ viewSideWindow focus model =
   case (M.selectWin focus model).side of
     M.SideEdit -> viewSideEdit focus model
     M.SideContext -> viewSideContext focus model
+    M.SideLog -> viewSideLog focus model
 
 
 viewSideDiv : M.Focus -> M.Dim -> List (Html.Html Msg) -> Html.Html Msg
@@ -300,6 +301,12 @@ viewSideDiv win dim children =
             M.Bot -> "bottom" => "0"
         , "overflow" => "auto"
         ]
+      -- repeated from `viewWindow`, since we need to register the keyboard
+      -- events here as well; I was not able to obtain this behaviour top-level
+      -- (seemed like the event propagation didn't work?)
+      , Atts.attribute "tabindex" "1"
+      , backKeyDown
+      , backKeyUp
       ]
     topHeight = (dim.height * dim.heightProp) // 100
     menuPosY = case win of
@@ -337,7 +344,8 @@ viewSideMenu focus pos =
           , "top" => px pos ]
       ]
       [ menuElem (SideMenuEdit focus) "Edit"
-      , menuElem (SideMenuContext focus) "Context" ]
+      , menuElem (SideMenuContext focus) "Context"
+      , menuElem (SideMenuLog focus) "Messages" ]
 
 
 -- | The view of a side window.
@@ -377,6 +385,11 @@ viewSideEdit win model =
     -- wrapper = Html.div [Atts.style ["text-align" => "center"]] [div]
   in
     div
+
+
+---------------------------------------------------
+-- Side context window
+---------------------------------------------------
 
 
 -- | The view of a side window.
@@ -430,6 +443,46 @@ viewFileId foc isSelected treeId tree =
         [ Atts.class "noselect"
         , Events.onClick (SelectTree foc treeId)
         , Atts.style ["cursor" => "pointer"]]
+        [para]
+  in
+    li
+
+
+---------------------------------------------------
+-- Side log (messages)
+---------------------------------------------------
+
+
+-- | The view of a side window.
+viewSideLog : M.Focus -> M.Model -> Html.Html Msg
+viewSideLog foc model =
+  let
+    treeSelected = (M.selectWin foc model).tree
+    div = viewSideDiv foc model.dim
+      [ Html.ul
+          [Atts.style
+             [ "position" => "absolute"
+             , "top" => px Cfg.sideMenuHeight ]
+          ]
+          (List.map
+             (\msg -> viewMessage foc msg)
+             model.messages
+          )
+      ]
+  in
+    div
+
+
+viewMessage
+  : M.Focus -- ^ Where is the focus on
+  -> String -- ^ Message
+  -> Html.Html Msg
+viewMessage foc msg =
+  let
+    para = Html.p [] [Html.text msg]
+    li =  Html.li [] <| Util.single <|
+      Html.div
+        [Atts.class "noselect"]
         [para]
   in
     li

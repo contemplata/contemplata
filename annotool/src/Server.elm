@@ -48,10 +48,12 @@ type Answer
     -- ^ The list of files
   | NewFile M.FileId M.File
     -- ^ New file to edit
+  | Notification String
+    -- ^ Just a notification message from a server
 
 
 answerDecoder : Decode.Decoder Answer
-answerDecoder = Decode.oneOf [filesDecoder, newFileDecoder]
+answerDecoder = Decode.oneOf [filesDecoder, newFileDecoder, notificationDecoder]
 
 
 filesDecoder : Decode.Decoder Answer
@@ -65,6 +67,12 @@ newFileDecoder =
   Decode.map2 NewFile
     (Decode.field "fileId" Decode.string)
     (Decode.field "file" M.fileDecoder)
+
+
+notificationDecoder : Decode.Decoder Answer
+notificationDecoder =
+  Decode.map Notification
+    (Decode.field "notification" <| Decode.string)
 
 
 ---------------------------------------------------

@@ -43,6 +43,7 @@ type Msg
   | SaveFile  -- ^ Save the current file
   | SideMenuEdit M.Focus
   | SideMenuContext M.Focus
+  | SideMenuLog M.Focus
   | Many (List Msg)
 --     -- ^ Tests
 --   | TestInput String
@@ -157,6 +158,12 @@ update msg model =
       Focus.set
         (M.winLens focus => M.side)
         M.SideContext
+        model
+
+    SideMenuLog focus -> idle <|
+      Focus.set
+        (M.winLens focus => M.side)
+        M.SideLog
         model
 
 --     -- Testing websockets

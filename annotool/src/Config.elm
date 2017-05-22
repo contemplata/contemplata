@@ -4,7 +4,8 @@ module Config exposing
   , increaseSpeed, editLabelName, dmzSize
   , linkDasharray, linkWidth, linkOpacity
   , linkHeadSize, linkHeadDist, linkTailDist
-  , socketServer )
+  , socketServer
+  )
 
 
 import Focus as Lens

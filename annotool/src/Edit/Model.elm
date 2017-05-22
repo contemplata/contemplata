@@ -11,6 +11,8 @@ module Edit.Model exposing
   , treeNum, treePos
   -- Initialization:
   -- , mkEdit
+  -- Logging:
+  , log
   -- Labels:
   , getLabel, setLabel
   -- Node selection:
@@ -141,7 +143,9 @@ type alias Model =
   , ctrl : Bool
 
   -- test
-  , testInput : String
+  -- , testInput : String
+
+  , messages : List String
   }
 
 
@@ -171,6 +175,8 @@ type SideWindow
     -- ^ The main editing window
   | SideContext
     -- ^ Context window
+  | SideLog
+    -- ^ Messages
 
 
 type alias Dim =
@@ -196,6 +202,21 @@ type alias Drag =
 
 -- | Focus selector.
 type Focus = Top | Bot
+
+
+---------------------------------------------------
+-- Logging
+---------------------------------------------------
+
+
+-- | Log a message.
+log : String -> Model -> Model
+log msg model =
+  let
+    logSize = 100 -- should be in Config, but Config relies on the model...
+    newMessages = L.take logSize (msg :: model.messages)
+  in
+    {model | messages = newMessages}
 
 
 ---------------------------------------------------

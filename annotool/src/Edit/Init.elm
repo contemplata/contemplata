@@ -49,7 +49,8 @@ mkEdit fileId file =
       , links = file.linkSet
       , dim = dim
       , ctrl = False
-      , testInput = ""
+      -- , testInput = ""
+      , messages = []
       }
     initHeight = Task.perform Resize Window.size
     -- initHeight = Cmd.none

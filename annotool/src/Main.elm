@@ -159,7 +159,15 @@ topUpdate topMsg =
       Server.NewFile fileId file -> \model_ ->
         let (edit, cmd) = Edit.Init.mkEdit fileId file
         in  (Edit edit, Cmd.map editMsg cmd)
+      Server.Notification msg ->
+        let log model = (Edit.Model.log msg model, Cmd.none)
+        in  updateOn editLens editMsg log
     Right (Error err) -> Debug.crash err
+--     Right (Error err) -> \model -> case model of
+--       Menu _ -> Debug.crash err
+--       Edit _ -> updateOn
+--         editLens editMsg
+--         (Edit.Message.update msg) model
 
 
 ---------------------------------------------------
@@ -247,7 +255,7 @@ updateOn
      -- ^ Lens which indicates the element that is updated
   -> (smallMsg -> bigMsg)
      -- ^ A function which translates the messages corresponding to the element
-     -- to the messages corresponding to the model
+     -- to the messages corresponding to the top-level model
   -> (small -> (small, Cmd smallMsg))
      -- ^ The update function corresponding to the element
   -> (big -> (big, Cmd bigMsg))
