@@ -31,8 +31,10 @@ import qualified Odil.Server.Types as V
 -----------
 
 
+-- | The default server address.
 serverAddr :: String
-serverAddr = "127.0.0.1"
+-- serverAddr = "127.0.0.1"
+serverAddr = "0.0.0.0"
 
 
 serverPort :: Int
