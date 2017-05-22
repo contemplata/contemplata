@@ -108,10 +108,15 @@ loadDB dbPath = do
 -----------
 
 
-runServer :: FilePath -> IO ()
-runServer dbPath = do
+runServer
+  :: FilePath -- ^ DB path
+  -> String -- ^ Server address
+  -> Int -- ^ Port
+  -> IO ()
+runServer dbPath serverAddr serverPort = do
   state <- C.newMVar =<< loadDB dbPath
-  WS.runServer Cfg.serverAddr Cfg.serverPort $ application state
+  -- WS.runServer Cfg.serverAddr Cfg.serverPort $ application state
+  WS.runServer serverAddr serverPort $ application state
 
 
 -----------

@@ -20,6 +20,7 @@ import Options.Applicative
 import qualified Odil.Ancor.IO.Parse as Parse
 import qualified Odil.Ancor.IO.Show as Show
 import qualified Odil.Server.Types as Odil
+import qualified Odil.Server.Config as ServerCfg
 import qualified Odil.Server.DB as DB
 import qualified Odil.Server as Server
 import qualified Odil.Penn as Penn
@@ -35,7 +36,7 @@ data Command
       -- ^ Parse and show the sentences in the Ancor XML file
     | Penn2Odil
       -- ^ Convert the Penn file on input to an JSON file
-    | Server FilePath
+    | Server FilePath String Int
       -- ^ Run the backend annotation server
     | NewDB FilePath
       -- ^ Create a new DB under a given path
@@ -68,6 +69,18 @@ serverOptions = Server
        <> short 'd'
        <> metavar "DIR"
        <> help "DB directory" )
+  <*> strOption
+        ( long "url"
+       <> short 'u'
+       <> metavar "URL"
+       <> value ServerCfg.serverAddr
+       <> help "Address to bind (WebSocket server)" )
+  <*> option auto
+        ( long "port"
+       <> short 'p'
+       <> metavar "INT"
+       <> value ServerCfg.serverPort
+       <> help "Port to listen to (WebSocket server)" )
 
 
 newDbOptions :: Parser Command
@@ -137,7 +150,7 @@ run cmd =
       -- T.putStrLn . Show.showAncor . Parse.parseTrans $ file
 
     -- Server-related
-    Server dbPath -> Server.runServer dbPath
+    Server dbPath addr port -> Server.runServer dbPath addr port
 
     -- DB-related
     NewDB dbPath -> do

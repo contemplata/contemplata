@@ -1,6 +1,4 @@
 TODAY:
-* Side menu item which allows to switch to which window (top or bottom) the given
-  side window corresponds.
 
 
 TODO:
@@ -14,6 +12,8 @@ TODO:
   http://elm-lang.org/examples/websockets), make it possible to drag the edges
   of the editing windows.
 * Mark non-projective trees "en rouge/rose"
+* Side menu item which allows to switch to which window (top or bottom) the given
+  side window corresponds.
 
 
 LATER:
