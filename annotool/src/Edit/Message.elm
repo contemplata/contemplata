@@ -28,7 +28,7 @@ type Msg
   | SelectTree M.Focus M.TreeId
   | Focus M.Focus
   | Resize Window.Size -- ^ The height and width of the entire window
-  | Increase Bool -- ^ Increase the size of the top window
+  | Increase Bool Bool -- ^ Change the proportions of the window
   | Previous
   | Next
   | ChangeLabel M.NodeId M.Focus String
@@ -87,16 +87,16 @@ update msg model =
         (\dim -> {dim | height=x.height, width=x.width})
         model
 
-    Increase flag -> idle <|
+    Increase horizontalAxe flag -> idle <|
       let
-        -- newProp = trim <| model.dim.heightProp + change
         trim x = max 0 <| min 100 <| x
         change = case flag of
           True  -> Cfg.increaseSpeed
           False -> -Cfg.increaseSpeed
+        propLens = if horizontalAxe then M.heightProp else M.widthProp
       in
         Focus.update
-          (M.dim => M.heightProp)
+          (M.dim => propLens)
           (\x -> trim <| x + change)
           model
         -- {model | winProp = newProp}

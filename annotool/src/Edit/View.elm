@@ -75,8 +75,8 @@ viewWindow win model =
 
   , Atts.style
     [ "position" => "absolute"
-    , "width" => (toString (100 - Cfg.sideSpace) ++ "%") -- "100%"
-    -- , "height" => "50%"
+    -- , "width" => (toString (100 - Cfg.sideSpace) ++ "%") -- "100%"
+    , "width" => (toString model.dim.widthProp ++ "%")
     , "height" => case win of
         M.Top -> toString model.dim.heightProp ++ "%"
         M.Bot -> toString (100 - model.dim.heightProp) ++ "%"
@@ -288,7 +288,8 @@ viewSideDiv win dim children =
     div = Html.div
       [ Atts.style
         [ "position" => "absolute"
-        , "width" => (toString Cfg.sideSpace ++ "%")
+        -- , "width" => (toString Cfg.sideSpace ++ "%")
+        , "width" => (toString (100 - dim.widthProp) ++ "%")
         -- , "height" => "50%"
         , "height" => case win of
             M.Top -> toString dim.heightProp ++ "%"
@@ -456,7 +457,8 @@ viewLink model (from, to) =
     bot = model.bot
     dim = model.dim
 
-    mainWidth = (dim.width * (100 - Cfg.sideSpace)) // 100
+    -- mainWidth = (dim.width * (100 - Cfg.sideSpace)) // 100
+    mainWidth = (dim.width * dim.widthProp) // 100
     topHeight = (dim.height * dim.heightProp) // 100
     botHeight = dim.height - topHeight
 
@@ -677,9 +679,12 @@ backKeyDown =
       -- "a"
       65 -> Add
 
-      -- "up" and "down"
-      40 -> Increase True
-      38 -> Increase False
+      -- "left" and "right" -- vertical axe
+      37 -> Increase False False
+      39 -> Increase False True
+      -- "up" and "down" -- horizontal axe
+      40 -> Increase True True
+      38 -> Increase True False
       -- -- "+" and "-"
       -- 107 -> Increase True
       -- 109 -> Increase False

@@ -20,7 +20,7 @@ module Edit.Model exposing
   -- Tree modifications:
   , attachSel, deleteSel, addSel
   -- Lenses:
-  , top, bot, dim, winLens, drag, side, pos, height, heightProp
+  , top, bot, dim, winLens, drag, side, pos, height, widthProp, heightProp
   , nodeId, nodeVal, trees
   -- Pseudo-lenses:
   , setTrees
@@ -176,6 +176,7 @@ type SideWindow
 type alias Dim =
   { width : Int
   , height : Int
+  , widthProp : Int
   , heightProp : Int
   }
 
@@ -330,19 +331,26 @@ prevTree x model =
 moveCursor : Bool -> Model -> Model
 moveCursor next model =
   let
+    win = selectWin model.focus model
     switch = if next then nextTree else prevTree
-    alter win =
-      { win
-          | tree = switch win.tree model
-          -- , select = S.empty
-          , selMain = Nothing
-          , selAux = S.empty
-      }
-    update foc = Lens.update foc alter model
+    treeId = switch win.tree model
   in
-    case model.focus of
-      Top -> update top
-      Bot -> update bot
+    moveCursorTo model.focus treeId model
+-- moveCursor next model =
+--   let
+--     switch = if next then nextTree else prevTree
+--     alter win =
+--       { win
+--           | tree = switch win.tree model
+--           -- , select = S.empty
+--           , selMain = Nothing
+--           , selAux = S.empty
+--       }
+--     update foc = Lens.update foc alter model
+--   in
+--     case model.focus of
+--       Top -> update top
+--       Bot -> update bot
 
 
 -- | Similar to `moveCursor`, but the tree ID as well as the focus are directly
@@ -777,6 +785,12 @@ height : Lens.Focus { record | height : a } a
 height = Lens.create
   .height
   (\fn model -> {model | height = fn model.height})
+
+
+widthProp : Lens.Focus { record | widthProp : a } a
+widthProp = Lens.create
+  .widthProp
+  (\fn model -> {model | widthProp = fn model.widthProp})
 
 
 heightProp : Lens.Focus { record | heightProp : a } a

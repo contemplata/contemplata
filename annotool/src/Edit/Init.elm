@@ -37,6 +37,7 @@ mkEdit fileId file =
     dim =
       { width = 0
       , height = 0
+      , widthProp = 80
       , heightProp = 50
       }
     model =
