@@ -120,27 +120,37 @@ viewFileId x = Html.li
   [Html.text x]
 
 
+type TextType a = Plain a | Bold a
+
+
 viewHelp : Html.Html Msg
 viewHelp =
   let
     cmdListTxt =
-      [ "Menu commands: click 'Save' to save the current file and 'Menu' to return here."
-      , "Selection: use the left mouse button to select the main node, and the left mouse button + CTRL to select auxiliary nodes.  Selection works in a window-specific manner."
-      , "Add node: select node(s) and press 'a'."
-      , "Delete node: select node(s) and press 'd'."
-      , "Edit node: select the main node and press 'e', which should bring you to the editing window."
-      , "Re-attach tree: select the root of thre tree to move, then select (with CTRL) the node where the tree should be re-attached, and press 'r'."
-      , "Connect: to connect two nodes, select the main node in the top window and in the bottom-window, respectively, and press 'c'.  The relation will lead to the node in the currently focused window."
-      , "Resize: you can use the regular browser's functionality to zoom in and out."
-      , "Screen size: use arrows (left, right, top, bottom) to change the size of the screens."
+      [ [Plain "Menu commands: click ", Bold "Save", Plain " to save the current file and ", Bold "Menu", Plain " to return here."]
+      , [ Plain "Tree selection: use ", Bold "page down", Plain " or ", Bold "page up", Plain " to go to the next or the previous tree, respectively. "
+        , Plain "You can also click on the sentence identifiers in the side window on the right." ]
+      , [Plain "Node selection: use the", Bold " left mouse button", Plain " to select the main node, and the ", Bold "left mouse button + CTRL", Plain " to select auxiliary nodes.  Selection works in a window-specific manner."]
+      , [Plain "Add node: select node(s) and press ", Bold "a", Plain "."]
+      , [Plain "Delete node: select node(s) and press ", Bold "d", Plain "."]
+      , [Plain "Edit node: select the main node and press ", Bold "e", Plain ", which should bring you to the editing window."]
+      , [Plain "Re-attach tree: select the root of the tree to move, then select (with ", Bold "CTRL", Plain ") the node where the tree should be re-attached, and press ", Bold "r", Plain "."]
+      , [Plain "Swap tree: select the root of the tree to swap with its left or right sister tree and press ", Bold "CTRL + left", Plain " or ", Bold "CTRL + right", Plain "respectively."]
+      , [Plain "Connect: to connect two nodes, select the main node in the top window and in the bottom-window, respectively, and press ", Bold "c", Plain ". The relation will lead to the node in the currently focused window."]
+      , [Plain "Resize: you can use the regular browser's functionality to zoom in and out."]
+      , [Plain "Screen size: use arrows (", Bold "left, right, top, bottom", Plain ") to change the size of the screens."]
       ]
-    mkElem x = Html.li [] [Html.text x]
+    -- mkElem x = Html.li [] [Html.text x]
+    mkCmd x = case x of
+      Plain txt -> Html.text txt
+      Bold txt -> Html.b [] [Html.text txt]
+    mkElem x = Html.li [] [Html.span [] (List.map mkCmd x)]
     cmdList = Html.ul [] (List.map mkElem cmdListTxt)
 
     sideListTxt =
-      [ "Edit: editing window (not much functionality for the moment)."
-      , "Context: shows the sentences in the current file."
-      , "Messages: messages received from the server (with e.g. information the file has been successfully saved)."
+      [ [Plain "Edit: editing window (not much functionality for the moment)."]
+      , [Plain "Context: shows the sentences in the current file."]
+      , [Plain "Messages: messages received from the server (with e.g. information the file has been successfully saved)."]
       ]
     sideList = Html.ul [] (List.map mkElem sideListTxt)
   in

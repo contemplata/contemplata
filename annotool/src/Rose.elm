@@ -1,7 +1,8 @@
 module Rose exposing
-  ( Tree(..), Forest, Width, leaf, withWidth, getRootSnd
+  ( Tree(..), Forest, Width, leaf, label
+  , withWidth, getRootSnd
   , map, flatten, mapAccum
-  , getSubTree, delSubTree, putSubTree
+  , getSubTree, delSubTree, putSubTree, swapSubTree
   , sortTree
   -- JSON
   , treeDecoder, encodeTree
@@ -32,6 +33,11 @@ type alias Forest a = List (Tree a)
 -- | Create a leaf.
 leaf : a -> Tree a
 leaf x = Node x []
+
+
+-- | Get the label in the root.
+label : Tree a -> a
+label (Node x _) = x
 
 
 -- -- | Find the first occurence of a node which satisfies a given predicate.
@@ -122,6 +128,29 @@ putSubTree s p t =
     goT (Node x ts) = Node x <|
       if p x then s :: ts else goF ts
     goF ts = L.map goT ts
+  in
+    goT t
+
+
+-- | Shift the subtree attached at each(?) node satisfying the given
+-- predicate.  Normally, only one node should satisfy the predicate.
+swapSubTree
+  : Bool -- ^ Left or right?
+  -> (a -> Bool)
+  -> Tree a
+  -> Tree a
+swapSubTree left p t =
+  let
+    goT (Node x ts) = Node x <| goF <| L.map goT ts
+    goF ts = case ts of
+      x :: y :: tl ->
+--         if left && p (label y)
+--         then y :: goF (x :: tl)
+--         else if not left && p (label x)
+        if (left && p (label y)) || (not left && p (label x))
+        then y :: x :: goF tl
+        else x :: goF (y :: tl)
+      _ -> ts
   in
     goT t
 

@@ -70,7 +70,7 @@ viewWindow win model =
 
   -- @tabindex required to make the div register keyboard events
   , Atts.attribute "tabindex" "1"
-  , backKeyDown
+  , backKeyDown model.ctrl
   , backKeyUp
 
   , Atts.style
@@ -283,9 +283,10 @@ viewSideWindow focus model =
     M.SideLog -> viewSideLog focus model
 
 
-viewSideDiv : M.Focus -> M.Dim -> List (Html.Html Msg) -> Html.Html Msg
-viewSideDiv win dim children =
+viewSideDiv : M.Focus -> M.Model -> List (Html.Html Msg) -> Html.Html Msg
+viewSideDiv win model children =
   let
+    dim = model.dim
     div = Html.div
       [ Atts.style
         [ "position" => "absolute"
@@ -305,7 +306,8 @@ viewSideDiv win dim children =
       -- events here as well; I was not able to obtain this behaviour top-level
       -- (seemed like the event propagation didn't work?)
       , Atts.attribute "tabindex" "1"
-      , backKeyDown
+      -- , backKeyDown
+      , backKeyDown model.ctrl
       , backKeyUp
       ]
     topHeight = (dim.height * dim.heightProp) // 100
@@ -362,7 +364,7 @@ viewSideEdit win model =
       Nothing ->
         ( [Atts.disabled True, Atts.placeholder "<label>"]
         , \_ -> Msg.dummy )
-    div = viewSideDiv win model.dim
+    div = viewSideDiv win model
       [ Html.input
           ( [ Events.onInput event
             , Atts.id <| case win of
@@ -397,7 +399,7 @@ viewSideContext : M.Focus -> M.Model -> Html.Html Msg
 viewSideContext foc model =
   let
     treeSelected = (M.selectWin foc model).tree
-    div = viewSideDiv foc model.dim
+    div = viewSideDiv foc model
       [ Html.ul
           [Atts.style
              [ "position" => "absolute"
@@ -484,7 +486,7 @@ viewSideLog : M.Focus -> M.Model -> Html.Html Msg
 viewSideLog foc model =
   let
     treeSelected = (M.selectWin foc model).tree
-    div = viewSideDiv foc model.dim
+    div = viewSideDiv foc model
       [ Html.ul
           [Atts.style
              [ "position" => "absolute"
@@ -742,8 +744,10 @@ backMouseDown win =
 --   Events.onDoubleClick (Focus win)
 
 
-backKeyDown : Html.Attribute Msg
-backKeyDown =
+backKeyDown
+  : Bool -- ^ CTRL down?
+  -> Html.Attribute Msg
+backKeyDown ctrl =
   let
     tag code = case code of
       -- "PgUp" and "PgDown"
@@ -758,15 +762,21 @@ backKeyDown =
       -- "a"
       65 -> Add
 
-      -- "left" and "right" -- vertical axe
-      37 -> Increase False False
-      39 -> Increase False True
-      -- "up" and "down" -- horizontal axe
-      40 -> Increase True True
-      38 -> Increase True False
       -- -- "+" and "-"
       -- 107 -> Increase True
       -- 109 -> Increase False
+      -- "up" and "down" -- horizontal axe
+      40 -> Increase True True
+      38 -> Increase True False
+      -- "left" and "right" -- vertical axe
+      37 ->
+        if ctrl
+        then Swap True
+        else Increase False False
+      39 ->
+        if ctrl
+        then Swap False
+        else Increase False True
 
       -- "e"
       69 -> EditLabel

@@ -20,7 +20,7 @@ module Edit.Model exposing
   -- Links
   , connect -- LinkInfo
   -- Tree modifications:
-  , attachSel, deleteSel, addSel
+  , attachSel, deleteSel, addSel, swapSel
   -- Lenses:
   , top, bot, dim, winLens, drag, side, pos, height, widthProp, heightProp
   , nodeId, nodeVal, trees
@@ -744,6 +744,47 @@ ancestors id tree =
         in  L.foldl Util.mappend Nothing (L.map (go newAcc) ts)
   in
     Maybe.withDefault S.empty <| go S.empty tree
+
+
+---------------------------------------------------
+-- Shift subtree
+---------------------------------------------------
+
+
+-- | Perform swap based on the selected node.
+swapSel : Bool -> Model -> Model
+swapSel left model =
+  let
+    focus = model.focus
+    win = selectWin focus model
+    nodeMay = win.selMain
+    inTree = getTree win.tree model
+    -- left = not model.ctrl
+  in
+    nodeMay
+      |> Maybe.andThen (\nodeId -> swap left nodeId inTree
+      |> Maybe.map (\newTree -> updateTree win.tree (\_ -> newTree) model))
+      |> Maybe.withDefault model
+--     case nodeMay of
+--       Just nodeId ->
+--         case swap left nodeId inTree of
+--           Just newTree -> updateTree win.tree (\_ -> newTree) model
+--           Nothing -> model
+--       _ -> model
+
+
+-- | Shift the tree attached at the given onde right or left.
+swap
+   : Bool -- ^ Right or left?
+  -> NodeId -- ^ Which node?
+  -> R.Tree Node -- ^ In which tree?
+  -> Maybe (R.Tree Node)
+swap left id tree =
+  let
+    p x = Lens.get nodeId x == id
+  in
+    R.swapSubTree left p tree
+      |> Util.guard wellFormed
 
 
 ---------------------------------------------------

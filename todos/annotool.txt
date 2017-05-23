@@ -6,7 +6,6 @@ TODO:
 * When a node is deleted, the corresponding links should be deleted as well!
 * FS editing for an event
 * Check if in your code, "display = flex" is used for something
-* Make a flat message window on the bottom
 * Make the connections show depending on which window is in focus
 * Based on the elm-lang online editor (see e.g.
   http://elm-lang.org/examples/websockets), make it possible to drag the edges
@@ -68,3 +67,5 @@ DONE:
 * Clicking on a sentence in the context should bring this sentence into view.
 * Make it possible to change the horizontal proportions 
 * Help menu
+* Make a flat message window on the bottom <- using side windows instead
+* Make it possible to swap a tree with its sister tree

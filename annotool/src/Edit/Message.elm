@@ -39,6 +39,7 @@ type Msg
   | CtrlUp
   | Connect
   | Attach
+  | Swap Bool
   | Files -- ^ Go back to files menu
   | SaveFile  -- ^ Save the current file
   | SideMenuEdit M.Focus
@@ -137,6 +138,8 @@ update msg model =
     Connect -> idle <| M.connect model
 
     Attach -> idle <| M.attachSel model
+
+    Swap left -> idle <| M.swapSel left model
 
     Files -> idle <| model -- ^ Handled upstream
 
