@@ -5,6 +5,12 @@ module Config exposing
   , linkDasharray, linkWidth, linkOpacity
   , linkHeadSize, linkHeadDist, linkTailDist
   , socketServer
+  -- Main menu
+  , menuMaxWidth
+  , menuFilesMaxWidth
+  , menuHelpMaxWidth
+  , menuPadding
+  , menuHelpMargin
   )
 
 
@@ -244,3 +250,33 @@ testTree5 =
 socketServer : String
 -- socketServer = "ws://127.0.0.1:9161"
 socketServer = "ws://vega.info.univ-tours.fr:16340"
+
+
+---------------------------------------------------
+-- Main menu
+---------------------------------------------------
+
+
+-- | Centering when the width of the page exceeds the given value.
+menuMaxWidth : Int
+menuMaxWidth = 960
+
+
+-- | Centering when the width of the page exceeds the given value.
+menuFilesMaxWidth : Int
+menuFilesMaxWidth = 300
+
+
+-- | Centering when the width of the page exceeds the given value.
+menuHelpMaxWidth : Int
+menuHelpMaxWidth = menuMaxWidth - menuFilesMaxWidth -- - menuHelpMargin - menuPadding*2
+
+
+-- | Padding of the main menu.
+menuPadding : Int
+menuPadding = 25
+
+
+-- | Left-margin of the help menu.
+menuHelpMargin : Int
+menuHelpMargin = 50

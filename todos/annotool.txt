@@ -67,3 +67,4 @@ DONE:
 * Show leaf ids in subscript (concerns non-projective trees) 
 * Clicking on a sentence in the context should bring this sentence into view.
 * Make it possible to change the horizontal proportions 
+* Help menu

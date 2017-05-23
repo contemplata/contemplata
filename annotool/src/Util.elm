@@ -1,5 +1,5 @@
 module Util exposing ( split, catMaybes, find, unless, mappend, guard, and,
-  average, single )
+  average, single, px )
 
 
 import List as L
@@ -76,3 +76,8 @@ average xs = L.sum xs / toFloat (L.length xs)
 
 single : a -> List a
 single x = [x]
+
+
+px : Int -> String
+px number =
+  toString number ++ "px"

@@ -175,7 +175,7 @@ viewMenu =
   in
 
     Html.div []
-      [ menuElem Files 10 "Load"
+      [ menuElem Files 10 "Menu"
       , menuElem SaveFile 70 "Save" ]
 
 
