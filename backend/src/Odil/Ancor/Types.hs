@@ -1,5 +1,8 @@
+{-# LANGUAGE DeriveFunctor #-}
+
+
 module Odil.Ancor.Types
-       (Episode, Section, Turn(..), Elem(..), unElem) where
+       (Episode, Section, Turn(..), Elem(..), Chunk(..)) where
 
 
 import qualified Data.Text as T
@@ -20,12 +23,23 @@ data Turn = Turn
     } deriving (Show, Eq, Ord)
 
 
--- | An element of a turn.
-type Elem = T.Text
+-- | An element of a turn. The smallest unit of speach that we are working with.
+-- However, it can be farther divided into chunks, due to the annotations
+-- related to various things.
+type Elem = [Chunk T.Text]
 
 
-unElem :: Elem -> T.Text
-unElem = id
+-- | Speach chunk.
+data Chunk a
+  = Plain a
+    -- ^ Plain text
+  | Bruit a
+    -- ^ rire, bb (bruits de bouche), tx (toux), pf (souffle)
+  | Incomplete a
+    -- ^ po() or po(mme)
+  | Pause a
+    -- ^ e or #
+  deriving (Show, Eq, Ord, Functor)
 
 
 -- -- | An element of a turn.
