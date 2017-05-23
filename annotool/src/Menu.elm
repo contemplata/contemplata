@@ -150,7 +150,7 @@ viewHelp =
     sideListTxt =
       [ [Plain "Edit: editing window (not much functionality for the moment)."]
       , [Plain "Context: shows the sentences in the current file."]
-      , [Plain "Messages: messages received from the server (with e.g. information the file has been successfully saved)."]
+      , [Plain "Messages: messages received from the server (with e.g. information that the file has been successfully saved)."]
       ]
     sideList = Html.ul [] (List.map mkElem sideListTxt)
   in
