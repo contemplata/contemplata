@@ -91,13 +91,12 @@ instance JSON.ToJSON Answer where
 loadDB :: FilePath -> IO DB.DB
 loadDB dbPath = do
   let db = DB.defaultConf dbPath
-  res <- DB.runDBT db $ do
-    DB.createDB
-    mapM_
-      (uncurry DB.saveFile)
-      (M.toList Cfg.tempModel)
+  res <- DB.runDBT db DB.createDB
+--     mapM_
+--       (uncurry DB.saveFile)
+--       (M.toList Cfg.tempModel)
   case res of
-    Left err -> T.putStrLn $ "Could not load DB: " `T.append` err
+    Left err -> T.putStrLn $ "Could not create DB: " `T.append` err
     Right _  -> return ()
   return db
   -- Cfg.tempModel

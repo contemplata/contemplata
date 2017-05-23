@@ -404,7 +404,8 @@ viewSideContext foc model =
              , "top" => px Cfg.sideMenuHeight ]
           ]
           (List.map
-             (\(treeId, tree) -> viewFileId foc (treeId == treeSelected) treeId tree)
+             -- (\(treeId, (sent, tree)) -> viewFileId foc (treeId == treeSelected) treeId tree)
+             (\(treeId, (sent, _)) -> viewSent foc (treeId == treeSelected) treeId sent)
              -- (\(treeId, tree) -> viewFileId foc treeId tree )
              (D.toList model.trees)
           )
@@ -413,24 +414,14 @@ viewSideContext foc model =
     div
 
 
-viewFileId
+viewSent
   : M.Focus -- ^ Where is the focus on
   -> Bool -- ^ Is the tree currently viewed?
   -> M.TreeId -- ^ The tree ID ...
-  -> R.Tree M.Node -- ^ ... and the tree itself
+  -> M.Sent -- ^ ... and the sentence corresponding to the tree
   -> Html.Html Msg
-viewFileId foc isSelected treeId tree =
+viewSent foc isSelected treeId sent =
   let
-    terminal node = case node of
-      M.Node r -> Nothing
-      M.Leaf r -> Just r.nodeVal
-    sent
-       = String.concat
-      <| L.reverse
-      <| L.map (\x -> " " ++ x)
-      <| Util.catMaybes
-      <| L.map terminal
-      <| R.flatten tree
     styl = if isSelected
       then [Atts.style ["font-weight" => "bold"]]
       else []
@@ -446,6 +437,41 @@ viewFileId foc isSelected treeId tree =
         [para]
   in
     li
+
+
+-- viewFileId
+--   : M.Focus -- ^ Where is the focus on
+--   -> Bool -- ^ Is the tree currently viewed?
+--   -> M.TreeId -- ^ The tree ID ...
+--   -> R.Tree M.Node -- ^ ... and the tree itself
+--   -> Html.Html Msg
+-- viewFileId foc isSelected treeId tree =
+--   let
+--     terminal node = case node of
+--       M.Node r -> Nothing
+--       M.Leaf r -> Just r.nodeVal
+--     sent
+--        = String.concat
+--       <| L.reverse
+--       <| L.map (\x -> " " ++ x)
+--       <| Util.catMaybes
+--       <| L.map terminal
+--       <| R.flatten tree
+--     styl = if isSelected
+--       then [Atts.style ["font-weight" => "bold"]]
+--       else []
+--     para = Html.p
+--       -- [Atts.style ["font-weight" => "bold"]]
+--       styl
+--       [Html.text <| treeId ++ ":" ++ sent]
+--     li =  Html.li [] <| Util.single <|
+--       Html.div
+--         [ Atts.class "noselect"
+--         , Events.onClick (SelectTree foc treeId)
+--         , Atts.style ["cursor" => "pointer"]]
+--         [para]
+--   in
+--     li
 
 
 ---------------------------------------------------

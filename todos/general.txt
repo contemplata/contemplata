@@ -3,3 +3,7 @@ TODO:
   I suppose so (issue raised during the TLN meeting, Mai 18, Blois)
 * Compute the number of words in the files pre-selected by JY, too see what portion
   of 20000 words does it make.
+
+
+DONE:
+* Keep the original sentences and show them on the right in the annotation tool 

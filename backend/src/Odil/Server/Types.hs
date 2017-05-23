@@ -12,6 +12,7 @@ module Odil.Server.Types
 , TreeId
 , NodeId
 , LeafId
+, Sent
 , Tree
 , Node (..)
 , File (..)
@@ -52,6 +53,10 @@ type NodeId = Int
 type LeafId = Int
 
 
+-- | A sentence underlying a syntactic tree.
+type Sent = T.Text
+
+
 -- | A syntactic tree.
 type Tree = R.Tree Node
 
@@ -70,7 +75,7 @@ data Node
 
 -- | A file.
 data File = File
-  { treeMap :: M.Map TreeId Tree
+  { treeMap :: M.Map TreeId (Sent, Tree)
   , linkSet :: S.Set Link }
   deriving (Generic, Show, Eq)
 

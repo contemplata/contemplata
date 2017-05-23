@@ -16,6 +16,7 @@ module Odil.Penn
 
 import Control.Monad (void)
 import Control.Applicative ((<|>))
+import qualified Control.Arrow as Arr
 import qualified Control.Monad.Trans.State.Strict as ST
 
 import qualified Data.Attoparsec.Text as A
@@ -87,12 +88,14 @@ toOdilTree =
       return $ posAcc conv
 
 
-convertPennFile :: [Tree] -> Odil.File
+-- | Convert a list of pairs, each pair consisting of an (i) original sentence
+-- and the (ii) corresponding tree, to an Odil file.
+convertPennFile :: [(T.Text, Tree)] -> Odil.File
 convertPennFile
   = flip Odil.File S.empty
   . M.fromList
   . zip (map (T.pack . show) [1..])
-  . map toOdilTree
+  . map (Arr.second toOdilTree)
   -- . parseForest
 
 

@@ -19,6 +19,7 @@ import Options.Applicative
 
 import qualified Odil.Ancor.IO.Parse as Parse
 import qualified Odil.Ancor.IO.Show as Show
+import qualified Odil.Ancor.Preprocess as Pre
 import qualified Odil.Server.Types as Odil
 import qualified Odil.Server.Config as ServerCfg
 import qualified Odil.Server.DB as DB
@@ -34,8 +35,12 @@ import qualified Odil.Penn as Penn
 data Command
     = Simplify FilePath
       -- ^ Parse and show the sentences in the Ancor XML file
+    | Preprocess
+      -- ^ Preprocess the sentence for parsing
     | Penn2Odil
-      -- ^ Convert the Penn file on input to an JSON file
+        FilePath -- ^ Penn file
+        FilePath -- ^ File with original sentences
+      -- ^ Convert a Penn file to a JSON file
     | Server FilePath String Int
       -- ^ Run the backend annotation server
     | NewDB FilePath
@@ -58,8 +63,22 @@ simplifyOptions = Simplify
        <> help "Ancor .xml file" )
 
 
+preprocessOptions :: Parser Command
+preprocessOptions = pure Preprocess
+
+
 penn2odilOptions :: Parser Command
-penn2odilOptions = pure Penn2Odil
+penn2odilOptions = Penn2Odil
+  <$> strOption
+        ( long "penn"
+       <> short 'p'
+       <> metavar "FILE"
+       <> help "Penn file" )
+  <*> strOption
+        ( long "orig"
+       <> short 'o'
+       <> metavar "FILE"
+       <> help "File with original sentences" )
 
 
 serverOptions :: Parser Command
@@ -116,6 +135,10 @@ opts = subparser
     (info (helper <*> simplifyOptions)
       (progDesc "Parse and show the sentences in the Ancor XML file")
     )
+  <> command "preprocess"
+    (info (helper <*> preprocessOptions)
+      (progDesc "Prepare sentences (one per line on <stdin>) for parsing")
+    )
   <> command "penn2odil"
     (info (helper <*> penn2odilOptions)
       (progDesc "Convert Penn trees to Odil trees in JSON")
@@ -124,11 +147,11 @@ opts = subparser
     (info (helper <*> serverOptions)
       (progDesc "Run the backed annotation server")
     )
-  <> command "new-db"
+  <> command "createdb"
     (info (helper <*> newDbOptions)
       (progDesc "Create a new DB under a given path")
     )
-  <> command "add-file-db"
+  <> command "addfiledb"
     (info (helper <*> addFileDbOptions)
       (progDesc "Add a new file to a DB")
     )
@@ -144,10 +167,14 @@ run cmd =
     Simplify ancorFile -> do
       file <- T.readFile ancorFile
       T.putStrLn . Show.showAncor . Parse.parseTrans $ file
-    Penn2Odil -> do
-      file <- Penn.convertPennFile . Penn.parseForest <$> T.getContents
+    Preprocess -> do
+      sentences <- T.lines <$> T.getContents
+      T.putStrLn . T.unlines . map Pre.prepare $ sentences
+    Penn2Odil pennPath origPath -> do
+      penn <- Penn.parseForest <$> T.readFile pennPath
+      orig <- T.lines <$> T.readFile origPath
+      let file = Penn.convertPennFile (zip orig penn)
       LBS.putStr (JSON.encode file)
-      -- T.putStrLn . Show.showAncor . Parse.parseTrans $ file
 
     -- Server-related
     Server dbPath addr port -> Server.runServer dbPath addr port

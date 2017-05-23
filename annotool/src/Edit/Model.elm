@@ -1,7 +1,7 @@
 module Edit.Model exposing
   (
   -- Data types:
-    TreeMap, FileId, File, NodeId, TreeId, Node(..), Link, Addr
+    TreeMap, Sent, FileId, File, NodeId, TreeId, Node(..), Link, Addr
   , isNode, isLeaf
   -- Model types:
   , Model, Dim, Window, SideWindow(..), Drag, Focus(..)
@@ -63,7 +63,11 @@ type alias File =
   , linkSet : S.Set Link }
 
 
-type alias TreeMap = D.Dict TreeId (R.Tree Node)
+-- | An original sentence.
+type alias Sent = String
+
+
+type alias TreeMap = D.Dict TreeId (Sent, R.Tree Node)
 
 
 -- | Link between two trees.
@@ -249,10 +253,34 @@ dragOn model =
 
 -- | Get a tree under a given ID.
 getTree : TreeId -> Model -> R.Tree Node
-getTree tree model =
-  case D.get tree model.trees of
+getTree treeId model =
+  case D.get treeId model.trees of
     Nothing -> Debug.crash "Model.getTree: no tree with the given ID"
-    Just t  -> t
+    Just (_, t) -> t
+
+
+-- -- | Set a tree under a given ID.
+-- setTree : TreeId -> R.Tree Node -> Model -> Model
+-- setTree treeId newTree model =
+--   let
+--     alter v = case v of
+--       Nothing -> Debug.crash "Model.setTree: no tree with the given ID"
+--       Just (sent, _) -> Just (sent, newTree
+--     newTrees = D.update treeId alter model.trees
+--   in
+--     {model | tree = newTrees}
+
+
+-- | Set a tree under a given ID.
+updateTree : TreeId -> (R.Tree Node -> R.Tree Node) -> Model -> Model
+updateTree treeId update model =
+  let
+    alter v = case v of
+      Nothing -> Debug.crash "Model.setTree: no tree with the given ID"
+      Just (sent, tree) -> Just (sent, update tree)
+    newTrees = D.update treeId alter model.trees
+  in
+    {model | trees = newTrees}
 
 
 -- | Retrieve all selected nodes.
@@ -465,10 +493,12 @@ setLabel id focus newLabel model =
       [] -> []
       hd :: tl -> update hd :: updateF tl
     win = selectWin focus model
-    tree = getTree win.tree model
-    newTrees = D.insert win.tree (update tree) model.trees
+    -- tree = getTree win.tree model
+    -- newTrees = D.insert win.tree (update tree) model.trees
   in
-    {model | trees = newTrees}
+    -- {model | trees = newTrees}
+    updateTree win.tree update model
+    -- setTree win.tree (update tree) model
 
 
 ---------------------------------------------------
@@ -485,9 +515,12 @@ procSel f focus model =
     win = selectWin focus model
     tree = getTree win.tree model
     newTree = f (selAll win) tree
-    newTrees = D.insert win.tree newTree model.trees
+    -- newTrees = D.insert win.tree newTree model.trees
   in
-    updateSelect focus <| { model | trees = newTrees }
+    updateSelect focus
+      -- <| { model | trees = newTrees }
+      <| updateTree win.tree (\_ -> newTree)
+      <| model
 
 
 ---------------------------------------------------
@@ -649,7 +682,8 @@ attachSel model =
         (Just from, Just to) ->
           case attach from to inTree of
             Just newTree ->
-              Lens.update trees (D.insert win.tree newTree) model
+              -- Lens.update trees (D.insert win.tree newTree) model
+              updateTree win.tree (\_ -> newTree) model
             Nothing -> model
         _ -> model
 
@@ -897,7 +931,10 @@ addrDecoder =
 
 
 treeMapDecoder : Decode.Decoder TreeMap
-treeMapDecoder = Decode.dict treeDecoder
+treeMapDecoder = Decode.dict <|
+  Decode.map2 (\sent tree -> (sent, tree))
+    (Decode.index 0 Decode.string)
+    (Decode.index 1 treeDecoder)
 
 
 treeDecoder : Decode.Decoder (R.Tree Node)
@@ -959,8 +996,18 @@ encodeAddr (treeId, nodeId) = Encode.list
 
 encodeTreeMap : TreeMap -> Encode.Value
 encodeTreeMap =
-  let encodePair (treeId, tree) = (treeId, encodeTree tree)
-  in Encode.object << L.map encodePair << D.toList
+  let
+    encodeSentTree (sent, tree) = Encode.list
+      [ encodeSent sent
+      , encodeTree tree ]
+    encodePair (treeId, sentTree) =
+      (treeId, encodeSentTree sentTree)
+  in
+    Encode.object << L.map encodePair << D.toList
+
+
+encodeSent : Sent -> Encode.Value
+encodeSent = Encode.string
 
 
 encodeTree : R.Tree Node -> Encode.Value

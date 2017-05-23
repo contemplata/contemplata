@@ -22,6 +22,7 @@ library
                      , Odil.Ancor.Types
                      , Odil.Ancor.IO.Parse
                      , Odil.Ancor.IO.Show
+                     , Odil.Ancor.Preprocess
                      , Odil.Penn
   build-depends:       base >= 4.7 && < 5
                      , text >= 1.2 && < 1.3

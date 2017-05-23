@@ -29,14 +29,19 @@ for filename in "$input"/*.xml; do
     echo === SIMPLIFYING "$filename" ===
     simple="$simpdir"/$(basename "$filename" .xml).txt
     odil simplify -a "$filename" > "$simple"
+    
+    echo === PREPROCESSING "$simple" ===
+    prep="$simpdir"/$(basename "$filename" .xml)-prep.txt
+    odil preprocess < "$simple" > "$prep"
 
-    echo === STANFORD PARSING "$simple" ===
+    echo === STANFORD PARSING "$prep" ===
     penn="$penndir"/$(basename "$filename" .xml).penn
-    "$scriptdir"/stanford-fr.sh "$simple" "$penn"
+    "$scriptdir"/stanford-fr.sh "$prep" "$penn"
 
     echo === CONVERTING "$penn" ===
     out="$output"/$(basename "$filename" .xml).json
-    odil penn2odil < "$penn" > "$out"
+    # odil penn2odil < "$penn" > "$out"
+    odil penn2odil -o "$prep" -p "$penn" > "$out"
 
     echo === RESULT IN "$out" ===
 done
