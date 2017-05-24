@@ -1,4 +1,5 @@
 TODO:
+* Add some kind of a semaphor which controls the access to the DB.  Note that it should work between different runs of the applications having access to the DB.
 
 
 LATER:
