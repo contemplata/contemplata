@@ -40,8 +40,7 @@ for filename in "$input"/*.xml; do
 
     echo === CONVERTING "$penn" ===
     out="$output"/$(basename "$filename" .xml).json
-    # odil penn2odil < "$penn" > "$out"
-    odil penn2odil -o "$prep" -p "$penn" > "$out"
+    odil penn2odil -o "$simple" -p "$penn" > "$out"
 
     echo === RESULT IN "$out" ===
 done
