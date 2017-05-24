@@ -42,7 +42,7 @@ type FileId = T.Text
 
 
 -- | ID of a syntactic tree.
-type TreeId = T.Text
+type TreeId = Int
 
 
 -- | Node ID.

@@ -12,12 +12,14 @@ import Odil.Ancor.Types
 
 
 showAncor :: Episode -> T.Text
-showAncor = T.intercalate "\n\n" . map showSection
+-- showAncor = T.intercalate "\n\n" . map showSection
+showAncor = T.intercalate "\n" . filter (not . T.null . T.strip) . map showSection
 
 
 -- | Show a given section.
 showSection :: Section -> T.Text
 showSection = T.intercalate "\n" . map showTurn
+-- showSection = T.intercalate "\n" . filter (not . T.null . T.strip) . map showTurn
 
 
 -- | Show a given turn.

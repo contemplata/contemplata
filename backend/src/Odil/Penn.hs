@@ -94,7 +94,8 @@ convertPennFile :: [(T.Text, Tree)] -> Odil.File
 convertPennFile
   = flip Odil.File S.empty
   . M.fromList
-  . zip (map (T.pack . show) [1..])
+  -- . zip (map (T.pack . show) [1..])
+  . zip [1..]
   . map (Arr.second toOdilTree)
   -- . parseForest
 

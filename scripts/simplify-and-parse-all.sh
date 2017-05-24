@@ -14,7 +14,7 @@ if [ ! $# -eq 4 ]; then
   echo in PENN-DIR, and, finally, convert to JSON files which will be stored
   echo JSON-DIR.
   echo 
-  ehoc The provisional simplification results will be stored in SIMPLIFY-DIR.
+  echo The provisional simplification results will be stored in SIMPLIFY-DIR.
   echo
   exit
 fi

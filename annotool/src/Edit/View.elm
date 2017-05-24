@@ -70,8 +70,8 @@ viewWindow win model =
 
   -- @tabindex required to make the div register keyboard events
   , Atts.attribute "tabindex" "1"
-  , backKeyDown model.ctrl
-  , backKeyUp
+  , globalKeyDown, globalKeyUp
+  , editKeyDown model.ctrl
 
   , Atts.style
     [ "position" => "absolute"
@@ -306,9 +306,8 @@ viewSideDiv win model children =
       -- events here as well; I was not able to obtain this behaviour top-level
       -- (seemed like the event propagation didn't work?)
       , Atts.attribute "tabindex" "1"
-      -- , backKeyDown
-      , backKeyDown model.ctrl
-      , backKeyUp
+      , globalKeyDown, globalKeyUp
+      , editKeyDown model.ctrl
       ]
     topChildren = [viewSideMenu win model]
   in
@@ -371,6 +370,7 @@ viewSideEdit win model =
     div = viewSideDiv win model
       [ Html.input
           ( [ Events.onInput event
+            , blockKeyDownEvents
             , Atts.id <| case win of
                 M.Top -> Cfg.editLabelName True
                 M.Bot -> Cfg.editLabelName False
@@ -434,7 +434,7 @@ viewSent foc isSelected treeId sent =
     para = Html.p
       -- [Atts.style ["font-weight" => "bold"]]
       styl
-      [Html.text <| treeId ++ ":" ++ sent]
+      [Html.text <| toString treeId ++ ": " ++ sent]
     li =  Html.li [] <| Util.single <|
       Html.div
         [ Atts.class "noselect"
@@ -748,10 +748,26 @@ backMouseDown win =
 --   Events.onDoubleClick (Focus win)
 
 
-backKeyDown
+winOnFocus : M.Focus -> Html.Attribute Msg
+winOnFocus win =
+  Events.onFocus (Focus win)
+
+
+-- | Decode the height of a given element.
+offsetHeight : Decode.Decoder Int
+offsetHeight =
+  Decode.at ["target", "offsetHeight"] Decode.int
+
+
+---------------------------------------------------
+-- Keyboard Events
+---------------------------------------------------
+
+
+editKeyDown
   : Bool -- ^ CTRL down?
   -> Html.Attribute Msg
-backKeyDown ctrl =
+editKeyDown ctrl =
   let
     tag code = case code of
       -- "PgUp" and "PgDown"
@@ -785,9 +801,6 @@ backKeyDown ctrl =
       -- "e"
       69 -> EditLabel
 
-      -- "ctrl"
-      17 -> CtrlDown
-
       -- "c"
       67 -> Connect
 
@@ -799,8 +812,21 @@ backKeyDown ctrl =
     onKeyDown tag
 
 
-backKeyUp : Html.Attribute Msg
-backKeyUp =
+globalKeyDown : Html.Attribute Msg
+globalKeyDown =
+  let
+    tag code = case code of
+
+      -- "ctrl"
+      17 -> CtrlDown
+
+      _  -> Msg.dummy
+  in
+    onKeyDown tag
+
+
+globalKeyUp : Html.Attribute Msg
+globalKeyUp =
   let
     tag code = case code of
 
@@ -822,15 +848,13 @@ onKeyDown tagger =
   Events.on "keydown" (Decode.map tagger Events.keyCode)
 
 
-winOnFocus : M.Focus -> Html.Attribute Msg
-winOnFocus win =
-  Events.onFocus (Focus win)
-
-
--- | Decode the height of a given element.
-offsetHeight : Decode.Decoder Int
-offsetHeight =
-  Decode.at ["target", "offsetHeight"] Decode.int
+blockKeyDownEvents : Html.Attribute Msg
+blockKeyDownEvents =
+  Events.onWithOptions
+    "keydown"
+    (let default = Events.defaultOptions
+     in {default | stopPropagation=True})
+    (Decode.succeed Msg.dummy)
 
 
 ---------------------------------------------------

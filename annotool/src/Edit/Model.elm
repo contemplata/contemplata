@@ -76,7 +76,8 @@ type alias Addr = (TreeId, NodeId)
 
 
 -- | Tree identifier
-type alias TreeId = String
+type alias TreeId = Int
+-- type alias TreeId = String
 
 
 -- | Internal node identifier
@@ -967,12 +968,13 @@ linkDecoder =
 addrDecoder : Decode.Decoder Addr
 addrDecoder =
   Decode.map2 (\treeId nodeId -> (treeId, nodeId))
-    (Decode.index 0 Decode.string)
+    -- (Decode.index 0 Decode.string)
+    (Decode.index 0 Decode.int)
     (Decode.index 1 Decode.int)
 
 
 treeMapDecoder : Decode.Decoder TreeMap
-treeMapDecoder = Decode.dict <|
+treeMapDecoder = Decode.map (mapKeys toInt) <| Decode.dict <|
   Decode.map2 (\sent tree -> (sent, tree))
     (Decode.index 0 Decode.string)
     (Decode.index 1 treeDecoder)
@@ -1031,7 +1033,8 @@ encodeLink (from, to) =
 
 encodeAddr : Addr -> Encode.Value
 encodeAddr (treeId, nodeId) = Encode.list
-  [ Encode.string treeId
+  -- [ Encode.string treeId
+  [ Encode.int treeId
   , Encode.int nodeId ]
 
 
@@ -1042,7 +1045,7 @@ encodeTreeMap =
       [ encodeSent sent
       , encodeTree tree ]
     encodePair (treeId, sentTree) =
-      (treeId, encodeSentTree sentTree)
+      (toString treeId, encodeSentTree sentTree)
   in
     Encode.object << L.map encodePair << D.toList
 
@@ -1068,3 +1071,21 @@ encodeNode node = case node of
     , ("nodeId", Encode.int r.nodeId)
     , ("nodeVal", Encode.string r.nodeVal)
     ]
+
+
+---------------------------------------------------
+-- Utils
+---------------------------------------------------
+
+
+toInt : String -> Int
+toInt x = String.toInt x |> Result.toMaybe |> Maybe.withDefault 0
+
+
+mapKeys
+    : (comparable -> comparable2)
+    -> D.Dict comparable c
+    -> D.Dict comparable2 c
+mapKeys f d =
+  let first f (x, y) = (f x, y)
+  in  D.fromList <| L.map (first f) <| D.toList <| d
