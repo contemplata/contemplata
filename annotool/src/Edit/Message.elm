@@ -118,11 +118,15 @@ update msg model =
     ChangeLabel nodeId win newLabel -> idle <| M.setLabel nodeId win newLabel model
 
     EditLabel ->
-      let target = case model.focus of
-        M.Top -> Cfg.editLabelName True
-        M.Bot -> Cfg.editLabelName False
+      let
+        target = case model.focus of
+          M.Top -> Cfg.editLabelName True
+          M.Bot -> Cfg.editLabelName False
       in
-        ( model
+        ( Focus.set
+            (M.winLens model.focus => M.side)
+            M.SideEdit
+            model
         , Task.attempt
             (\_ -> dummy)
             (Dom.focus target)

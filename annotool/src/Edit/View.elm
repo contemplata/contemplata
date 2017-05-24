@@ -310,27 +310,31 @@ viewSideDiv win model children =
       , backKeyDown model.ctrl
       , backKeyUp
       ]
-    topHeight = (dim.height * dim.heightProp) // 100
-    menuPosY = case win of
-      M.Top -> 0
-      M.Bot -> topHeight
-    topChildren = [viewSideMenu win menuPosY]
+    topChildren = [viewSideMenu win model]
   in
     div (topChildren ++ children)
 
 
-viewSideMenu : M.Focus -> Int -> Html.Html Msg
-viewSideMenu focus pos =
+viewSideMenu : M.Focus -> M.Model -> Html.Html Msg
+viewSideMenu focus model =
   let
 
-    menuElem onClick txt = Html.span
+    topHeight = (model.dim.height * model.dim.heightProp) // 100
+    pos = case focus of
+      M.Top -> 0
+      M.Bot -> topHeight
+
+    sideWin = (M.selectWin focus model).side
+    menuElem onClick selected txt = Html.span
       [ Atts.class "noselect"
       , Events.onClick onClick
-      , Atts.style
+      , Atts.style <|
         [ "cursor" => "pointer"
         , "display" => "inline-block"
         , "margin" => "5px"
-        ]
+        ] ++ if selected
+             then ["font-weight" => "bold"]
+             else []
       ]
       [ Html.text txt ]
 
@@ -345,9 +349,9 @@ viewSideMenu focus pos =
           , "z-index" => "1"
           , "top" => px pos ]
       ]
-      [ menuElem (SideMenuEdit focus) "Edit"
-      , menuElem (SideMenuContext focus) "Context"
-      , menuElem (SideMenuLog focus) "Messages" ]
+      [ menuElem (SideMenuEdit focus) (sideWin == M.SideEdit) "Edit"
+      , menuElem (SideMenuContext focus) (sideWin == M.SideContext) "Context"
+      , menuElem (SideMenuLog focus) (sideWin == M.SideLog) "Messages" ]
 
 
 -- | The view of a side window.

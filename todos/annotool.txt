@@ -17,7 +17,10 @@ TODO:
 
 LATER:
 * Improve indentation when editing elm files
-* Show a sentence on top of a given viewport
+
+
+CANCELLED:
+* Show a sentence on top of a given viewport <- a different solution was used
 
 
 DONE:
@@ -69,3 +72,5 @@ DONE:
 * Help menu
 * Make a flat message window on the bottom <- using side windows instead
 * Make it possible to swap a tree with its sister tree
+* Key 'e' switches the side menu if need be
+* Menu of the side menu with bold-font highlighting of the selected tab 
