@@ -1,10 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 
-module Odil.Ancor.IO.Parse (parseAncor, parseTrans) where
+module Odil.Ancor.IO.Parse (parseAncor, parseTrans, parseToken) where
 
 
-import Control.Monad (guard)
+import Control.Monad (void, guard)
 import Control.Applicative (optional, (*>), (<|>))
 import qualified Data.Text as T
 import           Data.Maybe (catMaybes)
@@ -13,6 +13,7 @@ import qualified Text.HTML.TagSoup   as TagSoup
 import           Text.XML.PolySoup   hiding (P, Q)
 import qualified Text.XML.PolySoup   as PolySoup
 import qualified Data.Attoparsec.Text as A
+import Data.Attoparsec.Combinator (lookAhead)
 
 import Odil.Ancor.Types
 
@@ -78,56 +79,53 @@ elemQ = node . PolySoup.Q $ \tag -> do
 
 
 parseElem :: T.Text -> Elem
-parseElem x =
-  case A.parseOnly (elemP <* A.endOfInput) x of
+parseElem = map parseToken . T.words
+
+
+parseToken :: T.Text -> Token
+parseToken x =
+  case A.parseOnly (tokenP <* A.endOfInput) x of
+  -- case A.parseOnly tokenP x of
     Left err -> error err
     Right el -> el
 
 
-elemP :: A.Parser Elem
-elemP = A.many1 chunkP
+tokenP :: A.Parser Token
+tokenP = pauseP <|> bruitP <|> incoP <|> inaudibleP <|> plainP
 
 
-chunkP :: A.Parser (Chunk T.Text)
--- chunkP = pauseP <|> bruitP <|> incoP <|> plainP
-chunkP = plainP <|> fallbackP
+bruitP :: A.Parser Token
+bruitP = do
+  A.char '['
+  x <- A.string "rire" <|> A.string "bb" <|> A.string "tx" <|> A.string "pf"
+  A.char ']'
+  return . Bruit $ x
 
 
--- bruitP :: A.Parser (Chunk T.Text)
--- bruitP = do
---   A.char '['
---   x <- A.string "rire" <|> A.string "bb" <|> A.string "tx" <|> A.string "pf"
---   A.char ']'
---   return . Bruit $ x
---
---
--- incoP :: A.Parser (Chunk T.Text)
--- incoP = do
---   A.char '('
---   x <- A.anyChar `A.manyTill` A.char '('
---   A.char ')'
---   return . Incomplete . T.pack $ x
+inaudibleP :: A.Parser Token
+inaudibleP = do
+  A.char '['
+  A.string "pi"
+  A.char ']'
+  return Inaudible
 
 
-pauseP :: A.Parser (Chunk T.Text)
+incoP :: A.Parser Token
+incoP = do
+  x <- A.takeTill (== '(') <* A.char '('
+  y <- A.takeTill (== ')') <* A.char ')'
+  return $ Incomplete x y
+
+
+pauseP :: A.Parser Token
 pauseP = do
-  A.skipSpace
   x <- A.char 'e' <|> A.char '#'
-  A.skipSpace <|> A.endOfInput
+  A.endOfInput
   return . Pause . T.singleton $ x
 
-plainP :: A.Parser (Chunk T.Text)
+
+plainP :: A.Parser Token
 plainP = do
-  let skipChar x = () <$ A.char x
-      pause_ = () <$ pauseP
-  x <- A.anyChar `A.manyTill`
-    (skipChar '(' <|> skipChar '[' <|> pause_)
-  guard . not . null $ x
-  return . Plain . T.pack $ x
-
-
-fallbackP :: A.Parser (Chunk T.Text)
-fallbackP = do
   x <- A.takeText
   guard . not . T.null $ x
   return (Plain x)

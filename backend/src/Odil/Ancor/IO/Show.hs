@@ -3,7 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 
 
-module Odil.Ancor.IO.Show (showTurn, showSection, showAncor) where
+module Odil.Ancor.IO.Show (showTurn, showSection, showAncor, showToken) where
 
 
 import qualified Data.Text as T
@@ -27,13 +27,15 @@ showTurn Turn{..} = T.intercalate " " (map showElem elems)
 
 -- | Show a given element.
 showElem :: Elem -> T.Text
-showElem = T.concat . map showChunk
+showElem = T.unwords . map showToken
 
 
 -- | Show a given chunk.
-showChunk :: Chunk T.Text -> T.Text
-showChunk = \case
+showToken :: Token -> T.Text
+showToken = \case
   Plain x -> x
   Bruit x -> T.concat ["[", x ,"]"]
-  Incomplete x -> T.concat ["(", x ,")"]
+  Incomplete x y -> T.concat [x, "(", y ,")"]
   Pause x -> x
+  Inaudible -> "[pi]"
+

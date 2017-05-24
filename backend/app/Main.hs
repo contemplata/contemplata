@@ -169,7 +169,7 @@ run cmd =
       T.putStrLn . Show.showAncor . Parse.parseTrans $ file
     Preprocess -> do
       sentences <- T.lines <$> T.getContents
-      T.putStrLn . T.unlines . map Pre.prepare $ sentences
+      T.putStr . T.unlines . map Pre.prepare $ sentences
     Penn2Odil pennPath origPath -> do
       penn <- Penn.parseForest <$> T.readFile pennPath
       orig <- T.lines <$> T.readFile origPath
