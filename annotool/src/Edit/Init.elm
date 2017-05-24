@@ -24,15 +24,17 @@ mkEdit fileId file =
     treeId = case D.toList file.treeMap of
       (id, tree) :: _ -> id
       _ -> Debug.crash "setTrees: empty tree dictionary"
-    top = win treeId
-    bot = win treeId
-    win name =
+    top = win treeId Top
+    bot = win treeId Bot
+    win name foc =
       { tree = name
       , pos = Position 400 50
       , selMain = Nothing
       , selAux = S.empty
       , drag = Nothing
-      , side = Edit.Model.SideEdit
+      , side = if foc == Top
+               then Edit.Model.SideContext
+               else Edit.Model.SideLog
       }
     dim =
       { width = 0
