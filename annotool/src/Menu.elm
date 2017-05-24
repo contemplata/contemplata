@@ -130,6 +130,7 @@ viewHelp =
       [ [Plain "Menu commands: click ", Bold "Save", Plain " to save the current file and ", Bold "Menu", Plain " to return here."]
       , [ Plain "Tree selection: use ", Bold "page down", Plain " or ", Bold "page up", Plain " to go to the next or the previous tree, respectively. "
         , Plain "You can also click on the sentence identifiers in the side window on the right." ]
+      , [ Plain "Tree navigation: press the ", Bold "left mouse button", Plain " anywhere in the tree-editing window and move the mouse while holding the button." ]
       , [Plain "Node selection: use the", Bold " left mouse button", Plain " to select the main node, and the ", Bold "left mouse button + CTRL", Plain " to select auxiliary nodes.  Selection works in a window-specific manner."]
       , [Plain "Add node: select node(s) and press ", Bold "a", Plain "."]
       , [Plain "Delete node: select node(s) and press ", Bold "d", Plain "."]
