@@ -6,6 +6,10 @@ module Edit.Anno exposing
   , EventClass(..)
   , EventTense(..)
   , eventDefault
+  , eventClassStr
+  , eventClassFromStr
+  , eventTenseStr
+  , eventTenseFromStr
 
   -- * JSON
   , encodeEvent
@@ -15,6 +19,8 @@ module Edit.Anno exposing
 
 import Json.Decode as Decode
 import Json.Encode as Encode
+
+import Dict as D
 
 import Util
 
@@ -40,6 +46,31 @@ type EventClass
     | State
 
 
+-- | The string representations of an event class.
+eventClassStr : List (String, EventClass)
+eventClassStr =
+  [ ("Aspectual", Aspectual)
+  , ("Cause", Cause)
+  , ("EventContainer", EventContainer)
+  , ("IAction", IAction)
+  , ("IState", IState)
+  , ("Modal", Modal)
+  , ("Occurrence", Occurrence)
+  , ("Perception", Perception)
+  , ("Reporting", Reporting)
+  , ("State", State) ]
+
+
+eventClassFromStr : String -> EventClass
+eventClassFromStr x =
+  let
+      d = D.fromList eventClassStr
+  in
+      case D.get x d of
+          Nothing -> Debug.crash "Anno.eventClassFromStr: cannot decode"
+          Just y -> y
+
+
 -- | An event's tense. The default is `None`, which should be represented by
 -- `Nothing`.
 type EventTense
@@ -49,10 +80,27 @@ type EventTense
     | Imperfect
 
 
+-- | The string representations of an event class.
+eventTenseStr : List (String, Maybe EventTense)
+eventTenseStr =
+  [ ("Future", Just Future)
+  , ("Past", Just Past)
+  , ("Present", Just Present)
+  , ("Imperfect", Just Imperfect)
+  , ("--", Nothing) ]
+
+
+eventTenseFromStr : String -> Maybe EventTense
+eventTenseFromStr x =
+  case D.get x (D.fromList eventTenseStr) of
+    Nothing -> Nothing
+    Just y -> y
+
+
 eventDefault : Event
 eventDefault = Event
   { evClass = Aspectual
-  , evTense = Just Future }
+  , evTense = Nothing }
 
 
 ---------------------------------------------------

@@ -385,21 +385,39 @@ viewSideEditLabel win model =
     inp
 
 
--- viewSideEventClass : M.Focus -> M.Model -> M.NodeId -> Anno.EventClass -> Html.Html Msg
--- viewSideEventClass win model nodeId evClass =
-viewSideEventClass =
+viewSideEvent : M.Focus -> M.NodeId -> Anno.Event -> List (Html.Html Msg)
+viewSideEvent focus nodeId (Anno.Event ev) =
   let
---     (condAtts, event) =
---       ( [Atts.value (M.getLabel nodeId win model)]
---       , ChangeLabel nodeId win )
-    event = \_ -> Msg.dummy
-    inp = Html.select
-      [ Events.onInput event ]
-      [ Html.option [Atts.value "1"] [Html.text "1"]
-      , Html.option [Atts.value "2"] [Html.text "2"]
+
+    optionClass (str, cls) = Html.option
+      [ Atts.value str
+      , Atts.selected (cls == ev.evClass) ]
+      [ Html.text str ]
+    setEventClass str = SetEventClass nodeId focus (Anno.eventClassFromStr str)
+    inpClass = Html.div []
+      [ Html.text "Class: "
+      , Html.select
+        -- [ Events.onInput (\str -> Debug.crash "asdf")
+        [ Events.on "change" (Decode.map setEventClass Events.targetValue)
+            -- SetEventClass nodeId focus (Anno.eventClassFromStr str) )
+        , blockKeyDownEvents ]
+        (List.map optionClass Anno.eventClassStr)
+      ]
+
+    optionTense (str, tns) = Html.option
+      [ Atts.value str
+      , Atts.selected (tns == ev.evTense) ]
+      [ Html.text str ]
+    setEventTense str = SetEventTense nodeId focus (Anno.eventTenseFromStr str)
+    inpTense = Html.div []
+      [ Html.text "Tense: "
+      , Html.select
+        [ Events.on "change" (Decode.map setEventTense Events.targetValue)
+        , blockKeyDownEvents ]
+        (List.map optionTense Anno.eventTenseStr)
       ]
   in
-    inp
+    [inpClass, inpTense]
 
 
 -- | The view of a side window.
@@ -410,17 +428,23 @@ viewSideEdit win model =
     selected = case win of
       M.Top -> model.top.selMain
       M.Bot -> model.bot.selMain
-    divChildren = viewSideEditLabel win model :: case selected of
+    divChildren = case selected of
       Nothing -> []
-      Just nodeId ->
+      Just nodeId -> case M.getNode nodeId win model of
+        M.Leaf r -> []
+        M.Node r -> case r.nodeTyp of
+          Nothing -> []
+          Just M.NodeTimex -> []
+          Just (M.NodeEvent ev) -> viewSideEvent win nodeId ev
+            -- [ Html.div [] [Html.button [] [Html.text "Send"]]
+            -- ,  ]
+
           -- TODO: make it slightly more smart! In particular, you can base
           -- yourself o on the functions `Model.getLabel` and `Model.setLabel`,
           -- which allow to change the label. Indeed, here we just generalize
           -- these functions to modify the entire nodes, and not just their
           -- lalels. In fact, the label-related functions should be later based
           -- on the new ones.
-          [ Html.div [] [Html.button [] [Html.text "Send"]]
-          , viewSideEventClass ]
 
     div = Html.div
       [ Atts.style
@@ -430,7 +454,7 @@ viewSideEdit win model =
         , "margin" => px 5
         ]
       ]
-      divChildren
+      (viewSideEditLabel win model :: divChildren)
     top = viewSideDiv win model [div]
   in
     top

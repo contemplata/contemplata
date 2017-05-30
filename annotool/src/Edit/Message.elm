@@ -13,6 +13,7 @@ import Json.Decode as Decode
 
 import Config as Cfg
 import Edit.Model as M
+import Edit.Anno as Anno
 import Menu
 import Server
 
@@ -46,6 +47,9 @@ type Msg
   | SideMenuEdit M.Focus
   | SideMenuContext M.Focus
   | SideMenuLog M.Focus
+  -- * Event modification events...
+  | SetEventClass M.NodeId M.Focus Anno.EventClass
+  | SetEventTense M.NodeId M.Focus (Maybe Anno.EventTense)
   | Many (List Msg)
 --     -- ^ Tests
 --   | TestInput String
@@ -175,6 +179,12 @@ update msg model =
         (M.winLens focus => M.side)
         M.SideLog
         model
+
+    SetEventClass nodeId focus x -> idle <|
+      M.setEventClass nodeId focus x model
+
+    SetEventTense nodeId focus x -> idle <|
+      M.setEventTense nodeId focus x model
 
 --     -- Testing websockets
 --     TestInput x -> idle <| {model | testInput=x}

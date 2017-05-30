@@ -14,8 +14,12 @@ module Edit.Model exposing
   -- , mkEdit
   -- Logging:
   , log
+  -- Nodes:
+  , getNode, setNode, updateNode
   -- Labels:
   , getLabel, setLabel
+  -- Event modification:
+  , setEventClass, setEventTense
   -- Node selection:
   , selectNode, selectNodeAux
   -- Links
@@ -475,41 +479,77 @@ selectNodeAux focus i model =
 
 
 ---------------------------------------------------
--- Labels
+-- Node modification
 ---------------------------------------------------
 
 
-getLabel : NodeId -> Focus -> Model -> String
-getLabel id focus model =
+getNode : NodeId -> Focus -> Model -> Node
+getNode id focus model =
   let
     search (R.Node x ts) = if id == Lens.get nodeId x
-      then Just (Lens.get nodeVal x)
+      then Just x
       else searchF ts
     searchF ts = case ts of
       [] -> Nothing
       hd :: tl -> Util.mappend (search hd) (searchF tl)
     tree = getTree (selectWin focus model).tree model
   in
-    Maybe.withDefault "?" <| search tree
+    case search tree of
+      Nothing -> Debug.crash "Model.getNode: unknown node ID"
+      Just x  -> x
 
 
-setLabel : NodeId -> Focus -> String -> Model -> Model
-setLabel id focus newLabel model =
+updateNode : NodeId -> Focus -> (Node -> Node) -> Model -> Model
+updateNode id focus updNode model =
   let
     update (R.Node x ts) = if id == Lens.get nodeId x
-      -- then R.Node {x | nodeVal = newLabel} ts
-      then R.Node (Lens.set nodeVal newLabel x) ts
+      then R.Node (updNode x) ts
       else R.Node x (updateF ts)
     updateF ts = case ts of
       [] -> []
       hd :: tl -> update hd :: updateF tl
     win = selectWin focus model
-    -- tree = getTree win.tree model
-    -- newTrees = D.insert win.tree (update tree) model.trees
   in
-    -- {model | trees = newTrees}
     updateTree win.tree update model
-    -- setTree win.tree (update tree) model
+
+
+setNode : NodeId -> Focus -> Node -> Model -> Model
+setNode id focus newNode = updateNode id focus (\_ -> newNode)
+
+
+---------------------------------------------------
+-- Labels
+---------------------------------------------------
+
+
+getLabel : NodeId -> Focus -> Model -> String
+getLabel id focus model =
+    Lens.get nodeVal <| getNode id focus model
+
+
+setLabel : NodeId -> Focus -> String -> Model -> Model
+setLabel id focus newLabel model =
+    let update = Lens.set nodeVal newLabel
+    in  updateNode id focus update model
+
+
+---------------------------------------------------
+-- Event modification
+---------------------------------------------------
+
+
+setEventClass : NodeId -> Focus -> Anno.EventClass -> Model -> Model
+setEventClass id focus newClass model =
+    let lens = nodeTyp => maybeLens => nodeEvent => eventClass
+        update = Lens.set lens newClass
+    in  updateNode id focus update model
+
+
+setEventTense : NodeId -> Focus -> Maybe Anno.EventTense -> Model -> Model
+setEventTense id focus newTense model =
+    let lens = nodeTyp => maybeLens => nodeEvent => eventTense
+        update = Lens.set lens newTense
+    in  updateNode id focus update model
 
 
 ---------------------------------------------------
@@ -965,6 +1005,66 @@ nodeVal =
     update f node = case node of
       Node r -> Node {r | nodeVal = f r.nodeVal}
       Leaf r -> Leaf {r | nodeVal = f r.nodeVal}
+  in
+    Lens.create get update
+
+
+nodeTyp : Lens.Focus Node (Maybe NodeTyp)
+nodeTyp =
+  let
+    getErr = "nodeTyp.lens: cannot get the nodeTyp"
+    get node = case node of
+      Node r -> r.nodeTyp
+      Leaf r -> Debug.crash getErr
+    update f node = case node of
+      Node r -> Node {r | nodeTyp = f r.nodeTyp}
+      Leaf r -> Leaf r
+  in
+    Lens.create get update
+
+
+nodeEvent : Lens.Focus NodeTyp Anno.Event
+nodeEvent =
+  let
+    getErr = "nodeEvent.lens: cannot get"
+    get typ = case typ of
+      NodeEvent event -> event
+      _ -> Debug.crash getErr
+    update f typ = case typ of
+      NodeEvent event -> NodeEvent (f event)
+      _ -> typ
+  in
+    Lens.create get update
+
+
+eventClass : Lens.Focus Anno.Event Anno.EventClass
+eventClass =
+  let
+    get (Anno.Event r) = r.evClass
+    update f (Anno.Event r) = Anno.Event {r | evClass = f r.evClass}
+  in
+    Lens.create get update
+
+
+eventTense : Lens.Focus Anno.Event (Maybe Anno.EventTense)
+eventTense =
+  let
+    get (Anno.Event r) = r.evTense
+    update f (Anno.Event r) = Anno.Event {r | evTense = f r.evTense}
+  in
+    Lens.create get update
+
+
+maybeLens : Lens.Focus (Maybe a) a
+maybeLens =
+  let
+    getErr = "maybeLens: got Nothing"
+    get may = case may of
+      Nothing -> Debug.crash getErr
+      Just x -> x
+    update f may = case may of
+      Nothing -> Nothing
+      Just x -> Just (f x)
   in
     Lens.create get update
 
