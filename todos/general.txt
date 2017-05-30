@@ -1,6 +1,16 @@
 TODO:
 * Consider the quesion of "speech turns" -- should they be represented as separate trees?
   I suppose so (issue raised during the TLN meeting, Mai 18, Blois)
+  -> JY, AL: it should be visible (colors, labels) who is speaking at a given moment.
+     If there are many speakers for a given speech turn, they should be parsed separately,
+     and visible as a part of the same speech turn, like this:
+
+    <Turn 1>, <spk1>: ble ble ble
+    <Turn 2>, <spk1>: ble ble ble ble
+            , <spk2>: bla bla
+            , <spk1>: blu blu bly
+    <Turn 3>, <spk2>: ble ble ble
+
 * Compute the number of words in the files pre-selected by JY, too see what portion
   of 20000 words does it make.
 
