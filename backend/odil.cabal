@@ -19,6 +19,7 @@ library
                      , Odil.Server.Types
                      , Odil.Server.DB
                      , Odil.Server.Config
+                     , Odil.AnnoTypes
                      , Odil.Ancor.Types
                      , Odil.Ancor.IO.Parse
                      , Odil.Ancor.IO.Show

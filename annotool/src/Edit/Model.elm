@@ -1,7 +1,8 @@
 module Edit.Model exposing
   (
   -- Data types:
-    TreeMap, Sent, FileId, File, NodeId, TreeId, Node(..), Link, Addr
+    TreeMap, Sent, FileId, File, NodeId, TreeId
+  , Node(..), NodeTyp(..), Link, Addr
   , isNode, isLeaf
   -- Model types:
   , Model, Dim, Window, SideWindow(..), Drag, Focus(..)
@@ -21,6 +22,8 @@ module Edit.Model exposing
   , connect -- LinkInfo
   -- Tree modifications:
   , attachSel, deleteSel, addSel, swapSel
+  -- Node annotation:
+  , changeTypeSel
   -- Lenses:
   , top, bot, dim, winLens, drag, side, pos, height, widthProp, heightProp
   , nodeId, nodeVal, trees
@@ -48,6 +51,7 @@ import Json.Encode as Encode
 
 import Util as Util
 import Rose as R
+import Edit.Anno as Anno
 
 
 ---------------------------------------------------
@@ -92,13 +96,19 @@ type alias NodeId = Int
 type Node
   = Node
     { nodeId : NodeId
-    , nodeVal : String }
+    , nodeVal : String
+    , nodeTyp : Maybe NodeTyp }
   | Leaf
     { nodeId : NodeId
     , nodeVal : String
       -- | The position of the leaf in the underlying sentence.
       -- The positions do not have to be consecutive.
     , leafPos : Int }
+
+
+type NodeTyp
+    = NodeEvent Anno.Event
+    | NodeTimex
 
 
 isNode : Node -> Bool
@@ -617,10 +627,47 @@ identify dummyVal tree =
        Just ix -> ix + 1
     update newId nodeMay =
       case nodeMay of
-        Nothing -> (newId+1, Node {nodeId=newId, nodeVal=dummyVal})
+        Nothing -> (newId+1, Node {nodeId=newId, nodeVal=dummyVal, nodeTyp=Nothing})
         Just x  -> (newId, x)
   in
     Tuple.second <| R.mapAccum update newId1 tree
+
+
+---------------------------------------------------
+-- Change the type of the selected node
+---------------------------------------------------
+
+
+-- | Change the type of the main selected nodes in a given window.
+changeTypeSel : Focus -> Model -> Model
+changeTypeSel focus model =
+  let
+    win = selectWin focus model
+    tree = getTree win.tree model
+    -- newTree id = changeType id tree
+  in
+    case win.selMain of
+      Nothing -> model
+      Just id -> updateTree win.tree (\_ -> changeType id tree) model
+
+
+-- | Delete a given node, provided that it is not a root.
+changeType : NodeId -> R.Tree Node -> R.Tree Node
+changeType id =
+  let
+    update x =
+      if id == Lens.get nodeId x && not (isLeaf x)
+      then shift x
+      else x
+    shift node = case node of
+      Leaf r -> node
+      Node r -> Node <| {r | nodeTyp = shiftTyp r.nodeTyp}
+    shiftTyp x = case x of
+      Nothing -> Just <| NodeEvent Anno.eventDefault
+      Just (NodeEvent _) -> Just NodeTimex
+      Just NodeTimex -> Nothing
+  in
+    R.map update
 
 
 ---------------------------------------------------
@@ -990,9 +1037,10 @@ nodeDecoder = Decode.oneOf [internalDecoder, leafDecoder]
 
 internalDecoder : Decode.Decoder Node
 internalDecoder =
-  Decode.map2 (\id val -> Node {nodeId=id, nodeVal=val})
+  Decode.map3 (\id val typ -> Node {nodeId=id, nodeVal=val, nodeTyp=typ})
     (Decode.field "nodeId" Decode.int)
     (Decode.field "nodeVal" Decode.string)
+    (Decode.field "nodeTyp" (Decode.nullable nodeTypDecoder))
 
 
 leafDecoder : Decode.Decoder Node
@@ -1001,6 +1049,26 @@ leafDecoder =
     (Decode.field "leafId" Decode.int)
     (Decode.field "leafVal" Decode.string)
     (Decode.field "leafPos" Decode.int)
+
+
+nodeTypDecoder : Decode.Decoder NodeTyp
+nodeTypDecoder = Decode.oneOf [nodeEventDecoder, nodeTimexDecoder]
+
+
+nodeEventDecoder : Decode.Decoder NodeTyp
+nodeEventDecoder =
+  Decode.map (\ev -> NodeEvent ev)
+    (Decode.field "contents" Anno.eventDecoder)
+
+
+nodeTimexDecoder : Decode.Decoder NodeTyp
+nodeTimexDecoder =
+  let
+    verifyTag x = case x of
+      "NodeTimex" -> Decode.succeed NodeTimex
+      _ -> Decode.fail "not a NodeTimex"
+  in
+    Decode.field "tag" Decode.string |> Decode.andThen verifyTag
 
 
 ---------------------------------------------------
@@ -1070,7 +1138,17 @@ encodeNode node = case node of
     [ ("tag", Encode.string "Node")
     , ("nodeId", Encode.int r.nodeId)
     , ("nodeVal", Encode.string r.nodeVal)
+    , ("nodeTyp", Util.encodeMaybe encodeNodeTyp r.nodeTyp)
     ]
+
+
+encodeNodeTyp : NodeTyp -> Encode.Value
+encodeNodeTyp nodeTyp = case nodeTyp of
+  NodeEvent ev -> Encode.object
+    [ ("tag", Encode.string "NodeEvent")
+    , ("contents", Anno.encodeEvent ev) ]
+  NodeTimex -> Encode.object
+    [ ("tag", Encode.string "NodeTimex") ]
 
 
 ---------------------------------------------------

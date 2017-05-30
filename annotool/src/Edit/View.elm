@@ -19,6 +19,7 @@ import Focus as Lens
 import Rose as R
 import Util as Util
 import Config as Cfg
+import Edit.Anno as Anno
 import Edit.Model as M
 import Edit.Message as Msg
 import Edit.Message exposing (Msg(..))
@@ -229,12 +230,14 @@ drawNode selMain selAux focus at node =
       ( if Just nodeId == selMain
           then ["border" => "solid", "border-color" => "black"]
           else ["border" => "none"] )
---     nodeVal = case node of
---       M.Node r -> r.nodeVal
---       M.Leaf r -> r.nodeVal ++ " " ++ toString r.leafPos
     htmlLeaf = case node of
       M.Node r ->
-        [ Html.text r.nodeVal ]
+        [ Html.text r.nodeVal
+        , case r.nodeTyp of
+            Nothing -> Html.sub [] []
+            Just (M.NodeEvent _) -> Html.sub [] [Html.text "EV"]
+            Just M.NodeTimex -> Html.sub [] [Html.text "TX"]
+        ]
       M.Leaf r ->
         [ Html.text r.nodeVal
         , Html.sub [] [Html.text <| toString r.leafPos] ]
@@ -329,8 +332,10 @@ viewSideMenu focus model =
       , Events.onClick onClick
       , Atts.style <|
         [ "cursor" => "pointer"
-        , "display" => "inline-block"
-        , "margin" => "5px"
+        -- NOTE: inline-block hidden because we want the side menu to be
+        -- relatively fixed:
+        -- , "display" => "inline-block"
+        , "margin" => px 5
         ] ++ if selected
              then ["font-weight" => "bold"]
              else []
@@ -353,9 +358,9 @@ viewSideMenu focus model =
       , menuElem (SideMenuLog focus) (sideWin == M.SideLog) "Messages" ]
 
 
--- | The view of a side window.
-viewSideEdit : M.Focus -> M.Model -> Html.Html Msg
-viewSideEdit win model =
+-- | The view of the side edit window -- the label.
+viewSideEditLabel : M.Focus -> M.Model -> Html.Html Msg
+viewSideEditLabel win model =
   let
     selected = case win of
       M.Top -> model.top.selMain
@@ -367,30 +372,68 @@ viewSideEdit win model =
       Nothing ->
         ( [Atts.disabled True, Atts.placeholder "<label>"]
         , \_ -> Msg.dummy )
-    div = viewSideDiv win model
-      [ Html.input
-          ( [ Events.onInput event
-            , blockKeyDownEvents
-            , Atts.id <| case win of
-                M.Top -> Cfg.editLabelName True
-                M.Bot -> Cfg.editLabelName False
-            , Atts.style
-              [ "position" => "absolute"
-              -- , "width" => "50%"
-              , "top" => px Cfg.sideMenuHeight
-              , "margin" => px 5
-              ]
-            ] ++ condAtts
-          )
-          []
---       , Html.input
---           [Events.onInput TestInput, Atts.value model.testInput] []
---       , Html.button [Events.onClick TestSend] [Html.text "Send"]
---       -- , Html.div [] (List.map viewMessage (List.reverse model.messages))
-      ]
-    -- wrapper = Html.div [Atts.style ["text-align" => "center"]] [div]
+    inp = Html.input
+      ( [ Events.onInput event
+        , blockKeyDownEvents
+        , Atts.id <| case win of
+            M.Top -> Cfg.editLabelName True
+            M.Bot -> Cfg.editLabelName False
+        ] ++ condAtts
+      )
+      []
   in
-    div
+    inp
+
+
+-- viewSideEventClass : M.Focus -> M.Model -> M.NodeId -> Anno.EventClass -> Html.Html Msg
+-- viewSideEventClass win model nodeId evClass =
+viewSideEventClass =
+  let
+--     (condAtts, event) =
+--       ( [Atts.value (M.getLabel nodeId win model)]
+--       , ChangeLabel nodeId win )
+    event = \_ -> Msg.dummy
+    inp = Html.select
+      [ Events.onInput event ]
+      [ Html.option [Atts.value "1"] [Html.text "1"]
+      , Html.option [Atts.value "2"] [Html.text "2"]
+      ]
+  in
+    inp
+
+
+-- | The view of a side window.
+viewSideEdit : M.Focus -> M.Model -> Html.Html Msg
+viewSideEdit win model =
+  let
+
+    selected = case win of
+      M.Top -> model.top.selMain
+      M.Bot -> model.bot.selMain
+    divChildren = viewSideEditLabel win model :: case selected of
+      Nothing -> []
+      Just nodeId ->
+          -- TODO: make it slightly more smart! In particular, you can base
+          -- yourself o on the functions `Model.getLabel` and `Model.setLabel`,
+          -- which allow to change the label. Indeed, here we just generalize
+          -- these functions to modify the entire nodes, and not just their
+          -- lalels. In fact, the label-related functions should be later based
+          -- on the new ones.
+          [ Html.div [] [Html.button [] [Html.text "Send"]]
+          , viewSideEventClass ]
+
+    div = Html.div
+      [ Atts.style
+        [ "position" => "absolute"
+        -- , "width" => "50%"
+        , "top" => px Cfg.sideMenuHeight
+        , "margin" => px 5
+        ]
+      ]
+      divChildren
+    top = viewSideDiv win model [div]
+  in
+    top
 
 
 ---------------------------------------------------
@@ -781,6 +824,9 @@ globalKeyDown ctrl =
 
       -- "a"
       65 -> Add
+
+      -- "t"
+      84 -> ChangeType
 
       -- -- "+" and "-"
       -- 107 -> Increase True

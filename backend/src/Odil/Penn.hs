@@ -71,7 +71,7 @@ toOdilTree =
         return $ Odil.Leaf i x p
       else do
         i <- newId
-        return $ Odil.Node i x
+        return $ Odil.Node i x Nothing
 
     markLeaves (R.Node x ts) = case ts of
       [] -> R.Node (x, True) []

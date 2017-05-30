@@ -1,6 +1,6 @@
 module Config exposing
   ( stdWidth, stdMargin, nodeHeight, moveDown, sideSpace, sideMenuHeight
-  , testTree1, testTree2, testTree3, testTree4, testTree5
+  -- , testTree1, testTree2, testTree3, testTree4, testTree5
   , increaseSpeed, editLabelName, dmzSize
   , linkDasharray, linkWidth, linkOpacity
   , linkHeadSize, linkHeadDist, linkTailDist
@@ -78,7 +78,7 @@ sideSpace = 15
 
 -- | Height of the side menu.
 sideMenuHeight : Int
-sideMenuHeight = 25
+sideMenuHeight = 20
 
 
 -- | Size of the demilitarized zone. Use so that scrollbars do
@@ -133,113 +133,113 @@ linkTailDist = 15
 ---------------------------------------------------
 
 
-testTree1 : R.Tree M.Node
-testTree1 =
-  let
-    node i xs = R.Node (M.Node {nodeId = i, nodeVal = toString i}) xs
-    leaf i = R.Node (M.Leaf {nodeId = i, nodeVal = toString i, leafPos = i}) []
-  in
-    node 1
-      [ node 2 [leaf 3]
-      , node 4 [leaf 5]
-      ]
-
-
-testTree2 : R.Tree M.Node
-testTree2 =
-  let
-    -- node i xs = R.Node {nodeId = i, nodeVal = toString i} xs
-    node i xs = R.Node (M.Node {nodeId = i, nodeVal = toString i}) xs
-    leaf i = R.Node (M.Leaf {nodeId = i, nodeVal = toString i, leafPos = i}) []
-  in
-    node 1
-      [ node 2 [leaf 3]
-      , node 4 [leaf 5]
-      , leaf 6
-      , node 7
-        [leaf 8, leaf 9, leaf 10]
-      ]
-
-
-mkSynTree
-   : R.Tree {nodeId : M.NodeId, nodeVal : String}
-  -> R.Tree M.Node
-mkSynTree (R.Node x ts) =
-  if not (L.isEmpty ts)
-  then R.Node (M.Node x) (L.map mkSynTree ts)
-  else
-    let leaf = M.Leaf
-          { nodeId = x.nodeId
-          , nodeVal = x.nodeVal
-          , leafPos = x.nodeId }
-    in  R.Node leaf []
-
-
-testTree3 : R.Tree M.Node
-testTree3 =
-  let
-    node x xs = R.Node x xs
-    tree =
-      node "SENT"
-        [ node "Ssub"
-            [ node "CS" [node "Quand" []]
-            , node "VN"
-                [ node "CLS" [node "vous" []]
-                , node "V" [node "savez" []] ]
-            , node "VPinf"
-                [ node "VN"
-                    [ node "CLO" [node "vous" []]
-                    , node "VINF" [node "venez" []] ]
-                ]
-            ]
-        , node "PUNC" [node "." []]
-        ]
-    addId i x = (i+1, {nodeId = i, nodeVal = x})
-    snd (x, y) = y
-  in
-    mkSynTree <| snd <| R.mapAccum addId 1 <| tree
-
-
-
-testTree4 : R.Tree M.Node
-testTree4 =
-  let
-    node x xs = R.Node x xs
-    tree =
-      node "SENT"
-        [ node "NP"
-            [ node "NPP" [node "Jean" []] ]
-        , node "VN"
-            [ node "V" [node "est" []]
-            , node "VPP" [node "parti" []] ]
-        , node "PUNC" [node "." []]
-        ]
-    addId i x = (i+1, {nodeId = i, nodeVal = x})
-    snd (x, y) = y
-  in
-    mkSynTree <| snd <| R.mapAccum addId 1 <| tree
-
-
-testTree5 : R.Tree M.Node
-testTree5 =
-  let
-    node x xs = R.Node x xs
-    tree =
-      node "SENT"
-        [ node "ADV" [node "Ensuite" []]
-        , node "PUNC" [node "," []]
-        , node "VN"
-            [ node "CLS" [node "il" []]
-            , node "V" [node "est" []]
-            , node "VPP" [node "allé" []] ]
-        , node "VPinf"
-            [ node "VN" [node "VINF" [node "manger" []]] ]
-        , node "PUNC" [node "." []]
-        ]
-    addId i x = (i+1, {nodeId = i, nodeVal = x})
-    snd (x, y) = y
-  in
-    mkSynTree <| snd <| R.mapAccum addId 1 <| tree
+-- testTree1 : R.Tree M.Node
+-- testTree1 =
+--   let
+--     node i xs = R.Node (M.Node {nodeId = i, nodeVal = toString i}) xs
+--     leaf i = R.Node (M.Leaf {nodeId = i, nodeVal = toString i, leafPos = i}) []
+--   in
+--     node 1
+--       [ node 2 [leaf 3]
+--       , node 4 [leaf 5]
+--       ]
+--
+--
+-- testTree2 : R.Tree M.Node
+-- testTree2 =
+--   let
+--     -- node i xs = R.Node {nodeId = i, nodeVal = toString i} xs
+--     node i xs = R.Node (M.Node {nodeId = i, nodeVal = toString i}) xs
+--     leaf i = R.Node (M.Leaf {nodeId = i, nodeVal = toString i, leafPos = i}) []
+--   in
+--     node 1
+--       [ node 2 [leaf 3]
+--       , node 4 [leaf 5]
+--       , leaf 6
+--       , node 7
+--         [leaf 8, leaf 9, leaf 10]
+--       ]
+--
+--
+-- mkSynTree
+--    : R.Tree {nodeId : M.NodeId, nodeVal : String}
+--   -> R.Tree M.Node
+-- mkSynTree (R.Node x ts) =
+--   if not (L.isEmpty ts)
+--   then R.Node (M.Node x) (L.map mkSynTree ts)
+--   else
+--     let leaf = M.Leaf
+--           { nodeId = x.nodeId
+--           , nodeVal = x.nodeVal
+--           , leafPos = x.nodeId }
+--     in  R.Node leaf []
+--
+--
+-- testTree3 : R.Tree M.Node
+-- testTree3 =
+--   let
+--     node x xs = R.Node x xs
+--     tree =
+--       node "SENT"
+--         [ node "Ssub"
+--             [ node "CS" [node "Quand" []]
+--             , node "VN"
+--                 [ node "CLS" [node "vous" []]
+--                 , node "V" [node "savez" []] ]
+--             , node "VPinf"
+--                 [ node "VN"
+--                     [ node "CLO" [node "vous" []]
+--                     , node "VINF" [node "venez" []] ]
+--                 ]
+--             ]
+--         , node "PUNC" [node "." []]
+--         ]
+--     addId i x = (i+1, {nodeId = i, nodeVal = x})
+--     snd (x, y) = y
+--   in
+--     mkSynTree <| snd <| R.mapAccum addId 1 <| tree
+--
+--
+--
+-- testTree4 : R.Tree M.Node
+-- testTree4 =
+--   let
+--     node x xs = R.Node x xs
+--     tree =
+--       node "SENT"
+--         [ node "NP"
+--             [ node "NPP" [node "Jean" []] ]
+--         , node "VN"
+--             [ node "V" [node "est" []]
+--             , node "VPP" [node "parti" []] ]
+--         , node "PUNC" [node "." []]
+--         ]
+--     addId i x = (i+1, {nodeId = i, nodeVal = x})
+--     snd (x, y) = y
+--   in
+--     mkSynTree <| snd <| R.mapAccum addId 1 <| tree
+--
+--
+-- testTree5 : R.Tree M.Node
+-- testTree5 =
+--   let
+--     node x xs = R.Node x xs
+--     tree =
+--       node "SENT"
+--         [ node "ADV" [node "Ensuite" []]
+--         , node "PUNC" [node "," []]
+--         , node "VN"
+--             [ node "CLS" [node "il" []]
+--             , node "V" [node "est" []]
+--             , node "VPP" [node "allé" []] ]
+--         , node "VPinf"
+--             [ node "VN" [node "VINF" [node "manger" []]] ]
+--         , node "PUNC" [node "." []]
+--         ]
+--     addId i x = (i+1, {nodeId = i, nodeVal = x})
+--     snd (x, y) = y
+--   in
+--     mkSynTree <| snd <| R.mapAccum addId 1 <| tree
 
 
 ---------------------------------------------------
@@ -248,8 +248,8 @@ testTree5 =
 
 
 socketServer : String
--- socketServer = "ws://127.0.0.1:9161"
-socketServer = "ws://vega.info.univ-tours.fr:16340"
+socketServer = "ws://127.0.0.1:9161"
+-- socketServer = "ws://vega.info.univ-tours.fr:16340"
 
 
 ---------------------------------------------------

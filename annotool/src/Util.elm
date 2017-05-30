@@ -1,8 +1,13 @@
-module Util exposing ( split, catMaybes, find, unless, mappend, guard, and,
-  average, single, px )
+module Util exposing
+    ( split, catMaybes, find, unless, mappend, guard, and
+    , average, single, px
+    -- * JSON
+    , encodeMaybe
+    )
 
 
 import List as L
+import Json.Encode as Encode
 
 
 -- | The results is (ls, rs) where `ls` are all the left-most elements which do
@@ -81,3 +86,15 @@ single x = [x]
 px : Int -> String
 px number =
   toString number ++ "px"
+
+
+---------------------------------------------------
+-- JSON
+---------------------------------------------------
+
+
+encodeMaybe : (a -> Encode.Value) -> Maybe a -> Encode.Value
+encodeMaybe enc may =
+    case may of
+        Nothing -> Encode.null
+        Just x -> enc x

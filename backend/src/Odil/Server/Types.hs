@@ -15,6 +15,7 @@ module Odil.Server.Types
 , Sent
 , Tree
 , Node (..)
+, NodeTyp (..)
 , File (..)
 , Link (..)
 , Addr
@@ -30,6 +31,8 @@ import qualified Data.Map.Strict as M
 import qualified Data.Tree as R
 import qualified Data.Text as T
 import qualified Data.Aeson as JSON
+
+import qualified Odil.AnnoTypes as Anno
 
 
 -----------
@@ -65,11 +68,19 @@ type Tree = R.Tree Node
 data Node
   = Node
     { nodeId :: NodeId
-    , nodeVal :: T.Text }
+    , nodeVal :: T.Text
+    , nodeTyp :: Maybe NodeTyp }
   | Leaf
     { leafId :: NodeId
     , leafVal :: T.Text
     , leafPos :: Int }
+  deriving (Generic, Show, Eq, Ord)
+
+
+-- | Type of the node, together with the corresponding annotation.
+data NodeTyp
+  = NodeEvent Anno.Event
+  | NodeTimex
   deriving (Generic, Show, Eq, Ord)
 
 
@@ -100,6 +111,10 @@ type Addr = (TreeId, NodeId)
 -- JSON
 -----------
 
+
+instance JSON.FromJSON NodeTyp
+instance JSON.ToJSON NodeTyp where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
 instance JSON.FromJSON Node
 instance JSON.ToJSON Node where

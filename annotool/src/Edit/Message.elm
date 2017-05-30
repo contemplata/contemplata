@@ -35,6 +35,7 @@ type Msg
   | EditLabel
   | Delete -- ^ Delete the selected nodes in the focused window
   | Add -- ^ Delete the selected nodes in the focused window
+  | ChangeType -- ^ Change the type of the selected node
   | CtrlDown
   | CtrlUp
   | Connect
@@ -135,6 +136,8 @@ update msg model =
     Delete -> idle <| M.deleteSel model.focus model
 
     Add -> idle <| M.addSel model.focus model
+
+    ChangeType -> idle <| M.changeTypeSel model.focus model
 
     CtrlDown -> idle <| {model | ctrl=True}
     CtrlUp -> idle <| {model | ctrl=False}
