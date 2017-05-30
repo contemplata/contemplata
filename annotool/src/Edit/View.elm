@@ -70,8 +70,8 @@ viewWindow win model =
 
   -- @tabindex required to make the div register keyboard events
   , Atts.attribute "tabindex" "1"
-  , globalKeyDown, globalKeyUp
-  , editKeyDown model.ctrl
+  , globalKeyDown model.ctrl
+  , globalKeyUp
 
   , Atts.style
     [ "position" => "absolute"
@@ -306,8 +306,8 @@ viewSideDiv win model children =
       -- events here as well; I was not able to obtain this behaviour top-level
       -- (seemed like the event propagation didn't work?)
       , Atts.attribute "tabindex" "1"
-      , globalKeyDown, globalKeyUp
-      , editKeyDown model.ctrl
+      , globalKeyDown model.ctrl
+      , globalKeyUp
       ]
     topChildren = [viewSideMenu win model]
   in
@@ -764,10 +764,10 @@ offsetHeight =
 ---------------------------------------------------
 
 
-editKeyDown
+globalKeyDown
   : Bool -- ^ CTRL down?
   -> Html.Attribute Msg
-editKeyDown ctrl =
+globalKeyDown ctrl =
   let
     tag code = case code of
       -- "PgUp" and "PgDown"
@@ -801,6 +801,9 @@ editKeyDown ctrl =
       -- "e"
       69 -> EditLabel
 
+      -- "ctrl"
+      17 -> CtrlDown
+
       -- "c"
       67 -> Connect
 
@@ -812,17 +815,17 @@ editKeyDown ctrl =
     onKeyDown tag
 
 
-globalKeyDown : Html.Attribute Msg
-globalKeyDown =
-  let
-    tag code = case code of
-
-      -- "ctrl"
-      17 -> CtrlDown
-
-      _  -> Msg.dummy
-  in
-    onKeyDown tag
+-- globalKeyDown : Html.Attribute Msg
+-- globalKeyDown =
+--   let
+--     tag code = case code of
+--
+--       -- "ctrl"
+--       17 -> CtrlDown
+--
+--       _  -> Msg.dummy
+--   in
+--     onKeyDown tag
 
 
 globalKeyUp : Html.Attribute Msg
