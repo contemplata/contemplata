@@ -1,0 +1,3 @@
+* Policzyć liczbę słów w bazie danych
+* Version of the stanford parser which gives grammatical functions (subject, object)
+* Signals -- only tokens (i.e., POS tag nodes)
