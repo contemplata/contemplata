@@ -25,7 +25,7 @@
 
     The/DT quick/JJ brown/JJ fox/NN jumped/VBD over/IN the/DT lazy/JJ dog/NN ./. 
 
-  we might proceed as follows:  
+  (I) We might proceed as follows:  
 
   1. First we process the source Ancor XML files in order to retrieve tokenized output.
      This is a stand-alone task.  We just need to chose a reasonable format and keep
@@ -44,7 +44,12 @@
      want to use Stanford to do the tokenization for us, so that it is consistent with the
      parsing model.  To do both seems impossible?
 
-  Let's try again:
+     The idea raised during the meeting was to send to (i) somehow do the tokenization, 
+     in a way which preserves the addresses referring to the sources files, and
+     (ii) send the tokens to parse.  The point is that, in step (i), we have to do some kind of
+     alignement anyway, so I don't see what we gain by doint it in Java?
+
+  (II) Let's try again:
 
   1. First we process the source Ancor XML files in order to chunk each raw
      sentence into the fragments of real text and speech-related annotations (e.g.
@@ -64,3 +69,22 @@
      to recalculate the addresses corresponding to tokens, and for each token, its
      original wordform (recall that the parsed text is pre-processed, e.g. "U B S"
      -> "UBS").
+
+  (III) And if decide to use the parser's programmatical API?
+
+  1. The first step is as above: we create the individual "fildID.chunks" files.
+
+  2. Then, we need to implement in Java: (a) the XML parser for the chunks format, 
+     (b) the custom tokenization "protocol", for starters.
+
+  3. The custom tokenization: ...
+
+  (IV) Let's imagine that we have a parsing HTTP server:
+
+  1. We create the chunks, but don't have to store them on disk.
+  2. For each chunk, we (i) create a simplified text to tokenize and parse,
+     (ii) we parse the simplified part using stanford, and (iii) we perform
+     the alignement. 
+
+  To sum up, we have to do the alignement anyway, and I don't see how this would
+  be easier in Java than it is in Haskell.
