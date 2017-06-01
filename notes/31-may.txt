@@ -1,3 +1,66 @@
 * Policzyć liczbę słów w bazie danych
 * Version of the stanford parser which gives grammatical functions (subject, object)
 * Signals -- only tokens (i.e., POS tag nodes)
+
+=== AFTER-THOUGHTS ===
+
+# Grammatical functions
+
+* The stanford parser does not provide grammatical functions (subject, object, etc.).
+  It seems that there is no option to obtain them using the standard stanford model.
+
+# Tokenization
+
+* It is possible to enforce a custom tokenization, see
+
+    https://nlp.stanford.edu/software/parser-faq.shtml#q
+
+* It is even possible to enforce some tags, see
+
+    https://nlp.stanford.edu/software/parser-faq.shtml#f
+
+  Note that "partially-tagged input (only indicating the POS of some words) is also OK."
+
+* If we decide to use the standard tokenization/POS-tagging format, i.e. like this:
+
+    The/DT quick/JJ brown/JJ fox/NN jumped/VBD over/IN the/DT lazy/JJ dog/NN ./. 
+
+  we might proceed as follows:  
+
+  1. First we process the source Ancor XML files in order to retrieve tokenized output.
+     This is a stand-alone task.  We just need to chose a reasonable format and keep
+     the character numberings.  The nice thing is that, afterwards, we can forget about
+     the different XML format, different speech-related annotation details, etc., and
+     just work with the tokenized text.
+     
+     Let's thus say that we have a file called "fileID.tok".
+
+  2. Then, we need to simplify "fileID.tok" in order to get the input consistent with the
+     Stanford POS-tagging/tokenization format.  In particular, we need to add programatical
+     support for this format.
+
+  3. PROBLEM! On the one hand, we want to tokenize the input ourselves, because we want to
+     keep track of the references to the original source Ancor files.  On the other hand, we
+     want to use Stanford to do the tokenization for us, so that it is consistent with the
+     parsing model.  To do both seems impossible?
+
+  Let's try again:
+
+  1. First we process the source Ancor XML files in order to chunk each raw
+     sentence into the fragments of real text and speech-related annotations (e.g.
+     [pi]) interleaved.  The raw fragments can be pre-processed (e.g., é(tais) ->
+     étais).  It is important that each chunk provides the beg and the end markers
+     which refer to the source files (character-based addressing).
+     
+     Let's thus say that we have a file called "fileID.chunks".
+
+  2. We simplify "fileID.chunks" in order to obtain raw sentence to parse,
+     one per line, in a file called "fileID.txt".
+
+  3. We parse "fileID.txt" using stanford, we obtain "fileID.penn".  Now we have to
+     project back each parse tree in "fileID.penn" on the corresponding sentence in
+     "fildID.chunks".  As a result, we should obtain both tokenization and syntactic
+     information.  Based on the beg/end addresses assigned to chunks, we can try
+     to recalculate the addresses corresponding to tokens, and for each token, its
+     original wordform (recall that the parsed text is pre-processed, e.g. "U B S"
+     -> "UBS").
