@@ -4,6 +4,7 @@
 module Odil.Penn
 ( Tree
 , parseTree
+, parseTree'
 , parseForest
 , parseFile
 , dividePenn
@@ -112,6 +113,13 @@ parseTree x =
   case A.parseOnly (treeP <* A.endOfInput) x of
     Left err -> error err
     Right t -> t
+
+
+parseTree' :: T.Text -> Maybe Tree
+parseTree' x =
+  case A.parseOnly (treeP <* A.endOfInput) x of
+    Left err -> Nothing
+    Right t -> Just t
 
 
 parseForest :: T.Text -> [Tree]
