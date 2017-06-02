@@ -1,12 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RecordWildCards #-}
 
 
 module Main where
 
 
-import Control.Monad (when)
+import Control.Monad (when, forM_)
 import Control.Monad.IO.Class (liftIO)
+-- import qualified Control.Monad.Trans.State as State
 import qualified Control.Error as Err
 import qualified System.FilePath as FilePath
 import qualified Data.Text as T
@@ -15,6 +17,9 @@ import qualified Data.Text.IO as T
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Aeson as JSON
 import Data.Monoid ((<>))
+import qualified Data.Map.Strict as M
+import qualified Data.Set as S
+import qualified Data.Tree as R
 import Options.Applicative
 
 import qualified Odil.Ancor.IO.Parse as Parse
@@ -47,6 +52,8 @@ data Command
       -- ^ Create a new DB under a given path
     | AddFileDB Bool FilePath FilePath
       -- ^ Add a new file to a given DB
+    | StatsDB FilePath
+      -- ^ Print statistics related to the DB
 
 
 --------------------------------------------------
@@ -129,6 +136,15 @@ addFileDbOptions = AddFileDB
        <> help "DB directory" )
 
 
+statsDbOptions :: Parser Command
+statsDbOptions = StatsDB
+  <$> strOption
+        ( long "dbdir"
+       <> short 'd'
+       <> metavar "DIR"
+       <> help "DB directory" )
+
+
 opts :: Parser Command
 opts = subparser
   ( command "simplify"
@@ -154,6 +170,10 @@ opts = subparser
   <> command "addfiledb"
     (info (helper <*> addFileDbOptions)
       (progDesc "Add a new file to a DB")
+    )
+  <> command "statsdb"
+    (info (helper <*> statsDbOptions)
+      (progDesc "Print DB-related statistics")
     )
   )
 
@@ -201,6 +221,19 @@ run cmd =
       case res of
         Left err -> T.putStrLn $ "Operation failed: " `T.append` err
         Right _  -> return ()
+    StatsDB dbPath -> do
+      let dbConf = DB.defaultConf dbPath
+      res <- DB.runDBT dbConf $ do
+        ids <- S.toList <$> DB.fileSet
+        forM_ ids $ \fileId -> do
+          file <- DB.loadFile fileId
+          liftIO . T.putStrLn . T.concat $
+            [ fileId
+            , " => "
+            , T.pack (show $ numberOfLeavesF file) ]
+      case res of
+        Left err -> T.putStrLn $ "Operation failed: " `T.append` err
+        Right _  -> return ()
 
 
 
@@ -215,3 +248,27 @@ main =
        ( fullDesc
       <> progDesc "Working with ODIL files"
       <> header "odil" )
+
+
+-------------------------------------------------------
+-- Utils
+-------------------------------------------------------
+
+
+-- | Number of leaves in a given file.
+numberOfLeavesF :: Odil.File -> Int
+numberOfLeavesF Odil.File{..} = sum
+  [ numberOfLeavesT tree
+  | (treeId, (sent, tree)) <- M.toList treeMap ]
+
+
+-- | Number of leaves in a given tree.
+numberOfLeavesT :: Odil.Tree -> Int
+numberOfLeavesT
+  = length
+  . filter isLeaf
+  . R.flatten
+  where
+    isLeaf x = case x of
+      Odil.Leaf{} -> True
+      _ -> False
