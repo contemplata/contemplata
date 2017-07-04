@@ -218,12 +218,13 @@ run cmd =
         forM ancor $ \section -> do
           forM section $ \turn -> do
             treeList <- forM (Ancor.elems turn) $ \(mayWho, elem) -> do
-              penn <- liftIO $ Stanford.parseFR (Show.showElem elem) >>= \case
+              let sent = Show.showElem elem
+              penn <- liftIO $ Stanford.parseFR (Pre.prepare sent) >>= \case
                 Nothing -> error "A problem occurred with the Stanford parser!"
                 Just x -> return x
               let odil = Penn.toOdilTree penn
-              k <- State.gets M.size
-              State.modify' $ M.insert k odil
+              k <- State.gets $ (+1) . M.size
+              State.modify' $ M.insert k (sent, odil)
               return (k, fmap Ancor.unWho mayWho)
             return $ Odil.Turn
               { speaker = Ancor.speaker turn
@@ -299,8 +300,7 @@ main =
 numberOfLeavesF :: Odil.File -> Int
 numberOfLeavesF Odil.File{..} = sum
   [ numberOfLeavesT tree
-  -- -- | (treeId, (sent, tree)) <- M.toList treeMap ]
-  | (treeId, tree) <- M.toList treeMap ]
+  | (treeId, (sent, tree)) <- M.toList treeMap ]
 
 
 -- | Number of leaves in a given tree.

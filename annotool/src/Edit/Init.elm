@@ -45,6 +45,7 @@ mkEdit fileId file =
     model =
       { fileId = fileId
       , trees = file.treeMap
+      , turns = file.turns
       , top = top
       , bot = bot
       , focus = Top

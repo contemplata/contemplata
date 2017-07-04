@@ -470,18 +470,23 @@ viewSideContext : M.Focus -> M.Model -> Html.Html Msg
 viewSideContext foc model =
   let
     treeSelected = (M.selectWin foc model).tree
+    viewTree spks (treeId, mayWho) =
+      let sent = case D.get treeId model.trees of
+                   Nothing -> ""
+                   Just (x, _) -> x
+      in  viewSent foc (treeId == treeSelected) treeId sent spks mayWho
+    viewTurn turn = List.map (viewTree turn.speaker) (D.toList turn.trees)
     div = viewSideDiv foc model
       [ Html.ul
           [Atts.style
              [ "position" => "absolute"
              , "top" => px Cfg.sideMenuHeight ]
           ]
-          (List.map
-             -- (\(treeId, (sent, tree)) -> viewFileId foc (treeId == treeSelected) treeId tree)
-             (\(treeId, (sent, _)) -> viewSent foc (treeId == treeSelected) treeId sent)
-             -- (\(treeId, tree) -> viewFileId foc treeId tree )
-             (D.toList model.trees)
-          )
+--           (List.map
+--              (\(treeId, (sent, _)) -> viewSent foc (treeId == treeSelected) treeId sent)
+--              (D.toList model.trees)
+--           )
+          (List.concat <| List.map viewTurn model.turns)
       ]
   in
     div
@@ -492,16 +497,28 @@ viewSent
   -> Bool -- ^ Is the tree currently viewed?
   -> M.TreeId -- ^ The tree ID ...
   -> M.Sent -- ^ ... and the sentence corresponding to the tree
+  -> List String -- ^ Speakers of the turn
+  -> Maybe Int -- ^ Who is speaking now
   -> Html.Html Msg
-viewSent foc isSelected treeId sent =
+viewSent foc isSelected treeId sent spks who =
   let
     styl = if isSelected
       then [Atts.style ["font-weight" => "bold"]]
       else []
+    spk = case who of
+            Nothing ->
+              case spks of
+                (x :: _) -> x
+                _ -> "?"
+            Just i ->
+              case List.head (List.drop (i-1) spks) of
+                Just x -> x
+                Nothing -> "?"
     para = Html.p
       -- [Atts.style ["font-weight" => "bold"]]
       styl
-      [Html.text <| toString treeId ++ ": " ++ sent]
+      -- [Html.text <| toString treeId ++ "." ++ spk ++ ": " ++ sent]
+      [Html.text <| spk ++ ": " ++ sent]
     li =  Html.li [] <| Util.single <|
       Html.div
         [ Atts.class "noselect"

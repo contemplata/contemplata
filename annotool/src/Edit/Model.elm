@@ -68,6 +68,7 @@ type alias FileId = String
 
 type alias File =
   { treeMap : TreeMap
+  , turns : List Turn
   , linkSet : S.Set Link }
 
 
@@ -76,6 +77,13 @@ type alias Sent = String
 
 
 type alias TreeMap = D.Dict TreeId (Sent, R.Tree Node)
+
+
+-- | A speech turn.
+type alias Turn =
+  { speaker : List String
+  , trees : D.Dict TreeId (Maybe Int)
+  }
 
 
 -- | Link between two trees.
@@ -141,7 +149,11 @@ wellFormed (R.Node x ts) =
 type alias Model =
   { fileId : FileId
 
+  -- the underlying map of trees
   , trees : TreeMap
+  -- the list of turns (TODO: trees, turns, and links, could be grouped in a
+  -- file)
+  , turns : List Turn
 
   , top : Window
   , bot : Window
@@ -1096,9 +1108,21 @@ setTrees treeDict model =
 
 fileDecoder : Decode.Decoder File
 fileDecoder =
-  Decode.map2 File
+  Decode.map3 File
     (Decode.field "treeMap" treeMapDecoder)
+    (Decode.field "turns" (Decode.list turnDecoder))
     (Decode.field "linkSet" linkSetDecoder )
+
+
+turnDecoder : Decode.Decoder Turn
+turnDecoder =
+  let
+    speakerDecoder = Decode.list Decode.string
+    treesDecoder = Decode.map (mapKeys toInt) <| Decode.dict (Decode.nullable Decode.int)
+  in
+    Decode.map2 Turn
+      (Decode.field "speaker" speakerDecoder)
+      (Decode.field "trees" treesDecoder)
 
 
 linkSetDecoder : Decode.Decoder (S.Set Link)
@@ -1181,8 +1205,26 @@ encodeFile file =
   Encode.object
     [ ("tag", Encode.string "File")
     , ("treeMap", encodeTreeMap file.treeMap)
+    , ("turns", Encode.list (L.map encodeTurn file.turns))
     , ("linkSet", encodeLinkSet file.linkSet)
     ]
+
+
+encodeTurn : Turn -> Encode.Value
+encodeTurn turn =
+  let
+    -- speakerDecoder = Decode.list Decode.string
+    -- treesDecoder = Decide.dict (Decode.nullable Decode.int)
+    encodeSpeaker = Encode.list << L.map Encode.string
+    encodePair (treeId, mayWho) =
+      (toString treeId, Util.encodeMaybe Encode.int mayWho)
+    encodeTrees = Encode.object << L.map encodePair << D.toList
+  in
+    Encode.object
+      [ ("tag", Encode.string "Turn")
+      , ("speaker", encodeSpeaker turn.speaker)
+      , ("trees", encodeTrees turn.trees)
+      ]
 
 
 encodeLinkSet : S.Set Link -> Encode.Value

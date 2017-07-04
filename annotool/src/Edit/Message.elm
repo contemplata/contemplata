@@ -156,7 +156,7 @@ update msg model =
 
     SaveFile ->
       let
-        file = {treeMap = model.trees, linkSet = model.links}
+        file = {treeMap = model.trees, turns = model.turns, linkSet = model.links}
         req = Server.encodeReq (Server.SaveFile model.fileId file)
         save = WebSocket.send Cfg.socketServer req
       in

@@ -88,8 +88,8 @@ data NodeTyp
 
 -- | A file.
 data File = File
-  -- { treeMap :: M.Map TreeId (Sent, Tree)
-  { treeMap :: M.Map TreeId Tree
+  { treeMap :: M.Map TreeId (Sent, Tree)
+  -- { treeMap :: M.Map TreeId Tree
     -- ^ The annotated trees
   , turns :: [Turn]
     -- ^ The list of turns in the file (we don't preserve the division on
