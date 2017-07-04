@@ -6,9 +6,10 @@
 module Main where
 
 
-import Control.Monad (when, forM_)
+import Control.Monad (when, forM_, forM)
 import Control.Monad.IO.Class (liftIO)
--- import qualified Control.Monad.Trans.State as State
+import qualified Control.Monad.Trans.State as State
+
 import qualified Control.Error as Err
 import qualified System.FilePath as FilePath
 import qualified Data.Text as T
@@ -22,6 +23,7 @@ import qualified Data.Set as S
 import qualified Data.Tree as R
 import Options.Applicative
 
+import qualified Odil.Ancor.Types as Ancor
 import qualified Odil.Ancor.IO.Parse as Parse
 import qualified Odil.Ancor.IO.Show as Show
 import qualified Odil.Ancor.Preprocess as Pre
@@ -30,6 +32,7 @@ import qualified Odil.Server.Config as ServerCfg
 import qualified Odil.Server.DB as DB
 import qualified Odil.Server as Server
 import qualified Odil.Penn as Penn
+import qualified Odil.Stanford as Stanford
 
 
 --------------------------------------------------
@@ -42,10 +45,12 @@ data Command
       -- ^ Parse and show the sentences in the Ancor XML file
     | Preprocess
       -- ^ Preprocess the sentence for parsing
-    | Penn2Odil
-        FilePath -- ^ Penn file
-        FilePath -- ^ File with original sentences
-      -- ^ Convert a Penn file to a JSON file
+    | Process
+      -- ^ Ancor file -> ODIL (in JSON)
+--     | Penn2Odil
+--         FilePath -- ^ Penn file
+--         FilePath -- ^ File with original sentences
+--       -- ^ Convert a Penn file to a JSON file
     | Server FilePath String Int
       -- ^ Run the backend annotation server
     | NewDB FilePath
@@ -74,18 +79,22 @@ preprocessOptions :: Parser Command
 preprocessOptions = pure Preprocess
 
 
-penn2odilOptions :: Parser Command
-penn2odilOptions = Penn2Odil
-  <$> strOption
-        ( long "penn"
-       <> short 'p'
-       <> metavar "FILE"
-       <> help "Penn file" )
-  <*> strOption
-        ( long "orig"
-       <> short 'o'
-       <> metavar "FILE"
-       <> help "File with original sentences" )
+processOptions :: Parser Command
+processOptions = pure Process
+
+
+-- penn2odilOptions :: Parser Command
+-- penn2odilOptions = Penn2Odil
+--   <$> strOption
+--         ( long "penn"
+--        <> short 'p'
+--        <> metavar "FILE"
+--        <> help "Penn file" )
+--   <*> strOption
+--         ( long "orig"
+--        <> short 'o'
+--        <> metavar "FILE"
+--        <> help "File with original sentences" )
 
 
 serverOptions :: Parser Command
@@ -155,10 +164,14 @@ opts = subparser
     (info (helper <*> preprocessOptions)
       (progDesc "Prepare sentences (one per line on <stdin>) for parsing")
     )
-  <> command "penn2odil"
-    (info (helper <*> penn2odilOptions)
-      (progDesc "Convert Penn trees to Odil trees in JSON")
+  <> command "process"
+    (info (helper <*> processOptions)
+      (progDesc "Full processing pipeline (Ancor file -> ODIL JSON)")
     )
+--   <> command "penn2odil"
+--     (info (helper <*> penn2odilOptions)
+--       (progDesc "Convert Penn trees to Odil trees in JSON")
+--     )
   <> command "server"
     (info (helper <*> serverOptions)
       (progDesc "Run the backed annotation server")
@@ -190,11 +203,38 @@ run cmd =
     Preprocess -> do
       sentences <- T.lines <$> T.getContents
       T.putStr . T.unlines . map Pre.prepare $ sentences
-    Penn2Odil pennPath origPath -> do
-      penn <- Penn.parseForest <$> T.readFile pennPath
-      orig <- T.lines <$> T.readFile origPath
-      let file = Penn.convertPennFile (zip orig penn)
+--     Penn2Odil pennPath origPath -> do
+--       penn <- Penn.parseForest <$> T.readFile pennPath
+--       orig <- T.lines <$> T.readFile origPath
+--       let file = Penn.convertPennFile (zip orig penn)
+--       LBS.putStr (JSON.encode file)
+
+    -- Read the ancor file from stdin and output the resulting
+    -- ODIL file in the JSON format
+    Process -> do
+      ancorFile <- T.getContents
+      let ancor = Parse.parseTrans ancorFile
+      (turns2, treeMap) <- flip State.runStateT M.empty $ do
+        forM ancor $ \section -> do
+          forM section $ \turn -> do
+            treeList <- forM (Ancor.elems turn) $ \(mayWho, elem) -> do
+              penn <- liftIO $ Stanford.parseFR (Show.showElem elem) >>= \case
+                Nothing -> error "A problem occurred with the Stanford parser!"
+                Just x -> return x
+              let odil = Penn.toOdilTree penn
+              k <- State.gets M.size
+              State.modify' $ M.insert k odil
+              return (k, fmap Ancor.unWho mayWho)
+            return $ Odil.Turn
+              { speaker = Ancor.speaker turn
+              , trees = M.fromList treeList }
+      let file = Odil.File
+            { treeMap = treeMap
+            , turns = concat turns2
+            , linkSet = S.empty
+            }
       LBS.putStr (JSON.encode file)
+
 
     -- Server-related
     Server dbPath addr port -> Server.runServer dbPath addr port
@@ -259,7 +299,8 @@ main =
 numberOfLeavesF :: Odil.File -> Int
 numberOfLeavesF Odil.File{..} = sum
   [ numberOfLeavesT tree
-  | (treeId, (sent, tree)) <- M.toList treeMap ]
+  -- -- | (treeId, (sent, tree)) <- M.toList treeMap ]
+  | (treeId, tree) <- M.toList treeMap ]
 
 
 -- | Number of leaves in a given tree.

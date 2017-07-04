@@ -2,7 +2,7 @@
 
 
 module Odil.Ancor.Types
-       (Episode, Section, Turn(..), Elem(..), Token(..)) where
+       (Episode, Section, Turn(..), Elem(..), Who(..), Token(..)) where
 
 
 import qualified Data.Text as T
@@ -18,18 +18,24 @@ type Section = [Turn]
 
 -- | A turn -- the smallest unit of a dialog.
 data Turn = Turn
-    { speaker :: Maybe T.Text
-    , elems :: [Elem]
+    { speaker :: [T.Text]
+      -- ^ Possibly several speakers
+    , elems :: [(Maybe Who, Elem)]
     } deriving (Show, Eq, Ord)
 
 
--- | An element of a turn. The smallest unit of speach that we are working with.
--- However, it can be farther divided into chunks, due to the annotations
--- related to various things.
+-- | Who uttered the corresponding element of the turn?
+--
+-- In the Ancor files (UBS files, at least), this info is marked with a number.
+newtype Who = Who {unWho :: Int}
+  deriving (Show, Eq, Ord)
+
+
+-- | An element of a turn. The smallest unit of speech that we are working with.
 type Elem = [Token]
 
 
--- | Speach chunk.
+-- | Speech chunk.
 data Token
   = Plain T.Text
     -- ^ Plain text

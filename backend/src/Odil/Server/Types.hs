@@ -17,6 +17,7 @@ module Odil.Server.Types
 , Node (..)
 , NodeTyp (..)
 , File (..)
+, Turn (..)
 , Link (..)
 , Addr
 
@@ -32,6 +33,7 @@ import qualified Data.Tree as R
 import qualified Data.Text as T
 import qualified Data.Aeson as JSON
 
+-- import qualified Odil.Ancor.Types as Ancor
 import qualified Odil.AnnoTypes as Anno
 
 
@@ -86,9 +88,24 @@ data NodeTyp
 
 -- | A file.
 data File = File
-  { treeMap :: M.Map TreeId (Sent, Tree)
+  -- { treeMap :: M.Map TreeId (Sent, Tree)
+  { treeMap :: M.Map TreeId Tree
+    -- ^ The annotated trees
+  , turns :: [Turn]
+    -- ^ The list of turns in the file (we don't preserve the division on
+    -- episodes and sections)
   , linkSet :: S.Set Link }
   deriving (Generic, Show, Eq)
+
+
+-- | A turn (related to `Ancor.Turn`) can contain several utterances (and,
+-- hence, trees), and for each tree we *might* know who is the author of this
+-- utterance (speaker ID). We also *might* know (`speaker`) the list of
+-- speakers.
+data Turn = Turn
+  { speaker :: [T.Text]
+  , trees :: M.Map TreeId (Maybe Int)
+  } deriving (Generic, Show, Eq)
 
 
 -- | A link between two nodes in a given file.
@@ -120,11 +137,13 @@ instance JSON.FromJSON Node
 instance JSON.ToJSON Node where
   toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
-
 instance JSON.FromJSON Link
 instance JSON.ToJSON Link where
   toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
+instance JSON.FromJSON Turn
+instance JSON.ToJSON Turn where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
 instance JSON.FromJSON File
 instance JSON.ToJSON File where

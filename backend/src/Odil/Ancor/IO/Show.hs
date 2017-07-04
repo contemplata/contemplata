@@ -3,7 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 
 
-module Odil.Ancor.IO.Show (showTurn, showSection, showAncor, showToken) where
+module Odil.Ancor.IO.Show (showTurn, showSection, showAncor, showToken, showElem) where
 
 
 import qualified Data.Text as T
@@ -24,7 +24,7 @@ showSection = T.intercalate "\n" . map showTurn
 
 -- | Show a given turn.
 showTurn :: Turn -> T.Text
-showTurn Turn{..} = T.intercalate " " (map showElem elems)
+showTurn Turn{..} = T.intercalate " " (map (showElem . snd) elems)
 
 
 -- | Show a given element.

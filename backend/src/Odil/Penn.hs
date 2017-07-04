@@ -11,7 +11,7 @@ module Odil.Penn
 
 -- * Conversion
 , toOdilTree
-, convertPennFile
+-- , convertPennFile
 ) where
 
 
@@ -89,16 +89,16 @@ toOdilTree =
       return $ posAcc conv
 
 
--- | Convert a list of pairs, each pair consisting of an (i) original sentence
--- and the (ii) corresponding tree, to an Odil file.
-convertPennFile :: [(T.Text, Tree)] -> Odil.File
-convertPennFile
-  = flip Odil.File S.empty
-  . M.fromList
-  -- . zip (map (T.pack . show) [1..])
-  . zip [1..]
-  . map (Arr.second toOdilTree)
-  -- . parseForest
+-- -- | Convert a list of pairs, each pair consisting of an (i) original sentence
+-- -- and the (ii) corresponding tree, to an Odil file.
+-- convertPennFile :: [(T.Text, Tree)] -> Odil.File
+-- convertPennFile
+--   = flip Odil.File S.empty
+--   . M.fromList
+--   -- . zip (map (T.pack . show) [1..])
+--   . zip [1..]
+--   . map (Arr.second toOdilTree)
+--   -- . parseForest
 
 
 ---------------------------------------------------

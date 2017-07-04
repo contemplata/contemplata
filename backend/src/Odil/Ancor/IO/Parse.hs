@@ -46,12 +46,24 @@ sectionQ = named "Section" `joinR` every' turnQ
 
 turnQ :: Q Turn
 turnQ =
-  (named "Turn" *> optional (attr "speaker")) `join`
-  \spk ->
-       -- Turn spk . cleanUp <$> every' elemQ
-       Turn spk <$> every' elemQ
+    (named "Turn" *> optional (attr "speaker")) `join`
+    \spk ->
+         Turn (getSpk spk) . interleave <$>
+         every' (fmap Left whoQ <|> fmap Right elemQ)
   where
-    -- cleanUp = filter (not . T.null) . map T.strip
+    getSpk spk = case spk of
+      Nothing -> []
+      Just x -> T.words x
+    interleave (Left who : Right elem : xs) = (Just who, elem) : interleave xs
+    interleave (Right elem : xs) = (Nothing, elem) : interleave xs
+    interleave (_ : xs) = interleave xs
+    interleave [] = []
+
+
+whoQ :: Q Who
+whoQ =
+  let mkWho = Who . read . T.unpack
+  in  fmap mkWho . node $ named "Who" *> attr "nb"
 
 
 elemQ :: Q Elem
