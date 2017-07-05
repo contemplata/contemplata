@@ -149,19 +149,26 @@ talk conn state = forever $ do
     case JSON.eitherDecode msg of
 
       Left err -> do
-        putStrLn "JSON decoding error:"
-        putStrLn err
+        let msg = T.concat ["JSON decoding error: ", T.pack err]
+        T.putStrLn msg
+        WS.sendTextData conn . JSON.encode $ Notification msg
 
       Right GetFiles -> do
         DB.runDBT db DB.fileSet >>= \case
-          Left err -> T.putStrLn err
+          Left err -> do
+            let msg = T.concat ["GetFiles error: ", err]
+            T.putStrLn msg
+            WS.sendTextData conn . JSON.encode $ Notification msg
           Right fs -> do
             let ret = Files (S.toList fs)
             WS.sendTextData conn (JSON.encode ret)
 
       Right (GetFile fileId) -> do
         DB.runDBT db (DB.loadFile fileId) >>= \case
-          Left err -> T.putStrLn err
+          Left err -> do
+            let msg = T.concat ["GetFile error: ", err]
+            T.putStrLn msg
+            WS.sendTextData conn . JSON.encode $ Notification msg
           Right file -> do
             let ret = NewFile fileId file
             WS.sendTextData conn (JSON.encode ret)
@@ -176,8 +183,8 @@ talk conn state = forever $ do
         putStrLn "Saving file..."
         DB.runDBT db (DB.saveFile fileId file) >>= \case
           Left err -> do
-            T.putStrLn err
-            let msg = T.concat ["Could not save file; ", err]
+            let msg = T.concat ["Could not save file: ", err]
+            T.putStrLn msg
             WS.sendTextData conn . JSON.encode $ Notification msg
           Right () -> do
             putStrLn "Saved"

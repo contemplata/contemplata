@@ -3,13 +3,23 @@
 
 module Edit.Anno exposing
   ( Event(..)
+  , EventAttr (..)
+  , EventType(..)
   , EventClass(..)
   , EventTense(..)
+  , EventAspect(..)
+  , EventPolarity(..)
+  , EventModality(..)
   , eventDefault
   , eventClassStr
-  , eventClassFromStr
+  -- , eventClassFromStr
+  , eventTypeStr
   , eventTenseStr
-  , eventTenseFromStr
+  -- , eventTenseFromStr
+  , eventAspectStr
+  , eventPolarityStr
+  , eventSubjMoodStr
+  , eventModalityStr
 
   -- * JSON
   , encodeEvent
@@ -17,6 +27,7 @@ module Edit.Anno exposing
 
   -- * Utils
   , nullable
+  , valueFromStr
   )
 
 
@@ -58,6 +69,17 @@ eventDefault = Event
   , evModality = Nothing
   , evComment = ""
   }
+
+
+type EventAttr
+    = ClassAttr EventClass
+    | TypeAttr EventType
+    | TenseAttr (Maybe EventTense)
+    | AspectAttr (Maybe EventAspect)
+    | PolarityAttr EventPolarity
+    | SubjMoodAttr Bool
+    | ModalityAttr (Maybe EventModality)
+    | CommentAttr String
 
 
 ---------------------------------------------------
@@ -154,7 +176,7 @@ type EventType
 -- | The string representations of an event class.
 eventTypeStr : List (String, EventType)
 eventTypeStr =
-  [ ("State", StateT)
+  [ ("StateT", StateT)
   , ("Process", Process)
   , ("Transition", Transition) ]
 
@@ -239,8 +261,8 @@ eventPolarityStr =
 -- | The string representations of an event class.
 eventSubjMoodStr : List (String, Bool)
 eventSubjMoodStr =
-  [ ("Yes", True)
-  , ("No", False) ]
+  [ ("True", True)
+  , ("False", False) ]
 
 
 ---------------------------------------------------
@@ -250,13 +272,15 @@ eventSubjMoodStr =
 
 -- | An event's modality.
 type EventModality
-    = SomeModality
+    = Modality1
+    | Modality2
 
 
 -- | The string representations of an event class.
 eventModalityStr : List (String, EventModality)
 eventModalityStr =
-  [ ("SomeModality", SomeModality) ]
+  [ ("Modality1", Modality1)
+  , ("Modality2", Modality2) ]
 
 
 -- ---------------------------------------------------
@@ -385,17 +409,6 @@ encodeEvent (Event r) = Encode.object
 encodeEventClass : EventClass -> Encode.Value
 encodeEventClass cls = Encode.string <|
   strFromValue eventClassStr cls
---     case cls of
---         Aspectual -> "Aspectual"
---         Cause -> "Cause"
---         EventContainer -> "EventContainer"
---         IAction -> "IAction"
---         IState -> "IState"
---         Modal -> "Modal"
---         Occurrence -> "Occurrence"
---         Perception -> "Perception"
---         Reporting -> "Reporting"
---         State -> "State"
 
 encodeEventType : EventType -> Encode.Value
 encodeEventType x = Encode.string <|

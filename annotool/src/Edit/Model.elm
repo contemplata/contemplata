@@ -18,8 +18,11 @@ module Edit.Model exposing
   , getNode, setNode, updateNode
   -- Labels:
   , getLabel, setLabel
+  -- Event lenses:
+  , eventClass, eventType, eventTense, eventAspect, eventPolarity, eventSubjMood
+  , eventModality, eventComment
   -- Event modification:
-  , setEventClass, setEventTense
+  , setEventAttr -- , setEventClass, setEventType, setEventTense, setEventAspect
   -- Node selection:
   , selectNode, selectNodeAux
   -- Links
@@ -550,18 +553,24 @@ setLabel id focus newLabel model =
 ---------------------------------------------------
 
 
-setEventClass : NodeId -> Focus -> Anno.EventClass -> Model -> Model
-setEventClass id focus newClass model =
-    let lens = nodeTyp => maybeLens => nodeEvent => eventClass
-        update = Lens.set lens newClass
+setEventAttr : (Lens.Focus Anno.Event a) -> NodeId -> Focus -> a -> Model -> Model
+setEventAttr attLens id focus newVal model =
+    let lens = nodeTyp => maybeLens => nodeEvent => attLens
+        update = Lens.set lens newVal
     in  updateNode id focus update model
 
 
-setEventTense : NodeId -> Focus -> Maybe Anno.EventTense -> Model -> Model
-setEventTense id focus newTense model =
-    let lens = nodeTyp => maybeLens => nodeEvent => eventTense
-        update = Lens.set lens newTense
-    in  updateNode id focus update model
+-- setEventClass : NodeId -> Focus -> Anno.EventClass -> Model -> Model
+-- setEventClass = setEventAttr eventClass
+--
+-- setEventType : NodeId -> Focus -> Anno.EventType -> Model -> Model
+-- setEventType = setEventAttr eventType
+--
+-- setEventTense : NodeId -> Focus -> Maybe Anno.EventTense -> Model -> Model
+-- setEventTense = setEventAttr eventTense
+--
+-- setEventAspect : NodeId -> Focus -> Maybe Anno.EventAspect -> Model -> Model
+-- setEventAspect = setEventAttr eventAspect
 
 
 ---------------------------------------------------
@@ -1049,11 +1058,25 @@ nodeEvent =
     Lens.create get update
 
 
+----------------------------
+-- Event-related lenses
+----------------------------
+
+
 eventClass : Lens.Focus Anno.Event Anno.EventClass
 eventClass =
   let
     get (Anno.Event r) = r.evClass
     update f (Anno.Event r) = Anno.Event {r | evClass = f r.evClass}
+  in
+    Lens.create get update
+
+
+eventType : Lens.Focus Anno.Event Anno.EventType
+eventType =
+  let
+    get (Anno.Event r) = r.evType
+    update f (Anno.Event r) = Anno.Event {r | evType = f r.evType}
   in
     Lens.create get update
 
@@ -1065,6 +1088,56 @@ eventTense =
     update f (Anno.Event r) = Anno.Event {r | evTense = f r.evTense}
   in
     Lens.create get update
+
+
+eventAspect : Lens.Focus Anno.Event (Maybe Anno.EventAspect)
+eventAspect =
+  let
+    get (Anno.Event r) = r.evAspect
+    update f (Anno.Event r) = Anno.Event {r | evAspect = f r.evAspect}
+  in
+    Lens.create get update
+
+
+eventPolarity : Lens.Focus Anno.Event Anno.EventPolarity
+eventPolarity =
+  let
+    get (Anno.Event r) = r.evPolarity
+    update f (Anno.Event r) = Anno.Event {r | evPolarity = f r.evPolarity}
+  in
+    Lens.create get update
+
+
+eventSubjMood : Lens.Focus Anno.Event Bool
+eventSubjMood =
+  let
+    get (Anno.Event r) = r.evSubjMood
+    update f (Anno.Event r) = Anno.Event {r | evSubjMood = f r.evSubjMood}
+  in
+    Lens.create get update
+
+
+eventModality : Lens.Focus Anno.Event (Maybe Anno.EventModality)
+eventModality =
+  let
+    get (Anno.Event r) = r.evModality
+    update f (Anno.Event r) = Anno.Event {r | evModality = f r.evModality}
+  in
+    Lens.create get update
+
+
+eventComment : Lens.Focus Anno.Event String
+eventComment =
+  let
+    get (Anno.Event r) = r.evComment
+    update f (Anno.Event r) = Anno.Event {r | evComment = f r.evComment}
+  in
+    Lens.create get update
+
+
+----------------------------
+-- Utility lenses
+----------------------------
 
 
 maybeLens : Lens.Focus (Maybe a) a

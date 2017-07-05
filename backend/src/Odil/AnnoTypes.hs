@@ -96,7 +96,8 @@ data EventPolarity
 
 -- | An event's modality.
 data EventModality
-    = SomeModality
+    = Modality1
+    | Modality2
     deriving (Generic,Show,Eq,Ord)
 
 

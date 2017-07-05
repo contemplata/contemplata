@@ -389,35 +389,56 @@ viewSideEvent : M.Focus -> M.NodeId -> Anno.Event -> List (Html.Html Msg)
 viewSideEvent focus nodeId (Anno.Event ev) =
   let
 
-    optionClass (str, cls) = Html.option
+    option evVal (str, val) = Html.option
       [ Atts.value str
-      , Atts.selected (cls == ev.evClass) ]
+      , Atts.selected (val == evVal) ]
       [ Html.text str ]
-    setEventClass str = SetEventClass nodeId focus (Anno.eventClassFromStr str)
-    inpClass = Html.div []
-      [ Html.text "Class: "
-      , Html.select
-        -- [ Events.onInput (\str -> Debug.crash "asdf")
-        [ Events.on "change" (Decode.map setEventClass Events.targetValue)
-            -- SetEventClass nodeId focus (Anno.eventClassFromStr str) )
-        , blockKeyDownEvents ]
-        (List.map optionClass Anno.eventClassStr)
-      ]
+    inputGeneric label value valList attr = -- mkEvent =
+      let
+        setMsg str = SetEventAttr nodeId focus (attr <| Anno.valueFromStr valList str)
+      in
+        Html.div []
+          [ Html.text (label ++ ": ")
+          , Html.select
+            [ Events.on "change" (Decode.map setMsg Events.targetValue)
+            , blockKeyDownEvents ]
+            (List.map (option value) valList)
+          ]
 
-    optionTense (str, tns) = Html.option
-      [ Atts.value str
-      , Atts.selected (tns == ev.evTense) ]
-      [ Html.text str ]
-    setEventTense str = SetEventTense nodeId focus (Anno.eventTenseFromStr str)
-    inpTense = Html.div []
-      [ Html.text "Tense: "
-      , Html.select
-        [ Events.on "change" (Decode.map setEventTense Events.targetValue)
-        , blockKeyDownEvents ]
-        (List.map optionTense <| Anno.nullable Anno.eventTenseStr)
-      ]
+    inpClass = inputGeneric "Class" ev.evClass Anno.eventClassStr Anno.ClassAttr
+    inpType = inputGeneric "Type" ev.evType Anno.eventTypeStr Anno.TypeAttr
+    inpTense =
+        inputGeneric "Tense" ev.evTense
+            (Anno.nullable Anno.eventTenseStr)
+            Anno.TenseAttr
+    inpAspect =
+        inputGeneric "Aspect" ev.evAspect
+            (Anno.nullable Anno.eventAspectStr)
+            Anno.AspectAttr
+    inpPolar = inputGeneric "Polarity" ev.evPolarity Anno.eventPolarityStr Anno.PolarityAttr
+    inpSubj = inputGeneric "Subjonctive" ev.evSubjMood Anno.eventSubjMoodStr Anno.SubjMoodAttr
+    inpModality =
+        inputGeneric "Modality" ev.evModality
+            (Anno.nullable Anno.eventModalityStr)
+            Anno.ModalityAttr
+
+    inpComment =
+      let
+        setMsg str = SetEventAttr nodeId focus (Anno.CommentAttr str)
+      in
+        Html.div []
+          [ Html.text "Comment: "
+          -- , Html.textarea
+          , Html.input
+            [ Events.onInput setMsg
+            -- , Atts.rows 3
+            , Atts.value ev.evComment
+            , blockKeyDownEvents ]
+            []
+          ]
+
   in
-    [inpClass, inpTense]
+    [inpClass, inpType, inpTense, inpAspect, inpPolar, inpSubj, inpModality, inpComment]
 
 
 -- | The view of a side window.

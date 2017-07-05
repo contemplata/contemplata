@@ -48,8 +48,11 @@ type Msg
   | SideMenuContext M.Focus
   | SideMenuLog M.Focus
   -- * Event modification events...
-  | SetEventClass M.NodeId M.Focus Anno.EventClass
-  | SetEventTense M.NodeId M.Focus (Maybe Anno.EventTense)
+  | SetEventAttr M.NodeId M.Focus Anno.EventAttr
+--   | SetEventClass M.NodeId M.Focus Anno.EventClass
+--   | SetEventType M.NodeId M.Focus Anno.EventType
+--   | SetEventTense M.NodeId M.Focus (Maybe Anno.EventTense)
+--   | SetEventAspect M.NodeId M.Focus (Maybe Anno.EventAspect)
   | Many (List Msg)
 --     -- ^ Tests
 --   | TestInput String
@@ -180,11 +183,29 @@ update msg model =
         M.SideLog
         model
 
-    SetEventClass nodeId focus x -> idle <|
-      M.setEventClass nodeId focus x model
+    SetEventAttr nodeId focus attr -> idle <|
+      case attr of
+        Anno.ClassAttr x -> M.setEventAttr M.eventClass nodeId focus x model
+        Anno.TypeAttr x -> M.setEventAttr M.eventType nodeId focus x model
+        Anno.TenseAttr x -> M.setEventAttr M.eventTense nodeId focus x model
+        Anno.AspectAttr x -> M.setEventAttr M.eventAspect nodeId focus x model
+        Anno.PolarityAttr x -> M.setEventAttr M.eventPolarity nodeId focus x model
+        Anno.SubjMoodAttr x -> M.setEventAttr M.eventSubjMood nodeId focus x model
+        Anno.ModalityAttr x -> M.setEventAttr M.eventModality nodeId focus x model
+        Anno.CommentAttr x -> M.setEventAttr M.eventComment nodeId focus x model
+        -- _ -> Debug.crash "SetEventAttr: not implemented yet!"
 
-    SetEventTense nodeId focus x -> idle <|
-      M.setEventTense nodeId focus x model
+--     SetEventClass nodeId focus x -> idle <|
+--       M.setEventAttr M.eventClass nodeId focus x model
+
+--     SetEventType nodeId focus x -> idle <|
+--       M.setEventAttr M.eventType nodeId focus x model
+
+--     SetEventTense nodeId focus x -> idle <|
+--       M.setEventAttr M.eventTense nodeId focus x model
+
+--     SetEventAspect nodeId focus x -> idle <|
+--       M.setEventAttr M.eventAspect nodeId focus x model
 
 --     -- Testing websockets
 --     TestInput x -> idle <| {model | testInput=x}
