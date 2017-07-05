@@ -414,7 +414,7 @@ viewSideEvent focus nodeId (Anno.Event ev) =
       , Html.select
         [ Events.on "change" (Decode.map setEventTense Events.targetValue)
         , blockKeyDownEvents ]
-        (List.map optionTense Anno.eventTenseStr)
+        (List.map optionTense <| Anno.nullable Anno.eventTenseStr)
       ]
   in
     [inpClass, inpTense]

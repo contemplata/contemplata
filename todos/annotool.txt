@@ -1,6 +1,11 @@
 TODAY:
 
 
+QUESTIONS:
+* Il faut annoter touts les événements, et pas seulement ceux qui sont liés par
+  les relations temporelles, n'est-ce pas?
+
+
 TODO:
 * Mark an event
 * When a node is deleted, the corresponding links should be deleted as well!
