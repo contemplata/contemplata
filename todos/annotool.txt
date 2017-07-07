@@ -7,9 +7,7 @@ QUESTIONS:
 
 
 TODO:
-* Mark an event
 * When a node is deleted, the corresponding links should be deleted as well!
-* FS editing for an event
 * Check if in your code, "display = flex" is used for something
 * Make the connections show depending on which window is in focus
 * Based on the elm-lang online editor (see e.g.
@@ -29,6 +27,9 @@ CANCELLED:
 
 
 DONE:
+* Make it possible to remove tokens
+* Mark an event
+* FS editing for an event
 * Make dragging independent in both windows
 * Make it possible to work with several trees
 * Make one of the windows focused

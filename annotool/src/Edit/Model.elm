@@ -28,7 +28,7 @@ module Edit.Model exposing
   -- Links
   , connect -- LinkInfo
   -- Tree modifications:
-  , attachSel, deleteSel, addSel, swapSel
+  , attachSel, deleteSel, deleteSelTree, addSel, swapSel
   -- Node annotation:
   , changeTypeSel
   -- Lenses:
@@ -624,6 +624,40 @@ deleteNode id tree =
 --         if wellFormed hd
 --         then hd
 --         else tree
+      _ -> tree -- A situation which can occur if you delete a root
+
+
+---------------------------------------------------
+-- Delete Tree
+---------------------------------------------------
+
+
+-- | Delete the selected nodes in a given window, together with the
+-- corresponding subtrees.
+deleteSelTree : Focus -> Model -> Model
+deleteSelTree =
+  let f ids t = L.foldl deleteTree t (S.toList ids)
+  in  procSel f
+
+
+-- | Delete a given node (provided that it is not a root) together with the
+-- corresponding subtree.
+deleteTree : NodeId -> R.Tree Node -> R.Tree Node
+deleteTree id tree =
+  let
+    update (R.Node x ts) =
+      if id == Lens.get nodeId x -- && not (isLeaf x)
+      then []
+      else [R.Node x (updateF ts)]
+    updateF ts = case ts of
+      [] -> []
+      hd :: tl -> update hd ++ updateF tl
+  in
+    case update tree of
+      [hd] ->
+        if wellFormed hd
+        then hd
+        else tree
       _ -> tree -- A situation which can occur if you delete a root
 
 

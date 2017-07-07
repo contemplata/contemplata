@@ -35,6 +35,9 @@ type Msg
   | ChangeLabel M.NodeId M.Focus String
   | EditLabel
   | Delete -- ^ Delete the selected nodes in the focused window
+  | DeleteTree
+    -- ^ Delete the selected nodes in the focused window
+    -- together with the corresponding subtrees
   | Add -- ^ Delete the selected nodes in the focused window
   | ChangeType -- ^ Change the type of the selected node
   | CtrlDown
@@ -141,6 +144,8 @@ update msg model =
         )
 
     Delete -> idle <| M.deleteSel model.focus model
+
+    DeleteTree -> idle <| M.deleteSelTree model.focus model
 
     Add -> idle <| M.addSel model.focus model
 

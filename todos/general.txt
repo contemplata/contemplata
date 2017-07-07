@@ -3,8 +3,7 @@ TODAY:
 
 TODO:
 
-* Make it possible to remove tokens
-* Related: make it posslbe to (i) join tokens, and (ii) split tokens (do we really
+* Make it possible to (i) join tokens, and (ii) split tokens (do we really
   need this?)
 * Related: deal with empty phrases (such cases will occur, don't think there's
   anything to worry there).

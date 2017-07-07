@@ -880,7 +880,10 @@ globalKeyDown ctrl =
       34 -> Next
 
       -- "d"
-      68 -> Delete
+      68 ->
+        if ctrl
+        then DeleteTree
+        else Delete
       -- -- "Del"
       -- 46 -> Delete
 
@@ -909,7 +912,8 @@ globalKeyDown ctrl =
       -- "e"
       69 -> EditLabel
 
-      -- "ctrl"
+      -- "ctrl" (really "shift" right now)
+      -- 17 -> CtrlDown
       17 -> CtrlDown
 
       -- "c"
@@ -923,25 +927,13 @@ globalKeyDown ctrl =
     onKeyDown tag
 
 
--- globalKeyDown : Html.Attribute Msg
--- globalKeyDown =
---   let
---     tag code = case code of
---
---       -- "ctrl"
---       17 -> CtrlDown
---
---       _  -> Msg.dummy
---   in
---     onKeyDown tag
-
-
 globalKeyUp : Html.Attribute Msg
 globalKeyUp =
   let
     tag code = case code of
 
-      -- "ctrl"
+      -- "ctrl" ("shift")
+      -- 17 -> CtrlUp
       17 -> CtrlUp
 
       _  -> Msg.dummy
@@ -956,7 +948,12 @@ onKeyUp tagger =
 
 onKeyDown : (Int -> msg) -> Html.Attribute msg
 onKeyDown tagger =
-  Events.on "keydown" (Decode.map tagger Events.keyCode)
+  -- Events.on "keydown" (Decode.map tagger Events.keyCode)
+  Events.onWithOptions
+    "keydown"
+    (let default = Events.defaultOptions
+     in {default | stopPropagation=True, preventDefault=True})
+    (Decode.map tagger Events.keyCode)
 
 
 blockKeyDownEvents : Html.Attribute Msg
