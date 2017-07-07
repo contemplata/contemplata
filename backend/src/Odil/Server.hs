@@ -42,6 +42,8 @@ import Data.Aeson ((.=))
 import Odil.Server.Types
 import qualified Odil.Server.Config as Cfg
 import qualified Odil.Server.DB as DB
+import qualified Odil.Stanford as Stanford
+import qualified Odil.Penn as Penn
 
 
 -----------
@@ -54,6 +56,10 @@ data Request
   = GetFiles
   | GetFile FileId
   | SaveFile FileId File
+  | ParseSent FileId TreeId [T.Text]
+    -- ^ FileId and TreeId are sent there and back so that it
+    -- can be checked that the user did not move elsewhere before
+    -- he/she got the answer for this request
   deriving (Generic, Show)
 
 instance JSON.FromJSON Request
@@ -67,6 +73,8 @@ data Answer
     -- ^ The list of files
   | NewFile FileId File
     -- ^ New file to edit
+  | ParseResult FileId TreeId Tree
+    -- ^ New file to edit
   | Notification T.Text
     -- ^ New file to edit
   deriving (Show)
@@ -78,6 +86,10 @@ instance JSON.ToJSON Answer where
     NewFile fileId file -> JSON.object
       [ "fileId" .= fileId
       , "file" .= file ]
+    ParseResult fileId treeId tree -> JSON.object
+      [ "fileId" .= fileId
+      , "treeId" .= treeId
+      , "tree" .= tree ]
     Notification msg -> JSON.object
       [ "notification" .= msg ]
 
@@ -173,12 +185,6 @@ talk conn state = forever $ do
             let ret = NewFile fileId file
             WS.sendTextData conn (JSON.encode ret)
 
-  --     Right (GetFile fileId) -> case M.lookup fileId fileMap of
-  --       Nothing -> return ()
-  --       Just treeMap -> do
-  --         let ret = NewFile fileId treeMap
-  --         WS.sendTextData conn (JSON.encode ret)
-
       Right (SaveFile fileId file) -> do
         putStrLn "Saving file..."
         DB.runDBT db (DB.saveFile fileId file) >>= \case
@@ -191,19 +197,17 @@ talk conn state = forever $ do
             let msg = T.concat ["File ", fileId, " saved"]
             WS.sendTextData conn . JSON.encode $ Notification msg
 
-
-  --     Right (SaveFile fileId file) -> do
-  --       putStrLn "Saving file..."
-  --       C.modifyMVar_ state (return . M.insert fileId file)
-  --       putStrLn "Saved"
-  --       -- fileMapNow <- C.readMVar state
-  --       -- putStrLn $ "The size is now: " ++ show (M.size fileMapNow)
-
-
--- -- getFile :: M.Map FileId File -> T.Text -> Maybe LBS.ByteString
--- getFile :: M.Map FileId File -> T.Text -> Maybe File
--- getFile fileMap txt = do
---   fileId <- T.stripPrefix "want " txt
---   M.lookup fileId fileMap
---   -- treeMap <- M.lookup fildId fileMap
---   -- return $ JSON.encode treeMap
+      Right (ParseSent fileId treeId ws) -> do
+        putStrLn "Parsing sentence..."
+        treeMay <- Stanford.parseTokenizedFR ws
+        case treeMay of
+          Nothing -> do
+            let msg = T.concat ["Could not parse: ", T.unwords ws]
+            T.putStrLn msg
+            WS.sendTextData conn . JSON.encode $ Notification msg
+          Just t -> do
+            let ret = ParseResult fileId treeId (Penn.toOdilTree t)
+            WS.sendTextData conn (JSON.encode ret)
+            let msg = T.concat ["Parsed successfully"]
+            T.putStrLn msg
+            WS.sendTextData conn . JSON.encode $ Notification msg

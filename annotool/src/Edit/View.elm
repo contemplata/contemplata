@@ -919,6 +919,9 @@ globalKeyDown ctrl =
       -- "c"
       67 -> Connect
 
+      -- "p"
+      80 -> ParseSent
+
       -- "r"
       82 -> Attach
 

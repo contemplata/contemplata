@@ -11,11 +11,14 @@ import Window as Window
 import WebSocket
 import Json.Decode as Decode
 
+import Rose as R
+
 import Config as Cfg
 import Edit.Model as M
 import Edit.Anno as Anno
 import Menu
 import Server
+import Util
 
 
 type Msg
@@ -40,6 +43,7 @@ type Msg
     -- together with the corresponding subtrees
   | Add -- ^ Delete the selected nodes in the focused window
   | ChangeType -- ^ Change the type of the selected node
+  | ParseSent  -- ^ Reparse the sentence in focus
   | CtrlDown
   | CtrlUp
   | Connect
@@ -161,6 +165,19 @@ update msg model =
     Swap left -> idle <| M.swapSel left model
 
     Files -> idle <| model -- ^ Handled upstream
+
+    ParseSent ->
+      let
+        treeId = (M.selectWin model.focus model).tree
+        tree = M.getTree treeId model
+        word node = case node of
+          M.Node _ -> Nothing
+          M.Leaf {nodeVal} -> Just nodeVal
+        words = List.reverse <| Util.catMaybes <| List.map word <| R.flatten tree
+        req = Server.encodeReq (Server.ParseSent model.fileId treeId words)
+        save = WebSocket.send Cfg.socketServer req
+      in
+        (model, save)
 
     SaveFile ->
       let

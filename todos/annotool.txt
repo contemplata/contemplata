@@ -27,6 +27,7 @@ CANCELLED:
 
 
 DONE:
+* Make it possible to re-parse a given sentence.
 * Make it possible to remove tokens
 * Mark an event
 * FS editing for an event

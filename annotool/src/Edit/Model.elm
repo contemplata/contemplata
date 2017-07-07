@@ -36,6 +36,7 @@ module Edit.Model exposing
   , nodeId, nodeVal, trees
   -- Pseudo-lenses:
   , setTrees
+  , setTree
   -- JSON decoding:
   , treeMapDecoder, fileDecoder, treeDecoder, nodeDecoder
   -- JSON encoding:
@@ -254,6 +255,34 @@ log msg model =
 
 
 ---------------------------------------------------
+-- Set new tree
+---------------------------------------------------
+
+
+-- | Change a tree in focus, provided that it has the appropriate
+-- file and tree IDs.
+setTree : FileId -> TreeId -> R.Tree Node -> Model -> Model
+setTree fileId treeId tree model =
+  let
+    win = selectWin model.focus model
+    treeIdSel = win.tree
+    fileIdSel = model.fileId
+  in
+    if fileId == fileIdSel && treeId == treeIdSel
+    then updateSelect model.focus
+      <| updateTree win.tree (\_ -> tree)
+      <| model
+    else model
+
+
+--     else getSubTree from tree
+--       |> Maybe.andThen (\sub -> delSubTree from tree
+--       |> Maybe.map (\tree1 -> putSubTree sub to tree1)
+--       |> Maybe.andThen (Util.guard wellFormed)
+--       |> Maybe.map (sortTree to))
+
+
+---------------------------------------------------
 -- Misc
 ---------------------------------------------------
 
@@ -306,7 +335,7 @@ updateTree : TreeId -> (R.Tree Node -> R.Tree Node) -> Model -> Model
 updateTree treeId update model =
   let
     alter v = case v of
-      Nothing -> Debug.crash "Model.setTree: no tree with the given ID"
+      Nothing -> Debug.crash "Model.updateTree: no tree with the given ID"
       Just (sent, tree) -> Just (sent, update tree)
     newTrees = D.update treeId alter model.trees
   in
@@ -1193,7 +1222,7 @@ maybeLens =
 ---------------------------------------------------
 
 
--- | A pseudo-lens.
+-- | Change the treeMap of the model.
 setTrees : TreeMap -> Model -> Model
 setTrees treeDict model =
   let

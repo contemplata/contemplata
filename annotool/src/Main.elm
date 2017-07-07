@@ -159,6 +159,9 @@ topUpdate topMsg =
       Server.NewFile fileId file -> \model_ ->
         let (edit, cmd) = Edit.Init.mkEdit fileId file
         in  (Edit edit, Cmd.map editMsg cmd)
+      Server.ParseResult fileId treeId tree ->
+        let upd model = (Edit.Model.setTree fileId treeId tree model, Cmd.none)
+        in  updateOn editLens editMsg upd
       Server.Notification msg ->
         let log model = (Edit.Model.log msg model, Cmd.none)
         in  updateOn editLens editMsg log
