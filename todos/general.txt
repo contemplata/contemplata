@@ -1,9 +1,35 @@
 TODAY:
+* Make it possible to run the Stanford parser on an existing tokenization.
 
 
 TODO:
-* Make it possible to run the Stanford parser on an existing tokenization.
 
+* Make it possible to remove tokens
+* Related: make it posslbe to (i) join tokens, and (ii) split tokens (do we really
+  need this?)
+* Related: deal with empty phrases (such cases will occur, don't think there's
+  anything to worry there).
+
+* Make it possible for a speech turn to have several sentences (trees)
+
+* Try to think of how to project the Rhapsody-style disfluency annotations
+  to our context (cf. JY's idea of using "reparandum")
+* Related: see what is done with *incises* in FTB
+
+* Implement an inference-rules engine
+* Related: make it possible to (i) apply the rules (manually, tree-scope?) and
+  (ii) to validate them afterwards. How to implement ergonomically (ii) is an
+  open question...
+
+
+
+DONE:
+* Keep the original sentences and show them on the right in the annotation tool 
+* Compute the number of words in the files pre-selected by JY, too see what portion
+  of 20000 words does it make.
+* Adapt the ODIL format to account for the information about speakers
+* We want to re-implement the entire processing pipeline.  Why?  So that we can
+  call the Stanford parser on the units we want.  I.e., to simplify the task. 
 * Consider the quesion of "speech turns" -- should they be represented as separate trees?
   I suppose so (issue raised during the TLN meeting, Mai 18, Blois)
   -> JY, AL: it should be visible (colors, labels) who is speaking at a given moment.
@@ -15,24 +41,6 @@ TODO:
             , <spk2>: bla bla
             , <spk1>: blu blu bly
     <Turn 3>, <spk2>: ble ble ble
-
-
-DONE:
-* Keep the original sentences and show them on the right in the annotation tool 
-* Compute the number of words in the files pre-selected by JY, too see what portion
-  of 20000 words does it make.
-* Adapt the ODIL format to account for the information about speakers
-* We want to re-implement the entire processing pipeline.  Why?  So that we can
-  call the Stanford parser on the units we want.  I.e., to simplify the task. 
-
-  The processing pipeline was like this:
-  * Simplification: just reading the ancor files and showing them in a simplified form.
-    This step is no longer needed (or, at least, not exactly in this form).
-    + BTW Question: should we keep the division of sections on episodes in the DB? 
-  * Preprocessing: the fuction `Text -> Text` can stay as it is (for the lack of a better
-    yet simple solution).  We will have to worry about the alignement later.
-  * Parsing: nothing to change, really
-  * Conversion to the ODIL format: nothing to change, really
 
 
 
