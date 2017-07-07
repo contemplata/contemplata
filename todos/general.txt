@@ -1,5 +1,4 @@
 TODAY:
-* Make it possible to run the Stanford parser on an existing tokenization.
 
 
 TODO:
@@ -24,6 +23,7 @@ TODO:
 
 
 DONE:
+* Make it possible to run the Stanford parser on an existing tokenization.
 * Keep the original sentences and show them on the right in the annotation tool 
 * Compute the number of words in the files pre-selected by JY, too see what portion
   of 20000 words does it make.
