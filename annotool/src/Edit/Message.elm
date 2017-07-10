@@ -51,6 +51,8 @@ type Msg
   | Swap Bool
   | Files -- ^ Go back to files menu
   | SaveFile  -- ^ Save the current file
+  | Undo
+  | Redo
   | SideMenuEdit M.Focus
   | SideMenuContext M.Focus
   | SideMenuLog M.Focus
@@ -75,10 +77,14 @@ type Msg
 update : Msg -> M.Model -> ( M.Model, Cmd Msg )
 update msg model =
 
- let idle x = (x, Cmd.none)
+ let
+
+  idle x = (x, Cmd.none)
+  onFst f (x, y) = (f x, y)
 
  in
-  case msg of
+
+  onFst M.freezeHist <| case msg of
 
     DragStart focus xy -> idle <|
       Focus.set
@@ -130,7 +136,8 @@ update msg model =
 
     Previous -> idle <| M.moveCursor False model
 
-    ChangeLabel nodeId win newLabel -> idle <| M.setLabel nodeId win newLabel model
+    ChangeLabel nodeId win newLabel ->
+        idle <| M.setLabel nodeId win newLabel model
 
     EditLabel ->
       let
@@ -186,6 +193,9 @@ update msg model =
         save = WebSocket.send Cfg.socketServer req
       in
         (model, save)
+
+    Undo -> idle <| M.undo model
+    Redo -> idle <| M.redo model
 
     SideMenuEdit focus -> idle <|
       Focus.set

@@ -1,4 +1,7 @@
 TODAY:
+* Implement undo/redo
+* Try to run other parsers (discoDOP?)
+* Implement scripting window
 
 
 QUESTIONS:

@@ -54,6 +54,9 @@ mkEdit fileId file =
       , ctrl = False
       -- , testInput = ""
       , messages = []
+      , undoHist = []
+      , redoHist = []
+      , undoLast = []
       }
     initHeight = Task.perform Resize Window.size
     -- initHeight = Cmd.none

@@ -925,6 +925,12 @@ globalKeyDown ctrl =
       -- "r"
       82 -> Attach
 
+      -- "z"
+      90 ->
+        if ctrl
+        then Undo
+        else Redo
+
       _  -> Msg.dummy
   in
     onKeyDown tag

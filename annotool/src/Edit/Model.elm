@@ -10,8 +10,8 @@ module Edit.Model exposing
   , selectWin, dragOn, getTree, selAll
   , getPosition, nextTree, prevTree, moveCursor, moveCursorTo
   , treeNum, treePos
-  -- Initialization:
-  -- , mkEdit
+  -- History:
+  , freezeHist, undo, redo
   -- Logging:
   , log
   -- Nodes:
@@ -36,6 +36,7 @@ module Edit.Model exposing
   , nodeId, nodeVal, trees
   -- Pseudo-lenses:
   , setTrees
+  -- Various:
   , setTree
   -- JSON decoding:
   , treeMapDecoder, fileDecoder, treeDecoder, nodeDecoder
@@ -181,6 +182,13 @@ type alias Model =
   -- , testInput : String
 
   , messages : List String
+
+  -- edit history
+  , undoHist : List HistElem
+  , redoHist : List HistElem
+
+  -- last, incomplete element of the undo history
+  , undoLast : List HistAtom
   }
 
 
@@ -240,6 +248,115 @@ type Focus = Top | Bot
 
 
 ---------------------------------------------------
+-- History
+---------------------------------------------------
+
+
+-- | An element of the editing history.
+type alias HistElem = List HistAtom
+
+
+-- | An atomic element of the editing history.
+type HistAtom
+  = TreeModif -- ^ Modified a tree
+    { treeId : TreeId
+      -- ^ To which tree ID does it refer
+    , restoreTree : R.Tree Node
+      -- ^ The tree to restore
+    }
+  | LinkModif
+    { addLinkSet : S.Set Link
+      -- ^ The links to add
+    , delLinkSet : S.Set Link
+      -- ^ The links to remove
+    }
+
+
+-- | Save the given atomic modification in the editing history.
+saveModif : HistAtom -> Model -> Model
+saveModif atom model =
+  { model
+      | undoLast = atom :: model.undoLast
+      , redoHist = [] }
+
+
+-- | Freeze the current (last) sequence of history modifications.
+--
+-- The idea is that everything that is in `undoLast` will be transfered to
+-- `undoHist` as single, atomic element of the editing history. Put differently,
+-- the current atomic modifications are put in a transaction.
+freezeHist : Model -> Model
+freezeHist model =
+  case model.undoLast of
+    [] -> model
+    _  -> { model
+              | undoHist = model.undoLast :: model.undoHist
+              , undoLast = [] }
+
+
+-- | Apply a given history atomic element.
+applyAtom : HistAtom -> Model -> (Model, HistAtom)
+applyAtom histAtom model =
+  case histAtom of
+    TreeModif r ->
+      let
+        (tmpModel, oldTree) =
+          updateTree_ r.treeId (\_ -> r.restoreTree) model
+        newModel = focusOnTree r.treeId tmpModel
+        newAtom = TreeModif {r | restoreTree = oldTree}
+      in
+        (newModel, newAtom)
+    LinkModif r ->
+      Debug.crash "applyAtom: handling LinkModif not implemented!"
+
+
+-- | Focus on the given tree if needed.
+focusOnTree : TreeId -> Model -> Model
+focusOnTree treeId model =
+    if model.top.tree == treeId || model.bot.tree == treeId
+    then model
+    else moveCursorTo model.focus treeId model
+
+
+-- | Apply a given history element.
+applyElem : HistElem -> Model -> (Model, HistElem)
+applyElem elem =
+  let
+    apply xs model histAcc = case xs of
+      [] -> (model, histAcc)
+      hd :: tl ->
+        let (newModel, newAtom) = applyAtom hd model
+        in  apply tl newModel (newAtom :: histAcc)
+  in
+    -- \model -> Debug.log (toString elem) <| apply elem model []
+    \model -> apply elem model []
+
+
+-- | Perform undo.
+undo : Model -> Model
+undo model =
+  case model.undoHist of
+    [] -> model
+    histElem :: histRest ->
+      let (newModel, newElem) = applyElem histElem model
+      in  { newModel
+            | undoHist = histRest
+            , redoHist = newElem :: newModel.redoHist }
+
+
+-- | Perform redo.
+redo : Model -> Model
+redo model =
+  case model.redoHist of
+    [] -> model
+    histElem :: histRest ->
+      let (newModel, newElem) = applyElem histElem model
+      in  { newModel
+            | redoHist = histRest
+            , undoHist = newElem :: newModel.undoHist }
+
+
+---------------------------------------------------
 -- Logging
 ---------------------------------------------------
 
@@ -255,35 +372,105 @@ log msg model =
 
 
 ---------------------------------------------------
--- Set new tree
+---------------------------------------------------
+-- Primitive modification operations
+---------------------------------------------------
 ---------------------------------------------------
 
 
--- | Change a tree in focus, provided that it has the appropriate
--- file and tree IDs.
-setTree : FileId -> TreeId -> R.Tree Node -> Model -> Model
-setTree fileId treeId tree model =
+---------------------------------------------------
+-- Tree-wise
+---------------------------------------------------
+
+
+-- -- | Set a tree under a given ID.
+-- updateTree : TreeId -> (R.Tree Node -> R.Tree Node) -> Model -> Model
+-- updateTree treeId update model =
+--   let
+--     alter v = case v of
+--       Nothing -> Debug.crash "Model.updateTree: no tree with the given ID"
+--       Just (sent, tree) -> Just (sent, update tree)
+--     oldTree = case D.get treeId model.trees of
+--       Nothing -> Debug.crash "Model.updateTree: no tree with the given ID"
+--       Just (sent_, tree) -> tree
+--     newTrees = D.update treeId alter model.trees
+--   in
+--     {model | trees = newTrees}
+--        |> saveModif (TreeModif {treeId = treeId, restoreTree = oldTree})
+
+
+-- | Set a tree under a given ID.
+updateTree : TreeId -> (R.Tree Node -> R.Tree Node) -> Model -> Model
+updateTree treeId update model =
   let
-    win = selectWin model.focus model
-    treeIdSel = win.tree
-    fileIdSel = model.fileId
+    (newModel, oldTree) = updateTree_ treeId update model
   in
-    if fileId == fileIdSel && treeId == treeIdSel
-    then updateSelect model.focus
-      <| updateTree win.tree (\_ -> tree)
-      <| model
-    else model
+     newModel |> saveModif (TreeModif {treeId = treeId, restoreTree = oldTree})
 
 
---     else getSubTree from tree
---       |> Maybe.andThen (\sub -> delSubTree from tree
---       |> Maybe.map (\tree1 -> putSubTree sub to tree1)
---       |> Maybe.andThen (Util.guard wellFormed)
---       |> Maybe.map (sortTree to))
+-- | An internal version of `updateTree` which does not update the history, and
+-- | which returns the previous tree under the given ID.
+updateTree_ : TreeId -> (R.Tree Node -> R.Tree Node) -> Model -> (Model, R.Tree Node)
+updateTree_ treeId update model =
+  let
+    alter v = case v of
+      Nothing -> Debug.crash "Model.updateTree: no tree with the given ID"
+      Just (sent, tree) -> Just (sent, update tree)
+    oldTree = case D.get treeId model.trees of
+      Nothing -> Debug.crash "Model.updateTree: no tree with the given ID"
+      Just (sent_, tree) -> tree
+    newTrees = D.update treeId alter model.trees
+  in
+    ({model | trees = newTrees}, oldTree)
 
 
+---------------------------------------------------
+-- Link-wise
+---------------------------------------------------
+
+
+-- | Add links.
+connect : Model -> Model
+connect model = model |>
+  case (model.focus, model.top.selMain, model.bot.selMain) of
+    (Top, Just topNode, Just botNode) ->
+      connectHelp {nodeFrom = botNode, nodeTo = topNode, focusTo = Top}
+    (Bot, Just topNode, Just botNode) ->
+      connectHelp {nodeFrom = topNode, nodeTo = botNode, focusTo = Bot}
+    _ -> identity
+    -- _ -> Debug.crash "ALALALAL"
+
+
+type alias LinkInfo =
+  { nodeFrom : NodeId
+  , nodeTo : NodeId
+  , focusTo : Focus }
+
+
+connectHelp : LinkInfo -> Model -> Model
+connectHelp {nodeFrom, nodeTo, focusTo} model =
+  let
+    focusFrom = case focusTo of
+      Top -> Bot
+      Bot -> Top
+    treeFrom = (selectWin focusFrom model).tree
+    treeTo = (selectWin focusTo model).tree
+    link = ((treeFrom, nodeFrom), (treeTo, nodeTo))
+    (alter, modif) = case S.member link model.links of
+      False ->
+        ( S.insert link
+        , LinkModif {addLinkSet = S.empty, delLinkSet = S.singleton link} )
+      True  ->
+        ( S.remove link
+        , LinkModif {delLinkSet = S.empty, addLinkSet = S.singleton link} )
+  in
+    Lens.update links alter model |> saveModif modif
+
+
+---------------------------------------------------
 ---------------------------------------------------
 -- Misc
+---------------------------------------------------
 ---------------------------------------------------
 
 
@@ -330,18 +517,6 @@ getTree treeId model =
 --     {model | tree = newTrees}
 
 
--- | Set a tree under a given ID.
-updateTree : TreeId -> (R.Tree Node -> R.Tree Node) -> Model -> Model
-updateTree treeId update model =
-  let
-    alter v = case v of
-      Nothing -> Debug.crash "Model.updateTree: no tree with the given ID"
-      Just (sent, tree) -> Just (sent, update tree)
-    newTrees = D.update treeId alter model.trees
-  in
-    {model | trees = newTrees}
-
-
 -- | Retrieve all selected nodes.
 selAll : Window -> S.Set NodeId
 selAll win =
@@ -349,6 +524,22 @@ selAll win =
     case win.selMain of
       Nothing -> S.empty
       Just x  -> S.singleton x
+
+
+-- | Change a tree in focus, provided that it has the appropriate
+-- file and tree IDs.
+setTree : FileId -> TreeId -> R.Tree Node -> Model -> Model
+setTree fileId treeId tree model =
+  let
+    win = selectWin model.focus model
+    treeIdSel = win.tree
+    fileIdSel = model.fileId
+  in
+    if fileId == fileIdSel && treeId == treeIdSel
+    then updateSelect model.focus
+      <| updateTree win.tree (\_ -> tree)
+      <| model
+    else model
 
 
 ---------------------------------------------------
@@ -792,44 +983,6 @@ changeType id =
       Just NodeTimex -> Nothing
   in
     R.map update
-
-
----------------------------------------------------
--- Add links
----------------------------------------------------
-
-
-connect : Model -> Model
-connect model = model |>
-  case (model.focus, model.top.selMain, model.bot.selMain) of
-    (Top, Just topNode, Just botNode) ->
-      connectHelp {nodeFrom = botNode, nodeTo = topNode, focusTo = Top}
-    (Bot, Just topNode, Just botNode) ->
-      connectHelp {nodeFrom = topNode, nodeTo = botNode, focusTo = Bot}
-    _ -> identity
-    -- _ -> Debug.crash "ALALALAL"
-
-
-type alias LinkInfo =
-  { nodeFrom : NodeId
-  , nodeTo : NodeId
-  , focusTo : Focus }
-
-
-connectHelp : LinkInfo -> Model -> Model
-connectHelp {nodeFrom, nodeTo, focusTo} model =
-  let
-    focusFrom = case focusTo of
-      Top -> Bot
-      Bot -> Top
-    treeFrom = (selectWin focusFrom model).tree
-    treeTo = (selectWin focusTo model).tree
-    link = ((treeFrom, nodeFrom), (treeTo, nodeTo))
-    alter = case S.member link model.links of
-      False -> S.insert link
-      True  -> S.remove link
-  in
-    Lens.update links alter model
 
 
 ---------------------------------------------------
