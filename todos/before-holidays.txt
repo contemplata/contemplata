@@ -1,0 +1,60 @@
+This file summarizes the most important changes that should be incorporated
+before the summer holidays.
+
+
+# Marking links with different attribute values
+
+We will have to have this one anyway, so it's quite a high priority.
+
+
+# Pre-processing
+
+Removing the "strings" that are of no interest to us.
+
+PROBLEM: we also consider manual removal. The issue with this is that we cannot
+easily replicate this behavior when parsing the 100,000-words part of the
+corpus.
+
+
+# Rule-based engine
+
+For the moment, to automatically deepen the trees. The changes should be visible
+and each one of them should be manually validated by the annotator.
+
+
+# Question-answer windows 
+
+It would be very useful to have, in the long run, an implementation of something
+like pop-up windows with questions and pre-defined sets of answers. This would
+allow to perform, e.g., the validation mentioned above (#rule-based engine).
+
+
+# Other parsing engines
+
+It would be nice to support some other parsing tools, e.g.:
+* DiscoDOP
+* ...
+
+Ideally, it would be nice to have the following:
+* constraint-based parsing, or
+* k-best parsing
+
+The latter would be a substitute of the former -- one could choose the solution
+which satisfies the highest number of constraints. Not sure if this would be
+really useful in practice, though.
+
+
+# Custom-parsing engine
+
+This one would be nice...  Why don't we reimplement something nice?
+
+This is something I can do before the summer vacations, and probably not
+afterwards, which is why it made it to this list here.
+
+
+# Various
+
+Various minor things which would be nice to have before holidays:
+* Show leaves in different color
+* Mark non-projective trees "en rouge/rose"
+* Implement scripting window
