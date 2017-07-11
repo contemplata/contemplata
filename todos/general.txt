@@ -1,7 +1,14 @@
 TODAY:
 
 
+QUESTIONS:
+* If we manually remove some parts of sentences, how are we going to parse the
+  100,000 words?
+
+
 TODO:
+
+* Try to run other parsers (discoDOP?)
 
 * Make it possible to (i) join tokens, and (ii) split tokens (do we really
   need this?)

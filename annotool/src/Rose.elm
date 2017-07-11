@@ -15,6 +15,7 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 
 import List as L
+import Util exposing (mapAccumL)
 
 
 ---------------------------------------------------
@@ -80,18 +81,6 @@ mapAccum f acc (Node x ts) =
 --   let
 --     (acc1, y) = f acc x
 --     (acc2, ts1) = List.foldl
-
-
-mapAccumL : (acc -> a -> (acc, b)) -> acc -> List a -> (acc, List b)
-mapAccumL f acc xs =
-  case xs of
-    [] -> (acc, [])
-    x :: tl ->
-      let
-        (acc1, y) = f acc x
-        (acc2, ys) = mapAccumL f acc1 tl
-      in
-        (acc2, y :: ys)
 
 
 -- | Find the first subtree which satisfies the given predicate.

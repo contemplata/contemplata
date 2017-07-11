@@ -1,6 +1,6 @@
 module Util exposing
     ( split, catMaybes, find, unless, mappend, guard, and
-    , average, single, px
+    , mapAccumL, average, single, px
     -- * JSON
     , encodeMaybe
     )
@@ -49,6 +49,18 @@ find p xs =
       case p hd of
         True  -> Just hd
         False -> find p tl
+
+
+mapAccumL : (acc -> a -> (acc, b)) -> acc -> List a -> (acc, List b)
+mapAccumL f acc xs =
+  case xs of
+    [] -> (acc, [])
+    x :: tl ->
+      let
+        (acc1, y) = f acc x
+        (acc2, ys) = mapAccumL f acc1 tl
+      in
+        (acc2, y :: ys)
 
 
 unless : Bool -> a -> Maybe a

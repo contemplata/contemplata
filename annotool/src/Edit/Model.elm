@@ -12,6 +12,8 @@ module Edit.Model exposing
   , treeNum, treePos
   -- History:
   , freezeHist, undo, redo
+  -- Selection:
+  , updateSelection
   -- Logging:
   , log
   -- Nodes:
@@ -287,10 +289,14 @@ saveModif atom model =
 -- the current atomic modifications are put in a transaction.
 freezeHist : Model -> Model
 freezeHist model =
+  let
+    histSize = 250 -- should be in Config, but Config relies on the model...
+    newHist = L.take histSize (model.undoLast :: model.undoHist)
+  in
   case model.undoLast of
     [] -> model
     _  -> { model
-              | undoHist = model.undoLast :: model.undoHist
+              | undoHist = newHist
               , undoLast = [] }
 
 
@@ -300,14 +306,19 @@ applyAtom histAtom model =
   case histAtom of
     TreeModif r ->
       let
-        (tmpModel, oldTree) =
-          updateTree_ r.treeId (\_ -> r.restoreTree) model
+        oldTree = getTree r.treeId model
+        tmpModel = updateTree_ r.treeId (\_ -> r.restoreTree) model
         newModel = focusOnTree r.treeId tmpModel
         newAtom = TreeModif {r | restoreTree = oldTree}
       in
         (newModel, newAtom)
     LinkModif r ->
-      Debug.crash "applyAtom: handling LinkModif not implemented!"
+      let
+        newLinks = S.union r.addLinkSet <| S.diff model.links r.delLinkSet
+        newModel = {model | links = newLinks}
+        newAtom = LinkModif {addLinkSet = r.delLinkSet, delLinkSet = r.addLinkSet}
+      in
+        (newModel, newAtom)
 
 
 -- | Focus on the given tree if needed.
@@ -402,31 +413,63 @@ log msg model =
 -- | Set a tree under a given ID.
 updateTree : TreeId -> (R.Tree Node -> R.Tree Node) -> Model -> Model
 updateTree treeId update model =
+
   let
-    (newModel, oldTree) = updateTree_ treeId update model
+
+    -- calculate the new tree and update the model
+    oldTree = getTree treeId model
+    newModel = updateTree_ treeId update model
+    newTree = getTree treeId newModel
+
+    -- we also calculate the set of deleted nodes
+    delNodes = S.diff (nodesIn oldTree) (nodesIn newTree)
+
+    -- and delete the corresponding links, if needed
+    isToDelete (from, to) =
+      let toDel (trId, ndId) = trId == treeId && S.member ndId delNodes
+      in  toDel from || toDel to
+    delLinks = L.filter isToDelete <| S.toList model.links
+    linkModif = deleteLinks (S.fromList delLinks)
+
   in
-     newModel |> saveModif (TreeModif {treeId = treeId, restoreTree = oldTree})
+
+     newModel
+       |> linkModif
+       |> saveModif (TreeModif {treeId = treeId, restoreTree = oldTree})
+--        |> updateSelection Top <- performed always after the update
+--        |> updateSelection Bot
 
 
--- | An internal version of `updateTree` which does not update the history, and
--- | which returns the previous tree under the given ID.
-updateTree_ : TreeId -> (R.Tree Node -> R.Tree Node) -> Model -> (Model, R.Tree Node)
+-- | An internal version of `updateTree` which does not update the history.
+updateTree_ : TreeId -> (R.Tree Node -> R.Tree Node) -> Model -> Model
 updateTree_ treeId update model =
   let
     alter v = case v of
-      Nothing -> Debug.crash "Model.updateTree: no tree with the given ID"
+      Nothing -> Debug.crash "Model.updateTree_: no tree with the given ID"
       Just (sent, tree) -> Just (sent, update tree)
-    oldTree = case D.get treeId model.trees of
-      Nothing -> Debug.crash "Model.updateTree: no tree with the given ID"
-      Just (sent_, tree) -> tree
     newTrees = D.update treeId alter model.trees
+    newModel = {model | trees = newTrees}
   in
-    ({model | trees = newTrees}, oldTree)
+    newModel
+
+
+-- | Return the set of node IDs in the given tree.
+nodesIn : R.Tree Node -> S.Set NodeId
+nodesIn = S.fromList << L.map (Lens.get nodeId) << R.flatten
 
 
 ---------------------------------------------------
 -- Link-wise
 ---------------------------------------------------
+
+
+-- | Delete the set of links.
+deleteLinks : S.Set Link -> Model -> Model
+deleteLinks delLinks =
+  if S.isEmpty delLinks
+  then identity
+  else Lens.update links (\s -> S.diff s delLinks)
+    >> saveModif (LinkModif {addLinkSet = delLinks, delLinkSet = S.empty})
 
 
 -- | Add links.
@@ -465,6 +508,41 @@ connectHelp {nodeFrom, nodeTo, focusTo} model =
         , LinkModif {delLinkSet = S.empty, addLinkSet = S.singleton link} )
   in
     Lens.update links alter model |> saveModif modif
+
+
+---------------------------------------------------
+-- Selection-wise?
+---------------------------------------------------
+
+
+-- | Update the selections.
+updateSelection : Model -> Model
+updateSelection =
+  updateSelection_ Top >>
+  updateSelection_ Bot
+
+
+-- | Update the selection in the given window.
+updateSelection_ : Focus -> Model -> Model
+updateSelection_ focus model =
+  let
+    wlen = winLens focus
+    win = Lens.get wlen model -- selectWin focus model
+    tree = getTree win.tree model
+    newID id = case getNode_ id tree of
+      Nothing -> Nothing
+      Just _  -> Just id
+    newWin =
+      { win
+        | selMain = Maybe.andThen newID win.selMain
+        , selAux
+             = S.fromList
+            <| Util.catMaybes
+            <| L.map newID
+            <| S.toList win.selAux
+      }
+  in
+    Lens.set wlen newWin model
 
 
 ---------------------------------------------------
@@ -536,9 +614,7 @@ setTree fileId treeId tree model =
     fileIdSel = model.fileId
   in
     if fileId == fileIdSel && treeId == treeIdSel
-    then updateSelect model.focus
-      <| updateTree win.tree (\_ -> tree)
-      <| model
+    then updateTree win.tree (\_ -> tree) model
     else model
 
 
@@ -721,17 +797,24 @@ selectNodeAux focus i model =
 getNode : NodeId -> Focus -> Model -> Node
 getNode id focus model =
   let
+    tree = getTree (selectWin focus model).tree model
+  in
+    case getNode_ id tree of
+      Nothing -> Debug.crash "Model.getNode: unknown node ID"
+      Just x  -> x
+
+
+getNode_ : NodeId -> R.Tree Node -> Maybe Node
+getNode_ id tree =
+  let
     search (R.Node x ts) = if id == Lens.get nodeId x
       then Just x
       else searchF ts
     searchF ts = case ts of
       [] -> Nothing
       hd :: tl -> Util.mappend (search hd) (searchF tl)
-    tree = getTree (selectWin focus model).tree model
   in
-    case search tree of
-      Nothing -> Debug.crash "Model.getNode: unknown node ID"
-      Just x  -> x
+    search tree
 
 
 updateNode : NodeId -> Focus -> (Node -> Node) -> Model -> Model
@@ -807,12 +890,8 @@ procSel f focus model =
     win = selectWin focus model
     tree = getTree win.tree model
     newTree = f (selAll win) tree
-    -- newTrees = D.insert win.tree newTree model.trees
   in
-    updateSelect focus
-      -- <| { model | trees = newTrees }
-      <| updateTree win.tree (\_ -> newTree)
-      <| model
+    updateTree win.tree (\_ -> newTree) model
 
 
 ---------------------------------------------------
@@ -1002,15 +1081,14 @@ attachSel model =
       _    -> Nothing
     inTree = getTree win.tree model
   in
-    updateSelect focus <|
-      case (fromMay, toMay) of
-        (Just from, Just to) ->
-          case attach from to inTree of
-            Just newTree ->
-              -- Lens.update trees (D.insert win.tree newTree) model
-              updateTree win.tree (\_ -> newTree) model
-            Nothing -> model
-        _ -> model
+    case (fromMay, toMay) of
+      (Just from, Just to) ->
+        case attach from to inTree of
+          Just newTree ->
+            -- Lens.update trees (D.insert win.tree newTree) model
+            updateTree win.tree (\_ -> newTree) model
+          Nothing -> model
+      _ -> model
 
 
 -- | Copy a tree from a given place and paste it in another place in a given
@@ -1117,17 +1195,17 @@ swap left id tree =
 ---------------------------------------------------
 
 
--- | Update the set of the selected nodes depending on the window in which the
--- tree was modified.
-updateSelect : Focus -> Model -> Model
-updateSelect foc model =
-  let
-    alter win =
-      {win | selMain = Nothing, selAux = S.empty}
-  in
-    model |> case foc of
-      Top -> Lens.update top alter
-      Bot -> Lens.update bot alter
+-- -- | Update the set of the selected nodes depending on the window in which the
+-- -- tree was modified.
+-- updateSelect : Focus -> Model -> Model
+-- updateSelect foc model =
+--   let
+--     alter win =
+--       {win | selMain = Nothing, selAux = S.empty}
+--   in
+--     model |> case foc of
+--       Top -> Lens.update top alter
+--       Bot -> Lens.update bot alter
 
 
 ---------------------------------------------------
@@ -1386,8 +1464,8 @@ setTrees treeDict model =
     {model | trees = treeDict}
       |> Lens.set (top => tree) treeId
       |> Lens.set (bot => tree) treeId
-      |> updateSelect Top
-      |> updateSelect Bot
+--       |> updateSelect Top
+--       |> updateSelect Bot
 
 
 ---------------------------------------------------

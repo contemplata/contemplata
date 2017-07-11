@@ -84,7 +84,7 @@ update msg model =
 
  in
 
-  onFst M.freezeHist <| case msg of
+  onFst (M.freezeHist << M.updateSelection) <| case msg of
 
     DragStart focus xy -> idle <|
       Focus.set
