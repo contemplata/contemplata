@@ -1,0 +1,26 @@
+JY is involved in three projects. Apart from that, you can always co-operate with him on:
+* dyslexiy (related to predict4all below, if I remember correctly)
+* coreference
+
+# ODIL
+
+You know what it is about.
+
+# Predict4All
+
+Starts in November 2017, there is already somebody for this position (of course
+you can cooperate).
+
+The project is about using "latent semantic analysis" for predicting words
+(predicting the next words on the basis of the previous ones).
+
+# TALAD
+
+The response for this project will arive soon.
+
+The project is about "discourse analysis" -- how the new words arise in
+political discourse? Something like that :-).
+
+The techniques they want to use:
+* Named entity recognition
+* Coreference resolution
