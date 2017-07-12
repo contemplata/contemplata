@@ -7,11 +7,21 @@ changes that should be incorporated before the summer holidays.
 
 It's quite a high priority.
 
+NOTE: parsing has a higher priority
+
+NOTE: think about the fact that the types might change (especially those related
+to events). Think about the question of how to change the types once some part
+of syntactic trees are corrected.
+
 
 
 # Pre-processing
 
 Removing the "strings" that are of no interest to us.
+
+NOTE: it would be nice to make it in an external file.
+
+NOTE: in the file, the phrases are to be removed w.r.t. to their order (cf. "ouais" vs. "ouais d'accord")
 
 PROBLEM: we also consider manual removal. The issue with this is that we cannot
 easily replicate this behavior when parsing the 100,000-words part of the
@@ -23,6 +33,11 @@ corpus.
 
 For the moment, to automatically deepen the trees. The changes should be visible
 and each one of them should be manually validated by the annotator.
+
+NOTE: JY would prefer that (i) first the annotator corrects all the trees, (ii)
+in the second phase, deepening.
+
+NOTE: in any case, it must be done after the trees are corrected.do it after 
 
 
 
@@ -55,10 +70,33 @@ Thoroughly read the annotation guidelines for:
 Various minor things which would be nice to have before holidays:
 * Show leaves in different color
 * Mark non-projective trees "en rouge/rose"
+* Different node types in color
+
+
+# Attribute values
+
+Align feature-attributes like this:
+
+   Class: | ------
+    Type: | ------
+Polarity: | ------
 
 
 
+# Incises
 
+* See FTB and Sequoia
+* Representation similar to disfluences (noeud "INSERT")
+
+
+
+# Approfondissement
+
+On the first level, VP+arguments, on the second leve: VP+modifiers.
+
+QUESTION: what about the consistency w.r.t. subjects, which can be seen as
+arguments? In different terms, it is not possible to mark a verb with all its
+arguments, *subject included*, but not its modifiers.
 
 
 
