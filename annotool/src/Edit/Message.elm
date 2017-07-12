@@ -1,7 +1,10 @@
-module Edit.Message exposing (Msg(..), update, dummy)
+module Edit.Message exposing (Msg(..), update, dummy, cmdsWithPrefix)
 
 
+import String
 import List as L
+-- import Dict as D
+import Set as S
 import Mouse exposing (Position)
 import Task as Task
 import Dom as Dom
@@ -16,6 +19,7 @@ import Rose as R
 import Config as Cfg
 import Edit.Model as M
 import Edit.Anno as Anno
+-- import Edit.Command as Cmd
 import Menu
 import Server
 import Util
@@ -62,6 +66,12 @@ type Msg
 --   | SetEventType M.NodeId M.Focus Anno.EventType
 --   | SetEventTense M.NodeId M.Focus (Maybe Anno.EventTense)
 --   | SetEventAspect M.NodeId M.Focus (Maybe Anno.EventAspect)
+  | CommandStart
+  | CommandEnter
+  | CommandEscape
+  | CommandBackspace
+  | CommandComplete
+  | CommandChar Char
   | Many (List Msg)
 --     -- ^ Tests
 --   | TestInput String
@@ -227,6 +237,34 @@ update msg model =
         Anno.CommentAttr x -> M.setEventAttr M.eventComment nodeId focus x model
         -- _ -> Debug.crash "SetEventAttr: not implemented yet!"
 
+    CommandStart -> idle {model | command = Just ""}
+
+    CommandChar c -> idle <|
+      case model.command of
+        Nothing -> model
+        Just cmd -> {model | command = Just <| String.append cmd (String.fromChar c)}
+
+    CommandBackspace -> idle <|
+      case model.command of
+        Nothing -> model
+        Just cmd -> {model | command = Just <| String.dropRight 1 cmd}
+
+    CommandComplete -> idle <|
+      case model.command of
+        Nothing -> model
+        Just cmd -> {model | command = Just <| complete cmd}
+
+    CommandEscape -> idle <| {model | command = Nothing}
+
+    CommandEnter ->
+      let
+        newModel = {model | command = Nothing}
+      in
+        model.command |>
+        Maybe.andThen toMsg |>
+        Maybe.map (\cmd -> (newModel, cmd)) |>
+        Maybe.withDefault (idle newModel)
+
 --     SetEventClass nodeId focus x -> idle <|
 --       M.setEventAttr M.eventClass nodeId focus x model
 
@@ -261,3 +299,83 @@ update msg model =
 -- | A dummy message.  Should avoid this...
 dummy : Msg
 dummy = Many []
+
+
+----------------------------------------------
+-- Command
+----------------------------------------------
+
+
+-- | The list of commands.
+cmdList : List (M.Command, Msg)
+cmdList =
+  [ ("save", SaveFile)
+  , ("delete", Delete)
+  , ("deltree", DeleteTree)
+--   , ("add", Add)
+  , ("parse", ParseSent)
+--   , ("undo", Undo)
+--   , ("redo", Redo)
+  ]
+
+
+-- | Translate a command into the corresponding model-related message.
+toMsg : M.Command -> Maybe (Cmd Msg)
+toMsg cmd0 =
+  let
+    exact = case List.filter (\(cmd, msg) -> cmd == cmd0) cmdList of
+      [(cmd, msg)] -> Just <| Task.perform identity (Task.succeed msg)
+      _ -> Nothing
+    prefix = case cmdsWithPrefix_ cmd0 of
+      (cmd, msg) :: _ -> Just <| Task.perform identity (Task.succeed msg)
+      _ -> Nothing
+  in
+    case exact of
+      Nothing -> prefix
+      Just x  -> Just x
+
+
+
+-- | Return all the commands beginning with the given prefix.
+cmdsWithPrefix : String -> List M.Command
+cmdsWithPrefix =
+  List.map Tuple.first << cmdsWithPrefix_
+
+
+
+-- | Return all the commands beginning with the given prefix.
+cmdsWithPrefix_ : String -> List (M.Command, Msg)
+cmdsWithPrefix_ prf =
+  let p (cmd, msg) = String.startsWith prf cmd
+  in  List.filter p cmdList
+
+
+-- | Complete the command (if it's a prefix of other commands).
+complete : String -> String
+complete prf =
+  let
+    cmds = cmdsWithPrefix prf
+  in
+    case cmds of
+      [] -> prf
+      _ -> commonPrefix cmds
+
+
+-- | Compute the longest common prefix.
+commonPrefix : List String -> String
+commonPrefix xs =
+  case xs of
+    [x] -> x
+    hd :: tl -> commonPrefix2 hd (commonPrefix tl)
+    [] -> Debug.crash "commonPrefix used on empty list"
+
+
+-- | Compute the longest common prefix.
+commonPrefix2 : String -> String -> String
+commonPrefix2 s1 s2 =
+  case (String.uncons s1, String.uncons s2) of
+    (Just (c1, t1), Just (c2, t2)) ->
+      if c1 == c2
+      then String.cons c1 (commonPrefix2 t1 t2)
+      else ""
+    _ -> ""

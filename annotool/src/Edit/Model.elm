@@ -2,7 +2,7 @@ module Edit.Model exposing
   (
   -- Data types:
     TreeMap, Sent, FileId, File, NodeId, TreeId
-  , Node(..), NodeTyp(..), Link, Addr
+  , Node(..), NodeTyp(..), Link, Addr, Command
   , isNode, isLeaf
   -- Model types:
   , Model, Dim, Window, SideWindow(..), Drag, Focus(..)
@@ -191,7 +191,14 @@ type alias Model =
 
   -- last, incomplete element of the undo history
   , undoLast : List HistAtom
+
+  -- scripting window
+  , command : Maybe Command
   }
+
+
+-- | The command being written by the user.
+type alias Command = String
 
 
 type alias Window =

@@ -1,6 +1,7 @@
 module Edit.View exposing (view)
 
 
+import Char
 import Html as Html
 import Html.Attributes as Atts
 import Html.Events as Events
@@ -71,7 +72,7 @@ viewWindow win model =
 
   -- @tabindex required to make the div register keyboard events
   , Atts.attribute "tabindex" "1"
-  , globalKeyDown model.ctrl
+  , globalKeyDown model
   , globalKeyUp
 
   , Atts.style
@@ -101,7 +102,7 @@ viewWindow win model =
   <|
 
   [ viewTree win model
-  , viewTreeId win model ]
+  , viewBottomLine win model ]
   ++ if win == model.focus
      then [viewMenu]
      else []
@@ -129,6 +130,19 @@ viewTree focus model =
       <| R.withWidth Cfg.stdWidth Cfg.stdMargin tree
 
 
+---------------------------------------------------
+-- Bottom line
+---------------------------------------------------
+
+
+-- | View the bottom line: either tree ID or the command.
+viewBottomLine : M.Focus -> M.Model -> Html.Html Msg
+viewBottomLine win model =
+  case (model.command, win == model.focus) of
+    (Just cmd, True) -> viewCommand cmd win model
+    _ -> viewTreeId win model
+
+
 viewTreeId : M.Focus -> M.Model -> Html.Html Msg
 viewTreeId win model =
   let
@@ -139,17 +153,35 @@ viewTreeId win model =
       M.Top -> " (" ++ toString model.dim.height ++ ")"
       M.Bot -> " (" ++ toString model.dim.width ++ ")"
   in
+    Html.div bottomStyle [Html.text txt]
+
+
+viewCommand : String -> M.Focus -> M.Model -> Html.Html Msg
+viewCommand pref win model =
+  let
+    cmdLst = Msg.cmdsWithPrefix pref
+    cmdStr = String.trim
+             <| String.concat
+             <| List.map (\cmd -> String.cons ' ' cmd)
+             <| cmdLst
+    txt = ":" ++ pref ++ " (" ++ cmdStr ++ ")"
+  in
     Html.div
-      [ Atts.class "noselect"
-      , Atts.style
+      bottomStyle
+      [ Html.text txt ]
+
+
+bottomStyle : List (Html.Attribute msg)
+bottomStyle =
+    [ Atts.class "noselect"
+    , Atts.style
         [ "position" => "absolute"
         -- , "width" => "5%"
         -- , "height" => "5%"
         , "bottom" => px 10
         , "left" => px 10
         ]
-      ]
-      [ Html.text txt ]
+    ]
 
 
 ---------------------------------------------------
@@ -309,7 +341,7 @@ viewSideDiv win model children =
       -- events here as well; I was not able to obtain this behaviour top-level
       -- (seemed like the event propagation didn't work?)
       , Atts.attribute "tabindex" "1"
-      , globalKeyDown model.ctrl
+      , globalKeyDown model
       , globalKeyUp
       ]
     topChildren = [viewSideMenu win model]
@@ -869,10 +901,31 @@ offsetHeight =
 ---------------------------------------------------
 
 
-globalKeyDown
+globalKeyDown : M.Model -> Html.Attribute Msg
+globalKeyDown model =
+    case model.command of
+        Nothing -> mainKeyDown model.ctrl
+        Just _ -> cmdKeyDown
+
+
+cmdKeyDown : Html.Attribute Msg
+cmdKeyDown =
+  let
+    tag code = case code of
+      8 -> CommandBackspace
+      9 -> CommandComplete
+      13 -> CommandEnter
+      27 -> CommandEscape
+      _ -> CommandChar (Char.toLower <| Char.fromCode code)
+      -- _ -> Debug.crash <| toString (code, Char.fromCode code, Char.toLower <| Char.fromCode code)
+  in
+    onKeyDown tag
+
+
+mainKeyDown
   : Bool -- ^ CTRL down?
   -> Html.Attribute Msg
-globalKeyDown ctrl =
+mainKeyDown ctrl =
   let
     tag code = case code of
       -- "PgUp" and "PgDown"
@@ -912,8 +965,7 @@ globalKeyDown ctrl =
       -- "e"
       69 -> EditLabel
 
-      -- "ctrl" (really "shift" right now)
-      -- 17 -> CtrlDown
+      -- "ctrl"
       17 -> CtrlDown
 
       -- "c"
@@ -931,6 +983,12 @@ globalKeyDown ctrl =
         then Undo
         else Redo
 
+      -- ";" ":"
+      32 -> CommandStart
+
+--       -- "enter"
+--       13 -> CommandEnter
+
       _  -> Msg.dummy
   in
     onKeyDown tag
@@ -941,8 +999,7 @@ globalKeyUp =
   let
     tag code = case code of
 
-      -- "ctrl" ("shift")
-      -- 17 -> CtrlUp
+      -- "ctrl"
       17 -> CtrlUp
 
       _  -> Msg.dummy

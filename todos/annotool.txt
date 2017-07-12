@@ -8,7 +8,6 @@ QUESTIONS:
 
 TODO:
 * Show leaves in different color
-* Implement scripting window
 * Check if in your code, "display = flex" is used for something
 * Make the connections show depending on which window is in focus
 * Based on the elm-lang online editor (see e.g.
@@ -28,6 +27,7 @@ CANCELLED:
 
 
 DONE:
+* Implement scripting window
 * When a node is deleted, the corresponding links should be deleted as well!
 * Implement undo/redo (max history specified in the config?)
 * Make it possible to re-parse a given sentence.

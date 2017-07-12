@@ -1,10 +1,12 @@
-This file summarizes the most important changes that should be incorporated
-before the summer holidays.
+This file summarizes the most important tasks that should be carried out and
+changes that should be incorporated before the summer holidays.
+
 
 
 # Marking links with different attribute values
 
-We will have to have this one anyway, so it's quite a high priority.
+It's quite a high priority.
+
 
 
 # Pre-processing
@@ -16,17 +18,12 @@ easily replicate this behavior when parsing the 100,000-words part of the
 corpus.
 
 
+
 # Rule-based engine
 
 For the moment, to automatically deepen the trees. The changes should be visible
 and each one of them should be manually validated by the annotator.
 
-
-# Question-answer windows 
-
-It would be very useful to have, in the long run, an implementation of something
-like pop-up windows with questions and pre-defined sets of answers. This would
-allow to perform, e.g., the validation mentioned above (#rule-based engine).
 
 
 # Other parsing engines
@@ -44,12 +41,13 @@ which satisfies the highest number of constraints. Not sure if this would be
 really useful in practice, though.
 
 
-# Custom-parsing engine
 
-This one would be nice...  Why don't we reimplement something nice?
+# Annotation guidelines
 
-This is something I can do before the summer vacations, and probably not
-afterwards, which is why it made it to this list here.
+Thoroughly read the annotation guidelines for:
+* FTB 
+* Sequoia
+
 
 
 # Various
@@ -57,4 +55,30 @@ afterwards, which is why it made it to this list here.
 Various minor things which would be nice to have before holidays:
 * Show leaves in different color
 * Mark non-projective trees "en rouge/rose"
-* Implement scripting window
+
+
+
+
+
+
+
+---------------------------------------------
+-- Less important
+---------------------------------------------
+
+
+
+# Question-answer windows
+
+It would be very useful to have, in the long run, an implementation of something
+like pop-up windows with questions and pre-defined sets of answers. This would
+allow to perform, e.g., the validation mentioned above (#rule-based engine).
+
+
+
+# Custom-parsing engine
+
+This one would be nice...  Why don't we reimplement something nice?
+
+This is something I can do before the summer vacations, and probably not
+afterwards, which is why it made it to this list here.
