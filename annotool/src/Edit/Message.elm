@@ -34,6 +34,7 @@ type Msg
   | DragEnd Position
   | Select M.Focus M.NodeId
   | SelectTree M.Focus M.TreeId
+  | SelectLink M.Link
   | Focus M.Focus
   | Resize Window.Size -- ^ The height and width of the entire window
   | Increase Bool Bool -- ^ Change the proportions of the window
@@ -141,6 +142,10 @@ update msg model =
 
     -- SelectTree win treeId -> idle <| model
     SelectTree win treeId -> idle <| M.moveCursorTo win treeId model
+
+    SelectLink link -> idle <|
+      let newLink = if Just link == model.selLink then Nothing else Just link
+      in {model | selLink = newLink}
 
     Next -> idle <| M.moveCursor True model
 

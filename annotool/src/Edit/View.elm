@@ -720,8 +720,13 @@ viewLink model (from, to) =
 viewLinkDir
    : M.Model
   -> (M.Window, M.Window)
+     -- ^ The (top, bottom) windows
   -> (Position -> Maybe Position, Position -> Maybe Position)
+     -- ^ Shifting functions, which calculate the absolute positions for the
+     -- corresponding (top/bottom) workspaces (return `Nothing` when they go
+     -- beyond their workspaces)
   -> (M.Addr, M.Addr)
+     -- ^ (from, to) addresses
   -> List (Html.Html Msg)
 viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to) =
   let
@@ -748,14 +753,41 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to) =
     case (begPos, endPos) of
       (Just p, Just q) ->
         let
-          v1 = trimBeg Cfg.linkTailDist
-            <| trimEnd (first Cfg.linkHeadDist)
-            <| {beg=p, end=q}
-          v2 = trimEnd (second Cfg.linkHeadDist) {beg=p, end=q}
+          trimLine = trimBeg Cfg.linkTailDist << trimEnd Cfg.linkHeadDist
+          midCirc = {x = (p.x + q.x) // 2, y = (p.y + q.y) // 2}
+          endCirc = (trimEnd Cfg.linkHeadDist2 {beg=p, end=q}).end
+          lin1 = trimLine <| {beg=p, end=midCirc}
+          lin2 = trimLine <| {beg=midCirc, end=endCirc}
         in
-          [ viewLine lineCfg v1.beg v1.end
-          , drawCircle circleCfg v2.end ]
+          [ viewLine lineCfg lin1.beg lin1.end
+          , viewLine lineCfg lin2.beg lin2.end
+          , drawCircle circleCfg endCirc
+          , drawLinkCircle model (from, to) midCirc ]
       _ -> []
+
+
+-- | Draw the circle which represents the relation.
+drawLinkCircle
+    : M.Model
+    -> M.Link
+    -> Position
+    -> Html.Html Msg
+drawLinkCircle model link at =
+  let
+    cfg0 = { defCircleCfg
+      | opacity = Cfg.linkCircleOpacity
+      , color = Cfg.linkCircleColor
+      , height = Cfg.linkCircleRadius
+      , width = Cfg.linkCircleRadius }
+    cfg = if model.selLink == Just link
+      then {cfg0 | color = Cfg.linkCircleSelectColor}
+      else cfg0
+  in
+    Html.div
+      [ circleStyle cfg at
+      , Events.onClick (SelectLink link)
+      ]
+      []
 
 
 ---------------------------------------------------
@@ -781,20 +813,20 @@ defCircleCfg =
 
 
 drawCircle : CircleCfg -> Position -> Html.Html msg
-drawCircle cfg at =
-  Html.div
-    [ Atts.style
-        [ "background-color" => cfg.color
-        , "opacity" => cfg.opacity
-        , "width" => px cfg.width
-        , "height" => px cfg.height
-        , "border-radius" => "50%"
-        , "position" => "absolute"
-        , "left" => px (at.x - cfg.width // 2)
-        , "top" => px (at.y - cfg.height // 2)
-        ]
-    ]
-    []
+drawCircle cfg at = Html.div [circleStyle cfg at] []
+
+
+circleStyle : CircleCfg -> Position -> Html.Attribute msg
+circleStyle cfg at = Atts.style
+  [ "background-color" => cfg.color
+  , "opacity" => cfg.opacity
+  , "width" => px cfg.width
+  , "height" => px cfg.height
+  , "border-radius" => "50%"
+  , "position" => "absolute"
+  , "left" => px (at.x - cfg.width // 2)
+  , "top" => px (at.y - cfg.height // 2)
+  ]
 
 
 ---------------------------------------------------
@@ -1037,7 +1069,8 @@ blockKeyDownEvents =
 
 
 -- | Position a given tree. This function calculates the positions of the
--- individual nodes in the given tree.
+-- individual nodes in the given tree, based on their widths (see also
+-- `R.withWidth`).
 positionTree : Position -> R.Tree (M.Node, R.Width) -> R.Tree (M.Node, Position)
 positionTree pos (R.Node (node, rootWidth) subTrees) =
   let

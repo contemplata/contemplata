@@ -174,6 +174,9 @@ type alias Model =
   -- links between the nodes
   , links : S.Set Link
 
+  -- | Selected link (if any)
+  , selLink : Maybe Link
+
   -- window dimensions
   , dim : Dim
 
@@ -526,7 +529,8 @@ connectHelp {nodeFrom, nodeTo, focusTo} model =
 updateSelection : Model -> Model
 updateSelection =
   updateSelection_ Top >>
-  updateSelection_ Bot
+  updateSelection_ Bot >>
+  updateLinkSelection
 
 
 -- | Update the selection in the given window.
@@ -550,6 +554,34 @@ updateSelection_ focus model =
       }
   in
     Lens.set wlen newWin model
+
+
+-- | Update the relation-related selection.
+updateLinkSelection : Model -> Model
+updateLinkSelection model =
+
+  let
+
+    inWin focus (treeId, nodeId) =
+      let
+        win = selectWin focus model
+        tree = getTree win.tree model
+      in
+        win.tree == treeId && Util.isJust (getNode_ nodeId tree)
+
+    inTop = inWin Top
+    inBot = inWin Bot
+    inView (from, to) =
+      (inTop from && inBot to) ||
+      (inBot from && inTop to)
+
+    newLink = case model.selLink of
+      Nothing -> Nothing
+      Just x -> Util.guard inView x
+
+  in
+
+    {model | selLink = newLink}
 
 
 ---------------------------------------------------

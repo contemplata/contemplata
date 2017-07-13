@@ -1,6 +1,6 @@
 module Util exposing
     ( split, catMaybes, find, unless, mappend, guard, and
-    , mapAccumL, average, single, px
+    , mapAccumL, average, single, px, isJust
     -- * JSON
     , encodeMaybe
     )
@@ -79,6 +79,12 @@ guard : (a -> Bool) -> a -> Maybe a
 guard p x = case p x of
   False -> Nothing
   True  -> Just x
+
+
+isJust : Maybe a -> Bool
+isJust x = case x of
+  Nothing -> False
+  _  -> True
 
 
 and : List Bool -> Bool

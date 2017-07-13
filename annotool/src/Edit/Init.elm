@@ -50,6 +50,7 @@ mkEdit fileId file =
       , bot = bot
       , focus = Top
       , links = file.linkSet
+      , selLink = Nothing
       , dim = dim
       , ctrl = False
       -- , testInput = ""

@@ -37,7 +37,7 @@ and each one of them should be manually validated by the annotator.
 NOTE: JY would prefer that (i) first the annotator corrects all the trees, (ii)
 in the second phase, deepening.
 
-NOTE: in any case, it must be done after the trees are corrected.do it after 
+NOTE: in any case, it must be done after the trees are corrected.
 
 
 

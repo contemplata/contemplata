@@ -3,7 +3,8 @@ module Config exposing
   -- , testTree1, testTree2, testTree3, testTree4, testTree5
   , increaseSpeed, editLabelName, dmzSize
   , linkDasharray, linkWidth, linkOpacity
-  , linkHeadSize, linkHeadDist, linkTailDist
+  , linkCircleOpacity, linkCircleColor, linkCircleRadius, linkCircleSelectColor
+  , linkHeadSize, linkHeadDist, linkHeadDist2, linkTailDist
   , socketServer
   -- Main menu
   , menuMaxWidth
@@ -120,12 +121,36 @@ linkHeadSize : Int
 linkHeadSize = 15
 
 
-linkHeadDist : (Int, Int)
-linkHeadDist = (30, 20)
+-- linkHeadDist : (Int, Int)
+-- linkHeadDist = (30, 20)
+
+
+linkHeadDist : Int
+linkHeadDist = 15
+
+
+linkHeadDist2 : Int
+linkHeadDist2 = 20
 
 
 linkTailDist : Int
 linkTailDist = 15
+
+
+linkCircleOpacity : String
+linkCircleOpacity = "0.8"
+
+
+linkCircleColor : String
+linkCircleColor = "grey"
+
+
+linkCircleSelectColor : String
+linkCircleSelectColor = "#BC0000"
+
+
+linkCircleRadius : Int
+linkCircleRadius = 25
 
 
 ---------------------------------------------------
