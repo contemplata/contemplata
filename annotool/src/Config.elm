@@ -1,7 +1,7 @@
 module Config exposing
   ( stdWidth, stdMargin, nodeHeight, moveDown, sideSpace, sideMenuHeight
   -- , testTree1, testTree2, testTree3, testTree4, testTree5
-  , increaseSpeed, editLabelName, dmzSize
+  , increaseSpeed, windowName, editLabelName, dmzSize
   , linkDasharray, linkWidth, linkOpacity
   , linkCircleOpacity, linkCircleColor, linkCircleRadius, linkCircleSelectColor
   , linkHeadSize, linkHeadDist, linkHeadDist2, linkTailDist
@@ -98,6 +98,13 @@ editLabelName : Bool -> String
 editLabelName flag = case flag of
   True  -> "topEdit"
   False -> "botEdit"
+
+
+-- | The name of the main editing windows.
+windowName : Bool -> String
+windowName flag = case flag of
+  True  -> "top"
+  False -> "bot"
 
 
 ---------------------------------------------------

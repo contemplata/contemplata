@@ -143,9 +143,22 @@ update msg model =
     -- SelectTree win treeId -> idle <| model
     SelectTree win treeId -> idle <| M.moveCursorTo win treeId model
 
-    SelectLink link -> idle <|
-      let newLink = if Just link == model.selLink then Nothing else Just link
-      in {model | selLink = newLink}
+    SelectLink link ->
+      let
+        newLink =
+          if Just link == model.selLink
+          then Nothing
+          else Just link
+        newModel = {model | selLink = newLink}
+        target = case model.focus of
+          M.Top -> Cfg.windowName True
+          M.Bot -> Cfg.windowName False
+      in
+        ( newModel
+        , Task.attempt
+            (\_ -> dummy)
+            (Dom.focus target)
+        )
 
     Next -> idle <| M.moveCursor True model
 

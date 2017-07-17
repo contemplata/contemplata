@@ -1,4 +1,7 @@
 TODAY:
+* When the smaller link-related circle is selected, keyboard becomes unavailable
+* A possibility to connect a relation with a third node (signal)
+* Menu should be always visible in the top window
 
 
 QUESTIONS:
@@ -27,6 +30,9 @@ CANCELLED:
 
 
 DONE:
+* When 'd' is used, empty actions are stored on the history <- solved
+* When the (link-related) circles are selected, keyboard shortcuts should be available
+* When 'd' (delete), the selected relation is deleted first
 * Implement scripting window
 * When a node is deleted, the corresponding links should be deleted as well!
 * Implement undo/redo (max history specified in the config?)

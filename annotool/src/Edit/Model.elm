@@ -302,8 +302,7 @@ freezeHist model =
   let
     histSize = 250 -- should be in Config, but Config relies on the model...
     newHist = L.take histSize (model.undoLast :: model.undoHist)
-  in
-  case model.undoLast of
+  in case model.undoLast of
     [] -> model
     _  -> { model
               | undoHist = newHist
@@ -930,7 +929,9 @@ procSel f focus model =
     tree = getTree win.tree model
     newTree = f (selAll win) tree
   in
-    updateTree win.tree (\_ -> newTree) model
+    if tree /= newTree
+    then updateTree win.tree (\_ -> newTree) model
+    else model
 
 
 ---------------------------------------------------
@@ -938,11 +939,18 @@ procSel f focus model =
 ---------------------------------------------------
 
 
--- | Delete selected nodes in a given window.
+-- | Delete selected link or nodes in a given window.
+-- Priority is given to links.
 deleteSel : Focus -> Model -> Model
-deleteSel =
-  let f ids t = L.foldl deleteNode t (S.toList ids)
-  in  procSel f
+deleteSel focus model =
+  let
+    f ids t = L.foldl deleteNode t (S.toList ids)
+  in
+    case model.selLink of
+      Nothing -> procSel f focus model
+      Just x -> deleteLinks
+        (S.singleton x)
+        {model | selLink = Nothing}
 
 
 -- | Delete a given node, provided that it is not a root.

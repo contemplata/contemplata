@@ -33,6 +33,11 @@ view model =
         [ "width" => "100%"
         , "height" => "100%"
         ]
+
+    -- register the keyboard events from top-level
+    , Atts.attribute "tabindex" "1"
+    , globalKeyDown model
+    , globalKeyUp
     ]
     ( [ stylesheet
       , viewWindow M.Top model
@@ -56,24 +61,29 @@ stylesheet =
     Html.node tag attrs children
 
 
--- | The view of the top window.
+-- | The view of the top/bottom window.
 viewWindow : M.Focus -> M.Model -> Html.Html Msg
 viewWindow win model =
   Html.div
   [ backMouseDown win
   , winOnFocus win
+
   -- , topOnResize
 --   , case win of
 --       M.Top -> Atts.autofocus True
 --       M.Bot -> Atts.autofocus False
-  , case win of
-      M.Top -> Atts.id "top"
-      M.Bot -> Atts.id "bot"
 
-  -- @tabindex required to make the div register keyboard events
+--   , case win of
+--       M.Top -> Atts.id "top"
+--       M.Bot -> Atts.id "bot"
+
+  , Atts.id <| case win of
+      M.Top -> Cfg.windowName True
+      M.Bot -> Cfg.windowName False
+
+  -- @tabindex required to make the div propagate the keyboard events
+  -- (see the `view` function)
   , Atts.attribute "tabindex" "1"
-  , globalKeyDown model
-  , globalKeyUp
 
   , Atts.style
     [ "position" => "absolute"
@@ -92,10 +102,15 @@ viewWindow win model =
     , "overflow" => "hidden"
     , "background-color" => backColor win model
     , "opacity" => "1.0"
+    -- , "border" => "1px black solid"
+
     -- z-index important because of its interactions with how the edges are
     -- drawn.
     , "z-index" => "-1"
-    -- , "border" => "1px black solid"
+
+    -- make the outline invisible (the fact that the window is in focus is
+    -- visible anyway)
+    , "outline" => "0"
     ]
   ]
 
@@ -336,13 +351,12 @@ viewSideDiv win model children =
             M.Top -> "top" => "0"
             M.Bot -> "bottom" => "0"
         , "overflow" => "auto"
+        -- make the (focus-related) outline invisible
+        , "outline" => "0"
         ]
-      -- repeated from `viewWindow`, since we need to register the keyboard
-      -- events here as well; I was not able to obtain this behaviour top-level
-      -- (seemed like the event propagation didn't work?)
+      -- @tabindex required to make the div propagate the keyboard events
+      -- (see the `view` function)
       , Atts.attribute "tabindex" "1"
-      , globalKeyDown model
-      , globalKeyUp
       ]
     topChildren = [viewSideMenu win model]
   in
@@ -786,6 +800,9 @@ drawLinkCircle model link at =
     Html.div
       [ circleStyle cfg at
       , Events.onClick (SelectLink link)
+
+      -- @tabindex required to make the div register keyboard events
+      -- , Atts.attribute "tabindex" "1"
       ]
       []
 
