@@ -680,14 +680,15 @@ viewLinks : M.Model -> List (Html.Html Msg)
 viewLinks model =
   L.concatMap
     (viewLink model)
-    (S.toList model.links)
+    (D.toList model.links)
 
 
 viewLink
    : M.Model
-  -> (M.Addr, M.Addr)
+  -- -> (M.Addr, M.Addr)
+  -> (M.Link, M.LinkData)
   -> List (Html.Html Msg)
-viewLink model (from, to) =
+viewLink model ((from, to), linkData) =
   let
     top = model.top
     bot = model.bot
@@ -720,13 +721,14 @@ viewLink model (from, to) =
       top.tree == first from &&
       bot.tree == first to
     then
-      viewLinkDir model (top, bot) (trimTop, trimBot) (from, to)
+      viewLinkDir model (top, bot) (trimTop, trimBot) (from, to, linkData.signalAddr)
     else if
       bot.tree == first from &&
       top.tree == first to &&
       top.tree /= bot.tree
     then
-      viewLinkDir model (bot, top) (trimBot, trimTop) (from, to)
+      -- viewLinkDir model (top, bot) (trimTop, trimBot) (from, to, linkData.signalAddr)
+      viewLinkDir model (bot, top) (trimBot, trimTop) (from, to, linkData.signalAddr)
     else
       []
 
@@ -739,32 +741,48 @@ viewLinkDir
      -- ^ Shifting functions, which calculate the absolute positions for the
      -- corresponding (top/bottom) workspaces (return `Nothing` when they go
      -- beyond their workspaces)
-  -> (M.Addr, M.Addr)
-     -- ^ (from, to) addresses
+  -> (M.Addr, M.Addr, Maybe M.Addr)
+     -- ^ (from, to, maybe signal) addresses
   -> List (Html.Html Msg)
-viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to) =
+viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
   let
+
     nodePos1 nodeId pos tree = nodePos nodeId
       <| positionTree pos
       <| R.withWidth Cfg.stdWidth Cfg.stdMargin tree
-    begPos = Maybe.andThen shiftTop <| nodePos1
-      (second from)
-      (M.getPosition top)
-      (M.getTree top.tree model)
-    endPos = Maybe.andThen shiftBot <| nodePos1
-      (second to)
-      (M.getPosition bot)
-      (M.getTree bot.tree model)
+    posIn addr win shift = Maybe.andThen shift <| nodePos1
+      (second addr)
+      (M.getPosition win)
+      (M.getTree win.tree model)
+
+    fromPos =
+      if first from == top.tree
+      then posIn from top shiftTop
+      else posIn from bot shiftBot
+    toPos = -- posIn to bot shiftBot
+      if first to == bot.tree
+      then posIn to bot shiftBot
+      else posIn to top shiftTop
+    signPos = case signalMay of
+      Nothing -> Nothing
+      Just addr ->
+        if first addr == bot.tree
+        then posIn addr bot shiftBot
+        else posIn addr top shiftTop
+
     lineCfg = { defLineCfg
       | strokeDasharray = Just Cfg.linkDasharray
       , strokeWidth = Cfg.linkWidth
       , opacity = Cfg.linkOpacity }
+
     circleCfg = { defCircleCfg
       | opacity = Cfg.linkOpacity
       , width = Cfg.linkHeadSize
       , height = Cfg.linkHeadSize }
+
   in
-    case (begPos, endPos) of
+
+    case (fromPos, toPos) of
       (Just p, Just q) ->
         let
           trimLine = trimBeg Cfg.linkTailDist << trimEnd Cfg.linkHeadDist
@@ -772,12 +790,67 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to) =
           endCirc = (trimEnd Cfg.linkHeadDist2 {beg=p, end=q}).end
           lin1 = trimLine <| {beg=p, end=midCirc}
           lin2 = trimLine <| {beg=midCirc, end=endCirc}
+          lin3May = case signPos of
+            Nothing -> Nothing
+            Just z -> Just <| trimLine <| {beg=midCirc, end=z}
         in
           [ viewLine lineCfg lin1.beg lin1.end
           , viewLine lineCfg lin2.beg lin2.end
           , drawCircle circleCfg endCirc
           , drawLinkCircle model (from, to) midCirc ]
+          ++ case lin3May of
+               Nothing -> []
+               Just lin3 -> [viewLine lineCfg lin3.beg lin3.end]
       _ -> []
+
+
+-- viewLinkDir
+--    : M.Model
+--   -> (M.Window, M.Window)
+--      -- ^ The (top, bottom) windows
+--   -> (Position -> Maybe Position, Position -> Maybe Position)
+--      -- ^ Shifting functions, which calculate the absolute positions for the
+--      -- corresponding (top/bottom) workspaces (return `Nothing` when they go
+--      -- beyond their workspaces)
+--   -> (M.Addr, M.Addr)
+--      -- ^ (from, to) addresses
+--   -> List (Html.Html Msg)
+-- viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to) =
+--   let
+--     nodePos1 nodeId pos tree = nodePos nodeId
+--       <| positionTree pos
+--       <| R.withWidth Cfg.stdWidth Cfg.stdMargin tree
+--     begPos = Maybe.andThen shiftTop <| nodePos1
+--       (second from)
+--       (M.getPosition top)
+--       (M.getTree top.tree model)
+--     endPos = Maybe.andThen shiftBot <| nodePos1
+--       (second to)
+--       (M.getPosition bot)
+--       (M.getTree bot.tree model)
+--     lineCfg = { defLineCfg
+--       | strokeDasharray = Just Cfg.linkDasharray
+--       , strokeWidth = Cfg.linkWidth
+--       , opacity = Cfg.linkOpacity }
+--     circleCfg = { defCircleCfg
+--       | opacity = Cfg.linkOpacity
+--       , width = Cfg.linkHeadSize
+--       , height = Cfg.linkHeadSize }
+--   in
+--     case (begPos, endPos) of
+--       (Just p, Just q) ->
+--         let
+--           trimLine = trimBeg Cfg.linkTailDist << trimEnd Cfg.linkHeadDist
+--           midCirc = {x = (p.x + q.x) // 2, y = (p.y + q.y) // 2}
+--           endCirc = (trimEnd Cfg.linkHeadDist2 {beg=p, end=q}).end
+--           lin1 = trimLine <| {beg=p, end=midCirc}
+--           lin2 = trimLine <| {beg=midCirc, end=endCirc}
+--         in
+--           [ viewLine lineCfg lin1.beg lin1.end
+--           , viewLine lineCfg lin2.beg lin2.end
+--           , drawCircle circleCfg endCirc
+--           , drawLinkCircle model (from, to) midCirc ]
+--       _ -> []
 
 
 -- | Draw the circle which represents the relation.

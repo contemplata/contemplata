@@ -3,6 +3,7 @@ module Edit.Model exposing
   -- Data types:
     TreeMap, Sent, FileId, File, NodeId, TreeId
   , Node(..), NodeTyp(..), Link, Addr, Command
+  , LinkData
   , isNode, isLeaf
   -- Model types:
   , Model, Dim, Window, SideWindow(..), Drag, Focus(..)
@@ -76,7 +77,7 @@ type alias FileId = String
 type alias File =
   { treeMap : TreeMap
   , turns : List Turn
-  , linkSet : S.Set Link }
+  , linkSet : D.Dict Link LinkData }
 
 
 -- | An original sentence.
@@ -149,6 +150,37 @@ wellFormed (R.Node x ts) =
 
 
 ---------------------------------------------------
+-- LinkData
+---------------------------------------------------
+
+
+-- | Data related to a link.
+type alias LinkData =
+  { signalAddr : Maybe Addr
+    -- ^ Address of the corresponding signal, if any
+  }
+
+
+-- | The default link data value.
+linkDataDefault : LinkData
+linkDataDefault =
+  { signalAddr = Nothing
+  }
+
+
+-- | Switch the signal:
+--
+-- * If the same signal is already assigned to the link, switch it off
+-- * Otherwise, add the new signal to the link (even if another signal
+--   was previously set)
+switchSignal : Addr -> LinkData -> LinkData
+switchSignal signal r =
+  if Just signal == r.signalAddr
+  then {r | signalAddr = Nothing}
+  else {r | signalAddr = Just signal}
+
+
+---------------------------------------------------
 -- Model-related types
 ---------------------------------------------------
 
@@ -172,7 +204,7 @@ type alias Model =
   -- , dragOn : Maybe Focus
 
   -- links between the nodes
-  , links : S.Set Link
+  , links : D.Dict Link LinkData
 
   -- | Selected link (if any)
   , selLink : Maybe Link
@@ -277,9 +309,9 @@ type HistAtom
       -- ^ The tree to restore
     }
   | LinkModif
-    { addLinkSet : S.Set Link
+    { addLinkSet : D.Dict Link LinkData
       -- ^ The links to add
-    , delLinkSet : S.Set Link
+    , delLinkSet : D.Dict Link LinkData
       -- ^ The links to remove
     }
 
@@ -323,7 +355,7 @@ applyAtom histAtom model =
         (newModel, newAtom)
     LinkModif r ->
       let
-        newLinks = S.union r.addLinkSet <| S.diff model.links r.delLinkSet
+        newLinks = D.union r.addLinkSet <| D.diff model.links r.delLinkSet
         newModel = {model | links = newLinks}
         newAtom = LinkModif {addLinkSet = r.delLinkSet, delLinkSet = r.addLinkSet}
       in
@@ -434,11 +466,13 @@ updateTree treeId update model =
     delNodes = S.diff (nodesIn oldTree) (nodesIn newTree)
 
     -- and delete the corresponding links, if needed
-    isToDelete (from, to) =
+    isToDelete ((from, to), linkData_) =
       let toDel (trId, ndId) = trId == treeId && S.member ndId delNodes
       in  toDel from || toDel to
-    delLinks = L.filter isToDelete <| S.toList model.links
-    linkModif = deleteLinks (S.fromList delLinks)
+    delLinks = L.filter isToDelete <| D.toList model.links
+    -- linkModif = deleteLinks (S.fromList delLinks)
+    linkModif = deleteLinks (S.fromList <| L.map Tuple.first delLinks)
+
 
   in
 
@@ -474,23 +508,46 @@ nodesIn = S.fromList << L.map (Lens.get nodeId) << R.flatten
 
 -- | Delete the set of links.
 deleteLinks : S.Set Link -> Model -> Model
-deleteLinks delLinks =
-  if S.isEmpty delLinks
-  then identity
-  else Lens.update links (\s -> S.diff s delLinks)
-    >> saveModif (LinkModif {addLinkSet = delLinks, delLinkSet = S.empty})
+deleteLinks delLinks model =
+  let
+    linkData link = case D.get link model.links of
+      Nothing -> Nothing
+      Just data -> Just (link, data)
+    oldLinks = D.fromList <| Util.catMaybes <| L.map linkData (S.toList delLinks)
+  in
+    if S.isEmpty delLinks
+    then model
+    else Lens.update links (\s -> D.diff s oldLinks) model
+      |> saveModif (LinkModif {addLinkSet = oldLinks, delLinkSet = D.empty})
+
+
+-- -- | Add links.
+-- connect : Model -> Model
+-- connect model = model |>
+--   case (model.focus, model.top.selMain, model.bot.selMain) of
+--     (Top, Just topNode, Just botNode) ->
+--       connectHelp {nodeFrom = botNode, nodeTo = topNode, focusTo = Top}
+--     (Bot, Just topNode, Just botNode) ->
+--       connectHelp {nodeFrom = topNode, nodeTo = botNode, focusTo = Bot}
+--     _ -> identity
+--     -- _ -> Debug.crash "ALALALAL"
 
 
 -- | Add links.
 connect : Model -> Model
-connect model = model |>
-  case (model.focus, model.top.selMain, model.bot.selMain) of
-    (Top, Just topNode, Just botNode) ->
-      connectHelp {nodeFrom = botNode, nodeTo = topNode, focusTo = Top}
-    (Bot, Just topNode, Just botNode) ->
+connect model =
+  case model.selLink of
+    Nothing -> connectNodes model
+    Just link -> connectSignal link model.focus model
+
+
+-- | Add links.
+connectNodes : Model -> Model
+connectNodes model = model |>
+  case (model.top.selMain, model.bot.selMain) of
+    (Just topNode, Just botNode) ->
       connectHelp {nodeFrom = topNode, nodeTo = botNode, focusTo = Bot}
     _ -> identity
-    -- _ -> Debug.crash "ALALALAL"
 
 
 type alias LinkInfo =
@@ -508,13 +565,53 @@ connectHelp {nodeFrom, nodeTo, focusTo} model =
     treeFrom = (selectWin focusFrom model).tree
     treeTo = (selectWin focusTo model).tree
     link = ((treeFrom, nodeFrom), (treeTo, nodeTo))
-    (alter, modif) = case S.member link model.links of
-      False ->
-        ( S.insert link
-        , LinkModif {addLinkSet = S.empty, delLinkSet = S.singleton link} )
-      True  ->
-        ( S.remove link
-        , LinkModif {delLinkSet = S.empty, addLinkSet = S.singleton link} )
+    (alter, modif) = case D.get link model.links of
+      Nothing ->
+        ( D.insert link linkDataDefault
+        , LinkModif {addLinkSet = D.empty, delLinkSet = D.singleton link linkDataDefault} )
+      Just linkData ->
+        ( D.remove link
+        , LinkModif {delLinkSet = D.empty, addLinkSet = D.singleton link linkData} )
+  in
+    Lens.update links alter model |> saveModif modif
+
+
+-- | Connect a link to a signal.
+connectSignal
+  : Link   -- ^ The link to connect with a signal
+  -> Focus -- ^ Focus on the window with the signal
+  -> Model
+  -> Model
+connectSignal link focus model =
+  let
+    win = selectWin focus model
+    treeId = win.tree
+  in
+    case win.selMain of
+      Nothing -> model
+      Just nodeId -> addSignal link (treeId, nodeId) model
+
+
+-- | Connect a link to a signal.
+addSignal
+  : Link   -- ^ The link to connect with the signal
+  -> Addr  -- ^ The address of the signal
+  -> Model
+  -> Model
+addSignal link signal model =
+  let
+    (alter, modif) = case D.get link model.links of
+      Nothing ->
+        Debug.crash "addSignal: should never happen!"
+      Just oldData ->
+        let
+          newData = switchSignal signal oldData
+        in
+          ( D.insert link newData
+          , LinkModif
+              { delLinkSet = D.singleton link newData
+              , addLinkSet = D.singleton link oldData }
+          )
   in
     Lens.update links alter model |> saveModif modif
 
@@ -1539,8 +1636,16 @@ turnDecoder =
       (Decode.field "trees" treesDecoder)
 
 
-linkSetDecoder : Decode.Decoder (S.Set Link)
-linkSetDecoder = Decode.map S.fromList <| Decode.list linkDecoder
+-- linkSetDecoder : Decode.Decoder (D.Dict Link LinkData)
+-- linkSetDecoder = Decode.map D.fromList <| Decode.list linkDecoder
+linkSetDecoder : Decode.Decoder (D.Dict Link LinkData)
+linkSetDecoder =
+  let
+    pairDecoder = Decode.map2 (\link linkData -> (link, linkData))
+      (Decode.index 0 linkDecoder)
+      (Decode.index 1 linkDataDecoder)
+  in
+    Decode.map D.fromList <| Decode.list pairDecoder
 
 
 linkDecoder : Decode.Decoder Link
@@ -1548,6 +1653,12 @@ linkDecoder =
   Decode.map2 (\from to -> (from, to))
     (Decode.field "from" addrDecoder)
     (Decode.field "to" addrDecoder)
+
+
+linkDataDecoder : Decode.Decoder LinkData
+linkDataDecoder =
+  Decode.map (\x -> {signalAddr=x})
+    (Decode.field "signalAddr" (Decode.nullable addrDecoder))
 
 
 addrDecoder : Decode.Decoder Addr
@@ -1641,9 +1752,17 @@ encodeTurn turn =
       ]
 
 
-encodeLinkSet : S.Set Link -> Encode.Value
+-- encodeLinkSet : D.Dict Link LinkData -> Encode.Value
+-- encodeLinkSet = Encode.list << L.map encodeLink << S.toList
+encodeLinkSet : D.Dict Link LinkData -> Encode.Value
 encodeLinkSet =
-  Encode.list << L.map encodeLink << S.toList
+  let
+    encodePair (link, linkData) = Encode.list
+      [ encodeLink link
+      , encodeLinkData linkData ]
+      -- (encodeLink link, encodeLinkData linkData)
+  in
+    Encode.list << L.map encodePair << D.toList
 
 
 encodeLink : Link -> Encode.Value
@@ -1653,6 +1772,13 @@ encodeLink (from, to) =
     , ("from", encodeAddr from)
     , ("to", encodeAddr to)
     ]
+
+
+encodeLinkData : LinkData -> Encode.Value
+encodeLinkData x = Encode.object
+  [ ("tag", Encode.string "LinkData")
+  , ("signalAddr", Util.encodeMaybe encodeAddr x.signalAddr)
+  ]
 
 
 encodeAddr : Addr -> Encode.Value

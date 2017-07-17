@@ -1,6 +1,5 @@
 TODAY:
 * When the smaller link-related circle is selected, keyboard becomes unavailable
-* A possibility to connect a relation with a third node (signal)
 * Menu should be always visible in the top window
 
 
@@ -30,6 +29,7 @@ CANCELLED:
 
 
 DONE:
+* A possibility to connect a relation with a third node (signal)
 * When 'd' is used, empty actions are stored on the history <- solved
 * When the (link-related) circles are selected, keyboard shortcuts should be available
 * When 'd' (delete), the selected relation is deleted first
