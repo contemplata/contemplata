@@ -19,6 +19,7 @@ module Odil.Server.Types
 , File (..)
 , Turn (..)
 , Link (..)
+, LinkData (..)
 , Addr
 
 -- * JSON
@@ -94,7 +95,7 @@ data File = File
   , turns :: [Turn]
     -- ^ The list of turns in the file (we don't preserve the division on
     -- episodes and sections)
-  , linkSet :: S.Set Link }
+  , linkSet :: M.Map Link LinkData }
   deriving (Generic, Show, Eq)
 
 
@@ -119,6 +120,12 @@ data Link = Link
 type Addr = (TreeId, NodeId)
 
 
+-- | Additional data assigned to a link.
+data LinkData = LinkData
+  { signalAddr :: Maybe Addr
+  } deriving (Generic, Show, Eq)
+
+
 -----------
 -- Various
 -----------
@@ -139,6 +146,12 @@ instance JSON.ToJSON Node where
 
 instance JSON.FromJSON Link
 instance JSON.ToJSON Link where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+instance JSON.FromJSONKey Link
+instance JSON.ToJSONKey Link
+
+instance JSON.FromJSON LinkData
+instance JSON.ToJSON LinkData where
   toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
 instance JSON.FromJSON Turn

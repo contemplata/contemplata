@@ -232,7 +232,7 @@ run cmd =
       let file = Odil.File
             { treeMap = treeMap
             , turns = concat turns2
-            , linkSet = S.empty
+            , linkSet = M.empty
             }
       LBS.putStr (JSON.encode file)
 
