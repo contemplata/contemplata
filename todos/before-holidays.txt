@@ -97,6 +97,73 @@ On the first level, VP+arguments, on the second leve: VP+modifiers.
 QUESTION: what about the consistency w.r.t. subjects, which can be seen as
 arguments? In different terms, it is not possible to mark a verb with all its
 arguments, *subject included*, but not its modifiers.
+ANSWER (JY): during the meeting in July, it was decided that such cases are of
+no interest to us (i.e. do not happen).
+
+
+
+---------------------------------------------
+-- Meeting with Anaïs 18/07/2017
+---------------------------------------------
+
+# Re-analysis
+
+
+Check if it possible to re-parse the sentence with existing POS tags.
+
+# Event attributes
+
+* Tense: (enlever) -imperfect (ajouter) +zero +omni
+  In addition, rename: "tense" -> "time"
+
+Anaïs will let you know once the list is ready
+
+# The first experiment
+
+The idea behind the experiment (phase 1) is:
+* Correct the trees
+* Deepening (rules)
+* Annotating events (features not so important)
+
+Phase 2 (not a part of this first experiment):
+* Annotation of termporal relations
+* Annotation of signals (no features!)
+
+# Before the first experiment
+* Pre-processing 
+* Deepening rules
+* Put two copies of each file in the database (so that everybody sees directly what he/she is supposed to annotate)
+* Update the annotation tool disponible online
+* [pi] not taken into account <- look into this
+* show numbers of sentences (so that one can refer to them afterwards)
+* make it possible to re-analyze a part of the sentence
+* make it possible to parse a sentence *with POS tags*
+* can you make events more visible?
+
+# Perhaps?
+* consider token fusion?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
