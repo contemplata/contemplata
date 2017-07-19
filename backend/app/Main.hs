@@ -41,22 +41,32 @@ import qualified Odil.Stanford as Stanford
 
 
 data Command
+
     = Simplify FilePath
       -- ^ Parse and show the sentences in the Ancor XML file
-    | Preprocess
-      -- ^ Preprocess the sentence for parsing
-    | Process
-      -- ^ Ancor file -> ODIL (in JSON)
+
+    | Preprocess (Maybe FilePath)
+      -- ^ Preprocess the sentence for parsing; the optional argument specifies
+      -- the path to the external file with sentences to be removed
+
+    | Process (Maybe FilePath)
+      -- ^ Ancor file -> ODIL (in JSON); the optional argument specifies the
+      -- path to the external file with sentences to be removed
+
 --     | Penn2Odil
 --         FilePath -- ^ Penn file
 --         FilePath -- ^ File with original sentences
 --       -- ^ Convert a Penn file to a JSON file
+
     | Server FilePath String Int
       -- ^ Run the backend annotation server
+
     | NewDB FilePath
       -- ^ Create a new DB under a given path
+
     | AddFileDB Bool FilePath FilePath
       -- ^ Add a new file to a given DB
+
     | StatsDB FilePath
       -- ^ Print statistics related to the DB
 
@@ -76,11 +86,21 @@ simplifyOptions = Simplify
 
 
 preprocessOptions :: Parser Command
-preprocessOptions = pure Preprocess
+preprocessOptions = Preprocess
+  <$> (optional . strOption)
+        ( long "remove"
+       <> short 'r'
+       <> metavar "FILE"
+       <> help "" )
 
 
 processOptions :: Parser Command
-processOptions = pure Process
+processOptions = Process
+  <$> (optional . strOption)
+        ( long "remove"
+       <> short 'r'
+       <> metavar "FILE"
+       <> help "" )
 
 
 -- penn2odilOptions :: Parser Command
@@ -200,9 +220,12 @@ run cmd =
     Simplify ancorFile -> do
       file <- T.readFile ancorFile
       T.putStrLn . Show.showAncor . Parse.parseTrans $ file
-    Preprocess -> do
+    Preprocess rmFile -> do
       sentences <- T.lines <$> T.getContents
-      T.putStr . T.unlines . map Pre.prepare $ sentences
+      prepare <- Pre.prepare <$> case rmFile of
+        Nothing -> pure []
+        Just path -> Pre.readConfig path
+      T.putStr . T.unlines . map prepare $ sentences
 --     Penn2Odil pennPath origPath -> do
 --       penn <- Penn.parseForest <$> T.readFile pennPath
 --       orig <- T.lines <$> T.readFile origPath
@@ -211,7 +234,7 @@ run cmd =
 
     -- Read the ancor file from stdin and output the resulting
     -- ODIL file in the JSON format
-    Process -> do
+    Process rmFile -> do
       ancorFile <- T.getContents
       let ancor = Parse.parseTrans ancorFile
       (turns2, treeMap) <- flip State.runStateT M.empty $ do
@@ -219,7 +242,11 @@ run cmd =
           forM section $ \turn -> do
             treeList <- forM (Ancor.elems turn) $ \(mayWho, elem) -> do
               let sent = Show.showElem elem
-              penn <- liftIO $ Stanford.parseFR (Pre.prepare sent) >>= \case
+                  prepare = Pre.prepare []
+              prepare <- Pre.prepare <$> case rmFile of
+                Nothing -> pure []
+                Just path -> liftIO $ Pre.readConfig path
+              penn <- liftIO $ Stanford.parseFR (prepare sent) >>= \case
                 Nothing -> error "A problem occurred with the Stanford parser!"
                 Just x -> return x
               let odil = Penn.toOdilTree penn

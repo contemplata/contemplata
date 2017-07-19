@@ -1,3 +1,6 @@
+{-# LANGUAGE OverloadedStrings #-}
+
+
 -- | Pre-processing ancor file for parsing.
 
 
@@ -39,9 +42,19 @@ import qualified Odil.Ancor.IO.Show as S
 ---------------------------------------------------
 
 
+prepare :: ExtConfig -> T.Text -> T.Text
+prepare ext =
+  backup . remove . prepareBase
+  where
+    remove = T.pack . compile ext . T.unpack
+    backup x
+      | T.null x = "DUMMY"
+      | otherwise = x
+
+
 -- | Prepare a given sentence for parsing.
-prepare :: T.Text -> T.Text
-prepare
+prepareBase :: T.Text -> T.Text
+prepareBase
   = T.unwords
   . map S.showToken
   . retokenize
@@ -53,7 +66,7 @@ prepare
       . map complete
       . rmBruit
       . rmPause
-      -- . rmInaudible
+      . rmInaudible
       . joinAcronyms
       $ sent
     backup sent xs =
