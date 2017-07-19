@@ -1,0 +1,39 @@
+# we assume here that matching is case insensitive
+
+# Greetings
+allo
+UBS bonjour
+bonjour Monsieur
+bonjour Madame
+bonjour Prénom Nom
+bonjour Nom
+bonjour Prénom
+bonjour Prénom Nom
+salut Prénom Nom
+salut Prénom
+
+ouais d'accord
+très bien d'accord
+ah bon d'accord
+ah bon
+ah
+
+oui
+ouais
+non
+ben
+
+voilà
+
+s'il vous plait
+ 
+merci beaucoup Madame
+merci beaucoup
+
+hein alors
+hein
+
+ah pardon
+^pardon
+^et
+^donc
