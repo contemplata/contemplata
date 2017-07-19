@@ -45,6 +45,7 @@ library
                      -- needed because of `wreq`
                      , lens-aeson >= 1.0 && < 1.2 
                      -- , network-uri >= 2.6 && < 2.7
+                     , regex-applicative >= 0.3 && < 0.4
   default-language:    Haskell2010
 
 executable odil
