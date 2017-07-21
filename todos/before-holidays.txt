@@ -132,11 +132,10 @@ Phase 2 (not a part of this first experiment):
 # Before the first experiment
 * Deepening rules
 * Put two copies of each file in the database (so that everybody sees directly what he/she is supposed to annotate)
-* Update the annotation tool disponible online
+* Update the annotation tool available online
 * Show sentence IDs (so that one can refer to them afterwards)
 
 # Perhaps?
-* Make it possible to parse a sentence *with POS tags*
 * Make it possible to re-analyze a part of the sentence
 * Consider token fusion?
 * Can you make events more visible?
@@ -145,6 +144,7 @@ Phase 2 (not a part of this first experiment):
 * Pre-processing
   - [pi] not taken into account <- look into this
   - handle empty sentences <- not very nice solution, but works
+* Make it possible to parse a sentence *with POS tags*
 
 
 
