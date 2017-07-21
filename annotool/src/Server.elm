@@ -15,6 +15,11 @@ import Edit.Model as M
 ---------------------------------------------------
 
 
+type alias Orth = String
+type alias Pos = String
+
+
+
 type Request
   = GetFiles
     -- ^ Obtain the list of files
@@ -22,9 +27,11 @@ type Request
     -- ^ Request the contents of the given file
   | SaveFile M.FileId M.File
     -- ^ Request the contents of the given file
-  | ParseSent M.FileId M.TreeId (List String)
+  | ParseSent M.FileId M.TreeId (List Orth)
     -- ^ Parse the given list of words (the IDs are sent so that it can be
     -- checked on return if the user did not switch the file...)
+  | ParseSentPos M.FileId M.TreeId (List (Orth, Pos))
+    -- ^ Like `ParseSent`, but with POS tags
 
 
 encodeReq : Request -> String
@@ -52,6 +59,14 @@ encodeReqToVal req = case req of
          [ Encode.string fileId
          , Encode.int treeId
          , Encode.list (List.map Encode.string ws) ]
+      )
+    ]
+  ParseSentPos fileId treeId ws -> Encode.object
+    [ ("tag", Encode.string "ParseSentPos")
+    , ("contents", Encode.list
+         [ Encode.string fileId
+         , Encode.int treeId
+         , Encode.list (List.map encodePair ws) ]
       )
     ]
 
@@ -101,3 +116,7 @@ notificationDecoder =
 ---------------------------------------------------
 -- Utils
 ---------------------------------------------------
+
+
+encodePair : (String, String) -> Encode.Value
+encodePair (x, y) = Encode.list [Encode.string x, Encode.string y]

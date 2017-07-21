@@ -56,10 +56,12 @@ data Request
   = GetFiles
   | GetFile FileId
   | SaveFile FileId File
-  | ParseSent FileId TreeId [T.Text]
+  | ParseSent FileId TreeId [Stanford.Orth]
     -- ^ FileId and TreeId are sent there and back so that it
     -- can be checked that the user did not move elsewhere before
     -- he/she got the answer for this request
+  | ParseSentPos FileId TreeId [(Stanford.Orth, Stanford.Pos)]
+    -- ^ Similar to `ParseSent`, but with POS information
   deriving (Generic, Show)
 
 instance JSON.FromJSON Request
@@ -198,11 +200,27 @@ talk conn state = forever $ do
             WS.sendTextData conn . JSON.encode $ Notification msg
 
       Right (ParseSent fileId treeId ws) -> do
-        putStrLn "Parsing sentence..."
+        putStrLn "Parsing tokenized sentence..."
         treeMay <- Stanford.parseTokenizedFR ws
         case treeMay of
           Nothing -> do
             let msg = T.concat ["Could not parse: ", T.unwords ws]
+            T.putStrLn msg
+            WS.sendTextData conn . JSON.encode $ Notification msg
+          Just t -> do
+            let ret = ParseResult fileId treeId (Penn.toOdilTree t)
+            WS.sendTextData conn (JSON.encode ret)
+            let msg = T.concat ["Parsed successfully"]
+            T.putStrLn msg
+            WS.sendTextData conn . JSON.encode $ Notification msg
+
+      Right (ParseSentPos fileId treeId ws) -> do
+        putStrLn "Parsing tokenized+POSed sentence..."
+        treeMay <- Stanford.parsePosFR ws
+        case treeMay of
+          Nothing -> do
+            let ws' = flip map ws $ \(orth, pos) -> T.concat [orth, ":", pos]
+                msg = T.concat ["Could not parse: ", T.unwords ws']
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode $ Notification msg
           Just t -> do

@@ -49,6 +49,7 @@ type Msg
   | Add -- ^ Delete the selected nodes in the focused window
   | ChangeType -- ^ Change the type of the selected node
   | ParseSent  -- ^ Reparse the sentence in focus
+  | ParseSentPos -- ^ Reparse the sentence in focus, preserve POList (String, String)S tags
   | CtrlDown
   | CtrlUp
   | Connect
@@ -210,17 +211,26 @@ update msg model =
           M.Leaf {nodeVal} -> Just nodeVal
         words = List.reverse <| Util.catMaybes <| List.map word <| R.flatten tree
         req = Server.encodeReq (Server.ParseSent model.fileId treeId words)
-        save = WebSocket.send Cfg.socketServer req
+        send = WebSocket.send Cfg.socketServer req
       in
-        (model, save)
+        (model, send)
+
+    ParseSentPos ->
+      let
+        treeId = (M.selectWin model.focus model).tree
+        wordsPos = getWordPos (M.getTree treeId model)
+        req = Server.encodeReq (Server.ParseSentPos model.fileId treeId wordsPos)
+        send = WebSocket.send Cfg.socketServer req
+      in
+        (model, send)
 
     SaveFile ->
       let
         file = {treeMap = model.trees, turns = model.turns, linkSet = model.links}
         req = Server.encodeReq (Server.SaveFile model.fileId file)
-        save = WebSocket.send Cfg.socketServer req
+        send = WebSocket.send Cfg.socketServer req
       in
-        (model, save)
+        (model, send)
 
     Undo -> idle <| M.undo model
     Redo -> idle <| M.redo model
@@ -332,6 +342,7 @@ cmdList =
   , ("deltree", DeleteTree)
 --   , ("add", Add)
   , ("parse", ParseSent)
+  , ("parsepos", ParseSentPos)
 --   , ("undo", Undo)
 --   , ("redo", Redo)
   ]
@@ -397,3 +408,25 @@ commonPrefix2 s1 s2 =
       then String.cons c1 (commonPrefix2 t1 t2)
       else ""
     _ -> ""
+
+
+----------------------------------------------
+-- Retrieve the tree the POS tags
+----------------------------------------------
+
+
+type alias Orth = String
+type alias Pos = String
+
+
+-- | Retrieve the words and POS tags from a given tree.
+getWordPos : R.Tree M.Node -> List (Orth, Pos)
+getWordPos tree =
+  let
+    go pos xs = case xs of
+      [] -> []
+      node :: nodes -> case node of
+        M.Leaf r -> (r.nodeVal, pos) :: go "" nodes
+        M.Node r -> go r.nodeVal nodes
+  in
+    go "" <| List.reverse <| R.flatten tree

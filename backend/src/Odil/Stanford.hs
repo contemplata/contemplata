@@ -8,12 +8,13 @@
 
 
 module Odil.Stanford
-( parseFR
+( Orth
+, Pos
+, parseFR
 , parseTokenizedFR
--- Tests
-, parseProto
-, testProto
-, docFromPos
+, parsePosFR
+-- , docFromPos
+-- , parseProto
 ) where
 
 
@@ -85,7 +86,7 @@ tokenizedServerCfg = "http://localhost:9000/?properties={\"annotators\":\"pos,pa
 --
 -- Note that input words are not allowed to contain whitespaces (otherwise, the
 -- parser fails and returns `Nothing`).
-parseTokenizedFR :: [T.Text] -> IO (Maybe Penn.Tree)
+parseTokenizedFR :: [Orth] -> IO (Maybe Penn.Tree)
 parseTokenizedFR xs = do
   guard . all noSpace $ xs
   r <- Wreq.post tokenizedServerCfg . T.encodeUtf8 . T.unwords $ xs
@@ -96,45 +97,56 @@ parseTokenizedFR xs = do
 
 
 ----------------------------------------------
--- Playing with proto-buffers
+-- Parsing with existing POS tags
 ----------------------------------------------
 
 
--- | The alternative server configuration where the tokenization has been already performed.
-protoCfg :: String
-protoCfg = "http://localhost:9000/?properties={\"annotators\":\"tokenize,ssplit,pos,parse\",\"parse.model\":\"edu/stanford/nlp/models/lexparser/frenchFactored.ser.gz\",\"pos.model\":\"edu/stanford/nlp/models/pos-tagger/french/french.tagger\",\"tokenize.language\":\"fr\",\"outputFormat\":\"serialized\",\"serializer\":\"edu.stanford.nlp.pipeline.ProtobufAnnotationSerializer\"}"
+-- posCfg :: String
+-- posCfg = "http://localhost:9000/?properties={\"annotators\":\"parse\",\"parse.model\":\"edu/stanford/nlp/models/lexparser/frenchFactored.ser.gz\",\"inputFormat\":\"serialized\",\"outputFormat\":\"serialized\",\"serializer\":\"edu.stanford.nlp.pipeline.ProtobufAnnotationSerializer\",\"enforceRequirements\": \"false\"}"
 
 
-
-parseProto :: T.Text -> IO ()
-parseProto x = do
-  r <- Wreq.post protoCfg (T.encodeUtf8 x)
-  let res = r ^? Wreq.responseBody -- . key "sentences" . nth 0 . key "parse" . _String
-  -- return $ parse >>= Penn.parseTree'
-  case res of
-    Nothing -> print "Nothing"
-    Just bsWithHeader -> do
-      let bs = flip Byte.runGetL bsWithHeader $ do
-            Byte.VarInt (header :: Int) <- Byte.deserialize
-            Byte.getByteString . fromIntegral =<< Byte.remaining
-      print (Proto.decodeMessage bs :: Either String CoreNLP.Document)
+posCfg :: String
+posCfg = "http://localhost:9000/?properties={\"annotators\":\"parse\",\"parse.model\":\"edu/stanford/nlp/models/lexparser/frenchFactored.ser.gz\",\"inputFormat\":\"serialized\",\"outputFormat\":\"json\",\"serializer\":\"edu.stanford.nlp.pipeline.ProtobufAnnotationSerializer\",\"enforceRequirements\": \"false\"}"
 
 
+-- | Parse a given sentence, tokenized and with pre-computed POS tags.
+parsePosFR :: [(Orth, Pos)] -> IO (Maybe Penn.Tree)
+parsePosFR pos = do
+  let docBS = encodeDoc (docFromPos pos)
+  r <- Wreq.post posCfg docBS
+  let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "parse" . _String
+  return $ parse >>= Penn.parseTree'
 
--- OK, so the plan is as follows:
+
+-- protoCfg :: String
+-- protoCfg = "http://localhost:9000/?properties={\"annotators\":\"tokenize,ssplit,pos,parse\",\"parse.model\":\"edu/stanford/nlp/models/lexparser/frenchFactored.ser.gz\",\"pos.model\":\"edu/stanford/nlp/models/pos-tagger/french/french.tagger\",\"tokenize.language\":\"fr\",\"outputFormat\":\"serialized\",\"serializer\":\"edu.stanford.nlp.pipeline.ProtobufAnnotationSerializer\"}"
 --
--- 1) The input is of type [(Orth, Pos)], where type Orth = type Pos = T.Text
 --
--- 2) we need to convert [(Orth, Pos)] to a Document which can be parsed
+-- parseProto :: T.Text -> IO ()
+-- parseProto x = do
+--   r <- Wreq.post protoCfg (T.encodeUtf8 x)
+--   let res = r ^? Wreq.responseBody -- . key "sentences" . nth 0 . key "parse" . _String
+--   -- return $ parse >>= Penn.parseTree'
+--   case res of
+--     Nothing -> print "Nothing"
+--     Just bs -> print (decodeDoc bs)
 
 
-testProto :: [(Orth, Pos)] -> FilePath -> IO ()
-testProto xs path = do
-  let doc = docFromPos xs
-      bs = Proto.encodeMessage doc
+-- | Encode the CoreNLP document as a (length-prefixed) bytestring which can be
+-- send directly to the Stanford server.
+encodeDoc :: CoreNLP.Document -> BL.ByteString
+encodeDoc doc =
+  let bs = Proto.encodeMessage doc
       bn = Byte.runPutL . Byte.serialize . Byte.VarInt $ BS.length bs
-      bl = bn `BL.append` BL.fromStrict bs
-  BL.writeFile path bl
+  in  bn `BL.append` BL.fromStrict bs
+
+
+-- | Decode the CoreNLP document from the (length-prefixed) bytestring.
+decodeDoc :: BL.ByteString -> Either String CoreNLP.Document
+decodeDoc bs = flip Byte.runGetL bs $ do
+  Byte.VarInt (header :: Int) <- Byte.deserialize
+  n <- fromIntegral <$> Byte.remaining
+  Proto.decodeMessage <$> Byte.getByteString n
 
 
 -- | Create a Stanford document from a list of words and their POS tags.
