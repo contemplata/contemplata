@@ -136,10 +136,11 @@ viewHelp =
       , [Plain "Delete node: select node(s) and press ", Bold "d", Plain "."]
       , [Plain "Edit node: select the main node and press ", Bold "e", Plain ", which should bring you to the editing window."]
       , [Plain "Re-attach tree: select the root of the tree to move, then select (with ", Bold "CTRL", Plain ") the node where the tree should be re-attached, and press ", Bold "r", Plain "."]
-      , [Plain "Swap tree: select the root of the tree to swap with its left or right sister tree and press ", Bold "CTRL + left", Plain " or ", Bold "CTRL + right", Plain "respectively."]
+      , [Plain "Swap tree: select the root of the tree to swap with its left or right sister tree and press ", Bold "CTRL + left", Plain " or ", Bold "CTRL + right", Plain " respectively."]
       , [Plain "Connect: to connect two nodes, select the main node in the top window and in the bottom-window, respectively, and press ", Bold "c", Plain ". The relation will lead to the node in the currently focused window."]
       , [Plain "Resize: you can use the regular browser's functionality to zoom in and out."]
       , [Plain "Screen size: use arrows (", Bold "left, right, top, bottom", Plain ") to change the size of the screens."]
+      , [Plain "Redo/undo: use ", Bold "CTRL+z", Plain " and ", Bold "z", Plain "to undo and redo, respectively"]
       ]
     -- mkElem x = Html.li [] [Html.text x]
     mkCmd x = case x of
@@ -154,6 +155,12 @@ viewHelp =
       , [Plain "Messages: messages received from the server (with e.g. information that the file has been successfully saved)."]
       ]
     sideList = Html.ul [] (List.map mkElem sideListTxt)
+
+    writeCmdListTxt =
+      [ [Plain "Parsing: use ", Bold "parse", Plain " to reparse the entire sentence. Wait until the message ", Bold "parsed successfully ", Plain "appears in the side window (tab Messages). Note that the procedure does not change the tokenization."]
+      , [Plain "Parsing with POS tags: use ", Bold "parsepos", Plain " to reparse the entire sentence without changing the POS tags (nor the tokenization) assigned to the individual words."]
+      ]
+    writeCmdList = Html.ul [] (List.map mkElem writeCmdListTxt)
   in
     Html.div
       [ Atts.style
@@ -167,6 +174,8 @@ viewHelp =
       [ Html.h3 [] [Html.text "Help"]
       , Html.p [] [Html.text "Once you select one of the files on the left, you will be able to use the following commands: "]
       , cmdList
+      , Html.p [] [Html.text "The following commands can be used while editing a tree.  Just press <SPACE>, write the command, and press <ENTER>."]
+      , writeCmdList
       , Html.p [] [Html.text "Note that in each of the two side windows you can choose between:"]
       , sideList
       ]
