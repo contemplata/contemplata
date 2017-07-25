@@ -19,6 +19,7 @@ import Rose as R
 import Config as Cfg
 import Edit.Model as M
 import Edit.Anno as Anno
+import Edit.Rule as Rule
 -- import Edit.Command as Cmd
 import Menu
 import Server
@@ -50,6 +51,7 @@ type Msg
   | ChangeType -- ^ Change the type of the selected node
   | ParseSent  -- ^ Reparse the sentence in focus
   | ParseSentPos -- ^ Reparse the sentence in focus, preserve POList (String, String)S tags
+  | ApplyRules -- ^ Apply the (flattening) rules
   | CtrlDown
   | CtrlUp
   | Connect
@@ -224,6 +226,16 @@ update msg model =
       in
         (model, send)
 
+    ApplyRules -> idle <|
+      let
+        wlen = M.winLens model.focus
+        treeId = (Focus.get wlen model).tree
+        (newTree, newSel) = Rule.apply Rule.theRule (M.getTree treeId model)
+        updateSel win = {win | selAux = newSel, selMain = Nothing}
+      in
+        M.setTree model.fileId treeId newTree model
+          |> Focus.update wlen updateSel
+
     SaveFile ->
       let
         file = {treeMap = model.trees, turns = model.turns, linkSet = model.links}
@@ -343,6 +355,7 @@ cmdList =
 --   , ("add", Add)
   , ("parse", ParseSent)
   , ("parsepos", ParseSentPos)
+  , ("flatten", ApplyRules)
 --   , ("undo", Undo)
 --   , ("redo", Redo)
   ]

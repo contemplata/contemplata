@@ -159,6 +159,7 @@ viewHelp =
     writeCmdListTxt =
       [ [Plain "Parsing: use ", Bold "parse", Plain " to reparse the entire sentence. Wait until the message ", Bold "parsed successfully ", Plain "appears in the side window (tab Messages). Note that the procedure does not change the tokenization."]
       , [Plain "Parsing with POS tags: use ", Bold "parsepos", Plain " to reparse the entire sentence without changing the POS tags (nor the tokenization) assigned to the individual words."]
+      , [Plain "Flatten: use ", Bold "flatten", Plain " to apply the flattening rules."]
       ]
     writeCmdList = Html.ul [] (List.map mkElem writeCmdListTxt)
   in
