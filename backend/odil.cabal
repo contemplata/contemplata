@@ -28,6 +28,7 @@ library
                      , Odil.Ancor.IO.Show
                      , Odil.Ancor.Preprocess
                      , Odil.Stanford
+                     , Odil.DiscoDOP
                      , Odil.Penn
   other-modules:       Proto.Odil.Stanford.CoreNLP
   build-depends:       base >= 4.7 && < 5
@@ -35,6 +36,7 @@ library
                      , bytestring >= 0.10 && < 0.11
                      , transformers >= 0.5 && < 0.6
                      , containers >= 0.5 && < 0.6
+                     , unordered-containers >= 0.2 && < 0.3
                      , tagsoup >= 0.14 && < 0.15
                      , websockets >= 0.10 && < 0.12
                      , aeson >= 1.0 && < 1.3

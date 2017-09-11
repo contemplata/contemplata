@@ -13,6 +13,8 @@ module Odil.Stanford
 , parseFR
 , parseTokenizedFR
 , parsePosFR
+-- * POS tagging
+, posTagFR
 -- , docFromPos
 -- , parseProto
 ) where
@@ -26,6 +28,8 @@ import Control.Monad (guard)
 -- import Data.Bits ((.&.), shiftR)
 import qualified Data.Char as C
 import qualified Data.Text as T
+import qualified Data.HashMap.Strict as H
+-- import qualified Data.Map.Strict as H
 import qualified Data.Text.Encoding as T
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
@@ -37,8 +41,9 @@ import qualified Data.Bytes.Get as Byte
 
 -- import qualified Network.URI as URI
 import qualified Network.Wreq as Wreq
-import Control.Lens ((^?))
-import Data.Aeson.Lens (key, nth, _String)
+import Control.Lens ((^?), (^..))
+import qualified Data.Aeson as Aeson
+import Data.Aeson.Lens (key, nth, _String, values)
 
 import qualified Odil.Penn as Penn
 
@@ -132,21 +137,50 @@ parsePosFR pos = do
 --     Just bs -> print (decodeDoc bs)
 
 
--- | Encode the CoreNLP document as a (length-prefixed) bytestring which can be
--- send directly to the Stanford server.
-encodeDoc :: CoreNLP.Document -> BL.ByteString
-encodeDoc doc =
-  let bs = Proto.encodeMessage doc
-      bn = Byte.runPutL . Byte.serialize . Byte.VarInt $ BS.length bs
-  in  bn `BL.append` BL.fromStrict bs
+----------------------------------------------
+-- POS tagging
+----------------------------------------------
 
 
--- | Decode the CoreNLP document from the (length-prefixed) bytestring.
-decodeDoc :: BL.ByteString -> Either String CoreNLP.Document
-decodeDoc bs = flip Byte.runGetL bs $ do
-  Byte.VarInt (header :: Int) <- Byte.deserialize
-  n <- fromIntegral <$> Byte.remaining
-  Proto.decodeMessage <$> Byte.getByteString n
+-- taggerCfg :: String
+-- taggerCfg = "http://localhost:9000/?properties={\"annotators\":\"tokenize,ssplit,pos\",\"inputFormat\":\"serialized\",\"outputFormat\":\"json\",\"serializer\":\"edu.stanford.nlp.pipeline.ProtobufAnnotationSerializer\",\"enforceRequirements\": \"false\"}"
+
+
+taggerCfg :: String
+taggerCfg = "http://localhost:9000/?properties={\"annotators\":\"tokenize,ssplit,pos\",\"pos.model\":\"edu/stanford/nlp/models/pos-tagger/french/french.tagger\",\"tokenize.language\":\"fr\",\"inputFormat\":\"serialized\",\"outputFormat\":\"json\",\"serializer\":\"edu.stanford.nlp.pipeline.ProtobufAnnotationSerializer\"}"
+
+
+-- | Parse a given sentence, tokenized and with pre-computed POS tags.
+posTagFR :: T.Text -> IO ()
+posTagFR sent = do
+  let docBS = encodeDoc (docFromRaw sent)
+  r <- Wreq.post taggerCfg docBS
+  -- let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . _String
+
+  -- let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "tokens"
+  -- print parse
+
+  let mayParse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "tokens"
+      result = case mayParse of
+        Nothing -> Nothing
+        Just arr -> Just $ arr ^.. values
+  print (map wordPos <$> result)
+  -- return $ parse >>= Penn.parseTree'
+  where
+    wordPos (Aeson.Object m) = (,) <$> H.lookup "word" m <*> H.lookup "pos" m
+
+
+----------------------------------------------
+-- Creating Stanford Docs
+----------------------------------------------
+
+
+-- | Create a Stanford document from a list of words and their POS tags.
+docFromRaw :: T.Text -> CoreNLP.Document
+docFromRaw text =
+  Proto.def
+  { CoreNLP._Document'text = text
+  }
 
 
 -- | Create a Stanford document from a list of words and their POS tags.
@@ -207,3 +241,21 @@ docFromPos xs =
             where
               shift = maybe 0 (fromIntegral . T.length) (CoreNLP._Token'word x)
       in  go 0
+
+
+-- | Encode the CoreNLP document as a (length-prefixed) bytestring which can be
+-- send directly to the Stanford server.
+encodeDoc :: CoreNLP.Document -> BL.ByteString
+encodeDoc doc =
+  let bs = Proto.encodeMessage doc
+      bn = Byte.runPutL . Byte.serialize . Byte.VarInt $ BS.length bs
+  in  bn `BL.append` BL.fromStrict bs
+
+
+-- | Decode the CoreNLP document from the (length-prefixed) bytestring.
+decodeDoc :: BL.ByteString -> Either String CoreNLP.Document
+decodeDoc bs = flip Byte.runGetL bs $ do
+  Byte.VarInt (header :: Int) <- Byte.deserialize
+  n <- fromIntegral <$> Byte.remaining
+  Proto.decodeMessage <$> Byte.getByteString n
+
