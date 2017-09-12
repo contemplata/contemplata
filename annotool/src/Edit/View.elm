@@ -24,6 +24,7 @@ import Edit.Anno as Anno
 import Edit.Model as M
 import Edit.Message as Msg
 import Edit.Message exposing (Msg(..))
+import Server
 
 
 view : M.Model -> Html.Html Msg
@@ -1094,7 +1095,7 @@ mainKeyDown ctrl =
       67 -> Connect
 
       -- "p"
-      80 -> ParseSent
+      80 -> ParseSent Server.Stanford
 
       -- "r"
       82 -> Attach

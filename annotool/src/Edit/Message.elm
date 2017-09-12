@@ -49,8 +49,8 @@ type Msg
     -- together with the corresponding subtrees
   | Add -- ^ Delete the selected nodes in the focused window
   | ChangeType -- ^ Change the type of the selected node
-  | ParseSent  -- ^ Reparse the sentence in focus
-  | ParseSentPos -- ^ Reparse the sentence in focus, preserve POList (String, String)S tags
+  | ParseSent Server.ParserTyp  -- ^ Reparse the sentence in focus
+  | ParseSentPos Server.ParserTyp -- ^ Reparse the sentence in focus, preserve POList (String, String)S tags
   | ApplyRules -- ^ Apply the (flattening) rules
   | CtrlDown
   | CtrlUp
@@ -204,7 +204,7 @@ update msg model =
 
     Files -> idle <| model -- ^ Handled upstream
 
-    ParseSent ->
+    ParseSent parTyp ->
       let
         treeId = (M.selectWin model.focus model).tree
         tree = M.getTree treeId model
@@ -212,16 +212,16 @@ update msg model =
           M.Node _ -> Nothing
           M.Leaf {nodeVal} -> Just nodeVal
         words = List.reverse <| Util.catMaybes <| List.map word <| R.flatten tree
-        req = Server.encodeReq (Server.ParseSent model.fileId treeId words)
+        req = Server.encodeReq (Server.ParseSent model.fileId treeId parTyp words)
         send = WebSocket.send Cfg.socketServer req
       in
         (model, send)
 
-    ParseSentPos ->
+    ParseSentPos parTyp ->
       let
         treeId = (M.selectWin model.focus model).tree
         wordsPos = getWordPos (M.getTree treeId model)
-        req = Server.encodeReq (Server.ParseSentPos model.fileId treeId wordsPos)
+        req = Server.encodeReq (Server.ParseSentPos model.fileId treeId parTyp wordsPos)
         send = WebSocket.send Cfg.socketServer req
       in
         (model, send)
@@ -353,8 +353,10 @@ cmdList =
   , ("delete", Delete)
   , ("deltree", DeleteTree)
 --   , ("add", Add)
-  , ("parse", ParseSent)
-  , ("parsepos", ParseSentPos)
+  , ("parse", ParseSent Server.Stanford)
+  , ("parsepos", ParseSentPos Server.Stanford)
+  , ("dopparse", ParseSent Server.DiscoDOP)
+  , ("dopparsepos", ParseSentPos Server.DiscoDOP)
   , ("flatten", ApplyRules)
 --   , ("undo", Undo)
 --   , ("redo", Redo)

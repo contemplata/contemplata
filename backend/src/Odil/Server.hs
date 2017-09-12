@@ -13,6 +13,7 @@ module Odil.Server
   module Odil.Server.Types
 
 -- * Messages
+, ParserTyp (..)
 , Request (..)
 , Answer (..)
 
@@ -43,6 +44,7 @@ import Odil.Server.Types
 import qualified Odil.Server.Config as Cfg
 import qualified Odil.Server.DB as DB
 import qualified Odil.Stanford as Stanford
+import qualified Odil.DiscoDOP as DiscoDOP
 import qualified Odil.Penn as Penn
 
 
@@ -51,16 +53,26 @@ import qualified Odil.Penn as Penn
 -----------
 
 
+-- | The type of parser to use.
+data ParserTyp
+  = Stanford
+  | DiscoDOP
+  deriving (Generic, Show)
+
+instance JSON.FromJSON ParserTyp
+instance JSON.ToJSON ParserTyp where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+
 -- | Request coming from the client.
 data Request
   = GetFiles
   | GetFile FileId
   | SaveFile FileId File
-  | ParseSent FileId TreeId [Stanford.Orth]
+  | ParseSent FileId TreeId ParserTyp [Stanford.Orth]
     -- ^ FileId and TreeId are sent there and back so that it
     -- can be checked that the user did not move elsewhere before
     -- he/she got the answer for this request
-  | ParseSentPos FileId TreeId [(Stanford.Orth, Stanford.Pos)]
+  | ParseSentPos FileId TreeId ParserTyp [(Stanford.Orth, Stanford.Pos)]
     -- ^ Similar to `ParseSent`, but with POS information
   deriving (Generic, Show)
 
@@ -199,9 +211,11 @@ talk conn state = forever $ do
             let msg = T.concat ["File ", fileId, " saved"]
             WS.sendTextData conn . JSON.encode $ Notification msg
 
-      Right (ParseSent fileId treeId ws) -> do
+      Right (ParseSent fileId treeId parTyp ws) -> do
         putStrLn "Parsing tokenized sentence..."
-        treeMay <- Stanford.parseTokenizedFR ws
+        treeMay <- case parTyp of
+          Stanford -> Stanford.parseTokenizedFR ws
+          DiscoDOP -> DiscoDOP.tagParseDOP ws
         case treeMay of
           Nothing -> do
             let msg = T.concat ["Could not parse: ", T.unwords ws]
@@ -214,9 +228,11 @@ talk conn state = forever $ do
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode $ Notification msg
 
-      Right (ParseSentPos fileId treeId ws) -> do
+      Right (ParseSentPos fileId treeId parTyp ws) -> do
         putStrLn "Parsing tokenized+POSed sentence..."
-        treeMay <- Stanford.parsePosFR ws
+        treeMay <- case parTyp of
+          Stanford -> Stanford.parsePosFR ws
+          DiscoDOP -> DiscoDOP.parseDOP ws
         case treeMay of
           Nothing -> do
             let ws' = flip map ws $ \(orth, pos) -> T.concat [orth, ":", pos]

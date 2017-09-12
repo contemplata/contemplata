@@ -1,4 +1,4 @@
-module Server exposing (Request(..), Answer(..), answerDecoder, encodeReq)
+module Server exposing (ParserTyp(..), Request(..), Answer(..), answerDecoder, encodeReq)
 
 
 import Rose as R
@@ -18,6 +18,10 @@ import Edit.Model as M
 type alias Orth = String
 type alias Pos = String
 
+-- | The type of parser to use.
+type ParserTyp
+  = Stanford
+  | DiscoDOP
 
 
 type Request
@@ -27,10 +31,10 @@ type Request
     -- ^ Request the contents of the given file
   | SaveFile M.FileId M.File
     -- ^ Request the contents of the given file
-  | ParseSent M.FileId M.TreeId (List Orth)
+  | ParseSent M.FileId M.TreeId ParserTyp (List Orth)
     -- ^ Parse the given list of words (the IDs are sent so that it can be
     -- checked on return if the user did not switch the file...)
-  | ParseSentPos M.FileId M.TreeId (List (Orth, Pos))
+  | ParseSentPos M.FileId M.TreeId ParserTyp (List (Orth, Pos))
     -- ^ Like `ParseSent`, but with POS tags
 
 
@@ -53,19 +57,21 @@ encodeReqToVal req = case req of
          , M.encodeFile file ]
       )
     ]
-  ParseSent fileId treeId ws -> Encode.object
+  ParseSent fileId treeId parTyp ws -> Encode.object
     [ ("tag", Encode.string "ParseSent")
     , ("contents", Encode.list
          [ Encode.string fileId
          , Encode.int treeId
+         , Encode.string (toString parTyp)
          , Encode.list (List.map Encode.string ws) ]
       )
     ]
-  ParseSentPos fileId treeId ws -> Encode.object
+  ParseSentPos fileId treeId parTyp ws -> Encode.object
     [ ("tag", Encode.string "ParseSentPos")
     , ("contents", Encode.list
          [ Encode.string fileId
          , Encode.int treeId
+         , Encode.string (toString parTyp)
          , Encode.list (List.map encodePair ws) ]
       )
     ]
