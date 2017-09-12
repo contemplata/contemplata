@@ -9,6 +9,7 @@ module Odil.DiscoDOP
 ( Orth
 -- , Pos
 , parseDOP
+, tagParseDOP
 -- , parseTokenizedFR
 -- , parsePosFR
 -- -- , docFromPos
@@ -17,6 +18,7 @@ module Odil.DiscoDOP
 
 
 import Control.Monad (guard)
+import Control.Arrow (second)
 -- import Control.Monad.IO.Class (liftIO)
 -- import Control.Monad.Trans.Maybe (MaybeT(..))
 
@@ -54,8 +56,8 @@ import qualified Odil.Penn as Penn
 type Orth = T.Text
 
 
--- -- | A part-of-speech
--- type Pos = T.Text
+-- | A part-of-speech
+type Pos = T.Text
 
 
 ----------------------------------------------
@@ -64,21 +66,53 @@ type Orth = T.Text
 
 
 -- | The address to make the GET request, based on the sentence to parse.
-mkRequest :: [String] -> String
-mkRequest xs =
-  base ++ sentArg ++ otherArgs
+mkRequest
+  :: Bool   -- ^ Perform POS tagging?
+  -> T.Text -- ^ Sentence argument
+  -> String
+mkRequest postag sentArg =
+  base ++ T.unpack sentArg ++ otherArgs
   where
     base = "http://0.0.0.0:5000/parser/parse?sent="
-    sentArg = L.intercalate "+" xs
-    otherArgs = "&est=rfe&marg=nbest&objfun=mpp&coarse=pcfg&html=True"
+    otherArgs = "&est=rfe&marg=nbest&objfun=mpp&coarse=pcfg" ++
+      if postag
+      then "&postag=True"
+      else ""
 
 
 -- | Parse a given, tokenized sentence (in French) with DiscoDOP.
-parseDOP :: [Orth] -> IO (Maybe Penn.Tree)
-parseDOP xs = do
-  r <- Wreq.get $ mkRequest (map T.unpack xs)
+tagParseDOP :: [Orth] -> IO (Maybe Penn.Tree)
+tagParseDOP xs = do
+  r <- Wreq.get $ mkRequest True (sentArg xs)
   print r
   let parse = fmap
         (T.strip . T.decodeUtf8 . BL.toStrict)
         (r ^? Wreq.responseBody)
   return $ parse >>= Penn.parseTree'
+  where
+    sentArg = T.intercalate "+"
+
+
+-- | Parse a given, tokenized and pos-tagged sentence (in French) with DiscoDOP.
+parseDOP :: [(Orth, Pos)] -> IO (Maybe Penn.Tree)
+parseDOP xs0 = do
+  let xs = map (second unStanfordPOS) xs0
+  r <- Wreq.get $ mkRequest False (sentArg xs)
+  print r
+  let parse = fmap
+        (T.strip . T.decodeUtf8 . BL.toStrict)
+        (r ^? Wreq.responseBody)
+  return $ parse >>= Penn.parseTree'
+  where
+    sentArg =
+      let mkArg (orth, pos) = T.concat [orth, "/", pos]
+      in  T.intercalate "+" . map mkArg
+
+
+-- | Simplify the POS tag from the current Stanford tagset to the standard one.
+unStanfordPOS :: Pos -> Pos
+unStanfordPOS xpos = case xpos of
+  "CLS" -> "CL"
+  "CLO" -> "CL"
+  "DET" -> "D"
+  _ -> xpos

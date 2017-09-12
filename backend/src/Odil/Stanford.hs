@@ -20,10 +20,11 @@ module Odil.Stanford
 ) where
 
 
-import Control.Monad (guard)
+import Control.Monad (guard, (<=<))
 -- import Control.Monad.IO.Class (liftIO)
 -- import Control.Monad.Trans.Maybe (MaybeT(..))
 
+import           Data.Maybe (catMaybes)
 -- import Data.Word (Word8, Word16)
 -- import Data.Bits ((.&.), shiftR)
 import qualified Data.Char as C
@@ -151,23 +152,21 @@ taggerCfg = "http://localhost:9000/?properties={\"annotators\":\"tokenize,ssplit
 
 
 -- | Parse a given sentence, tokenized and with pre-computed POS tags.
-posTagFR :: T.Text -> IO ()
+posTagFR :: T.Text -> IO (Maybe [(Orth, Pos)])
 posTagFR sent = do
   let docBS = encodeDoc (docFromRaw sent)
   r <- Wreq.post taggerCfg docBS
-  -- let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . _String
-
-  -- let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "tokens"
-  -- print parse
-
   let mayParse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "tokens"
-      result = case mayParse of
-        Nothing -> Nothing
-        Just arr -> Just $ arr ^.. values
-  print (map wordPos <$> result)
-  -- return $ parse >>= Penn.parseTree'
+      result = (^.. values) <$> mayParse
+  return (catMaybes . map wordPos <$> result)
   where
-    wordPos (Aeson.Object m) = (,) <$> H.lookup "word" m <*> H.lookup "pos" m
+    wordPos (Aeson.Object m) =
+      (,)
+      <$> getAttr "word" m
+      <*> getAttr "pos" m
+    getAttr x = unString <=< H.lookup x
+    unString (Aeson.String x) = Just x
+    unString _ = Nothing
 
 
 ----------------------------------------------
