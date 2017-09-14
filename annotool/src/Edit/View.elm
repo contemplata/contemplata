@@ -454,16 +454,20 @@ viewSideEvent focus nodeId (Anno.Event ev) =
 
     inpClass = inputGeneric "Class" ev.evClass Anno.eventClassStr Anno.ClassAttr
     inpType = inputGeneric "Type" ev.evType Anno.eventTypeStr Anno.TypeAttr
-    inpTense =
-        inputGeneric "Tense" ev.evTense
-            (Anno.nullable Anno.eventTenseStr)
-            Anno.TenseAttr
+    inpInq = inputGeneric "Inquisit" ev.evInquisit Anno.eventInquisitStr Anno.InquisitAttr
+    inpTime =
+        inputGeneric "Time" ev.evTime
+            (Anno.nullable Anno.eventTimeStr)
+            Anno.TimeAttr
     inpAspect =
         inputGeneric "Aspect" ev.evAspect
             (Anno.nullable Anno.eventAspectStr)
             Anno.AspectAttr
     inpPolar = inputGeneric "Polarity" ev.evPolarity Anno.eventPolarityStr Anno.PolarityAttr
-    inpSubj = inputGeneric "Subjonctive" ev.evSubjMood Anno.eventSubjMoodStr Anno.SubjMoodAttr
+    inpMood =
+        inputGeneric "Mood" ev.evMood
+            (Anno.nullable Anno.eventMoodStr)
+            Anno.MoodAttr
     inpModality =
         inputGeneric "Modality" ev.evModality
             (Anno.nullable Anno.eventModalityStr)
@@ -485,7 +489,8 @@ viewSideEvent focus nodeId (Anno.Event ev) =
           ]
 
   in
-    [inpClass, inpType, inpTense, inpAspect, inpPolar, inpSubj, inpModality, inpComment]
+    [inpClass, inpType, inpInq, inpTime, inpAspect,
+         inpPolar, inpMood, inpModality, inpComment]
 
 
 -- | The view of a side window.

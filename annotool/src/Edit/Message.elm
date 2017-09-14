@@ -68,7 +68,7 @@ type Msg
   | SetEventAttr M.NodeId M.Focus Anno.EventAttr
 --   | SetEventClass M.NodeId M.Focus Anno.EventClass
 --   | SetEventType M.NodeId M.Focus Anno.EventType
---   | SetEventTense M.NodeId M.Focus (Maybe Anno.EventTense)
+--   | SetEventTime M.NodeId M.Focus (Maybe Anno.EventTime)
 --   | SetEventAspect M.NodeId M.Focus (Maybe Anno.EventAspect)
   | CommandStart
   | CommandEnter
@@ -269,10 +269,11 @@ update msg model =
       case attr of
         Anno.ClassAttr x -> M.setEventAttr M.eventClass nodeId focus x model
         Anno.TypeAttr x -> M.setEventAttr M.eventType nodeId focus x model
-        Anno.TenseAttr x -> M.setEventAttr M.eventTense nodeId focus x model
+        Anno.InquisitAttr x -> M.setEventAttr M.eventInquisit nodeId focus x model
+        Anno.TimeAttr x -> M.setEventAttr M.eventTime nodeId focus x model
         Anno.AspectAttr x -> M.setEventAttr M.eventAspect nodeId focus x model
         Anno.PolarityAttr x -> M.setEventAttr M.eventPolarity nodeId focus x model
-        Anno.SubjMoodAttr x -> M.setEventAttr M.eventSubjMood nodeId focus x model
+        Anno.MoodAttr x -> M.setEventAttr M.eventMood nodeId focus x model
         Anno.ModalityAttr x -> M.setEventAttr M.eventModality nodeId focus x model
         Anno.CommentAttr x -> M.setEventAttr M.eventComment nodeId focus x model
         -- _ -> Debug.crash "SetEventAttr: not implemented yet!"
@@ -311,8 +312,8 @@ update msg model =
 --     SetEventType nodeId focus x -> idle <|
 --       M.setEventAttr M.eventType nodeId focus x model
 
---     SetEventTense nodeId focus x -> idle <|
---       M.setEventAttr M.eventTense nodeId focus x model
+--     SetEventTime nodeId focus x -> idle <|
+--       M.setEventAttr M.eventTime nodeId focus x model
 
 --     SetEventAspect nodeId focus x -> idle <|
 --       M.setEventAttr M.eventAspect nodeId focus x model

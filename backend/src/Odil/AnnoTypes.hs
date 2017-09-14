@@ -10,7 +10,8 @@ module Odil.AnnoTypes
   Event(..)
 , EventClass(..)
 , EventType(..)
-, EventTense(..)
+, EventInquisit(..)
+, EventTime(..)
 , EventAspect(..)
 , EventPolarity(..)
 , EventModality(..)
@@ -30,11 +31,11 @@ import qualified Data.Aeson as JSON
 data Event = Event
   { evClass :: EventClass
   , evType :: EventType
-  , evTense :: Maybe EventTense
+  , evInquisit :: EventInquisit
+  , evTime :: Maybe EventTime
   , evAspect :: Maybe EventAspect
   , evPolarity :: EventPolarity
-  , evSubjMood :: Bool
-    -- ^ Since mood, for the moment, can only have one value -- subjunctive...
+  , evMood :: Maybe EventMood
   , evModality :: Maybe EventModality
   , evComment :: T.Text
     -- ^ Optional comment left by the annotator
@@ -45,15 +46,15 @@ data Event = Event
 
 -- | A class of an event.
 data EventClass
-    = Occurrence
+    = Occurrence -- ^ Default
     | Perception
     | Reporting
     | Aspectual
     | State
     | IState
     | IAction
---     | Cause
---     | EventContainer
+    | Cause
+    | EventContainer
 --     | Modal
     deriving (Generic,Show,Eq,Ord)
 
@@ -61,19 +62,41 @@ data EventClass
 -- | A type of an event.
 data EventType
     = StateT -- using T suffix because `EventClass` also contains the value `State`
-    | Process
+    | Process -- default
     | Transition
     deriving (Generic,Show,Eq,Ord)
 
 
+data EventInquisit
+  = TQuest
+  | Quest
+  | Order
+  | TOrder
+  | Decl -- default
+  deriving (Generic,Show,Eq,Ord)
+
+
 -- | An event's tense. The default is `None`, which should be represented by
 -- `Nothing`.
-data EventTense
-    = Present
+data EventTime
+    = Present -- default
     | Past
     | Future
-    | Imperfect
+    | Omni
+    | Zero
+    --- | Imperfect
     deriving (Generic,Show,Eq,Ord)
+
+
+-- -- | An event's aspect. The default is `None`, which should be represented by
+-- -- `Nothing`.
+-- data EventAspect
+--     = Progressive
+--     | Perfective
+--     | Imperfective
+--     | PerfectiveProgressive
+--     | ImperfectiveProgressive
+--     deriving (Generic,Show,Eq,Ord)
 
 
 -- | An event's aspect. The default is `None`, which should be represented by
@@ -81,9 +104,10 @@ data EventTense
 data EventAspect
     = Progressive
     | Perfective
+    | Prospective
     | Imperfective
-    | PerfectiveProgressive
-    | ImperfectiveProgressive
+    --- | PerfectiveProgressive
+    --- | ImperfectiveProgressive
     deriving (Generic,Show,Eq,Ord)
 
 
@@ -94,11 +118,23 @@ data EventPolarity
     deriving (Generic,Show,Eq,Ord)
 
 
+-- | An event's mood.
+data EventMood
+    = Subjunctive
+    | Conditional
+    deriving (Generic,Show,Eq,Ord)
+
+
 -- | An event's modality.
 data EventModality
-    = Modality1
-    | Modality2
-    deriving (Generic,Show,Eq,Ord)
+  = Certainty
+  | Conjectural
+  | Necessity
+  | Obligation
+  | Permission
+  | Possibility
+  | Probability
+  deriving (Generic,Show,Eq,Ord)
 
 
 -- -- | An event's polarity.
@@ -126,8 +162,12 @@ instance JSON.FromJSON EventType
 instance JSON.ToJSON EventType where
   toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
-instance JSON.FromJSON EventTense
-instance JSON.ToJSON EventTense where
+instance JSON.FromJSON EventInquisit
+instance JSON.ToJSON EventInquisit where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+
+instance JSON.FromJSON EventTime
+instance JSON.ToJSON EventTime where
   toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
 instance JSON.FromJSON EventAspect
@@ -136,6 +176,10 @@ instance JSON.ToJSON EventAspect where
 
 instance JSON.FromJSON EventPolarity
 instance JSON.ToJSON EventPolarity where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+
+instance JSON.FromJSON EventMood
+instance JSON.ToJSON EventMood where
   toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
 instance JSON.FromJSON EventModality

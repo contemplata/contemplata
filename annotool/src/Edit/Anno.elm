@@ -5,20 +5,23 @@ module Edit.Anno exposing
   ( Event(..)
   , EventAttr (..)
   , EventType(..)
+  , EventInquisit(..)
   , EventClass(..)
-  , EventTense(..)
+  , EventTime(..)
   , EventAspect(..)
   , EventPolarity(..)
+  , EventMood(..)
   , EventModality(..)
   , eventDefault
   , eventClassStr
   -- , eventClassFromStr
   , eventTypeStr
-  , eventTenseStr
-  -- , eventTenseFromStr
+  , eventInquisitStr
+  , eventTimeStr
+  -- , eventTimeFromStr
   , eventAspectStr
   , eventPolarityStr
-  , eventSubjMoodStr
+  , eventMoodStr
   , eventModalityStr
 
   -- * JSON
@@ -48,10 +51,11 @@ import Util
 type Event = Event
   { evClass : EventClass
   , evType : EventType
-  , evTense : Maybe EventTense
+  , evInquisit : EventInquisit
+  , evTime : Maybe EventTime
   , evAspect : Maybe EventAspect
   , evPolarity : EventPolarity
-  , evSubjMood : Bool
+  , evMood : Maybe EventMood
   , evModality : Maybe EventModality
   , evComment : String
   -- , evConfidence :: Confidence
@@ -60,12 +64,13 @@ type Event = Event
 
 eventDefault : Event
 eventDefault = Event
-  { evClass = Aspectual
-  , evType = Transition
-  , evTense = Nothing
+  { evClass = Occurrence
+  , evType = Process
+  , evInquisit = Decl
+  , evTime = Just Present
   , evAspect = Nothing
   , evPolarity = Pos
-  , evSubjMood = False
+  , evMood = Nothing
   , evModality = Nothing
   , evComment = ""
   }
@@ -74,10 +79,11 @@ eventDefault = Event
 type EventAttr
     = ClassAttr EventClass
     | TypeAttr EventType
-    | TenseAttr (Maybe EventTense)
+    | InquisitAttr EventInquisit
+    | TimeAttr (Maybe EventTime)
     | AspectAttr (Maybe EventAspect)
     | PolarityAttr EventPolarity
-    | SubjMoodAttr Bool
+    | MoodAttr (Maybe EventMood)
     | ModalityAttr (Maybe EventModality)
     | CommentAttr String
 
@@ -96,8 +102,8 @@ type EventClass
     | State
     | IState
     | IAction
---     | Cause
---     | EventContainer
+    | Cause
+    | EventContainer
 --     | Modal
 
 
@@ -182,31 +188,59 @@ eventTypeStr =
 
 
 ---------------------------------------------------
--- Tense
+-- Inquisit
+---------------------------------------------------
+
+
+-- | A type of an event.
+type EventInquisit
+    = TQuest
+    | Quest
+    | Order
+    | TOrder
+    | Decl -- default
+
+
+-- | The string representations of an event class.
+eventInquisitStr : List (String, EventInquisit)
+eventInquisitStr =
+  [ ("TQuest", TQuest)
+  , ("Quest", Quest)
+  , ("Order", Order)
+  , ("TOrder", TOrder)
+  , ("Decl", Decl) ]
+
+
+---------------------------------------------------
+-- Time
 ---------------------------------------------------
 
 
 -- | An event's tense. The default is `None`, which should be represented by
 -- `Nothing`.
-type EventTense
+type EventTime
     = Future
     | Past
     | Present
-    | Imperfect
+    | Omni
+    | Zero
+    -- | Imperfect
 
 
 -- | The string representations of an event class.
-eventTenseStr : List (String, EventTense)
-eventTenseStr =
+eventTimeStr : List (String, EventTime)
+eventTimeStr =
   [ ("Future", Future)
   , ("Past", Past)
   , ("Present", Present)
-  , ("Imperfect", Imperfect) ]
+  -- , ("Imperfect", Imperfect) ]
+  , ("Omni", Omni)
+  , ("Zero", Zero) ]
 
 
-eventTenseFromStr : String -> Maybe EventTense
-eventTenseFromStr = valueFromStrSafe eventTenseStr
---   case D.get x (D.fromList eventTenseStr) of
+eventTimeFromStr : String -> Maybe EventTime
+eventTimeFromStr = valueFromStrSafe eventTimeStr
+--   case D.get x (D.fromList eventTimeStr) of
 --     Nothing -> Nothing
 --     Just y -> y
 
@@ -221,9 +255,10 @@ eventTenseFromStr = valueFromStrSafe eventTenseStr
 type EventAspect
     = Progressive
     | Perfective
+    | Prospective
     | Imperfective
-    | PerfectiveProgressive
-    | ImperfectiveProgressive
+    -- | PerfectiveProgressive
+    -- | ImperfectiveProgressive
 
 
 -- | The string representations of an event class.
@@ -231,9 +266,10 @@ eventAspectStr : List (String, EventAspect)
 eventAspectStr =
   [ ("Progressive", Progressive)
   , ("Perfective", Perfective)
-  , ("Imperfective", Imperfective)
-  , ("PerfectiveProgressive", PerfectiveProgressive)
-  , ("ImperfectiveProgressive", ImperfectiveProgressive) ]
+  , ("Prospective", Prospective)
+  , ("Imperfective", Imperfective) ]
+  -- , ("PerfectiveProgressive", PerfectiveProgressive)
+  -- , ("ImperfectiveProgressive", ImperfectiveProgressive) ]
 
 
 ---------------------------------------------------
@@ -257,12 +293,17 @@ eventPolarityStr =
 -- Subjunctive mood
 ---------------------------------------------------
 
+-- | An event's mood.
+type EventMood
+    = Subjunctive
+    | Conditional
+
 
 -- | The string representations of an event class.
-eventSubjMoodStr : List (String, Bool)
-eventSubjMoodStr =
-  [ ("True", True)
-  , ("False", False) ]
+eventMoodStr : List (String, EventMood)
+eventMoodStr =
+  [ ("Subjunctive", Subjunctive)
+  , ("Conditional", Conditional) ]
 
 
 ---------------------------------------------------
@@ -272,15 +313,25 @@ eventSubjMoodStr =
 
 -- | An event's modality.
 type EventModality
-    = Modality1
-    | Modality2
+    = Certainty
+    | Conjectural
+    | Necessity
+    | Obligation
+    | Permission
+    | Possibility
+    | Probability
 
 
 -- | The string representations of an event class.
 eventModalityStr : List (String, EventModality)
 eventModalityStr =
-  [ ("Modality1", Modality1)
-  , ("Modality2", Modality2) ]
+  [ ("Certainty", Certainty)
+  , ("Conjectural", Conjectural)
+  , ("Necessity", Necessity)
+  , ("Obligation", Obligation)
+  , ("Permission", Permission)
+  , ("Possibility", Possibility)
+  , ("Probability", Probability) ]
 
 
 -- ---------------------------------------------------
@@ -310,24 +361,26 @@ eventModalityStr =
 
 eventDecoder : Decode.Decoder Event
 eventDecoder =
-  let mkEvent cls typ tns asp pol subj mod com =
+  let mkEvent cls typ inq tns asp pol subj mod com =
         Event
         { evClass=cls
         , evType=typ
-        , evTense=tns
+        , evInquisit=inq
+        , evTime=tns
         , evAspect=asp
         , evPolarity=pol
-        , evSubjMood=subj
+        , evMood=subj
         , evModality=mod
         , evComment=com
         }
-  in  Decode.map8 mkEvent
+  in  decodeMap9 mkEvent
         (Decode.field "evClass" eventClassDecoder)
         (Decode.field "evType" eventTypeDecoder)
-        (Decode.field "evTense" (Decode.nullable eventTenseDecoder))
+        (Decode.field "evInquisit" eventInquisitDecoder)
+        (Decode.field "evTime" (Decode.nullable eventTimeDecoder))
         (Decode.field "evAspect" (Decode.nullable eventAspectDecoder))
         (Decode.field "evPolarity" eventPolarityDecoder)
-        (Decode.field "evSubjMood" Decode.bool)
+        (Decode.field "evMood" (Decode.nullable eventMoodDecoder))
         (Decode.field "evModality" (Decode.nullable eventModalityDecoder))
         (Decode.field "evComment" Decode.string)
 
@@ -352,16 +405,16 @@ eventClassDecoder =
     Decode.map decode Decode.string
 
 
-eventTenseDecoder : Decode.Decoder EventTense
-eventTenseDecoder =
+eventTimeDecoder : Decode.Decoder EventTime
+eventTimeDecoder =
   let
-    decode = valueFromStr eventTenseStr
+    decode = valueFromStr eventTimeStr
 --     decode x = case x of
 --       "Future" -> Future
 --       "Past" -> Past
 --       "Present" -> Present
 --       "Imperfect" -> Imperfect
---       _ -> Debug.crash ("Anno.eventTenseDecoder -- unknown value: " ++ x)
+--       _ -> Debug.crash ("Anno.eventTimeDecoder -- unknown value: " ++ x)
   in
     Decode.map decode Decode.string
 
@@ -376,6 +429,10 @@ eventTypeDecoder : Decode.Decoder EventType
 eventTypeDecoder = eventAttrDecoder eventTypeStr
 
 
+eventInquisitDecoder : Decode.Decoder EventInquisit
+eventInquisitDecoder = eventAttrDecoder eventInquisitStr
+
+
 eventAspectDecoder : Decode.Decoder EventAspect
 eventAspectDecoder = eventAttrDecoder eventAspectStr
 
@@ -384,8 +441,58 @@ eventPolarityDecoder : Decode.Decoder EventPolarity
 eventPolarityDecoder = eventAttrDecoder eventPolarityStr
 
 
+eventMoodDecoder : Decode.Decoder EventMood
+eventMoodDecoder = eventAttrDecoder eventMoodStr
+
+
 eventModalityDecoder : Decode.Decoder EventModality
 eventModalityDecoder = eventAttrDecoder eventModalityStr
+
+
+-- | Since map9 is not in Json.Decode...
+decodeMap9
+    : (a -> b -> c -> d -> e -> f -> g -> h -> i -> value)
+    -> Decode.Decoder a
+    -> Decode.Decoder b
+    -> Decode.Decoder c
+    -> Decode.Decoder d
+    -> Decode.Decoder e
+    -> Decode.Decoder f
+    -> Decode.Decoder g
+    -> Decode.Decoder h
+    -> Decode.Decoder i
+    -> Decode.Decoder value
+-- decodeMap9 = Debug.crash "asdf"
+decodeMap9 f m1 m2 m3 m4 m5 m6 m7 m8 m9 =
+    andThen m1 (\x1 ->
+    andThen m2 (\x2 ->
+    andThen m3 (\x3 ->
+    andThen m4 (\x4 ->
+    andThen m5 (\x5 ->
+    andThen m6 (\x6 ->
+    andThen m7 (\x7 ->
+    andThen m8 (\x8 ->
+    andThen m9 (\x9 -> Decode.succeed (f x1 x2 x3 x4 x5 x6 x7 x8 x9)
+    )))))))))
+
+
+-- | Just a version of Decode.andThen with swapped arguments.
+andThen : Decode.Decoder a -> (a -> Decode.Decoder b) -> Decode.Decoder b
+andThen f m = Decode.andThen m f
+
+
+-- -- | Since map9 is not in Json.Decode...
+-- decodeMap3
+--     : (a -> b -> c -> value)
+--     -> Decode.Decoder a
+--     -> Decode.Decoder b
+--     -> Decode.Decoder c
+--     -> Decode.Decoder value
+-- decodeMap3 f m1 m2 m3 =
+--     andThen m1 (\x1 ->
+--     andThen m2 (\x2 ->
+--     andThen m3 (\x3 -> Decode.succeed (f x1 x2 x3)
+--     )))
 
 
 ---------------------------------------------------
@@ -397,10 +504,11 @@ encodeEvent : Event -> Encode.Value
 encodeEvent (Event r) = Encode.object
     [ ("evClass", encodeEventClass r.evClass)
     , ("evType", encodeEventType r.evType)
-    , ("evTense", Util.encodeMaybe encodeEventTense r.evTense)
+    , ("evInquisit", encodeEventInquisit r.evInquisit)
+    , ("evTime", Util.encodeMaybe encodeEventTime r.evTime)
     , ("evAspect", Util.encodeMaybe encodeEventAspect r.evAspect)
     , ("evPolarity", encodeEventPolarity r.evPolarity)
-    , ("evSubjMood", Encode.bool r.evSubjMood)
+    , ("evMood", Util.encodeMaybe encodeEventMood r.evMood)
     , ("evModality", Util.encodeMaybe encodeEventModality r.evModality)
     , ("evComment", Encode.string r.evComment)
     ]
@@ -410,14 +518,20 @@ encodeEventClass : EventClass -> Encode.Value
 encodeEventClass cls = Encode.string <|
   strFromValue eventClassStr cls
 
+
 encodeEventType : EventType -> Encode.Value
 encodeEventType x = Encode.string <|
   strFromValue eventTypeStr x
 
 
-encodeEventTense : EventTense -> Encode.Value
-encodeEventTense x = Encode.string <|
-  strFromValue eventTenseStr x
+encodeEventInquisit : EventInquisit -> Encode.Value
+encodeEventInquisit x = Encode.string <|
+  strFromValue eventInquisitStr x
+
+
+encodeEventTime : EventTime -> Encode.Value
+encodeEventTime x = Encode.string <|
+  strFromValue eventTimeStr x
 
 
 encodeEventAspect : EventAspect -> Encode.Value
@@ -428,6 +542,11 @@ encodeEventAspect x = Encode.string <|
 encodeEventPolarity : EventPolarity -> Encode.Value
 encodeEventPolarity x = Encode.string <|
   strFromValue eventPolarityStr x
+
+
+encodeEventMood : EventMood -> Encode.Value
+encodeEventMood x = Encode.string <|
+  strFromValue eventMoodStr x
 
 
 encodeEventModality : EventModality -> Encode.Value

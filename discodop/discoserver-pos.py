@@ -7,7 +7,7 @@ Also usable from the command line:
 $ curl http://localhost:5000/parser/parse -G --data-urlencode "sent=What's up?"
 
 Written by Andreas van Cranenburgh.
-Modified by Jakub Waszczuk.
+Modified by Jakub Waszczuk (September 2017)
 """
 import os
 import re
@@ -58,6 +58,7 @@ def parse():
 	marg = request.args.get('marg', 'nbest')
 	coarse = request.args.get('coarse', 'pcfg')
 	postag = 'postag' in request.args
+	constraint = request.args.get('constraint', None)
 	lang = request.args.get('lang', 'detect')
 	if not sent:
 		return ''
@@ -66,8 +67,11 @@ def parse():
 		senttok, tags = sent, None
 	else:
 		senttok, tags = zip(*(a.rsplit('/', 1) for a in sent))
+	if not constraint == None:
+		constraint = tuple(int(x) for x in constraint.split(','))
 	print(senttok)
 	print(tags)
+	print(constraint)
 	if not senttok or not 1 <= len(senttok) <= LIMIT:
 		return 'Sentence too long: %d words, max %d' % (len(senttok), LIMIT)
 	if lang == 'detect':
@@ -87,7 +91,7 @@ def parse():
 			PARSERS[lang].stages[1].k = (1e-5
 					if coarse == 'pcfg-posterior' else 50)
 
-	results = list(PARSERS[lang].parse(senttok, tags=tags))
+	results = list(PARSERS[lang].parse(senttok, tags=tags, constraint=constraint))
 	if results[-1].noparse:
 		treebrk = 'NO PARSE'
 	else:

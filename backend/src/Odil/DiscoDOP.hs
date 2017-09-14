@@ -67,23 +67,29 @@ type Pos = T.Text
 
 -- | The address to make the GET request, based on the sentence to parse.
 mkRequest
-  :: Bool   -- ^ Perform POS tagging?
+  :: Maybe (Int, Int)
+            -- ^ Span constraint (optional)
+  -> Bool   -- ^ Perform POS tagging?
   -> T.Text -- ^ Sentence argument
   -> String
-mkRequest postag sentArg =
+mkRequest spanConstraint postag sentArg =
   base ++ T.unpack sentArg ++ otherArgs
   where
     base = "http://0.0.0.0:5000/parser/parse?sent="
     otherArgs = "&est=rfe&marg=nbest&objfun=mpp&coarse=pcfg" ++
-      if postag
-      then "&postag=True"
-      else ""
+      if postag then "&postag=True" else "" ++
+      case spanConstraint of
+        Nothing -> ""
+        Just (x, y) -> "&constraint=" ++ show x ++ "," ++ show y
 
 
 -- | Parse a given, tokenized sentence (in French) with DiscoDOP.
-tagParseDOP :: [Orth] -> IO (Maybe Penn.Tree)
-tagParseDOP xs = do
-  r <- Wreq.get $ mkRequest True (sentArg xs)
+tagParseDOP
+  :: Maybe (Int, Int) -- ^ Span constraint
+  -> [Orth]
+  -> IO (Maybe Penn.Tree)
+tagParseDOP spanConstraint xs = do
+  r <- Wreq.get $ mkRequest spanConstraint True (sentArg xs)
   print r
   let parse = fmap
         (T.strip . T.decodeUtf8 . BL.toStrict)
@@ -94,10 +100,13 @@ tagParseDOP xs = do
 
 
 -- | Parse a given, tokenized and pos-tagged sentence (in French) with DiscoDOP.
-parseDOP :: [(Orth, Pos)] -> IO (Maybe Penn.Tree)
-parseDOP xs0 = do
+parseDOP
+  :: Maybe (Int, Int) -- ^ Span constraint
+  -> [(Orth, Pos)]
+  -> IO (Maybe Penn.Tree)
+parseDOP spanConstraint xs0 = do
   let xs = map (second unStanfordPOS) xs0
-  r <- Wreq.get $ mkRequest False (sentArg xs)
+  r <- Wreq.get $ mkRequest spanConstraint False (sentArg xs)
   print r
   let parse = fmap
         (T.strip . T.decodeUtf8 . BL.toStrict)
@@ -115,4 +124,6 @@ unStanfordPOS xpos = case xpos of
   "CLS" -> "CL"
   "CLO" -> "CL"
   "DET" -> "D"
+  "NC" -> "N"
+  "ADJ" -> "A"
   _ -> xpos

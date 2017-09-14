@@ -22,10 +22,10 @@ module Edit.Model exposing
   -- Labels:
   , getLabel, setLabel
   -- Event lenses:
-  , eventClass, eventType, eventTense, eventAspect, eventPolarity, eventSubjMood
-  , eventModality, eventComment
+  , eventClass, eventType, eventTime, eventAspect, eventPolarity, eventMood
+  , eventModality, eventComment, eventInquisit
   -- Event modification:
-  , setEventAttr -- , setEventClass, setEventType, setEventTense, setEventAspect
+  , setEventAttr -- , setEventClass, setEventType, setEventTime, setEventAspect
   -- Node selection:
   , selectNode, selectNodeAux
   -- Links
@@ -1004,8 +1004,8 @@ setEventAttr attLens id focus newVal model =
 -- setEventType : NodeId -> Focus -> Anno.EventType -> Model -> Model
 -- setEventType = setEventAttr eventType
 --
--- setEventTense : NodeId -> Focus -> Maybe Anno.EventTense -> Model -> Model
--- setEventTense = setEventAttr eventTense
+-- setEventTime : NodeId -> Focus -> Maybe Anno.EventTime -> Model -> Model
+-- setEventTime = setEventAttr eventTime
 --
 -- setEventAspect : NodeId -> Focus -> Maybe Anno.EventAspect -> Model -> Model
 -- setEventAspect = setEventAttr eventAspect
@@ -1519,11 +1519,20 @@ eventType =
     Lens.create get update
 
 
-eventTense : Lens.Focus Anno.Event (Maybe Anno.EventTense)
-eventTense =
+eventInquisit : Lens.Focus Anno.Event Anno.EventInquisit
+eventInquisit =
   let
-    get (Anno.Event r) = r.evTense
-    update f (Anno.Event r) = Anno.Event {r | evTense = f r.evTense}
+    get (Anno.Event r) = r.evInquisit
+    update f (Anno.Event r) = Anno.Event {r | evInquisit = f r.evInquisit}
+  in
+    Lens.create get update
+
+
+eventTime : Lens.Focus Anno.Event (Maybe Anno.EventTime)
+eventTime =
+  let
+    get (Anno.Event r) = r.evTime
+    update f (Anno.Event r) = Anno.Event {r | evTime = f r.evTime}
   in
     Lens.create get update
 
@@ -1546,11 +1555,11 @@ eventPolarity =
     Lens.create get update
 
 
-eventSubjMood : Lens.Focus Anno.Event Bool
-eventSubjMood =
+eventMood : Lens.Focus Anno.Event (Maybe Anno.EventMood)
+eventMood =
   let
-    get (Anno.Event r) = r.evSubjMood
-    update f (Anno.Event r) = Anno.Event {r | evSubjMood = f r.evSubjMood}
+    get (Anno.Event r) = r.evMood
+    update f (Anno.Event r) = Anno.Event {r | evMood = f r.evMood}
   in
     Lens.create get update
 

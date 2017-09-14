@@ -215,7 +215,7 @@ talk conn state = forever $ do
         putStrLn "Parsing tokenized sentence..."
         treeMay <- case parTyp of
           Stanford -> Stanford.parseTokenizedFR ws
-          DiscoDOP -> DiscoDOP.tagParseDOP ws
+          DiscoDOP -> DiscoDOP.tagParseDOP Nothing ws
         case treeMay of
           Nothing -> do
             let msg = T.concat ["Could not parse: ", T.unwords ws]
@@ -232,7 +232,7 @@ talk conn state = forever $ do
         putStrLn "Parsing tokenized+POSed sentence..."
         treeMay <- case parTyp of
           Stanford -> Stanford.parsePosFR ws
-          DiscoDOP -> DiscoDOP.parseDOP ws
+          DiscoDOP -> DiscoDOP.parseDOP Nothing ws
         case treeMay of
           Nothing -> do
             let ws' = flip map ws $ \(orth, pos) -> T.concat [orth, ":", pos]
