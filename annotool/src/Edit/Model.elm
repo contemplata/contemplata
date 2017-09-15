@@ -18,7 +18,7 @@ module Edit.Model exposing
   -- Logging:
   , log
   -- Nodes:
-  , getNode, setNode, updateNode
+  , getNode, setNode, updateNode, concatWords
   -- Labels:
   , getLabel, setLabel
   -- Event lenses:
@@ -53,6 +53,7 @@ import Mouse exposing (Position)
 import Set as S
 import Dict as D
 import List as L
+import String as Str
 import Focus exposing ((=>))
 import Focus as Lens
 import Maybe as Maybe
@@ -1209,6 +1210,59 @@ changeType id =
 
 
 ---------------------------------------------------
+-- Concat words
+---------------------------------------------------
+
+
+-- | Concatenate selected words (if contiguous) and destroy the tree (side-effet...).
+concatWords : Model -> Model
+concatWords model =
+
+    let
+
+        -- Concatenate the contiguous words
+        go idSet acc xs =
+            case xs of
+                hd :: tl ->
+                    if S.member hd.nodeId idSet then
+                        go idSet (D.insert hd.leafPos hd acc) tl
+                    else
+                        reveal acc ++ [hd.nodeVal] ++ go idSet D.empty tl
+                    -- if (S.member hd.nodeId idSet) && (D.member (hd.leafPos - 1) acc) then
+                    --     go idSet (D.insert hd.leafPos hd acc) tl
+                    -- else if (not <| S.member hd.nodeId idSet) then
+                    --     reveal acc ++ [hd.nodeVal] ++ go idSet D.empty tl
+                    -- else
+                    --     reveal acc ++ go idSet (D.singleton hd.leafPos hd) tl
+                [] -> reveal acc
+        reveal acc =
+            if D.isEmpty acc
+            then []
+            else [ Str.concat
+                       <| L.map (\(_, x) -> x.nodeVal)
+                       <| D.toList acc
+                 ]
+
+
+        mkTree xs =
+            let
+                root = Node {nodeId=0, nodeVal="ROOT", nodeTyp=Nothing}
+                leaves = L.map mkLeaf
+                         <| L.map2 (,) xs
+                         <| L.range 1 (L.length xs)
+                mkLeaf (word, nodeId) = R.leaf <|
+                    Leaf {nodeId=nodeId, nodeVal=word, leafPos=nodeId-1}
+            in
+                R.Node root leaves
+
+        process idSet tree = mkTree <| go idSet D.empty (getWords tree)
+
+    in
+
+        procSel process model.focus model
+
+
+---------------------------------------------------
 -- Attach subtree
 ---------------------------------------------------
 
@@ -1876,3 +1930,18 @@ mapKeys
 mapKeys f d =
   let first f (x, y) = (f x, y)
   in  D.fromList <| L.map (first f) <| D.toList <| d
+
+
+-- | Retrieve the words (leaves) from a given tree and sort them by their
+-- positions in the sentence.
+-- getWords : R.Tree Node -> List Node
+getWords : R.Tree Node -> List {nodeId : NodeId, nodeVal : String, leafPos : Int}
+getWords tree =
+    let
+        leaf node = case node of
+                        Leaf x -> Just x
+                        Node _ -> Nothing
+    in
+        List.sortBy (\x -> x.leafPos)
+            <| List.filterMap leaf
+            <| R.flatten tree

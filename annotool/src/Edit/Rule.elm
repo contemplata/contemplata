@@ -29,13 +29,17 @@ allRules =
         x.left == "VN" &&
         x.right == "VPinf")
     , mkRule "VP" (\x ->
-        List.member x.parent ["SENT", "Ssub", "Sint"] &&
+        List.member x.parent ["SENT", "Ssub", "COORD", "Sint"] &&
         x.left == "VN" &&
         x.right == "NP")
     , mkRule "VP" (\x ->
-        List.member x.parent ["SENT", "VPinf", "Srel"] &&
+        List.member x.parent ["VPinf", "Ssub"] &&
         x.left == "VN" &&
         x.right == "PP")
+    , mkRule "VP" (\x ->
+        List.member x.parent ["SENT"] &&
+        x.left == "VN" &&
+        x.right == "ADV")
     ]
 
 

@@ -59,6 +59,7 @@ type Msg
   | Swap Bool
   | Files -- ^ Go back to files menu
   | SaveFile  -- ^ Save the current file
+  | ConcatWords  -- ^ Merge two (or more) words
   | Undo
   | Redo
   | SideMenuEdit M.Focus
@@ -204,18 +205,18 @@ update msg model =
 
     Files -> idle <| model -- ^ Handled upstream
 
-    ParseSent parTyp ->
-      let
-        treeId = (M.selectWin model.focus model).tree
-        tree = M.getTree treeId model
-        word node = case node of
-          M.Node _ -> Nothing
-          M.Leaf {nodeVal} -> Just nodeVal
-        words = List.reverse <| Util.catMaybes <| List.map word <| R.flatten tree
-        req = Server.encodeReq (Server.ParseSent model.fileId treeId parTyp words)
-        send = WebSocket.send Cfg.socketServer req
-      in
-        (model, send)
+    ParseSent parTyp -> parseSent parTyp model
+--       let
+--         treeId = (M.selectWin model.focus model).tree
+--         tree = M.getTree treeId model
+--         word node = case node of
+--           M.Node _ -> Nothing
+--           M.Leaf {nodeVal} -> Just nodeVal
+--         words = List.reverse <| Util.catMaybes <| List.map word <| R.flatten tree
+--         req = Server.encodeReq (Server.ParseSent model.fileId treeId parTyp words)
+--         send = WebSocket.send Cfg.socketServer req
+--       in
+--         (model, send)
 
     ParseSentPos parTyp ->
       let
@@ -243,6 +244,8 @@ update msg model =
         send = WebSocket.send Cfg.socketServer req
       in
         (model, send)
+
+    ConcatWords -> parseSent Server.Stanford <| M.concatWords model
 
     Undo -> idle <| M.undo model
     Redo -> idle <| M.redo model
@@ -361,6 +364,7 @@ cmdList =
   , ("dopparse", ParseSent Server.DiscoDOP)
   , ("dopparsepos", ParseSentPos Server.DiscoDOP)
   , ("flatten", ApplyRules)
+  , ("concat", ConcatWords)
 --   , ("undo", Undo)
 --   , ("redo", Redo)
   ]
@@ -448,3 +452,23 @@ getWordPos tree =
         M.Node r -> go r.nodeVal nodes
   in
     go "" <| List.reverse <| R.flatten tree
+
+
+----------------------------------------------
+-- Utils
+----------------------------------------------
+
+
+parseSent : Server.ParserTyp -> M.Model -> (M.Model, Cmd Msg)
+parseSent parTyp model =
+    let
+        treeId = (M.selectWin model.focus model).tree
+        tree = M.getTree treeId model
+        word node = case node of
+                        M.Node _ -> Nothing
+                        M.Leaf {nodeVal} -> Just nodeVal
+        words = List.reverse <| Util.catMaybes <| List.map word <| R.flatten tree
+        req = Server.encodeReq (Server.ParseSent model.fileId treeId parTyp words)
+        send = WebSocket.send Cfg.socketServer req
+    in
+        (model, send)
