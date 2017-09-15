@@ -432,6 +432,67 @@ viewSideEditLabel win model =
     inp
 
 
+-- viewSideEvent : M.Focus -> M.NodeId -> Anno.Event -> List (Html.Html Msg)
+-- viewSideEvent focus nodeId (Anno.Event ev) =
+--   let
+--
+--     option evVal (str, val) = Html.option
+--       [ Atts.value str
+--       , Atts.selected (val == evVal) ]
+--       [ Html.text str ]
+--     inputGeneric label value valList attr = -- mkEvent =
+--       let
+--         setMsg str = SetEventAttr nodeId focus (attr <| Anno.valueFromStr valList str)
+--       in
+--         Html.div []
+--           [ Html.text (label ++ ": ")
+--           , Html.select
+--             [ Events.on "change" (Decode.map setMsg Events.targetValue)
+--             , blockKeyDownEvents ]
+--             (List.map (option value) valList)
+--           ]
+--
+--     inpClass = inputGeneric "Class" ev.evClass Anno.eventClassStr Anno.ClassAttr
+--     inpType = inputGeneric "Type" ev.evType Anno.eventTypeStr Anno.TypeAttr
+--     inpInq = inputGeneric "Inquisit" ev.evInquisit Anno.eventInquisitStr Anno.InquisitAttr
+--     inpTime =
+--         inputGeneric "Time" ev.evTime
+--             (Anno.nullable Anno.eventTimeStr)
+--             Anno.TimeAttr
+--     inpAspect =
+--         inputGeneric "Aspect" ev.evAspect
+--             (Anno.nullable Anno.eventAspectStr)
+--             Anno.AspectAttr
+--     inpPolar = inputGeneric "Polarity" ev.evPolarity Anno.eventPolarityStr Anno.PolarityAttr
+--     inpMood =
+--         inputGeneric "Mood" ev.evMood
+--             (Anno.nullable Anno.eventMoodStr)
+--             Anno.MoodAttr
+--     inpModality =
+--         inputGeneric "Modality" ev.evModality
+--             (Anno.nullable Anno.eventModalityStr)
+--             Anno.ModalityAttr
+--
+--     inpComment =
+--       let
+--         setMsg str = SetEventAttr nodeId focus (Anno.CommentAttr str)
+--       in
+--         Html.div []
+--           [ Html.text "Comment: "
+--           -- , Html.textarea
+--           , Html.input
+--             [ Events.onInput setMsg
+--             -- , Atts.rows 3
+--             , Atts.value ev.evComment
+--             , blockKeyDownEvents ]
+--             []
+--           ]
+--
+--   in
+--     [inpClass, inpType, inpInq, inpTime, inpAspect,
+--          inpPolar, inpMood, inpModality, inpComment]
+
+
 viewSideEvent : M.Focus -> M.NodeId -> Anno.Event -> List (Html.Html Msg)
 viewSideEvent focus nodeId (Anno.Event ev) =
   let
@@ -444,12 +505,14 @@ viewSideEvent focus nodeId (Anno.Event ev) =
       let
         setMsg str = SetEventAttr nodeId focus (attr <| Anno.valueFromStr valList str)
       in
-        Html.div []
-          [ Html.text (label ++ ": ")
-          , Html.select
-            [ Events.on "change" (Decode.map setMsg Events.targetValue)
-            , blockKeyDownEvents ]
-            (List.map (option value) valList)
+        Html.tr []
+          [ Html.td [] [Html.text (label ++ ": ")]
+          , Html.td []
+              [Html.select
+                   [ Events.on "change" (Decode.map setMsg Events.targetValue)
+                   , blockKeyDownEvents ]
+                   (List.map (option value) valList)
+              ]
           ]
 
     inpClass = inputGeneric "Class" ev.evClass Anno.eventClassStr Anno.ClassAttr
@@ -477,20 +540,23 @@ viewSideEvent focus nodeId (Anno.Event ev) =
       let
         setMsg str = SetEventAttr nodeId focus (Anno.CommentAttr str)
       in
-        Html.div []
-          [ Html.text "Comment: "
-          -- , Html.textarea
-          , Html.input
-            [ Events.onInput setMsg
-            -- , Atts.rows 3
-            , Atts.value ev.evComment
-            , blockKeyDownEvents ]
-            []
+        Html.tr []
+          [ Html.td [] [Html.text ("Comment: ")]
+          , Html.td []
+              [Html.input
+                   [ Events.onInput setMsg
+                   -- , Atts.rows 3
+                   , Atts.value ev.evComment
+                   , blockKeyDownEvents ]
+                   []
+              ]
           ]
 
   in
-    [inpClass, inpType, inpInq, inpTime, inpAspect,
-         inpPolar, inpMood, inpModality, inpComment]
+      [ Html.table []
+            [ inpClass, inpType, inpInq, inpTime, inpAspect
+            , inpPolar, inpMood, inpModality, inpComment ]
+      ]
 
 
 -- | The view of a side window.
