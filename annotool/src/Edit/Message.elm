@@ -13,6 +13,7 @@ import Focus as Focus
 import Window as Window
 import WebSocket
 import Json.Decode as Decode
+import Focus as Lens
 
 import Rose as R
 
@@ -51,6 +52,7 @@ type Msg
   | ChangeType -- ^ Change the type of the selected node
   | ParseSent Server.ParserTyp  -- ^ Reparse the sentence in focus
   | ParseSentPos Server.ParserTyp -- ^ Reparse the sentence in focus, preserve POList (String, String)S tags
+  | ParseSentCons  -- ^ Reparse the sentence in focus with the selected node as a source of constraints
   | ApplyRules -- ^ Apply the (flattening) rules
   | CtrlDown
   | CtrlUp
@@ -227,6 +229,19 @@ update msg model =
       in
         (model, send)
 
+    ParseSentCons ->
+      let
+        win = M.selectWin model.focus model
+        treeId = win.tree
+        tree = M.getTree treeId model
+        wordsPos = getWordPos tree
+        selection = M.selAll win
+        span = getSpan selection tree
+        req cns = Server.encodeReq (Server.ParseSentCons model.fileId treeId cns wordsPos)
+        send cns = WebSocket.send Cfg.socketServer (req cns)
+      in
+        (model, send span)
+
     ApplyRules -> idle <|
       let
         wlen = M.winLens model.focus
@@ -363,6 +378,7 @@ cmdList =
   , ("parsepos", ParseSentPos Server.Stanford)
   , ("dopparse", ParseSent Server.DiscoDOP)
   , ("dopparsepos", ParseSentPos Server.DiscoDOP)
+  , ("parsecons", ParseSentCons)
   , ("flatten", ApplyRules)
   , ("concat", ConcatWords)
 --   , ("undo", Undo)
@@ -472,3 +488,37 @@ parseSent parTyp model =
         send = WebSocket.send Cfg.socketServer req
     in
         (model, send)
+
+
+-- | Retrieve the span of a given node in a given tree.
+getSpan1 : M.NodeId -> R.Tree M.Node -> Maybe (Int, Int)
+getSpan1 nodeId tree =
+    case getSpan (S.singleton nodeId) tree of
+        x :: _ -> Just x
+        [] -> Nothing
+
+
+-- | Retrieve the span of a given node in a given tree.
+getSpan : S.Set M.NodeId -> R.Tree M.Node -> List (Int, Int)
+getSpan idSet =
+     let
+         span (val, (x, y)) =
+             if S.member (Lens.get M.nodeId val) idSet
+             then [(x, y)]
+             else []
+     in
+         L.concatMap span << R.flatten << spanTree
+
+
+-- | Add information about the span of the subtree for each node.
+spanTree : R.Tree M.Node -> R.Tree (M.Node, (Int, Int))
+spanTree (R.Node val ts) =
+    case val of
+        M.Leaf r -> R.Node (val, (r.leafPos, r.leafPos)) []
+        M.Node r ->
+            let ts1 = L.map spanTree ts
+                span (R.Node val ts) = Tuple.second val
+                get f = Maybe.withDefault 0 << f
+                x = get L.minimum <| L.map (Tuple.first << span) <| ts1
+                y = get L.maximum <| L.map (Tuple.second << span) <| ts1
+             in R.Node (val, (x, y)) ts1

@@ -74,6 +74,9 @@ data Request
     -- he/she got the answer for this request
   | ParseSentPos FileId TreeId ParserTyp [(Stanford.Orth, Stanford.Pos)]
     -- ^ Similar to `ParseSent`, but with POS information
+  | ParseSentCons FileId TreeId [(Int, Int)] [(Stanford.Orth, Stanford.Pos)]
+    -- ^ Similar to `ParseSent`, but with an additional constraint (constituent
+    -- with the given pair of positions must exist in the tree)
   deriving (Generic, Show)
 
 instance JSON.FromJSON Request
@@ -233,6 +236,22 @@ talk conn state = forever $ do
         treeMay <- case parTyp of
           Stanford -> Stanford.parsePosFR ws
           DiscoDOP -> DiscoDOP.parseDOP Nothing ws
+        case treeMay of
+          Nothing -> do
+            let ws' = flip map ws $ \(orth, pos) -> T.concat [orth, ":", pos]
+                msg = T.concat ["Could not parse: ", T.unwords ws']
+            T.putStrLn msg
+            WS.sendTextData conn . JSON.encode $ Notification msg
+          Just t -> do
+            let ret = ParseResult fileId treeId (Penn.toOdilTree t)
+            WS.sendTextData conn (JSON.encode ret)
+            let msg = T.concat ["Parsed successfully"]
+            T.putStrLn msg
+            WS.sendTextData conn . JSON.encode $ Notification msg
+
+      Right (ParseSentCons fileId treeId cons ws) -> do
+        putStrLn "Parsing tokenized+POSed sentence..."
+        treeMay <- DiscoDOP.parseDOP' cons ws
         case treeMay of
           Nothing -> do
             let ws' = flip map ws $ \(orth, pos) -> T.concat [orth, ":", pos]

@@ -36,6 +36,8 @@ type Request
     -- checked on return if the user did not switch the file...)
   | ParseSentPos M.FileId M.TreeId ParserTyp (List (Orth, Pos))
     -- ^ Like `ParseSent`, but with POS tags
+  | ParseSentCons M.FileId M.TreeId (List (Int, Int)) (List (Orth, Pos))
+    -- ^ Like `ParseSent`, but with constraints
 
 
 encodeReq : Request -> String
@@ -72,7 +74,16 @@ encodeReqToVal req = case req of
          [ Encode.string fileId
          , Encode.int treeId
          , Encode.string (toString parTyp)
-         , Encode.list (List.map encodePair ws) ]
+         , Encode.list (List.map (encodePair Encode.string) ws) ]
+      )
+    ]
+  ParseSentCons fileId treeId cons ws -> Encode.object
+    [ ("tag", Encode.string "ParseSentCons")
+    , ("contents", Encode.list
+         [ Encode.string fileId
+         , Encode.int treeId
+         , Encode.list (List.map (encodePair Encode.int) cons)
+         , Encode.list (List.map (encodePair Encode.string) ws) ]
       )
     ]
 
@@ -124,5 +135,9 @@ notificationDecoder =
 ---------------------------------------------------
 
 
-encodePair : (String, String) -> Encode.Value
-encodePair (x, y) = Encode.list [Encode.string x, Encode.string y]
+-- encodePair : (String, String) -> Encode.Value
+-- encodePair (x, y) = Encode.list [Encode.string x, Encode.string y]
+
+
+encodePair : (a -> Encode.Value) -> (a, a) -> Encode.Value
+encodePair enc (x, y) = Encode.list [enc x, enc y]
