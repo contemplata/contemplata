@@ -12,6 +12,7 @@ module Edit.Anno exposing
   , EventPolarity(..)
   , EventMood(..)
   , EventModality(..)
+  , EventMod(..)
   , eventDefault
   , eventClassStr
   -- , eventClassFromStr
@@ -23,6 +24,7 @@ module Edit.Anno exposing
   , eventPolarityStr
   , eventMoodStr
   , eventModalityStr
+  , eventModStr
 
   -- * JSON
   , encodeEvent
@@ -57,6 +59,8 @@ type Event = Event
   , evPolarity : EventPolarity
   , evMood : Maybe EventMood
   , evModality : Maybe EventModality
+  , evCardinality : String
+  , evMod : Maybe EventMod
   , evComment : String
   -- , evConfidence :: Confidence
   }
@@ -72,6 +76,8 @@ eventDefault = Event
   , evPolarity = Pos
   , evMood = Nothing
   , evModality = Nothing
+  , evCardinality = ""
+  , evMod = Nothing
   , evComment = ""
   }
 
@@ -85,6 +91,8 @@ type EventAttr
     | PolarityAttr EventPolarity
     | MoodAttr (Maybe EventMood)
     | ModalityAttr (Maybe EventModality)
+    | CardinalityAttr String
+    | ModAttr (Maybe EventMod)
     | CommentAttr String
 
 
@@ -334,6 +342,27 @@ eventModalityStr =
   , ("Probability", Probability) ]
 
 
+---------------------------------------------------
+-- Mod(ifier?)
+---------------------------------------------------
+
+
+-- | An event's mod(ifier?).
+type EventMod
+  = Start
+  | Mid
+  | End
+
+
+-- | The string representations.
+eventModStr : List (String, EventMod)
+eventModStr =
+  [ ("Start", Start)
+  , ("Mid", Mid)
+  , ("End", End)
+  ]
+
+
 -- ---------------------------------------------------
 -- -- Confidence
 -- ---------------------------------------------------
@@ -361,7 +390,7 @@ eventModalityStr =
 
 eventDecoder : Decode.Decoder Event
 eventDecoder =
-  let mkEvent cls typ inq tns asp pol subj mod com =
+  let mkEvent cls typ inq tns asp pol subj modal car mod com =
         Event
         { evClass=cls
         , evType=typ
@@ -370,10 +399,12 @@ eventDecoder =
         , evAspect=asp
         , evPolarity=pol
         , evMood=subj
-        , evModality=mod
+        , evModality=modal
+        , evCardinality=car
+        , evMod=mod
         , evComment=com
         }
-  in  decodeMap9 mkEvent
+  in  decodeMap11 mkEvent
         (Decode.field "evClass" eventClassDecoder)
         (Decode.field "evType" eventTypeDecoder)
         (Decode.field "evInquisit" eventInquisitDecoder)
@@ -382,6 +413,8 @@ eventDecoder =
         (Decode.field "evPolarity" eventPolarityDecoder)
         (Decode.field "evMood" (Decode.nullable eventMoodDecoder))
         (Decode.field "evModality" (Decode.nullable eventModalityDecoder))
+        (Decode.field "evCardinality" Decode.string)
+        (Decode.field "evMod" (Decode.nullable eventModDecoder))
         (Decode.field "evComment" Decode.string)
 
 
@@ -449,9 +482,13 @@ eventModalityDecoder : Decode.Decoder EventModality
 eventModalityDecoder = eventAttrDecoder eventModalityStr
 
 
+eventModDecoder : Decode.Decoder EventMod
+eventModDecoder = eventAttrDecoder eventModStr
+
+
 -- | Since map9 is not in Json.Decode...
-decodeMap9
-    : (a -> b -> c -> d -> e -> f -> g -> h -> i -> value)
+decodeMap11
+    : (a -> b -> c -> d -> e -> f -> g -> h -> i -> j -> k -> value)
     -> Decode.Decoder a
     -> Decode.Decoder b
     -> Decode.Decoder c
@@ -461,9 +498,11 @@ decodeMap9
     -> Decode.Decoder g
     -> Decode.Decoder h
     -> Decode.Decoder i
+    -> Decode.Decoder j
+    -> Decode.Decoder k
     -> Decode.Decoder value
--- decodeMap9 = Debug.crash "asdf"
-decodeMap9 f m1 m2 m3 m4 m5 m6 m7 m8 m9 =
+-- decodeMap11 = Debug.crash "asdf"
+decodeMap11 f m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 =
     andThen m1 (\x1 ->
     andThen m2 (\x2 ->
     andThen m3 (\x3 ->
@@ -472,8 +511,10 @@ decodeMap9 f m1 m2 m3 m4 m5 m6 m7 m8 m9 =
     andThen m6 (\x6 ->
     andThen m7 (\x7 ->
     andThen m8 (\x8 ->
-    andThen m9 (\x9 -> Decode.succeed (f x1 x2 x3 x4 x5 x6 x7 x8 x9)
-    )))))))))
+    andThen m9 (\x9 ->
+    andThen m10 (\x10 ->
+    andThen m11 (\x11 -> Decode.succeed (f x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11)
+    )))))))))))
 
 
 -- | Just a version of Decode.andThen with swapped arguments.
@@ -510,6 +551,8 @@ encodeEvent (Event r) = Encode.object
     , ("evPolarity", encodeEventPolarity r.evPolarity)
     , ("evMood", Util.encodeMaybe encodeEventMood r.evMood)
     , ("evModality", Util.encodeMaybe encodeEventModality r.evModality)
+    , ("evCardinality", Encode.string r.evCardinality)
+    , ("evMod", Util.encodeMaybe encodeEventMod r.evMod)
     , ("evComment", Encode.string r.evComment)
     ]
 
@@ -552,3 +595,8 @@ encodeEventMood x = Encode.string <|
 encodeEventModality : EventModality -> Encode.Value
 encodeEventModality x = Encode.string <|
   strFromValue eventModalityStr x
+
+
+encodeEventMod : EventMod -> Encode.Value
+encodeEventMod x = Encode.string <|
+  strFromValue eventModStr x

@@ -23,7 +23,7 @@ module Edit.Model exposing
   , getLabel, setLabel
   -- Event lenses:
   , eventClass, eventType, eventTime, eventAspect, eventPolarity, eventMood
-  , eventModality, eventComment, eventInquisit
+  , eventModality, eventComment, eventInquisit, eventCardinality, eventMod
   -- Event modification:
   , setEventAttr -- , setEventClass, setEventType, setEventTime, setEventAspect
   -- Node selection:
@@ -1569,6 +1569,24 @@ eventModality =
   let
     get (Anno.Event r) = r.evModality
     update f (Anno.Event r) = Anno.Event {r | evModality = f r.evModality}
+  in
+    Lens.create get update
+
+
+eventCardinality : Lens.Focus Anno.Event String
+eventCardinality =
+  let
+    get (Anno.Event r) = r.evCardinality
+    update f (Anno.Event r) = Anno.Event {r | evCardinality = f r.evCardinality}
+  in
+    Lens.create get update
+
+
+eventMod : Lens.Focus Anno.Event (Maybe Anno.EventMod)
+eventMod =
+  let
+    get (Anno.Event r) = r.evMod
+    update f (Anno.Event r) = Anno.Event {r | evMod = f r.evMod}
   in
     Lens.create get update
 

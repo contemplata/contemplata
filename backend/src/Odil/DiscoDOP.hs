@@ -22,6 +22,8 @@ import Control.Arrow (second)
 -- import Control.Monad.IO.Class (liftIO)
 -- import Control.Monad.Trans.Maybe (MaybeT(..))
 
+import qualified Control.Exception as Exc
+
 -- import Data.Word (Word8, Word16)
 -- import Data.Bits ((.&.), shiftR)
 import qualified Data.Char as C
@@ -88,7 +90,7 @@ tagParseDOP
   :: Maybe (Int, Int) -- ^ Span constraint
   -> [Orth]
   -> IO (Maybe Penn.Tree)
-tagParseDOP spanConstraint xs = do
+tagParseDOP spanConstraint xs = Exc.handle ignoreException $ do
   r <- Wreq.get $ mkRequest spanConstraint True (sentArg xs)
   print r
   let parse = fmap
@@ -104,7 +106,7 @@ parseDOP
   :: Maybe (Int, Int) -- ^ Span constraint
   -> [(Orth, Pos)]
   -> IO (Maybe Penn.Tree)
-parseDOP spanConstraint xs0 = do
+parseDOP spanConstraint xs0 = Exc.handle ignoreException $ do
   let xs = map (second unStanfordPOS) xs0
   r <- Wreq.get $ mkRequest spanConstraint False (sentArg xs)
   print r
@@ -127,3 +129,13 @@ unStanfordPOS xpos = case xpos of
   "NC" -> "N"
   "ADJ" -> "A"
   _ -> xpos
+
+
+----------------------------------------------
+-- Utils
+----------------------------------------------
+
+
+-- | Convert any exception to `Nothing`.
+ignoreException :: Exc.SomeException -> IO (Maybe a)
+ignoreException _ = return Nothing

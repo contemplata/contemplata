@@ -275,6 +275,8 @@ update msg model =
         Anno.PolarityAttr x -> M.setEventAttr M.eventPolarity nodeId focus x model
         Anno.MoodAttr x -> M.setEventAttr M.eventMood nodeId focus x model
         Anno.ModalityAttr x -> M.setEventAttr M.eventModality nodeId focus x model
+        Anno.CardinalityAttr x -> M.setEventAttr M.eventCardinality nodeId focus x model
+        Anno.ModAttr x -> M.setEventAttr M.eventMod nodeId focus x model
         Anno.CommentAttr x -> M.setEventAttr M.eventComment nodeId focus x model
         -- _ -> Debug.crash "SetEventAttr: not implemented yet!"
 

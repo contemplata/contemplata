@@ -24,6 +24,8 @@ import Control.Monad (guard, (<=<))
 -- import Control.Monad.IO.Class (liftIO)
 -- import Control.Monad.Trans.Maybe (MaybeT(..))
 
+import qualified Control.Exception as Exc
+
 import           Data.Maybe (catMaybes)
 -- import Data.Word (Word8, Word16)
 -- import Data.Bits ((.&.), shiftR)
@@ -77,7 +79,7 @@ serverCfg = "http://localhost:9000/?properties={\"annotators\":\"tokenize,ssplit
 
 -- | Parse a given sentence (in French).
 parseFR :: T.Text -> IO (Maybe Penn.Tree)
-parseFR x = do
+parseFR x = Exc.handle ignoreException $ do
   r <- Wreq.post serverCfg (T.encodeUtf8 x)
   let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "parse" . _String
   return $ parse >>= Penn.parseTree'
@@ -93,7 +95,7 @@ tokenizedServerCfg = "http://localhost:9000/?properties={\"annotators\":\"pos,pa
 -- Note that input words are not allowed to contain whitespaces (otherwise, the
 -- parser fails and returns `Nothing`).
 parseTokenizedFR :: [Orth] -> IO (Maybe Penn.Tree)
-parseTokenizedFR xs = do
+parseTokenizedFR xs = Exc.handle ignoreException  $ do
   guard . all noSpace $ xs
   r <- Wreq.post tokenizedServerCfg . T.encodeUtf8 . T.unwords $ xs
   let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "parse" . _String
@@ -117,7 +119,7 @@ posCfg = "http://localhost:9000/?properties={\"annotators\":\"parse\",\"parse.mo
 
 -- | Parse a given sentence, tokenized and with pre-computed POS tags.
 parsePosFR :: [(Orth, Pos)] -> IO (Maybe Penn.Tree)
-parsePosFR pos = do
+parsePosFR pos = Exc.handle ignoreException $ do
   let docBS = encodeDoc (docFromPos pos)
   r <- Wreq.post posCfg docBS
   let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "parse" . _String
@@ -153,7 +155,7 @@ taggerCfg = "http://localhost:9000/?properties={\"annotators\":\"tokenize,ssplit
 
 -- | Parse a given sentence, tokenized and with pre-computed POS tags.
 posTagFR :: T.Text -> IO (Maybe [(Orth, Pos)])
-posTagFR sent = do
+posTagFR sent = Exc.handle ignoreException $ do
   let docBS = encodeDoc (docFromRaw sent)
   r <- Wreq.post taggerCfg docBS
   let mayParse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "tokens"
@@ -257,4 +259,14 @@ decodeDoc bs = flip Byte.runGetL bs $ do
   Byte.VarInt (header :: Int) <- Byte.deserialize
   n <- fromIntegral <$> Byte.remaining
   Proto.decodeMessage <$> Byte.getByteString n
+
+
+----------------------------------------------
+-- Utils
+----------------------------------------------
+
+
+-- | Convert any exception to `Nothing`.
+ignoreException :: Exc.SomeException -> IO (Maybe a)
+ignoreException _ = return Nothing
 

@@ -15,6 +15,7 @@ module Odil.AnnoTypes
 , EventAspect(..)
 , EventPolarity(..)
 , EventModality(..)
+, EventMod(..)
 
 -- -- * General
 -- , Confidence(..)
@@ -37,6 +38,8 @@ data Event = Event
   , evPolarity :: EventPolarity
   , evMood :: Maybe EventMood
   , evModality :: Maybe EventModality
+  , evCardinality :: T.Text
+  , evMod :: Maybe EventMod
   , evComment :: T.Text
     -- ^ Optional comment left by the annotator
 --   , evConfidence :: Confidence
@@ -137,6 +140,14 @@ data EventModality
   deriving (Generic,Show,Eq,Ord)
 
 
+-- | An event's modifier(?).
+data EventMod
+  = Start
+  | Mid
+  | End
+  deriving (Generic,Show,Eq,Ord)
+
+
 -- -- | An event's polarity.
 -- data Confidence
 --     = High
@@ -184,6 +195,10 @@ instance JSON.ToJSON EventMood where
 
 instance JSON.FromJSON EventModality
 instance JSON.ToJSON EventModality where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+
+instance JSON.FromJSON EventMod
+instance JSON.ToJSON EventMod where
   toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
 -- instance JSON.FromJSON Confidence

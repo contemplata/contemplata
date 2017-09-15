@@ -119,8 +119,9 @@ viewWindow win model =
 
   [ viewTree win model
   , viewBottomLine win model ]
-  ++ if win == model.focus
-     then [viewMenu]
+  ++ if (win == M.Bot && model.dim.heightProp <= 0) ||
+        (win == M.Top && model.dim.heightProp > 0)
+     then [viewMenu] -- model.fileId]
      else []
 
 
@@ -165,9 +166,10 @@ viewTreeId win model =
     txt0 = toString (M.treePos win model)
       ++ "/"
       ++ toString (M.treeNum model)
-    txt = txt0 ++ case win of
-      M.Top -> " (" ++ toString model.dim.height ++ ")"
-      M.Bot -> " (" ++ toString model.dim.width ++ ")"
+    txt = txt0 ++ " (" ++ model.fileId ++ ")"
+--     txt = txt0 ++ case win of
+--       M.Top -> " (" ++ toString model.dim.height ++ ")"
+--       M.Bot -> " (" ++ toString model.dim.width ++ ")"
   in
     Html.div bottomStyle [Html.text txt]
 
@@ -205,8 +207,10 @@ bottomStyle =
 ---------------------------------------------------
 
 
-viewMenu : Html.Html Msg
-viewMenu =
+viewMenu
+    -- : String -- File name
+    : Html.Html Msg
+viewMenu = -- fileName =
   let
 
     menuElem onClick pos txt = Html.div
@@ -221,7 +225,14 @@ viewMenu =
       ]
       [ Html.text txt ]
 
+    -- initPos = (String.length fileName * 6) + 20
+
   in
+
+--     Html.div []
+--       [ menuElem Msg.dummy 10 ("[" ++ fileName ++ "]")
+--       , menuElem Files (initPos + 60) "Menu"
+--       , menuElem SaveFile (initPos + 120) "Save" ]
 
     Html.div []
       [ menuElem Files 10 "Menu"
@@ -535,27 +546,50 @@ viewSideEvent focus nodeId (Anno.Event ev) =
         inputGeneric "Modality" ev.evModality
             (Anno.nullable Anno.eventModalityStr)
             Anno.ModalityAttr
+    inpMod =
+        inputGeneric "Mod" ev.evMod
+            (Anno.nullable Anno.eventModStr)
+            Anno.ModAttr
 
-    inpComment =
+    textGeneric attr text value =
       let
-        setMsg str = SetEventAttr nodeId focus (Anno.CommentAttr str)
+        setMsg str = SetEventAttr nodeId focus (attr str)
       in
         Html.tr []
-          [ Html.td [] [Html.text ("Comment: ")]
+          [ Html.td [] [Html.text text]
           , Html.td []
               [Html.input
                    [ Events.onInput setMsg
                    -- , Atts.rows 3
-                   , Atts.value ev.evComment
+                   , Atts.value value
                    , blockKeyDownEvents ]
                    []
               ]
           ]
 
+    inpCardinality = textGeneric Anno.CardinalityAttr "Cardinality: " ev.evCardinality
+    inpComment = textGeneric Anno.CommentAttr "Comment: " ev.evComment
+
+--     inpComment =
+--       let
+--         setMsg str = SetEventAttr nodeId focus (Anno.CommentAttr str)
+--       in
+--         Html.tr []
+--           [ Html.td [] [Html.text ("Comment: ")]
+--           , Html.td []
+--               [Html.input
+--                    [ Events.onInput setMsg
+--                    -- , Atts.rows 3
+--                    , Atts.value ev.evComment
+--                    , blockKeyDownEvents ]
+--                    []
+--               ]
+--           ]
+
   in
       [ Html.table []
-            [ inpClass, inpType, inpInq, inpTime, inpAspect
-            , inpPolar, inpMood, inpModality, inpComment ]
+            [ inpClass, inpType, inpInq, inpTime, inpAspect , inpPolar, inpMood
+            , inpModality, inpCardinality, inpMod, inpComment ]
       ]
 
 

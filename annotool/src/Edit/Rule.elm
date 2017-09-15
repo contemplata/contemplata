@@ -32,6 +32,10 @@ allRules =
         List.member x.parent ["SENT", "Ssub", "Sint"] &&
         x.left == "VN" &&
         x.right == "NP")
+    , mkRule "VP" (\x ->
+        List.member x.parent ["SENT", "Ssub", "Sint"] &&
+        x.left == "VN" &&
+        x.right == "PP")
     ]
 
 
