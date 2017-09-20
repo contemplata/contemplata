@@ -150,6 +150,15 @@ topUpdate topMsg =
       Edit.Message.Files -> \model_ ->
         let (model, cmd) = Menu.mkMenu
         in  (Menu model, Cmd.map menuMsg cmd)
+      -- Unfortunately, we have to handle `Many` here too, since
+      -- `Files` can be embedded inside.
+      Edit.Message.Many msgs -> \model ->
+        let f msg (mdl0, cmds) =
+          let (mdl, cmd) = topUpdate (Left <| Edit msg) mdl0
+          in  (mdl, cmd :: cmds)
+        in
+          let (mdl, cmds) = List.foldl f (model, []) msgs
+          in  (mdl, Cmd.batch cmds)
       _ -> updateOn editLens editMsg (Edit.Message.update msg)
     Left (Menu msg) ->
       updateOn menuLens menuMsg (Menu.update msg)

@@ -236,6 +236,7 @@ unStanfordPOS xpos = case xpos of
   "NC" -> "N"
   "ADJ" -> "A"
   "VINF" -> "V"
+  "VPP" -> "V"
   _ -> xpos
 
 

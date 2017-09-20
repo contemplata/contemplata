@@ -24,9 +24,11 @@ import Edit.Anno as Anno
 import Edit.Model as M
 import Edit.Message as Msg
 import Edit.Message exposing (Msg(..))
+import Edit.Popup as Popup
 import Server
 
 
+-- | The main view function.
 view : M.Model -> Html.Html Msg
 view model =
   Html.div
@@ -45,7 +47,10 @@ view model =
       , viewSideWindow M.Top model
       , viewWindow M.Bot model
       , viewSideWindow M.Bot model
-      ] ++ viewLinks model )
+      ]
+          ++ viewLinks model
+          ++ viewPopups model
+    )
 
 
 stylesheet =
@@ -106,7 +111,7 @@ viewWindow win model =
     -- , "border" => "1px black solid"
 
     -- z-index important because of its interactions with how the edges are
-    -- drawn.
+    -- drawn *and* with popup windows
     , "z-index" => "-1"
 
     -- make the outline invisible (the fact that the window is in focus is
@@ -203,6 +208,78 @@ bottomStyle =
 
 
 ---------------------------------------------------
+-- Popup
+---------------------------------------------------
+
+
+viewPopups : M.Model -> List (Html.Html Msg)
+viewPopups model =
+    case model.popup of
+        Nothing -> []
+        Just Popup.Files  -> [viewPopupFiles model]
+
+
+viewPopupFiles : M.Model -> Html.Html Msg
+viewPopupFiles model =
+    let
+        textElem txt =
+            Html.div
+                [ Atts.class "noselect"
+                , Atts.style
+                    [ "cursor" => "default"
+                    , "margin" => px 5
+                    , "font-size" => "200%" ]
+                ]
+                [ Html.text txt ]
+        textButton txt action =
+            Html.span
+                [ Atts.class "noselect"
+                , Events.onClick action
+                , Atts.style
+                    [ "cursor" => "pointer"
+                    , "margin-left" => px 15
+                    , "margin-right" => px 15
+                    , "font-size" => "150%" ]
+                ]
+                [ Html.text txt ]
+        popupDiv =
+            Html.div
+                [ Atts.style
+                  [ "position" => "absolute"
+                  , "display" => "inline-block"
+                  , "left" => "50%"
+                  -- , "left" => (toString (model.dim.widthProp // 2) ++ "%")
+                  , "top" => "50%"
+                  , "-webkit-transform" => "translate(-50%, -50%)"
+                  , "transform" => "translate(-50%, -50%)"
+                  -- , "background-color" => "#48e"
+                  , "text-align" => "center"
+                  -- , "border-radius" => "10%" -- "4px"
+                  ]
+                ]
+                [ textElem "Do you wish to save?"
+                , Html.div
+                    []
+                    [ textButton "Yes" (Many [SaveFile, QuitPopup, Files])
+                    , textButton "No" (Many [QuitPopup, Files])
+                    , textButton "Cancel" QuitPopup
+                    ]
+                ]
+    in
+        Html.div
+            [ Atts.class "popup"
+            , Atts.style
+                  [ "position" => "absolute"
+                  , "width" => "100%"
+                  , "height" => "100%"
+                  , "opacity" => "0.85"
+                  -- , "background-color" => "#e84"
+                  ]
+            ]
+            [ popupDiv
+            ]
+
+---------------------------------------------------
 -- Menu
 ---------------------------------------------------
 
@@ -235,7 +312,7 @@ viewMenu = -- fileName =
 --       , menuElem SaveFile (initPos + 120) "Save" ]
 
     Html.div []
-      [ menuElem Files 10 "Menu"
+      [ menuElem (Popup Popup.Files) 10 "Menu"
       , menuElem SaveFile 70 "Save" ]
 
 
@@ -264,23 +341,40 @@ drawTree focus selMain selAux (R.Node (node, pos) subTrees) =
           :: drawForest ts
   in
     Html.div []
-      (  drawNode selMain selAux focus pos node
+      (  drawNode node selMain selAux focus pos
       :: drawForest subTrees )
 
 
+-- | Draw a tree node.
 drawNode
-   : Maybe M.NodeId
+   : M.Node
+  -> Maybe M.NodeId
   -> S.Set M.NodeId
   -> M.Focus
   -> Position
-  -> M.Node
   -> Html.Html Msg
-drawNode selMain selAux focus at node =
+drawNode node =
+    case node of
+        M.Node r -> drawInternal r
+        M.Leaf r -> drawLeaf r
+
+
+-- | Draw an internal tree node.
+drawInternal
+   : M.InternalNode
+  -> Maybe M.NodeId
+  -> S.Set M.NodeId
+  -> M.Focus
+  -> Position
+  -> Html.Html Msg
+drawInternal node selMain selAux focus at =
   let
     -- width = nodeWidth
-    width = Cfg.stdWidth node
+    intNode = M.Node node
+    width = Cfg.stdWidth intNode
     height = Cfg.nodeHeight
-    nodeId = Lens.get M.nodeId node
+    -- nodeId = Lens.get M.nodeId node
+    nodeId = node.nodeId
     auxStyle =
       ( if S.member nodeId selAux || Just nodeId == selMain
           then ["background-color" => "#BC0000"]
@@ -289,20 +383,73 @@ drawNode selMain selAux focus at node =
       ( if Just nodeId == selMain
           then ["border" => "solid", "border-color" => "black"]
           else ["border" => "none"] )
-    htmlLeaf = case node of
-      M.Node r ->
-        [ Html.text r.nodeVal
-        , case r.nodeTyp of
+    htmlLeaf =
+        [ Html.text node.nodeVal
+        , case node.nodeTyp of
             Nothing -> Html.sub [] []
             Just (M.NodeEvent _) -> Html.sub [] [Html.text "EV"]
             Just M.NodeTimex -> Html.sub [] [Html.text "TX"]
         ]
-      M.Leaf r ->
-        [ Html.text r.nodeVal
-        , Html.sub [] [Html.text <| toString r.leafPos] ]
   in
     Html.div
-      [ nodeMouseDown focus node
+      [ nodeMouseDown focus intNode
+      , Atts.class "noselect"
+      , Atts.style <| auxStyle ++
+          [ "cursor" => "pointer"
+          -- , "opacity" => "1.0"
+
+          , "width" => px width
+          , "height" => px height
+          , "border-radius" => "40%" -- "4px"
+          , "position" => "absolute"
+          -- , "left" => px (at.x - nodeWidth // 2)
+          -- , "top" => px (at.y - nodeHeight // 2)
+          , "left" => px (at.x - width // 2)
+          , "top" => px (at.y - height // 2)
+
+          , "color" => "white"
+          , "display" => "flex"
+          , "align-items" => "center"
+          , "justify-content" => "center"
+          ]
+      ]
+      [Html.p [] htmlLeaf]
+      -- htmlLeaf
+--       [ Html.div
+--           [ Atts.attribute "contenteditable" "true" ]
+--           [ Html.text node.nodeVal ]
+--       ]
+
+
+-- | Draw a leaf tree node.
+drawLeaf
+   : M.LeafNode
+  -> Maybe M.NodeId
+  -> S.Set M.NodeId
+  -> M.Focus
+  -> Position
+  -> Html.Html Msg
+drawLeaf node selMain selAux focus at =
+  let
+    -- width = nodeWidth
+    leafNode = M.Leaf node
+    width = Cfg.stdWidth leafNode
+    height = Cfg.nodeHeight
+    nodeId = node.nodeId
+    auxStyle =
+      ( if S.member nodeId selAux || Just nodeId == selMain
+          then ["background-color" => "#BC0000"]
+          else ["background-color" => "#1F5C9A"] ) -- "#1F9A6D"
+      ++
+      ( if Just nodeId == selMain
+          then ["border" => "solid", "border-color" => "black"]
+          else ["border" => "none"] )
+    htmlLeaf =
+        [ Html.text node.nodeVal
+        , Html.sub [] [Html.text <| toString node.leafPos] ]
+  in
+    Html.div
+      [ nodeMouseDown focus leafNode
       , Atts.class "noselect"
       , Atts.style <| auxStyle ++
           [ "cursor" => "pointer"
@@ -365,6 +512,11 @@ viewSideDiv win model children =
         , "overflow" => "auto"
         -- make the (focus-related) outline invisible
         , "outline" => "0"
+        -- z-index important because of its interactions with popup windows note
+        -- that it creates a "stacking context" for all the children HTML
+        -- elements
+        -- (https://philipwalton.com/articles/what-no-one-told-you-about-z-index/)
+        , "z-index" => "-1"
         ]
       -- @tabindex required to make the div propagate the keyboard events
       -- (see the `view` function)
@@ -372,7 +524,7 @@ viewSideDiv win model children =
       ]
     topChildren = [viewSideMenu win model]
   in
-    div (topChildren ++ children)
+    div (children ++ topChildren)
 
 
 viewSideMenu : M.Focus -> M.Model -> Html.Html Msg
@@ -408,7 +560,7 @@ viewSideMenu focus model =
           , "background-color" => "white" -- "#eee"
           -- , "width" => "100%" -- <- hids the scrollbar! hence opacity
           , "opacity" => "0.9"
-          , "z-index" => "1"
+          -- , "z-index" => "1"
           , "top" => px pos ]
       ]
       [ menuElem (SideMenuEdit focus) (sideWin == M.SideEdit) "Edit"
@@ -653,7 +805,8 @@ viewSideContext foc model =
       [ Html.ul
           [Atts.style
              [ "position" => "absolute"
-             , "top" => px Cfg.sideMenuHeight ]
+             , "top" => px Cfg.sideMenuHeight
+             ]
           ]
 --           (List.map
 --              (\(treeId, (sent, _)) -> viewSent foc (treeId == treeSelected) treeId sent)
@@ -1216,6 +1369,9 @@ mainKeyDown ctrl =
 
 --       -- "enter"
 --       13 -> CommandEnter
+
+      -- "escape"
+      27 -> Popup Popup.Files
 
       _  -> Msg.dummy
   in

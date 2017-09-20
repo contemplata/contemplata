@@ -11,6 +11,7 @@ import Set as S
 
 import Edit.Model exposing (Model, Focus(..), File, FileId)
 import Edit.Message exposing (Msg(..))
+import Edit.Popup as Popup
 
 
 ---------------------------------------------------
@@ -59,6 +60,7 @@ mkEdit fileId file =
       , redoHist = []
       , undoLast = []
       , command = Nothing
+      , popup = Nothing -- Just Popup.Files
       }
     initHeight = Task.perform Resize Window.size
     -- initHeight = Cmd.none

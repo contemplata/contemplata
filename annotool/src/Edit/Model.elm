@@ -3,6 +3,7 @@ module Edit.Model exposing
   -- Data types:
     TreeMap, Sent, FileId, File, NodeId, TreeId
   , Node(..), NodeTyp(..), Link, Addr, Command
+  , InternalNode, LeafNode
   , LinkData
   , isNode, isLeaf
   -- Model types:
@@ -65,6 +66,7 @@ import Json.Encode as Encode
 import Util as Util
 import Rose as R
 import Edit.Anno as Anno
+import Edit.Popup as Popup
 
 
 ---------------------------------------------------
@@ -113,18 +115,24 @@ type alias NodeId = Int
 -- type alias LeafId = Int
 
 
--- | Node in a syntactic tree is either an internal node or a leaf.
-type Node
-  = Node
+type alias InternalNode =
     { nodeId : NodeId
     , nodeVal : String
     , nodeTyp : Maybe NodeTyp }
-  | Leaf
+
+
+type alias LeafNode =
     { nodeId : NodeId
     , nodeVal : String
       -- | The position of the leaf in the underlying sentence.
       -- The positions do not have to be consecutive.
     , leafPos : Int }
+
+
+-- | Node in a syntactic tree is either an internal node or a leaf.
+type Node
+  = Node InternalNode
+  | Leaf LeafNode
 
 
 type NodeTyp
@@ -230,6 +238,9 @@ type alias Model =
 
   -- scripting window
   , command : Maybe Command
+
+  -- pop-up window
+  , popup : Maybe Popup.Popup
   }
 
 

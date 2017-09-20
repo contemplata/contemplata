@@ -21,6 +21,7 @@ import Config as Cfg
 import Edit.Model as M
 import Edit.Anno as Anno
 import Edit.Rule as Rule
+import Edit.Popup as Popup
 -- import Edit.Command as Cmd
 import Menu
 import Server
@@ -79,6 +80,8 @@ type Msg
   | CommandBackspace
   | CommandComplete
   | CommandChar Char
+  | Popup Popup.Popup  -- ^ Save the current file (popup)
+  | QuitPopup
   | Many (List Msg)
 --     -- ^ Tests
 --   | TestInput String
@@ -205,7 +208,8 @@ update msg model =
 
     Swap left -> idle <| M.swapSel left model
 
-    Files -> idle <| model -- ^ Handled upstream
+    -- Files -> idle <| model -- ^ Handled upstream
+    Files -> Debug.crash "Edit.Message.Files: should be handled upstream!"
 
     ParseSent parTyp -> parseSent parTyp model
 --       let
@@ -251,6 +255,8 @@ update msg model =
       in
         M.setTree model.fileId treeId newTree model
           |> Focus.update wlen updateSel
+
+    Popup x -> idle <| {model | popup = Just x}
 
     SaveFile ->
       let
@@ -326,6 +332,8 @@ update msg model =
         Maybe.map (\cmd -> (newModel, cmd)) |>
         Maybe.withDefault (idle newModel)
 
+    QuitPopup -> idle <| {model | popup = Nothing}
+
 --     SetEventClass nodeId focus x -> idle <|
 --       M.setEventAttr M.eventClass nodeId focus x model
 
@@ -347,13 +355,12 @@ update msg model =
 --       ( {model | testInput=""}
 --       , WebSocket.send Cfg.socketServer model.testInput )
 
-
-    Many ms ->
+    Many msgs ->
       let f msg (mdl0, cmds) =
         let (mdl, cmd) = update msg mdl0
         in  (mdl, cmd :: cmds)
       in
-        let (mdl, cmds) = L.foldl f (model, []) ms
+        let (mdl, cmds) = L.foldl f (model, []) msgs
         in  (mdl, Cmd.batch cmds)
 
 
