@@ -93,21 +93,24 @@ def parse():
                     if coarse == 'pcfg-posterior' else 50)
 
     results = list(PARSERS[lang].parse(senttok, tags=tags, constraint=constraint))
-    if results[-1].noparse:
+    # PROVISIONAL: choose the stage from which to pull the results
+    resultStage = -1
+    if results[resultStage].noparse:
         result = 'NO PARSE'
     elif not allderivs:
-        tree = str(results[-1].parsetree)
+        tree = str(results[resultStage].parsetree)
         result = writebrackettree(tree, senttok)
     else:
         # BEG NEW
         print("Number of parse trees:")
-        print(len(results[-1].parsetrees))
+        print(len(results[resultStage].parsetrees))
         result = []
-        for (tree0, prob, _) in results[-1].parsetrees:
-            print("NEXT")
+        for (tree0, prob, _) in sorted(results[resultStage].parsetrees, key=(lambda x: x[1]), reverse=True):
+            # print("NEXT")
+            print(prob)
             print(tree0)
-            print(senttok)
-            tree, noparse = PARSERS[lang].postprocess(tree0, senttok, -1)
+            # print(senttok)
+            tree, noparse = PARSERS[lang].postprocess(tree0, senttok, resultStage)
             print(tree)
             result += writebrackettree(tree, senttok)
         # END NEW

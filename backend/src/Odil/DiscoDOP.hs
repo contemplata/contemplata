@@ -11,6 +11,9 @@ module Odil.DiscoDOP
 , parseDOP
 , tagParseDOP
 , parseDOP'
+
+-- * Temp
+, parseDOP''
 ) where
 
 
@@ -128,6 +131,26 @@ parseDOP spanConstraint xs0 = Exc.handle ignoreException $ do
 ----------------------------------------------
 
 
+-- | Temporary solution.
+parseDOP''
+  :: [(Int, Int)] -- ^ Span constraints
+  -> [(Orth, Pos)]
+  -> IO [Penn.Tree]
+parseDOP'' cons xs0 = Exc.handle ignoreException' $ do
+  let xs = map (second unStanfordPOS) xs0
+  r <- Wreq.get $ mkRequest Nothing False True (sentArg xs)
+  let strParses = fmap
+        (T.strip . T.decodeUtf8 . BL.toStrict)
+        (r ^? Wreq.responseBody)
+  return . maybe [] id $ do
+    parses <- May.mapMaybe Penn.parseTree' . T.lines <$> strParses
+    return $ filter (satisfyAll cons) parses
+  where
+    sentArg =
+      let mkArg (orth, pos) = T.concat [orth, "/", pos]
+      in  T.intercalate "+" . map mkArg
+
+
 -- | Parse a given, tokenized French sentence with DiscoDOP.
 -- A version of `tagParseDOP` which enumerates all derivations returned by
 -- DiscoDOP and choosing the one which satisfies the given constraint (or the
@@ -199,6 +222,11 @@ ignoreException :: Exc.SomeException -> IO (Maybe a)
 ignoreException _ = return Nothing
 
 
+-- | Convert any exception to [].
+ignoreException' :: Exc.SomeException -> IO [a]
+ignoreException' _ = return []
+
+
 -- | Simplify the POS tag from the current Stanford tagset to the standard one.
 unStanfordPOS :: Pos -> Pos
 unStanfordPOS xpos = case xpos of
@@ -207,6 +235,7 @@ unStanfordPOS xpos = case xpos of
   "DET" -> "D"
   "NC" -> "N"
   "ADJ" -> "A"
+  "VINF" -> "V"
   _ -> xpos
 
 

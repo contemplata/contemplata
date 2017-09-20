@@ -62,8 +62,8 @@ prepareBase
   . T.words
   where
     retokenize sent
-      = backup sent
-      . map complete
+      -- = backup sent
+      = map complete
       . rmBruit
       . rmPause
       . rmInaudible
