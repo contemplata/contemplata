@@ -13,6 +13,7 @@ module Odil.Stanford
 , parseFR
 , parseTokenizedFR
 , parsePosFR
+, parseConsFR
 -- * POS tagging
 , posTagFR
 -- , docFromPos
@@ -29,6 +30,7 @@ import qualified Control.Exception as Exc
 import           Data.Maybe (catMaybes)
 -- import Data.Word (Word8, Word16)
 -- import Data.Bits ((.&.), shiftR)
+import qualified Data.List as L
 import qualified Data.Char as C
 import qualified Data.Text as T
 import qualified Data.HashMap.Strict as H
@@ -109,10 +111,6 @@ parseTokenizedFR xs = Exc.handle ignoreException  $ do
 ----------------------------------------------
 
 
--- posCfg :: String
--- posCfg = "http://localhost:9000/?properties={\"annotators\":\"parse\",\"parse.model\":\"edu/stanford/nlp/models/lexparser/frenchFactored.ser.gz\",\"inputFormat\":\"serialized\",\"outputFormat\":\"serialized\",\"serializer\":\"edu.stanford.nlp.pipeline.ProtobufAnnotationSerializer\",\"enforceRequirements\": \"false\"}"
-
-
 posCfg :: String
 posCfg = "http://localhost:9000/?properties={\"annotators\":\"parse\",\"parse.model\":\"edu/stanford/nlp/models/lexparser/frenchFactored.ser.gz\",\"inputFormat\":\"serialized\",\"outputFormat\":\"json\",\"serializer\":\"edu.stanford.nlp.pipeline.ProtobufAnnotationSerializer\",\"enforceRequirements\": \"false\"}"
 
@@ -126,18 +124,32 @@ parsePosFR pos = Exc.handle ignoreException $ do
   return $ parse >>= Penn.parseTree'
 
 
--- protoCfg :: String
--- protoCfg = "http://localhost:9000/?properties={\"annotators\":\"tokenize,ssplit,pos,parse\",\"parse.model\":\"edu/stanford/nlp/models/lexparser/frenchFactored.ser.gz\",\"pos.model\":\"edu/stanford/nlp/models/pos-tagger/french/french.tagger\",\"tokenize.language\":\"fr\",\"outputFormat\":\"serialized\",\"serializer\":\"edu.stanford.nlp.pipeline.ProtobufAnnotationSerializer\"}"
---
---
--- parseProto :: T.Text -> IO ()
--- parseProto x = do
---   r <- Wreq.post protoCfg (T.encodeUtf8 x)
---   let res = r ^? Wreq.responseBody -- . key "sentences" . nth 0 . key "parse" . _String
---   -- return $ parse >>= Penn.parseTree'
---   case res of
---     Nothing -> print "Nothing"
---     Just bs -> print (decodeDoc bs)
+----------------------------------------------
+-- Parsing with existing POS tags
+-- and with constraints.
+----------------------------------------------
+
+
+consCfg :: [(Int, Int)] -> String
+consCfg cons =
+  "http://localhost:9000/?properties={\"annotators\":\"parse\",\"parse.model\":\"edu/stanford/nlp/models/lexparser/frenchFactored.ser.gz\",\"inputFormat\":\"serialized\",\"outputFormat\":\"json\",\"serializer\":\"edu.stanford.nlp.pipeline.ProtobufAnnotationSerializer\",\"enforceRequirements\": \"false\""
+  ++ ",\"constraints\": " ++ consArgs
+  ++ "}"
+  where
+    consArgs
+      = L.intercalate "+"
+      . map consArg
+      $ cons
+    consArg (x, y) = show x ++ "." ++ show y
+
+
+-- | Parse a given sentence, tokenized and with pre-computed POS tags.
+parseConsFR :: [(Orth, Pos)] -> [(Int, Int)] -> IO (Maybe Penn.Tree)
+parseConsFR pos cons = Exc.handle ignoreException $ do
+  let docBS = encodeDoc (docFromPos pos)
+  r <- Wreq.post (consCfg cons) docBS
+  let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "parse" . _String
+  return $ parse >>= Penn.parseTree'
 
 
 ----------------------------------------------
