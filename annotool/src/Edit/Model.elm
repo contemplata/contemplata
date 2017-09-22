@@ -1091,8 +1091,17 @@ deleteNode id tree =
 -- corresponding subtrees.
 deleteSelTree : Focus -> Model -> Model
 deleteSelTree =
-  let f ids t = L.foldl deleteTree t (S.toList ids)
-  in  procSel f
+  let
+      f ids t = rePOS <| L.foldl deleteTree t (S.toList ids)
+      -- We need to re-position the leaves, since
+      -- some might have been deleted
+      rePOS = Tuple.second << R.mapAccum update 0
+      update pos x =
+          case x of
+              Node r -> (pos, Node r)
+              Leaf r -> (pos+1, Leaf {r | leafPos=pos})
+  in
+      procSel f
 
 
 -- | Delete a given node (provided that it is not a root) together with the

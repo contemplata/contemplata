@@ -14,6 +14,7 @@ module Odil.DiscoDOP
 
 -- * Temp
 , parseDOP''
+, tagParseDOP'
 ) where
 
 
@@ -103,6 +104,23 @@ tagParseDOP spanConstraint xs = Exc.handle ignoreException $ do
         (T.strip . T.decodeUtf8 . BL.toStrict)
         (r ^? Wreq.responseBody)
   return $ parse >>= Penn.parseTree'
+  where
+    sentArg = T.intercalate "+"
+
+
+-- | Temporary.
+tagParseDOP'
+  :: [(Int, Int)] -- ^ Span constraints
+  -> [Orth]
+  -> IO [Penn.Tree]
+tagParseDOP' cons xs = Exc.handle ignoreException' $ do
+  r <- Wreq.get $ mkRequest Nothing True True (sentArg xs)
+  let strParses = fmap
+        (T.strip . T.decodeUtf8 . BL.toStrict)
+        (r ^? Wreq.responseBody)
+  return . maybe [] id $ do
+    parses <- May.mapMaybe Penn.parseTree' . T.lines <$> strParses
+    return $ filter (satisfyAll cons) parses
   where
     sentArg = T.intercalate "+"
 
