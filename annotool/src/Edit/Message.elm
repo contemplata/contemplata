@@ -53,7 +53,7 @@ type Msg
   | ChangeType -- ^ Change the type of the selected node
   | ParseSent Server.ParserTyp  -- ^ Reparse the sentence in focus
   | ParseSentPos Server.ParserTyp -- ^ Reparse the sentence in focus, preserve POList (String, String)S tags
-  | ParseSentCons  -- ^ Reparse the sentence in focus with the selected node as a source of constraints
+  | ParseSentCons Server.ParserTyp  -- ^ Reparse the sentence in focus with the selected nodes as constraints
   | ApplyRules -- ^ Apply the (flattening) rules
   | CtrlDown
   | CtrlUp
@@ -233,7 +233,7 @@ update msg model =
       in
         (model, send)
 
-    ParseSentCons ->
+    ParseSentCons parTyp ->
       let
         win = M.selectWin model.focus model
         treeId = win.tree
@@ -241,7 +241,7 @@ update msg model =
         wordsPos = getWordPos tree
         selection = M.selAll win
         span = getSpan selection tree
-        req cns = Server.encodeReq (Server.ParseSentCons model.fileId treeId cns wordsPos)
+        req cns = Server.encodeReq (Server.ParseSentCons model.fileId treeId parTyp cns wordsPos)
         send cns = WebSocket.send Cfg.socketServer (req cns)
       in
         (model, send span)
@@ -385,8 +385,9 @@ cmdList =
   , ("parsepos", ParseSentPos Server.Stanford)
   , ("dopparse", ParseSent Server.DiscoDOP)
   , ("dopparsepos", ParseSentPos Server.DiscoDOP)
-  , ("parsecons", ParseSentCons)
-  , ("flatten", ApplyRules)
+  , ("parsecons", ParseSentCons Server.Stanford)
+  , ("dopparsecons", ParseSentCons Server.DiscoDOP)
+  , ("deepen", ApplyRules)
   , ("concat", ConcatWords)
 --   , ("undo", Undo)
 --   , ("redo", Redo)

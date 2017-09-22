@@ -25,6 +25,7 @@ module Odil.Server
 import GHC.Generics
 
 import Control.Monad (forM_, forever)
+import Control.Arrow (second)
 import qualified Control.Exception as Exc
 import qualified Control.Concurrent as C
 import qualified Data.Map.Strict as M
@@ -74,7 +75,7 @@ data Request
     -- he/she got the answer for this request
   | ParseSentPos FileId TreeId ParserTyp [(Stanford.Orth, Stanford.Pos)]
     -- ^ Similar to `ParseSent`, but with POS information
-  | ParseSentCons FileId TreeId [(Int, Int)] [(Stanford.Orth, Stanford.Pos)]
+  | ParseSentCons FileId TreeId ParserTyp [(Int, Int)] [(Stanford.Orth, Stanford.Pos)]
     -- ^ Similar to `ParseSent`, but with an additional constraint (constituent
     -- with the given pair of positions must exist in the tree)
   deriving (Generic, Show)
@@ -249,9 +250,12 @@ talk conn state = forever $ do
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode $ Notification msg
 
-      Right (ParseSentCons fileId treeId cons ws) -> do
-        putStrLn "Parsing tokenized+POSed sentence..."
-        treeMay <- DiscoDOP.parseDOP' cons ws
+      Right (ParseSentCons fileId treeId parTyp cons ws) -> do
+        putStrLn $ "Parsing tokenized+POSed sentence with constraints: " ++ show cons
+        -- putStrLn $ show cons
+        treeMay <- case parTyp of
+          Stanford -> Stanford.parseConsFR ws (map (second (+1)) cons)
+          DiscoDOP -> DiscoDOP.parseDOP' cons ws
         case treeMay of
           Nothing -> do
             let ws' = flip map ws $ \(orth, pos) -> T.concat [orth, ":", pos]

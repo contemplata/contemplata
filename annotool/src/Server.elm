@@ -36,7 +36,7 @@ type Request
     -- checked on return if the user did not switch the file...)
   | ParseSentPos M.FileId M.TreeId ParserTyp (List (Orth, Pos))
     -- ^ Like `ParseSent`, but with POS tags
-  | ParseSentCons M.FileId M.TreeId (List (Int, Int)) (List (Orth, Pos))
+  | ParseSentCons M.FileId M.TreeId ParserTyp (List (Int, Int)) (List (Orth, Pos))
     -- ^ Like `ParseSent`, but with constraints
 
 
@@ -77,11 +77,12 @@ encodeReqToVal req = case req of
          , Encode.list (List.map (encodePair Encode.string) ws) ]
       )
     ]
-  ParseSentCons fileId treeId cons ws -> Encode.object
+  ParseSentCons fileId treeId parTyp cons ws -> Encode.object
     [ ("tag", Encode.string "ParseSentCons")
     , ("contents", Encode.list
          [ Encode.string fileId
          , Encode.int treeId
+         , Encode.string (toString parTyp)
          , Encode.list (List.map (encodePair Encode.int) cons)
          , Encode.list (List.map (encodePair Encode.string) ws) ]
       )
