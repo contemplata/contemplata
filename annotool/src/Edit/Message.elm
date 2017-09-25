@@ -74,6 +74,8 @@ type Msg
 --   | SetEventType M.NodeId M.Focus Anno.EventType
 --   | SetEventTime M.NodeId M.Focus (Maybe Anno.EventTime)
 --   | SetEventAspect M.NodeId M.Focus (Maybe Anno.EventAspect)
+  | SetSignalAttr M.NodeId M.Focus Anno.SignalAttr
+  | SetTimexAttr M.NodeId M.Focus Anno.TimexAttr
   | CommandStart
   | CommandEnter
   | CommandEscape
@@ -301,8 +303,26 @@ update msg model =
         Anno.ModalityAttr x -> M.setEventAttr M.eventModality nodeId focus x model
         Anno.CardinalityAttr x -> M.setEventAttr M.eventCardinality nodeId focus x model
         Anno.ModAttr x -> M.setEventAttr M.eventMod nodeId focus x model
+        Anno.PredAttr x -> M.setEventAttr M.eventPred nodeId focus x model
         Anno.CommentAttr x -> M.setEventAttr M.eventComment nodeId focus x model
         -- _ -> Debug.crash "SetEventAttr: not implemented yet!"
+
+    SetSignalAttr nodeId focus attr -> idle <|
+      case attr of
+        Anno.SiTypeAttr x -> M.setSignalAttr M.signalType nodeId focus x model
+
+    SetTimexAttr nodeId focus attr -> idle <|
+      case attr of
+        Anno.TiCalendarAttr x -> M.setTimexAttr M.timexCalendar nodeId focus x model
+        Anno.TiTypeAttr x -> M.setTimexAttr M.timexType nodeId focus x model
+        Anno.TiFunctionInDocumentAttr x ->
+            M.setTimexAttr M.timexFunctionInDocument nodeId focus x model
+        Anno.TiPredAttr x -> M.setTimexAttr M.timexPred nodeId focus x model
+        Anno.TiTemporalFunctionAttr x ->
+            M.setTimexAttr M.timexTemporalFunction nodeId focus x model
+        Anno.TiLingValueAttr x -> M.setTimexAttr M.timexLingValue nodeId focus x model
+        Anno.TiValueAttr x -> M.setTimexAttr M.timexValue nodeId focus x model
+        Anno.TiModAttr x -> M.setTimexAttr M.timexMod nodeId focus x model
 
     CommandStart -> idle {model | command = Just ""}
 

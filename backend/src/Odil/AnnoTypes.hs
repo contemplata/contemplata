@@ -17,6 +17,18 @@ module Odil.AnnoTypes
 , EventModality(..)
 , EventMod(..)
 
+-- * Signal-related
+, Signal(..)
+, SignalType(..)
+
+-- * Timex-related
+, Timex(..)
+, TimexCalendar(..)
+, TimexFunctionInDocument(..)
+, TimexType(..)
+, TimexTemporalFunction(..)
+, TimexMod(..)
+
 -- -- * General
 -- , Confidence(..)
 ) where
@@ -26,6 +38,13 @@ import GHC.Generics
 
 import qualified Data.Text as T
 import qualified Data.Aeson as JSON
+
+
+--------------------------------------
+--------------------------------------
+-- Events
+--------------------------------------
+--------------------------------------
 
 
 -- | Information specific to an event.
@@ -40,6 +59,7 @@ data Event = Event
   , evModality :: Maybe EventModality
   , evCardinality :: T.Text
   , evMod :: Maybe EventMod
+  , evPred :: T.Text
   , evComment :: T.Text
     -- ^ Optional comment left by the annotator
 --   , evConfidence :: Confidence
@@ -156,9 +176,9 @@ data EventMod
 --     deriving (Generic,Show,Eq,Ord)
 
 
------------
+--------------------------------------
 -- JSON
------------
+--------------------------------------
 
 
 instance JSON.FromJSON Event
@@ -204,3 +224,164 @@ instance JSON.ToJSON EventMod where
 -- instance JSON.FromJSON Confidence
 -- instance JSON.ToJSON Confidence where
 --   toEncoding = JSON.genericToEncoding JSON.defaultOptions
+
+
+--------------------------------------
+--------------------------------------
+-- Signals
+--------------------------------------
+--------------------------------------
+
+
+-- | Information specific to an event.
+data Signal = Signal
+  { siType :: SignalType
+  } deriving (Generic,Show,Eq,Ord)
+
+
+-- | A type of an event.
+data SignalType
+  = Locative
+  | Measure
+  | Boundary
+  | Orientation
+  deriving (Generic,Show,Eq,Ord)
+
+
+--------------------------------------
+-- JSON
+--------------------------------------
+
+
+instance JSON.FromJSON Signal
+instance JSON.ToJSON Signal where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+
+instance JSON.FromJSON SignalType
+instance JSON.ToJSON SignalType where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+
+
+--------------------------------------
+--------------------------------------
+-- Timex
+--------------------------------------
+--------------------------------------
+
+
+-- | Information specific to a timex.
+data Timex = Timex
+  { tiCalendar :: TimexCalendar
+  , tiPred :: T.Text
+  , tiFunctionInDocument :: Maybe TimexFunctionInDocument
+  , tiType :: TimexType
+  , tiTemporalFunction :: Maybe TimexTemporalFunction
+  , tiLingValue :: T.Text
+  , tiValue :: T.Text
+  , tiMod :: TimexMod
+  } deriving (Generic,Show,Eq,Ord)
+
+
+data TimexCalendar
+  = Gregor
+  | ISO -- Default
+  | Jour
+  | Unix
+  | RD
+  | Hebr
+  | Islam
+  | MayaCirc
+  | MayaLon
+  | Pers
+  | JulJD
+  | JulAN
+  | JulMOD
+  | Copt
+  | Ethiop
+  | Egypt
+  | Armen
+  | Ind
+  | HindSol
+  | HindSolAN
+  | HindLun
+  | HindLunAN
+  | Chinv
+  | Roman
+  | Revolut
+  | Postitiv
+  | Balines
+  | BahaiOcc
+  | BahaiFut
+  | Other
+  deriving (Generic,Show,Eq,Ord)
+
+
+data TimexFunctionInDocument
+  = CreationTime
+  | ExpirationTime
+  | ModificationTime
+  | PublicationTime
+  | ReleaseTime
+  | ReceptionTime
+  deriving (Generic,Show,Eq,Ord)
+
+
+-- | A type of an event.
+data TimexType
+  = Date
+  | Time -- Default TIME
+  | Duration
+  | Set
+  deriving (Generic,Show,Eq,Ord)
+
+
+data TimexTemporalFunction
+  = S
+  | R
+  deriving (Generic,Show,Eq,Ord)
+
+
+data TimexMod
+  = Before
+  | After
+  | OnOrBefore
+  | OnOrAfter
+  | LessThan
+  | MoreThan
+  | EqualOrLess
+  | EqualOrMore
+  | StartX -- X to distinguish from Event modifier...
+  | MidX
+  | EndX
+  | Approx
+  deriving (Generic,Show,Eq,Ord)
+
+
+--------------------------------------
+-- JSON
+--------------------------------------
+
+
+instance JSON.FromJSON Timex
+instance JSON.ToJSON Timex where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+
+instance JSON.FromJSON TimexCalendar
+instance JSON.ToJSON TimexCalendar where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+
+instance JSON.FromJSON TimexFunctionInDocument
+instance JSON.ToJSON TimexFunctionInDocument where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+
+instance JSON.FromJSON TimexType
+instance JSON.ToJSON TimexType where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+
+instance JSON.FromJSON TimexTemporalFunction
+instance JSON.ToJSON TimexTemporalFunction where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+
+instance JSON.FromJSON TimexMod
+instance JSON.ToJSON TimexMod where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions

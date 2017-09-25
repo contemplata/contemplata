@@ -2,8 +2,11 @@
 
 
 module Edit.Anno exposing
-  ( Event(..)
+  (
+  -- * Events
+    Event(..)
   , EventAttr (..)
+
   , EventType(..)
   , EventInquisit(..)
   , EventClass(..)
@@ -26,13 +29,43 @@ module Edit.Anno exposing
   , eventModalityStr
   , eventModStr
 
-  -- * JSON
+  -- ** JSON
   , encodeEvent
   , eventDecoder
 
-  -- * Utils
+  -- ** Utils
   , nullable
   , valueFromStr
+
+  -- * Signals
+  , Signal(..)
+  , SignalAttr(..)
+  , SignalType(..)
+  , signalDefault
+  , signalTypeStr
+
+  -- ** JSON
+  , encodeSignal
+  , signalDecoder
+
+  -- * Timex
+  , Timex(..)
+  , TimexAttr(..)
+  , TimexCalendar(..)
+  , TimexFunctionInDocument(..)
+  , TimexType(..)
+  , TimexTemporalFunction(..)
+  , TimexMod(..)
+  , timexDefault
+  , timexTypeStr
+  , timexCalendarStr
+  , timexFunctionInDocumentStr
+  , timexTemporalFunctionStr
+  , timexModStr
+
+  -- ** JSON
+  , encodeTimex
+  , timexDecoder
   )
 
 
@@ -45,7 +78,9 @@ import Util
 
 
 ---------------------------------------------------
+---------------------------------------------------
 -- Event
+---------------------------------------------------
 ---------------------------------------------------
 
 
@@ -61,6 +96,7 @@ type Event = Event
   , evModality : Maybe EventModality
   , evCardinality : String
   , evMod : Maybe EventMod
+  , evPred : String
   , evComment : String
   -- , evConfidence :: Confidence
   }
@@ -78,6 +114,7 @@ eventDefault = Event
   , evModality = Nothing
   , evCardinality = ""
   , evMod = Nothing
+  , evPred = ""
   , evComment = ""
   }
 
@@ -93,6 +130,7 @@ type EventAttr
     | ModalityAttr (Maybe EventModality)
     | CardinalityAttr String
     | ModAttr (Maybe EventMod)
+    | PredAttr String
     | CommentAttr String
 
 
@@ -390,7 +428,7 @@ eventModStr =
 
 eventDecoder : Decode.Decoder Event
 eventDecoder =
-  let mkEvent cls typ inq tns asp pol subj modal car mod com =
+  let mkEvent cls typ inq tns asp pol subj modal car mod pred com =
         Event
         { evClass=cls
         , evType=typ
@@ -402,9 +440,10 @@ eventDecoder =
         , evModality=modal
         , evCardinality=car
         , evMod=mod
+        , evPred=pred
         , evComment=com
         }
-  in  decodeMap11 mkEvent
+  in  decodeMap12 mkEvent
         (Decode.field "evClass" eventClassDecoder)
         (Decode.field "evType" eventTypeDecoder)
         (Decode.field "evInquisit" eventInquisitDecoder)
@@ -415,6 +454,7 @@ eventDecoder =
         (Decode.field "evModality" (Decode.nullable eventModalityDecoder))
         (Decode.field "evCardinality" Decode.string)
         (Decode.field "evMod" (Decode.nullable eventModDecoder))
+        (Decode.field "evPred" Decode.string)
         (Decode.field "evComment" Decode.string)
 
 
@@ -435,7 +475,8 @@ eventClassDecoder =
 --         "State" -> State
 --         _ -> Debug.crash ("Anno.eventClassDecoder -- unknown value: " ++ x)
   in
-    Decode.map decode Decode.string
+
+      Decode.map decode Decode.string
 
 
 eventTimeDecoder : Decode.Decoder EventTime
@@ -452,43 +493,43 @@ eventTimeDecoder =
     Decode.map decode Decode.string
 
 
-eventAttrDecoder : List (String, a) -> Decode.Decoder a
-eventAttrDecoder lst =
+attrDecoder : List (String, a) -> Decode.Decoder a
+attrDecoder lst =
   let decode = valueFromStr lst
   in  Decode.map decode Decode.string
 
 
 eventTypeDecoder : Decode.Decoder EventType
-eventTypeDecoder = eventAttrDecoder eventTypeStr
+eventTypeDecoder = attrDecoder eventTypeStr
 
 
 eventInquisitDecoder : Decode.Decoder EventInquisit
-eventInquisitDecoder = eventAttrDecoder eventInquisitStr
+eventInquisitDecoder = attrDecoder eventInquisitStr
 
 
 eventAspectDecoder : Decode.Decoder EventAspect
-eventAspectDecoder = eventAttrDecoder eventAspectStr
+eventAspectDecoder = attrDecoder eventAspectStr
 
 
 eventPolarityDecoder : Decode.Decoder EventPolarity
-eventPolarityDecoder = eventAttrDecoder eventPolarityStr
+eventPolarityDecoder = attrDecoder eventPolarityStr
 
 
 eventMoodDecoder : Decode.Decoder EventMood
-eventMoodDecoder = eventAttrDecoder eventMoodStr
+eventMoodDecoder = attrDecoder eventMoodStr
 
 
 eventModalityDecoder : Decode.Decoder EventModality
-eventModalityDecoder = eventAttrDecoder eventModalityStr
+eventModalityDecoder = attrDecoder eventModalityStr
 
 
 eventModDecoder : Decode.Decoder EventMod
-eventModDecoder = eventAttrDecoder eventModStr
+eventModDecoder = attrDecoder eventModStr
 
 
--- | Since map9 is not in Json.Decode...
-decodeMap11
-    : (a -> b -> c -> d -> e -> f -> g -> h -> i -> j -> k -> value)
+-- | Since map9 (and higher) are not in Json.Decode...
+decodeMap12
+    : (a -> b -> c -> d -> e -> f -> g -> h -> i -> j -> k -> l -> value)
     -> Decode.Decoder a
     -> Decode.Decoder b
     -> Decode.Decoder c
@@ -500,9 +541,10 @@ decodeMap11
     -> Decode.Decoder i
     -> Decode.Decoder j
     -> Decode.Decoder k
+    -> Decode.Decoder l
     -> Decode.Decoder value
--- decodeMap11 = Debug.crash "asdf"
-decodeMap11 f m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 =
+-- decodeMap12 = Debug.crash "asdf"
+decodeMap12 f m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 =
     andThen m1 (\x1 ->
     andThen m2 (\x2 ->
     andThen m3 (\x3 ->
@@ -513,8 +555,9 @@ decodeMap11 f m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 =
     andThen m8 (\x8 ->
     andThen m9 (\x9 ->
     andThen m10 (\x10 ->
-    andThen m11 (\x11 -> Decode.succeed (f x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11)
-    )))))))))))
+    andThen m11 (\x11 ->
+    andThen m12 (\x12 -> Decode.succeed (f x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12)
+    ))))))))))))
 
 
 -- | Just a version of Decode.andThen with swapped arguments.
@@ -553,6 +596,7 @@ encodeEvent (Event r) = Encode.object
     , ("evModality", Util.encodeMaybe encodeEventModality r.evModality)
     , ("evCardinality", Encode.string r.evCardinality)
     , ("evMod", Util.encodeMaybe encodeEventMod r.evMod)
+    , ("evPred", Encode.string r.evPred)
     , ("evComment", Encode.string r.evComment)
     ]
 
@@ -600,3 +644,389 @@ encodeEventModality x = Encode.string <|
 encodeEventMod : EventMod -> Encode.Value
 encodeEventMod x = Encode.string <|
   strFromValue eventModStr x
+
+
+
+---------------------------------------------------
+---------------------------------------------------
+-- Signals
+---------------------------------------------------
+---------------------------------------------------
+
+
+-- | Information specific to an event.
+type Signal = Signal
+  { siType : SignalType
+  }
+
+
+signalDefault : Signal
+signalDefault = Signal
+  { siType = Locative
+  }
+
+
+type SignalAttr
+    = SiTypeAttr SignalType
+
+
+---------------------------------------------------
+-- Type
+---------------------------------------------------
+
+
+-- | A type of a signal
+type SignalType
+    = Locative
+    | Measure
+    | Boundary
+    | Orientation
+
+
+-- | The string representations of an event class.
+signalTypeStr : List (String, SignalType)
+signalTypeStr =
+  [ ("Locative", Locative)
+  , ("Measure", Measure)
+  , ("Boundary", Boundary)
+  , ("Orientation", Orientation) ]
+
+
+---------------------------------------------------
+-- JSON Encoding
+---------------------------------------------------
+
+
+encodeSignal : Signal -> Encode.Value
+encodeSignal (Signal r) = Encode.object
+    [ ("siType", encodeSignalType r.siType)
+    ]
+
+
+encodeSignalType : SignalType -> Encode.Value
+encodeSignalType x = Encode.string <|
+  strFromValue signalTypeStr x
+
+
+---------------------------------------------------
+-- JSON Decoding
+---------------------------------------------------
+
+
+signalDecoder : Decode.Decoder Signal
+signalDecoder =
+  let mkSignal typ =
+        Signal
+        { siType=typ
+        }
+  in  Decode.map mkSignal
+        (Decode.field "siType" signalTypeDecoder)
+
+
+signalTypeDecoder : Decode.Decoder SignalType
+signalTypeDecoder = attrDecoder signalTypeStr
+
+
+---------------------------------------------------
+---------------------------------------------------
+-- Timex
+---------------------------------------------------
+---------------------------------------------------
+
+
+-- | Information specific to an event.
+type Timex = Timex
+  { tiCalendar : TimexCalendar
+  , tiPred : String
+  , tiFunctionInDocument : Maybe TimexFunctionInDocument
+  , tiType : TimexType
+  , tiTemporalFunction : Maybe TimexTemporalFunction
+  , tiLingValue : String
+  , tiValue : String
+  , tiMod : TimexMod
+  }
+
+
+timexDefault : Timex
+timexDefault = Timex
+  { tiCalendar = ISO
+  , tiPred = ""
+  , tiFunctionInDocument = Nothing
+  , tiType = Time
+  , tiTemporalFunction = Nothing
+  , tiLingValue = ""
+  , tiValue = ""
+  , tiMod = Before
+  }
+
+
+type TimexAttr
+    = TiCalendarAttr TimexCalendar
+    | TiTypeAttr TimexType
+    | TiFunctionInDocumentAttr (Maybe TimexFunctionInDocument)
+    | TiPredAttr String
+    | TiTemporalFunctionAttr (Maybe TimexTemporalFunction)
+    | TiLingValueAttr String
+    | TiValueAttr String
+    | TiModAttr TimexMod
+
+
+---------------------------------------------------
+-- Calendar
+---------------------------------------------------
+
+
+type TimexCalendar
+  = Gregor
+  | ISO -- Default
+  | Jour
+  | Unix
+  | RD
+  | Hebr
+  | Islam
+  | MayaCirc
+  | MayaLon
+  | Pers
+  | JulJD
+  | JulAN
+  | JulMOD
+  | Copt
+  | Ethiop
+  | Egypt
+  | Armen
+  | Ind
+  | HindSol
+  | HindSolAN
+  | HindLun
+  | HindLunAN
+  | Chinv
+  | Roman
+  | Revolut
+  | Postitiv
+  | Balines
+  | BahaiOcc
+  | BahaiFut
+  | Other
+
+
+-- | The string representations of an event class.
+timexCalendarStr : List (String, TimexCalendar)
+timexCalendarStr =
+  [ ("Gregor", Gregor)
+  , ("ISO", ISO)
+  , ("Jour", Jour)
+  , ("Unix", Unix)
+  , ("RD", RD)
+  , ("Hebr", Hebr)
+  , ("Islam", Islam)
+  , ("MayaCirc", MayaCirc)
+  , ("MayaLon", MayaLon)
+  , ("Pers", Pers)
+  , ("JulJD", JulJD)
+  , ("JulAN", JulAN)
+  , ("JulMOD", JulMOD)
+  , ("Copt", Copt)
+  , ("Ethiop", Ethiop)
+  , ("Egypt", Egypt)
+  , ("Armen", Armen)
+  , ("Ind", Ind)
+  , ("HindSol", HindSol)
+  , ("HindSolAN", HindSolAN)
+  , ("HindLun", HindLun)
+  , ("HindLunAN", HindLunAN)
+  , ("Chinv", Chinv)
+  , ("Roman", Roman)
+  , ("Revolut", Revolut)
+  , ("Postitiv", Postitiv)
+  , ("Balines", Balines)
+  , ("BahaiOcc", BahaiOcc)
+  , ("BahaiFut", BahaiFut)
+  , ("Other", Other) ]
+
+
+---------------------------------------------------
+-- FunctionInDocument
+---------------------------------------------------
+
+
+type TimexFunctionInDocument
+  = CreationTime
+  | ExpirationTime
+  | ModificationTime
+  | PublicationTime
+  | ReleaseTime
+  | ReceptionTime
+
+
+timexFunctionInDocumentStr : List (String, TimexFunctionInDocument)
+timexFunctionInDocumentStr =
+  [ ("CreationTime", CreationTime)
+  , ("ExpirationTime", ExpirationTime)
+  , ("ModificationTime", ModificationTime)
+  , ("PublicationTime", PublicationTime)
+  , ("ReleaseTime", ReleaseTime)
+  , ("ReceptionTime", ReceptionTime) ]
+
+
+---------------------------------------------------
+-- Type
+---------------------------------------------------
+
+
+type TimexType
+  = Date
+  | Time -- Default
+  | Duration
+  | Set
+
+
+timexTypeStr : List (String, TimexType)
+timexTypeStr =
+  [ ("Date", Date)
+  , ("Time", Time)
+  , ("Duration", Duration)
+  , ("Set", Set) ]
+
+
+---------------------------------------------------
+-- Temporal Function
+---------------------------------------------------
+
+
+type TimexTemporalFunction
+  = S
+  | R
+
+
+timexTemporalFunctionStr : List (String, TimexTemporalFunction)
+timexTemporalFunctionStr =
+  [ ("S", S)
+  , ("R", R) ]
+
+
+---------------------------------------------------
+-- Modifier
+---------------------------------------------------
+
+
+type TimexMod
+  = Before
+  | After
+  | OnOrBefore
+  | OnOrAfter
+  | LessThan
+  | MoreThan
+  | EqualOrLess
+  | EqualOrMore
+  | StartX
+  | MidX
+  | EndX
+  | Approx
+
+
+timexModStr : List (String, TimexMod)
+timexModStr =
+  [ ("Before", Before)
+  , ("After", After)
+  , ("OnOrBefore", OnOrBefore)
+  , ("OnOrAfter", OnOrAfter)
+  , ("LessThan", LessThan)
+  , ("MoreThan", MoreThan)
+  , ("EqualOrLess", EqualOrLess)
+  , ("EqualOrMore", EqualOrMore)
+  , ("StartX", StartX)
+  , ("MidX", MidX)
+  , ("EndX", EndX)
+  , ("Approx", Approx) ]
+
+
+---------------------------------------------------
+-- JSON Encoding
+---------------------------------------------------
+
+
+encodeTimex : Timex -> Encode.Value
+encodeTimex (Timex r) = Encode.object
+    [ ("tiCalendar", encodeTimexCalendar r.tiCalendar)
+    , ("tiPred", Encode.string r.tiPred)
+    , ("tiFunctionInDocument", Util.encodeMaybe encodeTimexFunctionInDocument r.tiFunctionInDocument)
+    , ("tiType", encodeTimexType r.tiType)
+    , ("tiTemporalFunction", Util.encodeMaybe encodeTimexTemporalFunction r.tiTemporalFunction)
+    , ("tiLingValue", Encode.string r.tiLingValue)
+    , ("tiValue", Encode.string r.tiValue)
+    , ("tiMod", encodeTimexMod r.tiMod)
+    ]
+
+
+encodeTimexCalendar : TimexCalendar -> Encode.Value
+encodeTimexCalendar x = Encode.string <|
+  strFromValue timexCalendarStr x
+
+
+encodeTimexFunctionInDocument : TimexFunctionInDocument -> Encode.Value
+encodeTimexFunctionInDocument x = Encode.string <|
+  strFromValue timexFunctionInDocumentStr x
+
+
+encodeTimexType : TimexType -> Encode.Value
+encodeTimexType x = Encode.string <|
+  strFromValue timexTypeStr x
+
+
+encodeTimexTemporalFunction : TimexTemporalFunction -> Encode.Value
+encodeTimexTemporalFunction x = Encode.string <|
+  strFromValue timexTemporalFunctionStr x
+
+
+encodeTimexMod : TimexMod -> Encode.Value
+encodeTimexMod x = Encode.string <|
+  strFromValue timexModStr x
+
+
+---------------------------------------------------
+-- JSON Decoding
+---------------------------------------------------
+
+
+timexDecoder : Decode.Decoder Timex
+timexDecoder =
+  let mkTimex cal pred fun typ temp ling val mod =
+        Timex
+        { tiCalendar=cal
+        , tiPred = pred
+        , tiFunctionInDocument = fun
+        , tiType = typ
+        , tiTemporalFunction = temp
+        , tiLingValue = ling
+        , tiValue = val
+        , tiMod = mod
+        }
+  in  Decode.map8 mkTimex
+        (Decode.field "tiCalendar" timexCalendarDecoder)
+        (Decode.field "tiPred" Decode.string)
+        (Decode.field "tiFunctionInDocument" (Decode.nullable timexFunctionInDocumentDecoder))
+        (Decode.field "tiType" timexTypeDecoder)
+        (Decode.field "tiTemporalFunction" (Decode.nullable timexTemporalFunctionDecoder))
+        (Decode.field "tiLingValue" Decode.string)
+        (Decode.field "tiValue" Decode.string)
+        (Decode.field "tiMod" timexModDecoder)
+
+
+timexCalendarDecoder : Decode.Decoder TimexCalendar
+timexCalendarDecoder = attrDecoder timexCalendarStr
+
+
+timexFunctionInDocumentDecoder : Decode.Decoder TimexFunctionInDocument
+timexFunctionInDocumentDecoder = attrDecoder timexFunctionInDocumentStr
+
+
+timexTypeDecoder : Decode.Decoder TimexType
+timexTypeDecoder = attrDecoder timexTypeStr
+
+
+timexTemporalFunctionDecoder : Decode.Decoder TimexTemporalFunction
+timexTemporalFunctionDecoder = attrDecoder timexTemporalFunctionStr
+
+
+timexModDecoder : Decode.Decoder TimexMod
+timexModDecoder = attrDecoder timexModStr

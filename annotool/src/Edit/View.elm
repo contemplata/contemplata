@@ -388,7 +388,8 @@ drawInternal node selMain selAux focus at =
         , case node.nodeTyp of
             Nothing -> Html.sub [] []
             Just (M.NodeEvent _) -> Html.sub [] [Html.text "EV"]
-            Just M.NodeTimex -> Html.sub [] [Html.text "TX"]
+            Just (M.NodeSignal _) -> Html.sub [] [Html.text "SI"]
+            Just (M.NodeTimex _) -> Html.sub [] [Html.text "TX"]
         ]
   in
     Html.div
@@ -720,6 +721,7 @@ viewSideEvent focus nodeId (Anno.Event ev) =
           ]
 
     inpCardinality = textGeneric Anno.CardinalityAttr "Cardinality: " ev.evCardinality
+    inpPred = textGeneric Anno.PredAttr "Pred: " ev.evPred
     inpComment = textGeneric Anno.CommentAttr "Comment: " ev.evComment
 
 --     inpComment =
@@ -741,7 +743,98 @@ viewSideEvent focus nodeId (Anno.Event ev) =
   in
       [ Html.table []
             [ inpClass, inpType, inpInq, inpTime, inpAspect , inpPolar, inpMood
-            , inpModality, inpCardinality, inpMod, inpComment ]
+            , inpModality, inpCardinality, inpMod, inpPred, inpComment ]
+      ]
+
+
+viewSideSignal : M.Focus -> M.NodeId -> Anno.Signal -> List (Html.Html Msg)
+viewSideSignal focus nodeId (Anno.Signal x) =
+  let
+
+    option xVal (str, val) = Html.option
+      [ Atts.value str
+      , Atts.selected (val == xVal) ]
+      [ Html.text str ]
+    inputGeneric label value valList attr =
+      let
+        setMsg str = SetSignalAttr nodeId focus (attr <| Anno.valueFromStr valList str)
+      in
+        Html.tr []
+          [ Html.td [] [Html.text (label ++ ": ")]
+          , Html.td []
+              [Html.select
+                   [ Events.on "change" (Decode.map setMsg Events.targetValue)
+                   , blockKeyDownEvents ]
+                   (List.map (option value) valList)
+              ]
+          ]
+
+    inpType = inputGeneric "Type" x.siType Anno.signalTypeStr Anno.SiTypeAttr
+
+  in
+      [ Html.table []
+            [ inpType ]
+      ]
+
+
+viewSideTimex : M.Focus -> M.NodeId -> Anno.Timex -> List (Html.Html Msg)
+viewSideTimex focus nodeId (Anno.Timex ti) =
+  let
+
+    option tiVal (str, val) = Html.option
+      [ Atts.value str
+      , Atts.selected (val == tiVal) ]
+      [ Html.text str ]
+    inputGeneric label value valList attr =
+      let
+        setMsg str = SetTimexAttr nodeId focus (attr <| Anno.valueFromStr valList str)
+      in
+        Html.tr []
+          [ Html.td [] [Html.text (label ++ ": ")]
+          , Html.td []
+              [Html.select
+                   [ Events.on "change" (Decode.map setMsg Events.targetValue)
+                   , blockKeyDownEvents ]
+                   (List.map (option value) valList)
+              ]
+          ]
+
+    inpCalendar = inputGeneric "Calendar" ti.tiCalendar Anno.timexCalendarStr Anno.TiCalendarAttr
+    inpFunctionInDocument =
+        inputGeneric "Function" ti.tiFunctionInDocument
+            (Anno.nullable Anno.timexFunctionInDocumentStr)
+            Anno.TiFunctionInDocumentAttr
+    inpType = inputGeneric "Type" ti.tiType Anno.timexTypeStr Anno.TiTypeAttr
+    inpTemporalFunction =
+        inputGeneric "Temporal Function" ti.tiTemporalFunction
+            (Anno.nullable Anno.timexTemporalFunctionStr)
+            Anno.TiTemporalFunctionAttr
+    inpMod = inputGeneric "Mod" ti.tiMod Anno.timexModStr Anno.TiModAttr
+
+    textGeneric attr text value =
+      let
+        setMsg str = SetTimexAttr nodeId focus (attr str)
+      in
+        Html.tr []
+          [ Html.td [] [Html.text text]
+          , Html.td []
+              [Html.input
+                   [ Events.onInput setMsg
+                   -- , Atts.rows 3
+                   , Atts.value value
+                   , blockKeyDownEvents ]
+                   []
+              ]
+          ]
+
+    inpPred = textGeneric Anno.TiPredAttr "Pred: " ti.tiPred
+    inpLingValue = textGeneric Anno.TiLingValueAttr "LingValue: " ti.tiLingValue
+    inpValue = textGeneric Anno.TiValueAttr "Value: " ti.tiValue
+
+  in
+      [ Html.table []
+            [ inpCalendar, inpFunctionInDocument, inpPred, inpType
+            , inpTemporalFunction, inpLingValue, inpValue, inpMod ]
       ]
 
 
@@ -759,7 +852,8 @@ viewSideEdit win model =
         M.Leaf r -> []
         M.Node r -> case r.nodeTyp of
           Nothing -> []
-          Just M.NodeTimex -> []
+          Just (M.NodeTimex ti) -> viewSideTimex win nodeId ti
+          Just (M.NodeSignal si) -> viewSideSignal win nodeId si
           Just (M.NodeEvent ev) -> viewSideEvent win nodeId ev
             -- [ Html.div [] [Html.button [] [Html.text "Send"]]
             -- ,  ]

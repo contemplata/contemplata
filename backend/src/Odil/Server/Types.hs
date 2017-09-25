@@ -83,7 +83,8 @@ data Node
 -- | Type of the node, together with the corresponding annotation.
 data NodeTyp
   = NodeEvent Anno.Event
-  | NodeTimex
+  | NodeSignal Anno.Signal
+  | NodeTimex Anno.Timex
   deriving (Generic, Show, Eq, Ord)
 
 

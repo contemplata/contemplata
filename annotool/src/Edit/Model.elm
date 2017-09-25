@@ -25,8 +25,18 @@ module Edit.Model exposing
   -- Event lenses:
   , eventClass, eventType, eventTime, eventAspect, eventPolarity, eventMood
   , eventModality, eventComment, eventInquisit, eventCardinality, eventMod
+  , eventPred
   -- Event modification:
   , setEventAttr -- , setEventClass, setEventType, setEventTime, setEventAspect
+  -- Signal lenses:
+  , signalType
+  -- Signal modification:
+  , setSignalAttr
+  -- Signal lenses:
+  , timexCalendar, timexType, timexPred, timexFunctionInDocument
+  , timexTemporalFunction, timexLingValue, timexValue, timexMod
+  -- Signal modification:
+  , setTimexAttr
   -- Node selection:
   , selectNode, selectNodeAux
   -- Links
@@ -137,7 +147,8 @@ type Node
 
 type NodeTyp
     = NodeEvent Anno.Event
-    | NodeTimex
+    | NodeSignal Anno.Signal
+    | NodeTimex Anno.Timex
 
 
 isNode : Node -> Bool
@@ -1024,6 +1035,30 @@ setEventAttr attLens id focus newVal model =
 
 
 ---------------------------------------------------
+-- Signal modification
+---------------------------------------------------
+
+
+setSignalAttr : (Lens.Focus Anno.Signal a) -> NodeId -> Focus -> a -> Model -> Model
+setSignalAttr attLens id focus newVal model =
+    let lens = nodeTyp => maybeLens => nodeSignal => attLens
+        update = Lens.set lens newVal
+    in  updateNode id focus update model
+
+
+---------------------------------------------------
+-- Timex modification
+---------------------------------------------------
+
+
+setTimexAttr : (Lens.Focus Anno.Timex a) -> NodeId -> Focus -> a -> Model -> Model
+setTimexAttr attLens id focus newVal model =
+    let lens = nodeTyp => maybeLens => nodeTimex => attLens
+        update = Lens.set lens newVal
+    in  updateNode id focus update model
+
+
+---------------------------------------------------
 -- Process selected
 ---------------------------------------------------
 
@@ -1223,8 +1258,9 @@ changeType id =
       Node r -> Node <| {r | nodeTyp = shiftTyp r.nodeTyp}
     shiftTyp x = case x of
       Nothing -> Just <| NodeEvent Anno.eventDefault
-      Just (NodeEvent _) -> Just NodeTimex
-      Just NodeTimex -> Nothing
+      Just (NodeEvent _) -> Just <| NodeSignal Anno.signalDefault
+      Just (NodeSignal _) -> Just <| NodeTimex Anno.timexDefault
+      Just (NodeTimex _) -> Nothing
   in
     R.map update
 
@@ -1570,6 +1606,34 @@ nodeEvent =
     Lens.create get update
 
 
+nodeSignal : Lens.Focus NodeTyp Anno.Signal
+nodeSignal =
+  let
+    getErr = "nodeSignal.lens: cannot get"
+    get typ = case typ of
+      NodeSignal event -> event
+      _ -> Debug.crash getErr
+    update f typ = case typ of
+      NodeSignal event -> NodeSignal (f event)
+      _ -> typ
+  in
+    Lens.create get update
+
+
+nodeTimex : Lens.Focus NodeTyp Anno.Timex
+nodeTimex =
+  let
+    getErr = "nodeTimex.lens: cannot get"
+    get typ = case typ of
+      NodeTimex timex -> timex
+      _ -> Debug.crash getErr
+    update f typ = case typ of
+      NodeTimex timex -> NodeTimex (f timex)
+      _ -> typ
+  in
+    Lens.create get update
+
+
 ----------------------------
 -- Event-related lenses
 ----------------------------
@@ -1665,11 +1729,111 @@ eventMod =
     Lens.create get update
 
 
+eventPred : Lens.Focus Anno.Event String
+eventPred =
+  let
+    get (Anno.Event r) = r.evPred
+    update f (Anno.Event r) = Anno.Event {r | evPred = f r.evPred}
+  in
+    Lens.create get update
+
+
 eventComment : Lens.Focus Anno.Event String
 eventComment =
   let
     get (Anno.Event r) = r.evComment
     update f (Anno.Event r) = Anno.Event {r | evComment = f r.evComment}
+  in
+    Lens.create get update
+
+
+----------------------------
+-- Signal-related lenses
+----------------------------
+
+
+signalType : Lens.Focus Anno.Signal Anno.SignalType
+signalType =
+  let
+    get (Anno.Signal r) = r.siType
+    update f (Anno.Signal r) = Anno.Signal {r | siType = f r.siType}
+  in
+    Lens.create get update
+
+
+----------------------------
+-- Timex-related lenses
+----------------------------
+
+
+timexCalendar : Lens.Focus Anno.Timex Anno.TimexCalendar
+timexCalendar =
+  let
+    get (Anno.Timex r) = r.tiCalendar
+    update f (Anno.Timex r) = Anno.Timex {r | tiCalendar = f r.tiCalendar}
+  in
+    Lens.create get update
+
+
+timexType : Lens.Focus Anno.Timex Anno.TimexType
+timexType =
+  let
+    get (Anno.Timex r) = r.tiType
+    update f (Anno.Timex r) = Anno.Timex {r | tiType = f r.tiType}
+  in
+    Lens.create get update
+
+
+timexFunctionInDocument : Lens.Focus Anno.Timex (Maybe Anno.TimexFunctionInDocument)
+timexFunctionInDocument =
+  let
+    get (Anno.Timex r) = r.tiFunctionInDocument
+    update f (Anno.Timex r) = Anno.Timex {r | tiFunctionInDocument = f r.tiFunctionInDocument}
+  in
+    Lens.create get update
+
+
+timexPred : Lens.Focus Anno.Timex String
+timexPred =
+  let
+    get (Anno.Timex r) = r.tiPred
+    update f (Anno.Timex r) = Anno.Timex {r | tiPred = f r.tiPred}
+  in
+    Lens.create get update
+
+
+timexTemporalFunction : Lens.Focus Anno.Timex (Maybe Anno.TimexTemporalFunction)
+timexTemporalFunction =
+  let
+    get (Anno.Timex r) = r.tiTemporalFunction
+    update f (Anno.Timex r) = Anno.Timex {r | tiTemporalFunction = f r.tiTemporalFunction}
+  in
+    Lens.create get update
+
+
+timexLingValue : Lens.Focus Anno.Timex String
+timexLingValue =
+  let
+    get (Anno.Timex r) = r.tiLingValue
+    update f (Anno.Timex r) = Anno.Timex {r | tiLingValue = f r.tiLingValue}
+  in
+    Lens.create get update
+
+
+timexValue : Lens.Focus Anno.Timex String
+timexValue =
+  let
+    get (Anno.Timex r) = r.tiValue
+    update f (Anno.Timex r) = Anno.Timex {r | tiValue = f r.tiValue}
+  in
+    Lens.create get update
+
+
+timexMod : Lens.Focus Anno.Timex Anno.TimexMod
+timexMod =
+  let
+    get (Anno.Timex r) = r.tiMod
+    update f (Anno.Timex r) = Anno.Timex {r | tiMod = f r.tiMod}
   in
     Lens.create get update
 
@@ -1802,7 +1966,7 @@ leafDecoder =
 
 
 nodeTypDecoder : Decode.Decoder NodeTyp
-nodeTypDecoder = Decode.oneOf [nodeEventDecoder, nodeTimexDecoder]
+nodeTypDecoder = Decode.oneOf [nodeEventDecoder, nodeSignalDecoder, nodeTimexDecoder]
 
 
 nodeEventDecoder : Decode.Decoder NodeTyp
@@ -1811,14 +1975,22 @@ nodeEventDecoder =
     (Decode.field "contents" Anno.eventDecoder)
 
 
+nodeSignalDecoder : Decode.Decoder NodeTyp
+nodeSignalDecoder =
+  Decode.map (\si -> NodeSignal si)
+    (Decode.field "contents" Anno.signalDecoder)
+
+
 nodeTimexDecoder : Decode.Decoder NodeTyp
 nodeTimexDecoder =
-  let
-    verifyTag x = case x of
-      "NodeTimex" -> Decode.succeed NodeTimex
-      _ -> Decode.fail "not a NodeTimex"
-  in
-    Decode.field "tag" Decode.string |> Decode.andThen verifyTag
+  Decode.map (\ti -> NodeTimex ti)
+    (Decode.field "contents" Anno.timexDecoder)
+--   let
+--     verifyTag x = case x of
+--       "NodeTimex" -> Decode.succeed NodeTimex
+--       _ -> Decode.fail "not a NodeTimex"
+--   in
+--     Decode.field "tag" Decode.string |> Decode.andThen verifyTag
 
 
 ---------------------------------------------------
@@ -1930,8 +2102,12 @@ encodeNodeTyp nodeTyp = case nodeTyp of
   NodeEvent ev -> Encode.object
     [ ("tag", Encode.string "NodeEvent")
     , ("contents", Anno.encodeEvent ev) ]
-  NodeTimex -> Encode.object
-    [ ("tag", Encode.string "NodeTimex") ]
+  NodeSignal si -> Encode.object
+    [ ("tag", Encode.string "NodeSignal")
+    , ("contents", Anno.encodeSignal si) ]
+  NodeTimex ti -> Encode.object
+    [ ("tag", Encode.string "NodeTimex")
+    , ("contents", Anno.encodeTimex ti) ]
 
 
 ---------------------------------------------------
