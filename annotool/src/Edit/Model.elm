@@ -44,7 +44,8 @@ module Edit.Model exposing
   -- Tree modifications:
   , attachSel, deleteSel, deleteSelTree, addSel, swapSel
   -- Node annotation:
-  , changeTypeSel
+  , mkEventSel, mkSignalSel, mkTimexSel
+  -- , changeTypeSel
   -- Lenses:
   , top, bot, dim, winLens, drag, side, pos, height, widthProp, heightProp
   , nodeId, nodeVal, trees
@@ -1234,20 +1235,49 @@ identify dummyVal tree =
 
 -- | Change the type of the main selected nodes in a given window.
 changeTypeSel : Focus -> Model -> Model
-changeTypeSel focus model =
-  let
-    win = selectWin focus model
-    tree = getTree win.tree model
-    -- newTree id = changeType id tree
-  in
-    case win.selMain of
-      Nothing -> model
-      Just id -> updateTree win.tree (\_ -> changeType id tree) model
+changeTypeSel = changeWith changeType
+-- changeTypeSel focus model =
+--   let
+--     win = selectWin focus model
+--     tree = getTree win.tree model
+--     -- newTree id = changeType id tree
+--   in
+--     case win.selMain of
+--       Nothing -> model
+--       Just id -> updateTree win.tree (\_ -> changeType id tree) model
 
 
--- | Delete a given node, provided that it is not a root.
+-- | Change the type of a given node.
 changeType : NodeId -> R.Tree Node -> R.Tree Node
-changeType id =
+changeType =
+  let
+    shiftTyp x = case x of
+      Nothing -> Just <| NodeEvent Anno.eventDefault
+      Just (NodeEvent _) -> Just <| NodeSignal Anno.signalDefault
+      Just (NodeSignal _) -> Just <| NodeTimex Anno.timexDefault
+      Just (NodeTimex _) -> Nothing
+  in
+    changeTypeWith shiftTyp
+--   let
+--     update x =
+--       if id == Lens.get nodeId x && not (isLeaf x)
+--       then shift x
+--       else x
+--     shift node = case node of
+--       Leaf r -> node
+--       Node r -> Node <| {r | nodeTyp = shiftTyp r.nodeTyp}
+--     shiftTyp x = case x of
+--       Nothing -> Just <| NodeEvent Anno.eventDefault
+--       Just (NodeEvent _) -> Just <| NodeSignal Anno.signalDefault
+--       Just (NodeSignal _) -> Just <| NodeTimex Anno.timexDefault
+--       Just (NodeTimex _) -> Nothing
+--   in
+--     R.map update
+
+
+-- | Change the type of a given node.
+-- changeTypeWith : NodeId -> R.Tree Node -> R.Tree Node
+changeTypeWith shiftTyp id =
   let
     update x =
       if id == Lens.get nodeId x && not (isLeaf x)
@@ -1256,13 +1286,79 @@ changeType id =
     shift node = case node of
       Leaf r -> node
       Node r -> Node <| {r | nodeTyp = shiftTyp r.nodeTyp}
-    shiftTyp x = case x of
-      Nothing -> Just <| NodeEvent Anno.eventDefault
-      Just (NodeEvent _) -> Just <| NodeSignal Anno.signalDefault
-      Just (NodeSignal _) -> Just <| NodeTimex Anno.timexDefault
-      Just (NodeTimex _) -> Nothing
+--     shiftTyp x = case x of
+--       Nothing -> Just <| NodeEvent Anno.eventDefault
+--       Just (NodeEvent _) -> Just <| NodeSignal Anno.signalDefault
+--       Just (NodeSignal _) -> Just <| NodeTimex Anno.timexDefault
+--       Just (NodeTimex _) -> Nothing
   in
     R.map update
+
+
+-- | An abstraction over `changeTypeSel` and similar functions.
+changeWith
+    : (NodeId -> R.Tree Node -> R.Tree Node)
+    -> Focus
+    -> Model
+    -> Model
+changeWith changeFun focus model =
+  let
+    win = selectWin focus model
+    tree = getTree win.tree model
+  in
+    case win.selMain of
+      Nothing -> model
+      Just id -> updateTree win.tree (\_ -> changeFun id tree) model
+
+
+---------------------------------------------------
+-- Create signal
+---------------------------------------------------
+
+
+mkSignalSel : Focus -> Model -> Model
+mkSignalSel = changeWith mkSignal
+
+
+-- | Mark a signal.
+mkSignal : NodeId -> R.Tree Node -> R.Tree Node
+mkSignal =
+  let
+    mkTyp x = case x of
+      Just (NodeSignal _) -> Nothing
+      _ -> Just <| NodeSignal Anno.signalDefault
+  in
+    changeTypeWith mkTyp
+
+
+---------------------------------------------------
+-- Create event
+---------------------------------------------------
+
+
+mkEventSel : Focus -> Model -> Model
+mkEventSel =
+  let
+    mkTyp x = case x of
+      Just (NodeEvent _) -> Nothing
+      _ -> Just <| NodeEvent Anno.eventDefault
+  in
+    changeWith (changeTypeWith mkTyp)
+
+
+---------------------------------------------------
+-- Create timex
+---------------------------------------------------
+
+
+mkTimexSel : Focus -> Model -> Model
+mkTimexSel =
+  let
+    mkTyp x = case x of
+      Just (NodeTimex _) -> Nothing
+      _ -> Just <| NodeTimex Anno.timexDefault
+  in
+    changeWith (changeTypeWith mkTyp)
 
 
 ---------------------------------------------------

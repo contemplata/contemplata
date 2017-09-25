@@ -50,7 +50,10 @@ type Msg
     -- ^ Delete the selected nodes in the focused window
     -- together with the corresponding subtrees
   | Add -- ^ Delete the selected nodes in the focused window
-  | ChangeType -- ^ Change the type of the selected node
+  -- | ChangeType -- ^ Change the type of the selected node
+  | MkSignal -- ^ Create signal
+  | MkEvent -- ^ Create event
+  | MkTimex -- ^ Create event
   | ParseSent Server.ParserTyp  -- ^ Reparse the sentence in focus
   | ParseSentPos Server.ParserTyp -- ^ Reparse the sentence in focus, preserve POList (String, String)S tags
   | ParseSentCons Server.ParserTyp  -- ^ Reparse the sentence in focus with the selected nodes as constraints
@@ -199,7 +202,11 @@ update msg model =
 
     Add -> idle <| M.addSel model.focus model
 
-    ChangeType -> idle <| M.changeTypeSel model.focus model
+    -- ChangeType -> idle <| M.changeTypeSel model.focus model
+
+    MkSignal -> idle <| M.mkSignalSel model.focus model
+    MkEvent -> idle <| M.mkEventSel model.focus model
+    MkTimex -> idle <| M.mkTimexSel model.focus model
 
     CtrlDown -> idle <| {model | ctrl=True}
     CtrlUp -> idle <| {model | ctrl=False}

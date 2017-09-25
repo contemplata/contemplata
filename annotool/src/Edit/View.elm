@@ -300,9 +300,18 @@ viewMenu = -- fileName =
         , "cursor" => "pointer"
         ]
       ]
-      [ Html.text txt ]
+      -- [ Html.text txt ]
+      [ txt ]
 
     -- initPos = (String.length fileName * 6) + 20
+
+    plainText x = Html.text x
+    emphasize i x =
+        Html.span []
+            [ Html.text (String.slice 0 i x)
+            , Html.u [] [Html.text (String.slice i (i+1) x)]
+            , Html.text (String.slice (i+1) (String.length x) x)
+            ]
 
   in
 
@@ -312,8 +321,13 @@ viewMenu = -- fileName =
 --       , menuElem SaveFile (initPos + 120) "Save" ]
 
     Html.div []
-      [ menuElem (Popup Popup.Files) 10 "Menu"
-      , menuElem SaveFile 70 "Save" ]
+      [ menuElem (Popup Popup.Files) 10 (plainText "Menu")
+      , menuElem SaveFile 70 (plainText "Save")
+      , menuElem EditLabel 120 (emphasize 0 "Edit")
+      , menuElem MkEvent 170 (emphasize 1 "Event")
+      , menuElem MkSignal 230 (emphasize 0 "Signal")
+      , menuElem MkTimex 290 (emphasize 0 "Timex")
+      ]
 
 
 ---------------------------------------------------
@@ -1418,8 +1432,15 @@ mainKeyDown ctrl =
       -- "a"
       65 -> Add
 
+      -- "s"
+      83 -> MkSignal
+
       -- "t"
-      84 -> ChangeType
+      -- 84 -> ChangeType
+      84 -> MkTimex
+
+      -- "v"
+      86 -> MkEvent
 
       -- -- "+" and "-"
       -- 107 -> Increase True
