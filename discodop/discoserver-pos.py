@@ -88,9 +88,10 @@ def parse():
     if PARSERS[lang].stages[0].mode.startswith('pcfg') and coarse:
         PARSERS[lang].stages[0].mode = (
                 'pcfg' if coarse == 'pcfg-posterior' else coarse)
-        if len(PARSERS[lang].stages) > 1:
-            PARSERS[lang].stages[1].k = (1e-5
-                    if coarse == 'pcfg-posterior' else 50)
+    # JW: here was the problem, k was apparently set to either 1e-5 or 50?
+    #     if len(PARSERS[lang].stages) > 1:
+    #         PARSERS[lang].stages[1].k = (1e-5
+    #                 if coarse == 'pcfg-posterior' else 50)
 
     results = list(PARSERS[lang].parse(senttok, tags=tags, constraint=constraint))
     # PROVISIONAL: choose the stage from which to pull the results
