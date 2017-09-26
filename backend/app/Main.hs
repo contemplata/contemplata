@@ -33,6 +33,7 @@ import qualified Odil.Server.DB as DB
 import qualified Odil.Server as Server
 import qualified Odil.Penn as Penn
 import qualified Odil.Stanford as Stanford
+import qualified Odil.DiscoDOP as DiscoDOP
 
 
 --------------------------------------------------
@@ -247,7 +248,16 @@ run cmd =
                 Nothing -> pure []
                 Just path -> liftIO $ Pre.readConfig path
               penn <- liftIO $ Stanford.parseFR (prepare sent) >>= \case
-                Nothing -> error "A problem occurred with the Stanford parser!"
+                Nothing -> do
+                  let try err cmd = cmd >>= \case
+                        Nothing -> error err
+                        Just x  -> return x
+                  -- error "A problem occurred with the Stanford parser!"
+                  toks <- try "Didn't manage to tokenize with Stanford" $
+                    Stanford.posTagFR (prepare sent)
+                  -- try "None of the parsers managed to parse the sentence" $
+                  --   DiscoDOP.tagParseDOP Nothing (map fst toks)
+                  return $ dummyTree toks
                 Just x -> return x
               let odil = Penn.toOdilTree penn
               k <- State.gets $ (+1) . M.size
@@ -340,3 +350,11 @@ numberOfLeavesT
     isLeaf x = case x of
       Odil.Leaf{} -> True
       _ -> False
+
+
+-- | Create a dummy tree from a list of words and their POS tags.
+dummyTree :: [(Stanford.Orth, Stanford.Pos)] -> Penn.Tree
+dummyTree =
+  R.Node "ROOT" . map mkLeaf
+  where
+    mkLeaf (orth, pos) = R.Node pos [R.Node orth []]

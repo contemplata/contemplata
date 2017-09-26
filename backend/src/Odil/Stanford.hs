@@ -165,7 +165,7 @@ taggerCfg :: String
 taggerCfg = "http://localhost:9000/?properties={\"annotators\":\"tokenize,ssplit,pos\",\"pos.model\":\"edu/stanford/nlp/models/pos-tagger/french/french.tagger\",\"tokenize.language\":\"fr\",\"inputFormat\":\"serialized\",\"outputFormat\":\"json\",\"serializer\":\"edu.stanford.nlp.pipeline.ProtobufAnnotationSerializer\"}"
 
 
--- | Parse a given sentence, tokenized and with pre-computed POS tags.
+-- | Tokenize and postag a given sentence.
 posTagFR :: T.Text -> IO (Maybe [(Orth, Pos)])
 posTagFR sent = Exc.handle ignoreException $ do
   let docBS = encodeDoc (docFromRaw sent)
