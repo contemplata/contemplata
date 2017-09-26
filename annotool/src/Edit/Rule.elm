@@ -11,6 +11,7 @@ import Focus as Lens
 import Util
 import Rose as R
 import Edit.Model as M
+import Edit.Core as C
 
 
 ------------------------------------------------------------
@@ -81,7 +82,7 @@ type alias Rule = Context -> Maybe String
 
 -- | Apply the rule everywhere when it can be applied in the given tree, and
 -- return the set of the IDs of the new nodes.
-apply : Rule -> R.Tree M.Node -> (R.Tree M.Node, S.Set M.NodeId)
+apply : Rule -> R.Tree M.Node -> (R.Tree M.Node, S.Set C.NodeId)
 apply rule tree0 =
   let
     go tree curId = case tree of
@@ -125,15 +126,15 @@ apply rule tree0 =
 type alias CompRes =
   { result : R.Tree M.Node
     -- ^ The resulting tree
-  , nodeSet : S.Set M.NodeId
+  , nodeSet : S.Set C.NodeId
     -- ^ The resulting set of node IDs
-  , curId : M.NodeId
+  , curId : C.NodeId
     -- ^ The current maximum ID
   }
 
 
 -- | A computation, which takes the max ID and returns the computation result.
-type alias Comp = M.NodeId -> CompRes
+type alias Comp = C.NodeId -> CompRes
 
 
 joinFirst
@@ -170,7 +171,7 @@ addRoot x f g curId =
     }
 
 
-maxID : R.Tree M.Node -> M.NodeId
+maxID : R.Tree M.Node -> C.NodeId
 maxID =
   let id = Lens.get M.nodeId
   in  Maybe.withDefault 0 << List.maximum << List.map id << R.flatten

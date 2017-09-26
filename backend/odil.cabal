@@ -19,6 +19,7 @@ custom-setup
 library
   hs-source-dirs:      src
   exposed-modules:     Odil.Server
+                     , Odil.CoreTypes
                      , Odil.Server.Types
                      , Odil.Server.DB
                      , Odil.Server.Config

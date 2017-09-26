@@ -14,11 +14,13 @@ import Window as Window
 import WebSocket
 import Json.Decode as Decode
 import Focus as Lens
+import Either exposing (..)
 
 import Rose as R
 
 import Config as Cfg
 import Edit.Model as M
+import Edit.Core as C
 import Edit.Anno as Anno
 import Edit.Rule as Rule
 import Edit.Popup as Popup
@@ -35,15 +37,15 @@ type Msg
     -- the underlying model. We do not support concurrent drags at the moment.
   | DragAt Position
   | DragEnd Position
-  | Select M.Focus M.NodeId
-  | SelectTree M.Focus M.TreeId
+  | Select M.Focus C.NodeId
+  | SelectTree M.Focus C.TreeId
   | SelectLink M.Link
   | Focus M.Focus
   | Resize Window.Size -- ^ The height and width of the entire window
   | Increase Bool Bool -- ^ Change the proportions of the window
   | Previous
   | Next
-  | ChangeLabel M.NodeId M.Focus String
+  | ChangeLabel C.NodeId M.Focus String
   | EditLabel
   | Delete -- ^ Delete the selected nodes in the focused window
   | DeleteTree
@@ -72,21 +74,22 @@ type Msg
   | SideMenuContext M.Focus
   | SideMenuLog M.Focus
   -- * Event modification events...
-  | SetEventAttr M.NodeId M.Focus Anno.EventAttr
---   | SetEventClass M.NodeId M.Focus Anno.EventClass
---   | SetEventType M.NodeId M.Focus Anno.EventType
---   | SetEventTime M.NodeId M.Focus (Maybe Anno.EventTime)
---   | SetEventAspect M.NodeId M.Focus (Maybe Anno.EventAspect)
-  | SetSignalAttr M.NodeId M.Focus Anno.SignalAttr
-  | SetTimexAttr M.NodeId M.Focus Anno.TimexAttr
+  | SetEventAttr C.NodeId M.Focus Anno.EventAttr
+--   | SetEventClass C.NodeId M.Focus Anno.EventClass
+--   | SetEventType C.NodeId M.Focus Anno.EventType
+--   | SetEventTime C.NodeId M.Focus (Maybe Anno.EventTime)
+--   | SetEventAspect C.NodeId M.Focus (Maybe Anno.EventAspect)
+  | SetSignalAttr C.NodeId M.Focus Anno.SignalAttr
+  | SetTimexAttr C.NodeId M.Focus Anno.TimexAttr
   | CommandStart
   | CommandEnter
   | CommandEscape
   | CommandBackspace
   | CommandComplete
   | CommandChar Char
-  | Popup Popup.Popup  -- ^ Save the current file (popup)
+  | Popup Popup.Popup  -- ^ Open a popup window
   | QuitPopup
+  -- | Goto C.Addr -- ^ Move to a given node in the focused window
   | Many (List Msg)
 --     -- ^ Tests
 --   | TestInput String
@@ -318,18 +321,30 @@ update msg model =
       case attr of
         Anno.SiTypeAttr x -> M.setSignalAttr M.signalType nodeId focus x model
 
-    SetTimexAttr nodeId focus attr -> idle <|
+    SetTimexAttr nodeId focus attr ->
       case attr of
-        Anno.TiCalendarAttr x -> M.setTimexAttr M.timexCalendar nodeId focus x model
-        Anno.TiTypeAttr x -> M.setTimexAttr M.timexType nodeId focus x model
-        Anno.TiFunctionInDocumentAttr x ->
-            M.setTimexAttr M.timexFunctionInDocument nodeId focus x model
-        Anno.TiPredAttr x -> M.setTimexAttr M.timexPred nodeId focus x model
-        Anno.TiTemporalFunctionAttr x ->
-            M.setTimexAttr M.timexTemporalFunction nodeId focus x model
-        Anno.TiLingValueAttr x -> M.setTimexAttr M.timexLingValue nodeId focus x model
-        Anno.TiValueAttr x -> M.setTimexAttr M.timexValue nodeId focus x model
-        Anno.TiModAttr x -> M.setTimexAttr M.timexMod nodeId focus x model
+        Anno.TiAnchorAttr True ->
+            case M.setTimexAnchor nodeId focus model of
+                Left err ->
+                    let
+                        popup = Popup (Popup.Info err)
+                        task = Task.perform identity (Task.succeed popup)
+                    in
+                        (model, task)
+                Right model -> idle model
+        _ -> idle <| case attr of
+          Anno.TiCalendarAttr x -> M.setTimexAttr M.timexCalendar nodeId focus x model
+          Anno.TiTypeAttr x -> M.setTimexAttr M.timexType nodeId focus x model
+          Anno.TiFunctionInDocumentAttr x ->
+              M.setTimexAttr M.timexFunctionInDocument nodeId focus x model
+          Anno.TiPredAttr x -> M.setTimexAttr M.timexPred nodeId focus x model
+          Anno.TiTemporalFunctionAttr x ->
+              M.setTimexAttr M.timexTemporalFunction nodeId focus x model
+          Anno.TiLingValueAttr x -> M.setTimexAttr M.timexLingValue nodeId focus x model
+          Anno.TiValueAttr x -> M.setTimexAttr M.timexValue nodeId focus x model
+          Anno.TiModAttr x -> M.setTimexAttr M.timexMod nodeId focus x model
+          Anno.TiAnchorAttr True -> Debug.crash "Message: impossible happened (TiAnchorAttr True)!"
+          Anno.TiAnchorAttr False -> M.remTimexAnchor nodeId focus model
 
     CommandStart -> idle {model | command = Just ""}
 
@@ -360,6 +375,8 @@ update msg model =
         Maybe.withDefault (idle newModel)
 
     QuitPopup -> idle <| {model | popup = Nothing}
+
+    -- Goto addr -> idle <| M.goto addr model
 
 --     SetEventClass nodeId focus x -> idle <|
 --       M.setEventAttr M.eventClass nodeId focus x model
@@ -526,7 +543,7 @@ parseSent parTyp model =
 
 
 -- | Retrieve the span of a given node in a given tree.
-getSpan1 : M.NodeId -> R.Tree M.Node -> Maybe (Int, Int)
+getSpan1 : C.NodeId -> R.Tree M.Node -> Maybe (Int, Int)
 getSpan1 nodeId tree =
     case getSpan (S.singleton nodeId) tree of
         x :: _ -> Just x
@@ -534,7 +551,7 @@ getSpan1 nodeId tree =
 
 
 -- | Retrieve the span of a given node in a given tree.
-getSpan : S.Set M.NodeId -> R.Tree M.Node -> List (Int, Int)
+getSpan : S.Set C.NodeId -> R.Tree M.Node -> List (Int, Int)
 getSpan idSet =
      let
          span (val, (x, y)) =

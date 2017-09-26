@@ -22,6 +22,7 @@ import Util as Util
 import Config as Cfg
 import Edit.Anno as Anno
 import Edit.Model as M
+import Edit.Core as C
 import Edit.Message as Msg
 import Edit.Message exposing (Msg(..))
 import Edit.Popup as Popup
@@ -126,7 +127,7 @@ viewWindow win model =
   , viewBottomLine win model ]
   ++ if (win == M.Bot && model.dim.heightProp <= 0) ||
         (win == M.Top && model.dim.heightProp > 0)
-     then [viewMenu] -- model.fileId]
+     then [viewMenu model] -- model.fileId]
      else []
 
 
@@ -216,11 +217,34 @@ viewPopups : M.Model -> List (Html.Html Msg)
 viewPopups model =
     case model.popup of
         Nothing -> []
-        Just Popup.Files  -> [viewPopupFiles model]
+        Just Popup.Files -> [viewPopupFiles model]
+        Just (Popup.Info x) -> [viewPopupInfo x]
+
+
+viewPopupInfo : String -> Html.Html Msg
+viewPopupInfo info = viewPopupGen 125 150 info [("OK", QuitPopup)]
 
 
 viewPopupFiles : M.Model -> Html.Html Msg
-viewPopupFiles model =
+viewPopupFiles model = viewPopupGen 200 150 "Do you wish to save?"
+  [ ("Yes", Many [SaveFile, QuitPopup, Files])
+  , ("No", Many [QuitPopup, Files])
+  , ("Cancel", QuitPopup)
+  ]
+
+
+-- | Generic popup.
+viewPopupGen
+    : Int
+    -- ^ Font size of the popup message (in percentage)
+    -> Int
+    -- ^ Font size of the commands (in percentage)
+    -> String
+    -- ^ The message
+    -> List (String, Msg)
+    -- ^ A list of commands that the user can perform
+    -> Html.Html Msg
+viewPopupGen msgSize cmdSize msg commandList =
     let
         textElem txt =
             Html.div
@@ -228,7 +252,8 @@ viewPopupFiles model =
                 , Atts.style
                     [ "cursor" => "default"
                     , "margin" => px 5
-                    , "font-size" => "200%" ]
+                    -- , "font-size" => "125%" ]
+                    , "font-size" => ps msgSize ]
                 ]
                 [ Html.text txt ]
         textButton txt action =
@@ -239,7 +264,8 @@ viewPopupFiles model =
                     [ "cursor" => "pointer"
                     , "margin-left" => px 15
                     , "margin-right" => px 15
-                    , "font-size" => "150%" ]
+                    -- , "font-size" => "150%" ]
+                    , "font-size" => ps cmdSize ]
                 ]
                 [ Html.text txt ]
         popupDiv =
@@ -257,13 +283,11 @@ viewPopupFiles model =
                   -- , "border-radius" => "10%" -- "4px"
                   ]
                 ]
-                [ textElem "Do you wish to save?"
-                , Html.div
-                    []
-                    [ textButton "Yes" (Many [SaveFile, QuitPopup, Files])
-                    , textButton "No" (Many [QuitPopup, Files])
-                    , textButton "Cancel" QuitPopup
-                    ]
+                [ textElem msg
+                , Html.div []
+                    (L.map (\(cmd, msg) -> textButton cmd msg) commandList)
+                    -- [ textButton "OK" QuitPopup
+                    -- ]
                 ]
     in
         Html.div
@@ -285,9 +309,10 @@ viewPopupFiles model =
 
 
 viewMenu
+    : M.Model
     -- : String -- File name
-    : Html.Html Msg
-viewMenu = -- fileName =
+    -> Html.Html Msg
+viewMenu model = -- fileName =
   let
 
     menuElem onClick pos txt = Html.div
@@ -305,14 +330,6 @@ viewMenu = -- fileName =
 
     -- initPos = (String.length fileName * 6) + 20
 
-    plainText x = Html.text x
-    emphasize i x =
-        Html.span []
-            [ Html.text (String.slice 0 i x)
-            , Html.u [] [Html.text (String.slice i (i+1) x)]
-            , Html.text (String.slice (i+1) (String.length x) x)
-            ]
-
   in
 
 --     Html.div []
@@ -323,10 +340,11 @@ viewMenu = -- fileName =
     Html.div []
       [ menuElem (Popup Popup.Files) 10 (plainText "Menu")
       , menuElem SaveFile 70 (plainText "Save")
-      , menuElem EditLabel 120 (emphasize 0 "Edit")
-      , menuElem MkEvent 170 (emphasize 1 "Event")
-      , menuElem MkSignal 230 (emphasize 0 "Signal")
-      , menuElem MkTimex 290 (emphasize 0 "Timex")
+      -- , menuElem EditLabel 120 (plain "Edit")
+      , menuElem MkEvent 120 (emphasize 1 "Event")
+      , menuElem MkSignal 180 (emphasize 0 "Signal")
+      , menuElem MkTimex 240 (emphasize 0 "Timex")
+      -- , menuElem (Many []) 320 (plainText <| toString model.ctrl)
       ]
 
 
@@ -337,8 +355,8 @@ viewMenu = -- fileName =
 
 drawTree
    : M.Focus -- ^ Which window is it in?
-  -> Maybe M.NodeId -- ^ Selected main
-  -> S.Set M.NodeId -- ^ Selected auxiliaries
+  -> Maybe C.NodeId -- ^ Selected main
+  -> S.Set C.NodeId -- ^ Selected auxiliaries
   -> R.Tree (M.Node, Position) -- ^ Tree to draw
   -> Html.Html Msg
 drawTree focus selMain selAux (R.Node (node, pos) subTrees) =
@@ -362,8 +380,8 @@ drawTree focus selMain selAux (R.Node (node, pos) subTrees) =
 -- | Draw a tree node.
 drawNode
    : M.Node
-  -> Maybe M.NodeId
-  -> S.Set M.NodeId
+  -> Maybe C.NodeId
+  -> S.Set C.NodeId
   -> M.Focus
   -> Position
   -> Html.Html Msg
@@ -376,8 +394,8 @@ drawNode node =
 -- | Draw an internal tree node.
 drawInternal
    : M.InternalNode
-  -> Maybe M.NodeId
-  -> S.Set M.NodeId
+  -> Maybe C.NodeId
+  -> S.Set C.NodeId
   -> M.Focus
   -> Position
   -> Html.Html Msg
@@ -439,8 +457,8 @@ drawInternal node selMain selAux focus at =
 -- | Draw a leaf tree node.
 drawLeaf
    : M.LeafNode
-  -> Maybe M.NodeId
-  -> S.Set M.NodeId
+  -> Maybe C.NodeId
+  -> S.Set C.NodeId
   -> M.Focus
   -> Position
   -> Html.Html Msg
@@ -565,7 +583,8 @@ viewSideMenu focus model =
              then ["font-weight" => "bold"]
              else []
       ]
-      [ Html.text txt ]
+      -- [ Html.text txt ]
+      [ txt ]
 
   in
 
@@ -578,9 +597,9 @@ viewSideMenu focus model =
           -- , "z-index" => "1"
           , "top" => px pos ]
       ]
-      [ menuElem (SideMenuEdit focus) (sideWin == M.SideEdit) "Edit"
-      , menuElem (SideMenuContext focus) (sideWin == M.SideContext) "Context"
-      , menuElem (SideMenuLog focus) (sideWin == M.SideLog) "Messages" ]
+      [ menuElem (SideMenuEdit focus) (sideWin == M.SideEdit) (emphasize 0 "Edit")
+      , menuElem (SideMenuContext focus) (sideWin == M.SideContext) (plainText "Context")
+      , menuElem (SideMenuLog focus) (sideWin == M.SideLog) (plainText "Messages") ]
 
 
 -- | The view of the side edit window -- the label.
@@ -610,89 +629,11 @@ viewSideEditLabel win model =
     inp
 
 
--- viewSideEvent : M.Focus -> M.NodeId -> Anno.Event -> List (Html.Html Msg)
--- viewSideEvent focus nodeId (Anno.Event ev) =
---   let
---
---     option evVal (str, val) = Html.option
---       [ Atts.value str
---       , Atts.selected (val == evVal) ]
---       [ Html.text str ]
---     inputGeneric label value valList attr = -- mkEvent =
---       let
---         setMsg str = SetEventAttr nodeId focus (attr <| Anno.valueFromStr valList str)
---       in
---         Html.div []
---           [ Html.text (label ++ ": ")
---           , Html.select
---             [ Events.on "change" (Decode.map setMsg Events.targetValue)
---             , blockKeyDownEvents ]
---             (List.map (option value) valList)
---           ]
---
---     inpClass = inputGeneric "Class" ev.evClass Anno.eventClassStr Anno.ClassAttr
---     inpType = inputGeneric "Type" ev.evType Anno.eventTypeStr Anno.TypeAttr
---     inpInq = inputGeneric "Inquisit" ev.evInquisit Anno.eventInquisitStr Anno.InquisitAttr
---     inpTime =
---         inputGeneric "Time" ev.evTime
---             (Anno.nullable Anno.eventTimeStr)
---             Anno.TimeAttr
---     inpAspect =
---         inputGeneric "Aspect" ev.evAspect
---             (Anno.nullable Anno.eventAspectStr)
---             Anno.AspectAttr
---     inpPolar = inputGeneric "Polarity" ev.evPolarity Anno.eventPolarityStr Anno.PolarityAttr
---     inpMood =
---         inputGeneric "Mood" ev.evMood
---             (Anno.nullable Anno.eventMoodStr)
---             Anno.MoodAttr
---     inpModality =
---         inputGeneric "Modality" ev.evModality
---             (Anno.nullable Anno.eventModalityStr)
---             Anno.ModalityAttr
---
---     inpComment =
---       let
---         setMsg str = SetEventAttr nodeId focus (Anno.CommentAttr str)
---       in
---         Html.div []
---           [ Html.text "Comment: "
---           -- , Html.textarea
---           , Html.input
---             [ Events.onInput setMsg
---             -- , Atts.rows 3
---             , Atts.value ev.evComment
---             , blockKeyDownEvents ]
---             []
---           ]
---
---   in
---     [inpClass, inpType, inpInq, inpTime, inpAspect,
---          inpPolar, inpMood, inpModality, inpComment]
-
-
-viewSideEvent : M.Focus -> M.NodeId -> Anno.Event -> List (Html.Html Msg)
+viewSideEvent : M.Focus -> C.NodeId -> Anno.Event -> List (Html.Html Msg)
 viewSideEvent focus nodeId (Anno.Event ev) =
   let
 
-    option evVal (str, val) = Html.option
-      [ Atts.value str
-      , Atts.selected (val == evVal) ]
-      [ Html.text str ]
-    inputGeneric label value valList attr = -- mkEvent =
-      let
-        setMsg str = SetEventAttr nodeId focus (attr <| Anno.valueFromStr valList str)
-      in
-        Html.tr []
-          [ Html.td [] [Html.text (label ++ ": ")]
-          , Html.td []
-              [Html.select
-                   [ Events.on "change" (Decode.map setMsg Events.targetValue)
-                   , blockKeyDownEvents ]
-                   (List.map (option value) valList)
-              ]
-          ]
-
+    inputGeneric = inputGenericGen (SetEventAttr nodeId focus)
     inpClass = inputGeneric "Class" ev.evClass Anno.eventClassStr Anno.ClassAttr
     inpType = inputGeneric "Type" ev.evType Anno.eventTypeStr Anno.TypeAttr
     inpInq = inputGeneric "Inquisit" ev.evInquisit Anno.eventInquisitStr Anno.InquisitAttr
@@ -718,41 +659,10 @@ viewSideEvent focus nodeId (Anno.Event ev) =
             (Anno.nullable Anno.eventModStr)
             Anno.ModAttr
 
-    textGeneric attr text value =
-      let
-        setMsg str = SetEventAttr nodeId focus (attr str)
-      in
-        Html.tr []
-          [ Html.td [] [Html.text text]
-          , Html.td []
-              [Html.input
-                   [ Events.onInput setMsg
-                   -- , Atts.rows 3
-                   , Atts.value value
-                   , blockKeyDownEvents ]
-                   []
-              ]
-          ]
-
+    textGeneric = textGenericGen (SetEventAttr nodeId focus)
     inpCardinality = textGeneric Anno.CardinalityAttr "Cardinality: " ev.evCardinality
     inpPred = textGeneric Anno.PredAttr "Pred: " ev.evPred
     inpComment = textGeneric Anno.CommentAttr "Comment: " ev.evComment
-
---     inpComment =
---       let
---         setMsg str = SetEventAttr nodeId focus (Anno.CommentAttr str)
---       in
---         Html.tr []
---           [ Html.td [] [Html.text ("Comment: ")]
---           , Html.td []
---               [Html.input
---                    [ Events.onInput setMsg
---                    -- , Atts.rows 3
---                    , Atts.value ev.evComment
---                    , blockKeyDownEvents ]
---                    []
---               ]
---           ]
 
   in
       [ Html.table []
@@ -761,27 +671,11 @@ viewSideEvent focus nodeId (Anno.Event ev) =
       ]
 
 
-viewSideSignal : M.Focus -> M.NodeId -> Anno.Signal -> List (Html.Html Msg)
+viewSideSignal : M.Focus -> C.NodeId -> Anno.Signal -> List (Html.Html Msg)
 viewSideSignal focus nodeId (Anno.Signal x) =
   let
 
-    option xVal (str, val) = Html.option
-      [ Atts.value str
-      , Atts.selected (val == xVal) ]
-      [ Html.text str ]
-    inputGeneric label value valList attr =
-      let
-        setMsg str = SetSignalAttr nodeId focus (attr <| Anno.valueFromStr valList str)
-      in
-        Html.tr []
-          [ Html.td [] [Html.text (label ++ ": ")]
-          , Html.td []
-              [Html.select
-                   [ Events.on "change" (Decode.map setMsg Events.targetValue)
-                   , blockKeyDownEvents ]
-                   (List.map (option value) valList)
-              ]
-          ]
+    inputGeneric = inputGenericGen (SetSignalAttr nodeId focus)
 
     inpType = inputGeneric "Type" x.siType Anno.signalTypeStr Anno.SiTypeAttr
 
@@ -791,28 +685,11 @@ viewSideSignal focus nodeId (Anno.Signal x) =
       ]
 
 
-viewSideTimex : M.Focus -> M.NodeId -> Anno.Timex -> List (Html.Html Msg)
-viewSideTimex focus nodeId (Anno.Timex ti) =
+viewSideTimex : M.Model -> M.Focus -> C.NodeId -> Anno.Timex -> List (Html.Html Msg)
+viewSideTimex model focus nodeId (Anno.Timex ti) =
   let
 
-    option tiVal (str, val) = Html.option
-      [ Atts.value str
-      , Atts.selected (val == tiVal) ]
-      [ Html.text str ]
-    inputGeneric label value valList attr =
-      let
-        setMsg str = SetTimexAttr nodeId focus (attr <| Anno.valueFromStr valList str)
-      in
-        Html.tr []
-          [ Html.td [] [Html.text (label ++ ": ")]
-          , Html.td []
-              [Html.select
-                   [ Events.on "change" (Decode.map setMsg Events.targetValue)
-                   , blockKeyDownEvents ]
-                   (List.map (option value) valList)
-              ]
-          ]
-
+    inputGeneric = inputGenericGen (SetTimexAttr nodeId focus)
     inpCalendar = inputGeneric "Calendar" ti.tiCalendar Anno.timexCalendarStr Anno.TiCalendarAttr
     inpFunctionInDocument =
         inputGeneric "Function" ti.tiFunctionInDocument
@@ -825,22 +702,10 @@ viewSideTimex focus nodeId (Anno.Timex ti) =
             Anno.TiTemporalFunctionAttr
     inpMod = inputGeneric "Mod" ti.tiMod Anno.timexModStr Anno.TiModAttr
 
-    textGeneric attr text value =
-      let
-        setMsg str = SetTimexAttr nodeId focus (attr str)
-      in
-        Html.tr []
-          [ Html.td [] [Html.text text]
-          , Html.td []
-              [Html.input
-                   [ Events.onInput setMsg
-                   -- , Atts.rows 3
-                   , Atts.value value
-                   , blockKeyDownEvents ]
-                   []
-              ]
-          ]
+    inputTimex = inputTimexGen model (SetTimexAttr nodeId focus)
+    inpAnchor = inputTimex "Anchor" ti.tiAnchor Anno.TiAnchorAttr
 
+    textGeneric = textGenericGen (SetTimexAttr nodeId focus)
     inpPred = textGeneric Anno.TiPredAttr "Pred: " ti.tiPred
     inpLingValue = textGeneric Anno.TiLingValueAttr "LingValue: " ti.tiLingValue
     inpValue = textGeneric Anno.TiValueAttr "Value: " ti.tiValue
@@ -848,7 +713,8 @@ viewSideTimex focus nodeId (Anno.Timex ti) =
   in
       [ Html.table []
             [ inpCalendar, inpFunctionInDocument, inpPred, inpType
-            , inpTemporalFunction, inpLingValue, inpValue, inpMod ]
+            , inpTemporalFunction, inpLingValue, inpValue, inpMod
+            , inpAnchor ]
       ]
 
 
@@ -866,7 +732,7 @@ viewSideEdit win model =
         M.Leaf r -> []
         M.Node r -> case r.nodeTyp of
           Nothing -> []
-          Just (M.NodeTimex ti) -> viewSideTimex win nodeId ti
+          Just (M.NodeTimex ti) -> viewSideTimex model win nodeId ti
           Just (M.NodeSignal si) -> viewSideSignal win nodeId si
           Just (M.NodeEvent ev) -> viewSideEvent win nodeId ev
             -- [ Html.div [] [Html.button [] [Html.text "Send"]]
@@ -929,7 +795,7 @@ viewSideContext foc model =
 viewSent
   : M.Focus -- ^ Where is the focus on
   -> Bool -- ^ Is the tree currently viewed?
-  -> M.TreeId -- ^ The tree ID ...
+  -> C.TreeId -- ^ The tree ID ...
   -> M.Sent -- ^ ... and the sentence corresponding to the tree
   -> List String -- ^ Speakers of the turn
   -> Maybe Int -- ^ Who is speaking now
@@ -953,11 +819,12 @@ viewSent foc isSelected treeId sent spks who =
       styl
       -- [Html.text <| toString treeId ++ "." ++ spk ++ ": " ++ sent]
       [Html.text <| spk ++ ": " ++ sent]
-    li =  Html.li [] <| Util.single <|
+    li = Html.li [] <| Util.single <|
       Html.div
         [ Atts.class "noselect"
         , Events.onClick (SelectTree foc treeId)
-        , Atts.style ["cursor" => "pointer"]]
+        , Atts.style ["cursor" => "pointer"]
+        ]
         [para]
   in
     li
@@ -966,7 +833,7 @@ viewSent foc isSelected treeId sent spks who =
 -- viewFileId
 --   : M.Focus -- ^ Where is the focus on
 --   -> Bool -- ^ Is the tree currently viewed?
---   -> M.TreeId -- ^ The tree ID ...
+--   -> C.TreeId -- ^ The tree ID ...
 --   -> R.Tree M.Node -- ^ ... and the tree itself
 --   -> Html.Html Msg
 -- viewFileId foc isSelected treeId tree =
@@ -1052,7 +919,7 @@ viewLinks model =
 
 viewLink
    : M.Model
-  -- -> (M.Addr, M.Addr)
+  -- -> (C.Addr, C.Addr)
   -> (M.Link, M.LinkData)
   -> List (Html.Html Msg)
 viewLink model ((from, to), linkData) =
@@ -1108,7 +975,7 @@ viewLinkDir
      -- ^ Shifting functions, which calculate the absolute positions for the
      -- corresponding (top/bottom) workspaces (return `Nothing` when they go
      -- beyond their workspaces)
-  -> (M.Addr, M.Addr, Maybe M.Addr)
+  -> (C.Addr, C.Addr, Maybe C.Addr)
      -- ^ (from, to, maybe signal) addresses
   -> List (Html.Html Msg)
 viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
@@ -1179,7 +1046,7 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
 --      -- ^ Shifting functions, which calculate the absolute positions for the
 --      -- corresponding (top/bottom) workspaces (return `Nothing` when they go
 --      -- beyond their workspaces)
---   -> (M.Addr, M.Addr)
+--   -> (C.Addr, C.Addr)
 --      -- ^ (from, to) addresses
 --   -> List (Html.Html Msg)
 -- viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to) =
@@ -1521,13 +1388,23 @@ onKeyDown tagger =
     (Decode.map tagger Events.keyCode)
 
 
+-- | Block all key events with the exception of CTRL!
 blockKeyDownEvents : Html.Attribute Msg
 blockKeyDownEvents =
-  Events.onWithOptions
-    "keydown"
-    (let default = Events.defaultOptions
-     in {default | stopPropagation=True})
-    (Decode.succeed Msg.dummy)
+    let
+        options =
+            (let default = Events.defaultOptions
+             in {default | stopPropagation=True})
+        filterKey code =
+            if code == 17 then -- CTRL
+                Decode.fail "won't be blocked"
+            else
+                Decode.succeed Msg.dummy
+        decoder =
+            Events.keyCode
+                |> Decode.andThen filterKey
+    in
+        Events.onWithOptions "keydown" options decoder
 
 
 ---------------------------------------------------
@@ -1555,7 +1432,7 @@ positionTree pos (R.Node (node, rootWidth) subTrees) =
 
 
 -- | Retrieve the position of a node in a given tree.
-nodePos : M.NodeId -> R.Tree (M.Node, Position) -> Maybe Position
+nodePos : C.NodeId -> R.Tree (M.Node, Position) -> Maybe Position
 nodePos nodeId tree = Maybe.map second <|
   Util.find
     (\node -> Lens.get M.nodeId (first node) == nodeId)
@@ -1614,3 +1491,132 @@ trimBeg trim v = inverse <| trimEnd trim <| inverse v
 px : Int -> String
 px number =
   toString number ++ "px"
+
+
+ps : Int -> String
+ps number =
+  toString number ++ "%"
+
+
+---------------------------------------------------
+-- Viewing-related utility functions
+---------------------------------------------------
+
+
+-- | Doubly generic textual input field.
+-- textGenericGen focus nodeId attr text value =
+textGenericGen setAttr attr text value =
+  let
+    setMsg = setAttr << attr
+  in
+    Html.tr []
+      [ Html.td [Atts.class "noselect"] [Html.text text]
+      , Html.td []
+          [Html.input
+               [ Events.onInput setMsg
+               -- , Atts.rows 3
+               , Atts.value value
+               , blockKeyDownEvents ]
+               []
+          ]
+      ]
+
+
+
+-- | Doubly generic list input field.
+inputGenericGen setAttr label value valList attr =
+  let
+    setMsg str = setAttr (attr <| Anno.valueFromStr valList str)
+    option evVal (str, val) = Html.option
+      [ Atts.value str
+      , Atts.selected (val == evVal) ]
+      [ Html.text str ]
+  in
+    Html.tr []
+      [ Html.td [Atts.class "noselect"] [Html.text (label ++ ": ")]
+      , Html.td []
+          [Html.select
+               [ Events.on "change" (Decode.map setMsg Events.targetValue)
+               , blockKeyDownEvents ]
+               (List.map (option value) valList)
+          ]
+      ]
+
+
+-- | Generic TIMEX input field.
+inputTimexGen
+    : M.Model
+    -> (Anno.TimexAttr -> Msg)
+    -> String
+    -> Maybe C.Addr
+    -> (Bool -> Anno.TimexAttr)
+    -> Html.Html Msg
+inputTimexGen model setAttr label value attr =
+  let
+    setMsg = setAttr (attr True)
+    remMsg = setAttr (attr False)
+    html =
+        case value of
+            Nothing ->
+                [ Html.button
+                      [ Events.onClick setMsg
+                      , Atts.title "Link (i) with the additionally selected node in focus, or (ii) with the main selected node in the other window" ]
+                      [Html.text "Create"]
+                ]
+            Just addr ->
+                let
+                    subTree = M.subTreeAt addr model
+                    rootLabel = Lens.get M.nodeVal <| R.label subTree
+                    words = String.join " " <| L.map (\r -> r.nodeVal) <| M.getWords subTree
+                    string = rootLabel ++ " (\"" ++ words ++ "\")"
+                in
+                    [ Html.span
+                          [ Atts.class "noselect"
+                          , Atts.style ["cursor" => "pointer"]
+                          , Atts.title "Goto"
+                          , Events.onClick <|
+                              Many
+                              [ SelectTree model.focus (Tuple.first addr)
+                              , Select model.focus (Tuple.second addr) ]
+                          ]
+                          [ Html.text string ]
+                    , Html.button
+                          [ Atts.style ["margin-left" => px 5]
+                          , Events.onClick remMsg]
+                          [ Html.text "Remove" ]
+                    ]
+  in
+    Html.tr []
+      [ Html.td [Atts.class "noselect"] [Html.text (label ++ ": ")]
+      , Html.td [] html
+      ]
+
+
+-- -- | Get the subtree indicated by the given address.
+-- subTreeAt : C.Addr -> M.Model -> R.Tree M.Node
+-- subTreeAt (treeId, nodeId) model =
+--     let
+--         pred x = Lens.get M.nodeId x == nodeId
+--         tree = M.getTree treeId model
+--     in
+--         case R.getSubTree pred tree of
+--             Nothing -> Debug.crash "View.subTreeAt: no node with the given ID"
+--             Just t  -> t
+
+
+---------------------------------------------------
+-- Showing text
+---------------------------------------------------
+
+
+plainText : String -> Html.Html Msg
+plainText x = Html.text x
+
+
+emphasize : Int -> String -> Html.Html Msg
+emphasize i x =
+    Html.span []
+        [ Html.text (String.slice 0 i x)
+        , Html.u [] [Html.text (String.slice i (i+1) x)]
+        , Html.text (String.slice (i+1) (String.length x) x)
+        ]

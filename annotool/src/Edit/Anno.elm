@@ -74,6 +74,7 @@ import Json.Encode as Encode
 
 import Dict as D
 
+import Edit.Core exposing (..)
 import Util
 
 
@@ -527,58 +528,6 @@ eventModDecoder : Decode.Decoder EventMod
 eventModDecoder = attrDecoder eventModStr
 
 
--- | Since map9 (and higher) are not in Json.Decode...
-decodeMap12
-    : (a -> b -> c -> d -> e -> f -> g -> h -> i -> j -> k -> l -> value)
-    -> Decode.Decoder a
-    -> Decode.Decoder b
-    -> Decode.Decoder c
-    -> Decode.Decoder d
-    -> Decode.Decoder e
-    -> Decode.Decoder f
-    -> Decode.Decoder g
-    -> Decode.Decoder h
-    -> Decode.Decoder i
-    -> Decode.Decoder j
-    -> Decode.Decoder k
-    -> Decode.Decoder l
-    -> Decode.Decoder value
--- decodeMap12 = Debug.crash "asdf"
-decodeMap12 f m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 =
-    andThen m1 (\x1 ->
-    andThen m2 (\x2 ->
-    andThen m3 (\x3 ->
-    andThen m4 (\x4 ->
-    andThen m5 (\x5 ->
-    andThen m6 (\x6 ->
-    andThen m7 (\x7 ->
-    andThen m8 (\x8 ->
-    andThen m9 (\x9 ->
-    andThen m10 (\x10 ->
-    andThen m11 (\x11 ->
-    andThen m12 (\x12 -> Decode.succeed (f x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12)
-    ))))))))))))
-
-
--- | Just a version of Decode.andThen with swapped arguments.
-andThen : Decode.Decoder a -> (a -> Decode.Decoder b) -> Decode.Decoder b
-andThen f m = Decode.andThen m f
-
-
--- -- | Since map9 is not in Json.Decode...
--- decodeMap3
---     : (a -> b -> c -> value)
---     -> Decode.Decoder a
---     -> Decode.Decoder b
---     -> Decode.Decoder c
---     -> Decode.Decoder value
--- decodeMap3 f m1 m2 m3 =
---     andThen m1 (\x1 ->
---     andThen m2 (\x2 ->
---     andThen m3 (\x3 -> Decode.succeed (f x1 x2 x3)
---     )))
-
-
 ---------------------------------------------------
 -- JSON Encoding
 ---------------------------------------------------
@@ -744,6 +693,7 @@ type Timex = Timex
   , tiLingValue : String
   , tiValue : String
   , tiMod : TimexMod
+  , tiAnchor : Maybe Addr
   }
 
 
@@ -757,6 +707,7 @@ timexDefault = Timex
   , tiLingValue = ""
   , tiValue = ""
   , tiMod = Before
+  , tiAnchor = Nothing
   }
 
 
@@ -769,6 +720,7 @@ type TimexAttr
     | TiLingValueAttr String
     | TiValueAttr String
     | TiModAttr TimexMod
+    | TiAnchorAttr Bool -- ^ Create if `True`, remove if `False`
 
 
 ---------------------------------------------------
@@ -955,6 +907,7 @@ encodeTimex (Timex r) = Encode.object
     , ("tiLingValue", Encode.string r.tiLingValue)
     , ("tiValue", Encode.string r.tiValue)
     , ("tiMod", encodeTimexMod r.tiMod)
+    , ("tiAnchor", Util.encodeMaybe encodeAddr r.tiAnchor)
     ]
 
 
@@ -983,6 +936,10 @@ encodeTimexMod x = Encode.string <|
   strFromValue timexModStr x
 
 
+encodeAddr : Addr -> Encode.Value
+encodeAddr (x, y) = Encode.list [Encode.int x, Encode.int y]
+
+
 ---------------------------------------------------
 -- JSON Decoding
 ---------------------------------------------------
@@ -990,7 +947,7 @@ encodeTimexMod x = Encode.string <|
 
 timexDecoder : Decode.Decoder Timex
 timexDecoder =
-  let mkTimex cal pred fun typ temp ling val mod =
+  let mkTimex cal pred fun typ temp ling val mod anc =
         Timex
         { tiCalendar=cal
         , tiPred = pred
@@ -1000,8 +957,9 @@ timexDecoder =
         , tiLingValue = ling
         , tiValue = val
         , tiMod = mod
+        , tiAnchor = anc
         }
-  in  Decode.map8 mkTimex
+  in  decodeMap9 mkTimex
         (Decode.field "tiCalendar" timexCalendarDecoder)
         (Decode.field "tiPred" Decode.string)
         (Decode.field "tiFunctionInDocument" (Decode.nullable timexFunctionInDocumentDecoder))
@@ -1010,6 +968,7 @@ timexDecoder =
         (Decode.field "tiLingValue" Decode.string)
         (Decode.field "tiValue" Decode.string)
         (Decode.field "tiMod" timexModDecoder)
+        (Decode.field "tiAnchor" (Decode.nullable addrDecoder))
 
 
 timexCalendarDecoder : Decode.Decoder TimexCalendar
@@ -1030,3 +989,94 @@ timexTemporalFunctionDecoder = attrDecoder timexTemporalFunctionStr
 
 timexModDecoder : Decode.Decoder TimexMod
 timexModDecoder = attrDecoder timexModStr
+
+
+addrDecoder : Decode.Decoder Addr
+addrDecoder =
+    andThen (Decode.index 0 Decode.int) (\x ->
+    andThen (Decode.index 1 Decode.int) (\y ->
+    Decode.succeed (x, y)
+    ))
+
+
+---------------------------------------------------
+-- JSON Decoding Utils
+---------------------------------------------------
+
+
+-- | Since map9 (and higher) are not in Json.Decode...
+decodeMap9
+    : (a -> b -> c -> d -> e -> f -> g -> h -> i -> value)
+    -> Decode.Decoder a
+    -> Decode.Decoder b
+    -> Decode.Decoder c
+    -> Decode.Decoder d
+    -> Decode.Decoder e
+    -> Decode.Decoder f
+    -> Decode.Decoder g
+    -> Decode.Decoder h
+    -> Decode.Decoder i
+    -> Decode.Decoder value
+decodeMap9 f m1 m2 m3 m4 m5 m6 m7 m8 m9 =
+    andThen m1 (\x1 ->
+    andThen m2 (\x2 ->
+    andThen m3 (\x3 ->
+    andThen m4 (\x4 ->
+    andThen m5 (\x5 ->
+    andThen m6 (\x6 ->
+    andThen m7 (\x7 ->
+    andThen m8 (\x8 ->
+    andThen m9 (\x9 -> Decode.succeed (f x1 x2 x3 x4 x5 x6 x7 x8 x9)
+    )))))))))
+
+
+-- | Since map9 (and higher) are not in Json.Decode...
+decodeMap12
+    : (a -> b -> c -> d -> e -> f -> g -> h -> i -> j -> k -> l -> value)
+    -> Decode.Decoder a
+    -> Decode.Decoder b
+    -> Decode.Decoder c
+    -> Decode.Decoder d
+    -> Decode.Decoder e
+    -> Decode.Decoder f
+    -> Decode.Decoder g
+    -> Decode.Decoder h
+    -> Decode.Decoder i
+    -> Decode.Decoder j
+    -> Decode.Decoder k
+    -> Decode.Decoder l
+    -> Decode.Decoder value
+-- decodeMap12 = Debug.crash "asdf"
+decodeMap12 f m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 =
+    andThen m1 (\x1 ->
+    andThen m2 (\x2 ->
+    andThen m3 (\x3 ->
+    andThen m4 (\x4 ->
+    andThen m5 (\x5 ->
+    andThen m6 (\x6 ->
+    andThen m7 (\x7 ->
+    andThen m8 (\x8 ->
+    andThen m9 (\x9 ->
+    andThen m10 (\x10 ->
+    andThen m11 (\x11 ->
+    andThen m12 (\x12 -> Decode.succeed (f x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12)
+    ))))))))))))
+
+
+-- | Just a version of Decode.andThen with swapped arguments.
+andThen : Decode.Decoder a -> (a -> Decode.Decoder b) -> Decode.Decoder b
+andThen f m = Decode.andThen m f
+
+
+-- -- | Since map9 is not in Json.Decode...
+-- decodeMap3
+--     : (a -> b -> c -> value)
+--     -> Decode.Decoder a
+--     -> Decode.Decoder b
+--     -> Decode.Decoder c
+--     -> Decode.Decoder value
+-- decodeMap3 f m1 m2 m3 =
+--     andThen m1 (\x1 ->
+--     andThen m2 (\x2 ->
+--     andThen m3 (\x3 -> Decode.succeed (f x1 x2 x3)
+--     )))

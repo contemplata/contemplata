@@ -9,7 +9,8 @@ import Task
 import Dict as D
 import Set as S
 
-import Edit.Model exposing (Model, Focus(..), File, FileId)
+import Edit.Core exposing (FileId)
+import Edit.Model exposing (Model, Focus(..), File)
 import Edit.Message exposing (Msg(..))
 import Edit.Popup as Popup
 

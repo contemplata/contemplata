@@ -7,11 +7,14 @@
 
 module Odil.Server.Types
 (
--- * Types
+-- * Core Types
   FileId
 , TreeId
 , NodeId
 , LeafId
+, Addr
+
+-- * Types
 , Sent
 , Tree
 , Node (..)
@@ -20,7 +23,6 @@ module Odil.Server.Types
 , Turn (..)
 , Link (..)
 , LinkData (..)
-, Addr
 
 -- * JSON
 ) where
@@ -36,27 +38,12 @@ import qualified Data.Aeson as JSON
 
 -- import qualified Odil.Ancor.Types as Ancor
 import qualified Odil.AnnoTypes as Anno
+import Odil.CoreTypes
 
 
 -----------
 -- Types
 -----------
-
-
--- | ID of a file.
-type FileId = T.Text
-
-
--- | ID of a syntactic tree.
-type TreeId = Int
-
-
--- | Node ID.
-type NodeId = Int
-
-
--- | Leaf ID; corresponds to the order of words in a given sentence.
-type LeafId = Int
 
 
 -- | A sentence underlying a syntactic tree.
@@ -115,10 +102,6 @@ data Link = Link
   { from :: Addr
   , to :: Addr }
   deriving (Generic, Show, Eq, Ord)
-
-
--- | A node address.
-type Addr = (TreeId, NodeId)
 
 
 -- | Additional data assigned to a link.

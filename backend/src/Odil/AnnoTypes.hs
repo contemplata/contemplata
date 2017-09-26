@@ -38,6 +38,7 @@ import GHC.Generics
 
 import qualified Data.Text as T
 import qualified Data.Aeson as JSON
+import qualified Odil.CoreTypes as C
 
 
 --------------------------------------
@@ -279,6 +280,8 @@ data Timex = Timex
   , tiLingValue :: T.Text
   , tiValue :: T.Text
   , tiMod :: TimexMod
+  , tiAnchor :: Maybe C.Addr
+    -- ^ TIMEX anchor
   } deriving (Generic,Show,Eq,Ord)
 
 

@@ -1,8 +1,8 @@
 module Edit.Model exposing
   (
   -- Data types:
-    TreeMap, Sent, FileId, File, NodeId, TreeId
-  , Node(..), NodeTyp(..), Link, Addr, Command
+    TreeMap, Sent, File
+  , Node(..), NodeTyp(..), Link, Command
   , InternalNode, LeafNode
   , LinkData
   , isNode, isLeaf
@@ -36,7 +36,7 @@ module Edit.Model exposing
   , timexCalendar, timexType, timexPred, timexFunctionInDocument
   , timexTemporalFunction, timexLingValue, timexValue, timexMod
   -- Signal modification:
-  , setTimexAttr
+  , setTimexAttr, setTimexAnchor, remTimexAnchor
   -- Node selection:
   , selectNode, selectNodeAux
   -- Links
@@ -52,7 +52,7 @@ module Edit.Model exposing
   -- Pseudo-lenses:
   , setTrees
   -- Various:
-  , setTree
+  , setTree, getWords, subTreeAt
   -- JSON decoding:
   , treeMapDecoder, fileDecoder, treeDecoder, nodeDecoder
   -- JSON encoding:
@@ -69,6 +69,7 @@ import String as Str
 import Focus exposing ((=>))
 import Focus as Lens
 import Maybe as Maybe
+import Either exposing (..)
 
 import Json.Decode as Decode
 import Json.Encode as Encode
@@ -76,6 +77,7 @@ import Json.Encode as Encode
 
 import Util as Util
 import Rose as R
+import Edit.Core exposing (..)
 import Edit.Anno as Anno
 import Edit.Popup as Popup
 
@@ -83,9 +85,6 @@ import Edit.Popup as Popup
 ---------------------------------------------------
 -- Data types
 ---------------------------------------------------
-
-
-type alias FileId = String
 
 
 type alias File =
@@ -110,16 +109,6 @@ type alias Turn =
 
 -- | Link between two trees.
 type alias Link = (Addr, Addr)
-type alias Addr = (TreeId, NodeId)
-
-
--- | Tree identifier
-type alias TreeId = Int
--- type alias TreeId = String
-
-
--- | Internal node identifier
-type alias NodeId = Int
 
 
 -- -- | Leaf identifier
@@ -1059,6 +1048,65 @@ setTimexAttr attLens id focus newVal model =
     in  updateNode id focus update model
 
 
+-- | Set the anchor (timex) of the given node to the selected node.
+--
+-- The process of deciding which node should be considered as the anchor
+-- is as follows:
+--
+-- 1. If there is another node selected in focus, choose it
+-- 2. Otherwise, choose the main selected node in the other window
+-- 3. Otherwise, do nothing (should return nothing in this case
+--    so that we can show popup, perhaps?)
+setTimexAnchor :  NodeId -> Focus -> Model -> Either String Model
+setTimexAnchor id focus model =
+    let
+        lens = nodeTyp => maybeLens => nodeTimex => timexAnchor
+        update newVal = Lens.set lens newVal
+        anchorMaybe = or anchorInFocus anchorNoFocus
+        or x y = case x of
+            Nothing -> y
+            _ -> x
+        win = selectWin focus model
+        anchorInFocus =
+            case S.toList win.selAux of
+                [x] -> Just (win.tree, x)
+                _   -> Nothing
+        anchorNoFocus =
+            let
+                otherFocus = case focus of
+                    Top -> Bot
+                    Bot -> Top
+                otherWin = selectWin otherFocus model
+            in
+                case otherWin.selMain of
+                    Just x  -> Just (otherWin.tree, x)
+                    Nothing -> Nothing
+        isTimex addr =
+            case R.label (subTreeAt addr model) of
+                Leaf _ -> False
+                Node r ->
+                    case r.nodeTyp of
+                        Just (NodeTimex _) -> True
+                        _ -> False
+    in
+        case anchorMaybe of
+            Nothing -> Left "To perform anchoring, you have to first either: (i) select an additional node in focus, or (ii) select a node in the other window."
+            Just anchor ->
+                if isTimex anchor
+                then Right <| updateNode id focus (update anchorMaybe) model
+                else Left "The selected node is not a TIMEX"
+
+
+-- | Remove the anchor.
+remTimexAnchor :  NodeId -> Focus -> Model -> Model
+remTimexAnchor id focus model =
+    let
+        lens = nodeTyp => maybeLens => nodeTimex => timexAnchor
+        update = Lens.set lens Nothing
+    in
+        updateNode id focus update model
+
+
 ---------------------------------------------------
 -- Process selected
 ---------------------------------------------------
@@ -1541,6 +1589,22 @@ swap left id tree =
 
 
 ---------------------------------------------------
+-- Goto
+---------------------------------------------------
+
+
+-- -- | Go to a given address in the focused window.
+-- goto : C.Addr -> M.Model -> M.Model
+-- goto addr model =
+--     let
+--         focus = model.focus
+--         win = selectWin focus model
+--         nodeMay = win.selMain
+--         inTree = getTree win.tree model
+--     in
+
+
+---------------------------------------------------
 -- Utils
 ---------------------------------------------------
 
@@ -1934,6 +1998,15 @@ timexMod =
     Lens.create get update
 
 
+timexAnchor : Lens.Focus Anno.Timex (Maybe Addr)
+timexAnchor =
+  let
+    get (Anno.Timex r) = r.tiAnchor
+    update f (Anno.Timex r) = Anno.Timex {r | tiAnchor = f r.tiAnchor}
+  in
+    Lens.create get update
+
+
 ----------------------------
 -- Utility lenses
 ----------------------------
@@ -2237,3 +2310,15 @@ getWords tree =
         List.sortBy (\x -> x.leafPos)
             <| List.filterMap leaf
             <| R.flatten tree
+
+
+-- | Get the subtree indicated by the given address.
+subTreeAt : Addr -> Model -> R.Tree Node
+subTreeAt (treeId, theNodeId) model =
+    let
+        pred x = Lens.get nodeId x == theNodeId
+        tree = getTree treeId model
+    in
+        case R.getSubTree pred tree of
+            Nothing -> Debug.crash "View.subTreeAt: no node with the given ID"
+            Just t  -> t

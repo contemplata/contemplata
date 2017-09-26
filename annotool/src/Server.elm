@@ -8,6 +8,7 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 
 import Edit.Model as M
+import Edit.Core as C
 
 
 ---------------------------------------------------
@@ -27,16 +28,16 @@ type ParserTyp
 type Request
   = GetFiles
     -- ^ Obtain the list of files
-  | GetFile M.FileId
+  | GetFile C.FileId
     -- ^ Request the contents of the given file
-  | SaveFile M.FileId M.File
+  | SaveFile C.FileId M.File
     -- ^ Request the contents of the given file
-  | ParseSent M.FileId M.TreeId ParserTyp (List Orth)
+  | ParseSent C.FileId C.TreeId ParserTyp (List Orth)
     -- ^ Parse the given list of words (the IDs are sent so that it can be
     -- checked on return if the user did not switch the file...)
-  | ParseSentPos M.FileId M.TreeId ParserTyp (List (Orth, Pos))
+  | ParseSentPos C.FileId C.TreeId ParserTyp (List (Orth, Pos))
     -- ^ Like `ParseSent`, but with POS tags
-  | ParseSentCons M.FileId M.TreeId ParserTyp (List (Int, Int)) (List (Orth, Pos))
+  | ParseSentCons C.FileId C.TreeId ParserTyp (List (Int, Int)) (List (Orth, Pos))
     -- ^ Like `ParseSent`, but with constraints
 
 
@@ -90,11 +91,11 @@ encodeReqToVal req = case req of
 
 
 type Answer
-  = Files (List M.FileId)
+  = Files (List C.FileId)
     -- ^ The list of files
-  | NewFile M.FileId M.File
+  | NewFile C.FileId M.File
     -- ^ New file to edit
-  | ParseResult M.FileId M.TreeId (R.Tree M.Node)
+  | ParseResult C.FileId C.TreeId (R.Tree M.Node)
     -- ^ New file to edit
   | Notification String
     -- ^ Just a notification message from a server

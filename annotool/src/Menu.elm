@@ -26,7 +26,7 @@ import Dict as D
 import Util
 import Config as Cfg
 import Rose as R
-import Edit.Model as M
+import Edit.Core as C
 import Server
 
 
@@ -36,7 +36,7 @@ import Server
 
 
 type alias Model =
-  { fileIds : List M.FileId }
+  { fileIds : List C.FileId }
 
 
 ---------------------------------------------------
@@ -45,8 +45,8 @@ type alias Model =
 
 
 type Msg
-  = Choice M.FileId -- ^ Edit a specific file
-  | ShowFiles (List M.FileId)
+  = Choice C.FileId -- ^ Edit a specific file
+  | ShowFiles (List C.FileId)
 --   | ServerMsg Answer -- ^ Get message from the websocket
 --   | Error String  -- ^ An error message
 
@@ -104,7 +104,7 @@ viewFiles model =
       ]
 
 
-viewFileId : M.FileId -> Html.Html Msg
+viewFileId : C.FileId -> Html.Html Msg
 -- viewFileId x = Html.li [] <| Util.single <|
 --   Html.div
 --     [ Atts.class "noselect"
