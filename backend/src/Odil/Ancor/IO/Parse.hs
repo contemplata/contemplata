@@ -5,7 +5,7 @@ module Odil.Ancor.IO.Parse (parseAncor, parseTrans, parseToken) where
 
 
 import Control.Monad (void, guard)
-import Control.Applicative (optional, (*>), (<|>))
+import Control.Applicative (optional, some, (*>), (<|>))
 import qualified Data.Text as T
 import           Data.Maybe (catMaybes)
 
@@ -48,7 +48,7 @@ turnQ :: Q Turn
 turnQ =
     (named "Turn" *> optional (attr "speaker")) `join`
     \spk ->
-         Turn (getSpk spk) . interleave <$>
+         Turn (getSpk spk) . interleave . clearRight . mergeRight <$>
          every' (fmap Left whoQ <|> fmap Right elemQ)
   where
     getSpk spk = case spk of
@@ -60,6 +60,20 @@ turnQ =
     interleave [] = []
 
 
+-- | Merge (concatenate) the adjacent `Right` elements.
+mergeRight :: [Either a [b]] -> [Either a [b]]
+mergeRight (Right y : Right y' : xs) = mergeRight (Right (y ++ y') : xs)
+mergeRight (x : xs) = x : mergeRight xs
+mergeRight [] = []
+
+
+-- | Remove the empty `Right` elements.
+clearRight :: [Either a [b]] -> [Either a [b]]
+clearRight =
+  let notEmpty = either (const True) (not . null)
+  in  filter notEmpty
+
+
 whoQ :: Q Who
 whoQ =
   let mkWho = Who . read . T.unpack
@@ -67,10 +81,33 @@ whoQ =
 
 
 elemQ :: Q Elem
-elemQ = node . PolySoup.Q $ \tag -> do
+elemQ -- note that we cannot use `some` here since it is not a parser, just a Q
+   =  regularElemQ
+  <|> fmap (:[]) eventTokenQ
+  <|> syncQ
+
+
+regularElemQ :: Q Elem
+regularElemQ = node . PolySoup.Q $ \tag -> do
   txt <- T.strip <$> getText tag
   guard . not . T.null $ txt
   return $ parseElem txt
+
+
+eventTokenQ :: Q Token
+eventTokenQ =
+  fmap mkElem . node $ named "Event" *> ((,) <$> attr "desc" <*> attr "type")
+  where
+    mkElem (desc, typ) = case typ of
+      "noise" -> Bruit desc
+      "pronounce" -> Pronounce desc
+      _ -> error "Odil.Ancor.IO.Parse.eventElem: event type unknown"
+
+
+-- | We parse Sync XML elements because, otherwise, they split our speech turns.
+syncQ :: Q Elem
+syncQ =
+  fmap (const []) . node $ named "Sync"
 
 
 -- elemQ :: Q Elem
@@ -103,13 +140,15 @@ parseToken x =
 
 
 tokenP :: A.Parser Token
-tokenP = pauseP <|> bruitP <|> incoP <|> inaudibleP <|> plainP
+tokenP = pauseP <|> bruitP <|> incoP <|> inaudibleP <|> pronounceP <|> plainP
 
 
 bruitP :: A.Parser Token
 bruitP = do
   A.char '['
-  x <- A.string "rire" <|> A.string "bb" <|> A.string "tx" <|> A.string "pf"
+  x <- A.string "rire" <|> A.string "bb"
+     <|> A.string "tx" <|> A.string "pf"
+     <|> A.string "e" -- occurs in ESLO, not sure what it means?
   A.char ']'
   return . Bruit $ x
 
@@ -134,6 +173,14 @@ pauseP = do
   x <- A.char 'e' <|> A.char '#'
   A.endOfInput
   return . Pause . T.singleton $ x
+
+
+pronounceP :: A.Parser Token
+pronounceP = do
+  A.char '<'
+  x <- A.string "pif"
+  A.char '>'
+  return . Pronounce $ x
 
 
 plainP :: A.Parser Token

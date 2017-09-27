@@ -47,6 +47,8 @@ data Token
     -- ^ e or #
   | Inaudible
     -- ^ [pi]
+  | Pronounce T.Text
+    -- ^ ???
   deriving (Show, Eq, Ord) --, Functor)
 
 

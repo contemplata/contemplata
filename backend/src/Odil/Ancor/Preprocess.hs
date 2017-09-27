@@ -67,6 +67,7 @@ prepareBase
       . rmBruit
       . rmPause
       . rmInaudible
+      . rmPronounce
       . joinAcronyms
       $ sent
     backup sent xs =
@@ -102,6 +103,11 @@ rmPause = filter (not . isPause)
 -- | Remove inaudible parts.
 rmInaudible :: Retok
 rmInaudible = filter (not . isInaudible)
+
+
+-- | Remove "pronounce"(?) parts.
+rmPronounce :: Retok
+rmPronounce = filter (not . isPronounce)
 
 
 joinAcronyms :: Retok
@@ -153,6 +159,12 @@ complete :: Token -> Token
 complete x = case x of
   Incomplete x y -> Plain (x `T.append` y)
   _ -> x
+
+
+isPronounce :: Token -> Bool
+isPronounce x = case x of
+  Pronounce _ -> True
+  _ -> False
 
 
 ---------------------------------------------------

@@ -40,4 +40,4 @@ showToken = \case
   Incomplete x y -> T.concat [x, "(", y ,")"]
   Pause x -> x
   Inaudible -> "[pi]"
-
+  Pronounce x -> T.concat ["<", x ,">"]
