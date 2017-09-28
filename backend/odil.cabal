@@ -31,6 +31,7 @@ library
                      , Odil.Stanford
                      , Odil.DiscoDOP
                      , Odil.Penn
+                     , Odil.FTB
   other-modules:       Proto.Odil.Stanford.CoreNLP
   build-depends:       base >= 4.7 && < 5
                      , text >= 1.2 && < 1.3

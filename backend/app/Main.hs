@@ -32,6 +32,7 @@ import qualified Odil.Server.Config as ServerCfg
 import qualified Odil.Server.DB as DB
 import qualified Odil.Server as Server
 import qualified Odil.Penn as Penn
+import qualified Odil.FTB as FTB
 import qualified Odil.Stanford as Stanford
 import qualified Odil.DiscoDOP as DiscoDOP
 
@@ -70,6 +71,9 @@ data Command
 
     | StatsDB FilePath
       -- ^ Print statistics related to the DB
+
+    | FTB2Penn FilePath
+      -- ^ Convert a FTB XML file to the Penn format
 
 
 --------------------------------------------------
@@ -175,6 +179,15 @@ statsDbOptions = StatsDB
        <> help "DB directory" )
 
 
+ftb2pennOptions :: Parser Command
+ftb2pennOptions = FTB2Penn
+  <$> strOption
+        ( long "file"
+       <> short 'f'
+       <> metavar "XML"
+       <> help "FTB XML (original format) file" )
+
+
 opts :: Parser Command
 opts = subparser
   ( command "simplify"
@@ -208,6 +221,10 @@ opts = subparser
   <> command "statsdb"
     (info (helper <*> statsDbOptions)
       (progDesc "Print DB-related statistics")
+    )
+  <> command "ftb2penn"
+    (info (helper <*> ftb2pennOptions)
+      (progDesc "Convert a FTB XML file to the Penn format")
     )
   )
 
@@ -313,6 +330,12 @@ run cmd =
         Left err -> T.putStrLn $ "Operation failed: " `T.append` err
         Right _  -> return ()
 
+    -- Misc
+    FTB2Penn filePath -> do
+      penns <- map FTB.toPenn . FTB.parseFTB
+        <$> T.readFile filePath
+      forM_ penns $ \penn -> do
+        T.putStrLn . Penn.showTree $ penn
 
 
 -- saveFile :: FileId -> File -> DBT ()

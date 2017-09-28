@@ -1,3 +1,6 @@
+{-# LANGUAGE OverloadedStrings #-}
+
+
 -- | Working with the Penn format.
 
 
@@ -8,6 +11,9 @@ module Odil.Penn
 , parseForest
 , parseFile
 , dividePenn
+
+-- * Showing
+, showTree
 
 -- * Conversion
 , toOdilTree
@@ -171,6 +177,23 @@ labelP = A.takeTill $ \c ->
 -- | A leaf parser.
 leafP :: A.Parser Tree
 leafP = flip R.Node [] <$> labelP
+
+
+---------------------------------------------------
+---------------------------------------------------
+-- Showing
+---------------------------------------------------
+---------------------------------------------------
+
+
+showTree :: Tree -> T.Text
+showTree (R.Node x ts)
+  | null ts = x
+  | otherwise = T.concat
+    [ "(", x, " "
+    , T.intercalate " " (map showTree ts)
+    , ")"
+    ]
 
 
 ---------------------------------------------------
