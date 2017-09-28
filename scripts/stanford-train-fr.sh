@@ -1,6 +1,7 @@
 # Config
 
-scriptdir=/home/kuba/work/odil/third-party/stanford/tool/stanford-parser-full-2016-10-31
+# scriptdir=/home/kuba/work/odil/third-party/stanford/tool/stanford-parser-full-2016-10-31
+scriptdir=/home/kuba/work/odil/third-party/stanford/github/CoreNLPData
 memory=4000m
 
 
