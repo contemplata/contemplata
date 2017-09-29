@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE LambdaCase #-}
 
 
 -- | Working with the FTB originXML format.
@@ -37,8 +38,8 @@ type Tree = R.Tree Node
 
 data Node
   = Node T.Text
-  | POS {cat :: T.Text, subcat :: Maybe T.Text}
-  | MWE {cat :: T.Text, subcat :: Maybe T.Text}
+  | POS {cat :: T.Text, subcat :: Maybe T.Text, mph :: Maybe T.Text}
+  | MWE {cat :: T.Text, subcat :: Maybe T.Text, mph :: Maybe T.Text}
   | MWEPOS {catint :: T.Text}
   | Orth T.Text
   deriving (Show, Eq, Ord)
@@ -55,13 +56,9 @@ toPenn =
   fmap label
   where
     label (Node x) = x
-    label (POS {..}) = cat
+    label (POS {..}) = posToStanford cat subcat mph
     label (MWE {..}) = "MW" `T.append` cat
---       case cat of
---         "ADV" -> "MWADV"
---         "A" -> "MWA"
---         _ -> cat
-    label (MWEPOS {..}) = catint
+    label (MWEPOS {..}) = baseConvert catint
     label (Orth x) = T.concatMap escape x
     escape c = case c of
       '(' -> "-LRB-"
@@ -70,6 +67,57 @@ toPenn =
       '*' -> "\\*"
       ' ' -> "_"
       _ -> T.singleton c
+
+
+-- | Convert to a POS tag consistent with the Stanford parser and tokenizer.
+posToStanford
+  :: T.Text       -- ^ cat
+  -> Maybe T.Text -- ^ subcat
+  -> Maybe T.Text -- ^ mph
+  -> T.Text
+posToStanford cat subcat mph = case cat of
+  "V" -> T.append cat . may mph $ \x -> case x of
+    _ | "K" `T.isPrefixOf` x -> "PP"
+      | "Y" `T.isPrefixOf` x -> "IMP"
+      | "S" `T.isPrefixOf` x -> "S"
+      | "G" `T.isPrefixOf` x -> "PR"
+    "W" -> "INF"
+    _ -> ""
+  "N" -> T.append cat . may subcat $ \x -> case x of
+    _ | T.take 1 x == "P" -> "PP"
+    _ -> tip x
+  "CL" -> cat `T.append` maybe "" tip subcat
+  "C" -> cat `T.append` maybe "" tip subcat
+  "PRO" -> T.append cat . may subcat $ \case
+    "rel" -> "REL"
+    "int" -> "WH"
+    _ -> ""
+  "ADV" -> T.append cat . may subcat $ \case
+    "int" -> "WH"
+    _ -> ""
+  "A" -> may subcat $ \case
+    "int" -> "ADJWH"
+    _ -> "ADJ"
+  "D" -> may subcat $ \case
+    "int" -> "DETWH"
+    _ -> "DET"
+  _ -> baseConvert cat -- `T.append` maybe "" tip subcat
+  where
+    tip = T.toUpper . T.take 1
+    may = flip (maybe "")
+
+
+-- | The baseline conversion of POS tags.
+baseConvert
+  :: T.Text -- ^ cat
+  -> T.Text
+baseConvert x = case x of
+  "PONCT" -> "PUNC"
+  "D" -> "DET"
+  "A" -> "ADJ"
+  _ -> x
+
+
 
 
 ---------------------------------------------------
@@ -103,8 +151,8 @@ internalQ = name `join` \tag -> do
 
 
 wordQ :: Q Tree
-wordQ = (named "w" *> catSubCat) `join` \(cat, subcat) ->
-  R.Node (POS {cat=cat, subcat=subcat}) . (:[]) <$> first textQ
+wordQ = (named "w" *> catSubCat) `join` \(cat, subcat, mph) ->
+  R.Node (POS {cat=cat, subcat=subcat, mph=mph}) . (:[]) <$> first textQ
 
 
 textQ :: Q Tree
@@ -115,10 +163,10 @@ textQ = node . PolySoup.Q $ \tag -> do
 
 
 mweQ :: Q Tree
-mweQ = (named "w" *> catSubCat) `join` \(cat, subcat) -> do
+mweQ = (named "w" *> catSubCat) `join` \(cat, subcat, mph) -> do
   children <- every' mweWordQ
   guard . not . null $ children
-  return $ R.Node (MWE {cat=cat, subcat=subcat}) children
+  return $ R.Node (MWE {cat=cat, subcat=subcat, mph=mph}) children
 
 
 -- | Basically like `wordQ`, but looks at `catint` and not `cat`.
@@ -127,8 +175,8 @@ mweWordQ = (named "w" *> attr "catint") `join` \catint ->
   R.Node (MWEPOS {catint=catint}) . (:[]) <$> first textQ
 
 
-catSubCat :: PolySoup.Q (TagSoup.Tag T.Text) (T.Text, Maybe T.Text)
-catSubCat = (,) <$> attr "cat" <*> optional (attr "subcat")
+catSubCat :: PolySoup.Q (TagSoup.Tag T.Text) (T.Text, Maybe T.Text, Maybe T.Text)
+catSubCat = (,,) <$> attr "cat" <*> optional (attr "subcat") <*> optional (attr "mph")
 
 
 ---------------------------------------------------
