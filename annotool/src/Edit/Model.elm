@@ -1081,20 +1081,21 @@ setTimexAnchor id focus model =
                 case otherWin.selMain of
                     Just x  -> Just (otherWin.tree, x)
                     Nothing -> Nothing
-        isTimex addr =
+        isTyped addr =
             case R.label (subTreeAt addr model) of
                 Leaf _ -> False
-                Node r ->
-                    case r.nodeTyp of
-                        Just (NodeTimex _) -> True
-                        _ -> False
+                Node r -> case r.nodeTyp of
+                  Just _  -> True
+                  Nothing -> False
+                  -- Just (NodeTimex _) -> True
+                  -- _ -> False
     in
         case anchorMaybe of
             Nothing -> Left "To perform anchoring, you have to first either: (i) select an additional node in focus, or (ii) select a node in the other window."
             Just anchor ->
-                if isTimex anchor
+                if isTyped anchor
                 then Right <| updateNode id focus (update anchorMaybe) model
-                else Left "The selected node is not a TIMEX"
+                else Left "The selected node is untyped (not a TIMEX, EVENT, ...)"
 
 
 -- | Remove the anchor.
