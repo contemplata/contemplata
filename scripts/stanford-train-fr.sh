@@ -31,6 +31,7 @@ outModel=$3
 
 java -mx"$memory" -cp "$scriptdir/*:" edu.stanford.nlp.parser.lexparser.LexicalizedParser \
   -tLPP edu.stanford.nlp.parser.lexparser.FrenchTreebankParserParams \
+  -uwm 1 \
   -encoding utf-8 \
   -train "$trainPath" \
   -testTreebank "$testPath" \
