@@ -18,6 +18,7 @@ import qualified Data.Text.IO as T
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Aeson as JSON
 import Data.Monoid ((<>))
+import Data.Maybe (mapMaybe)
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Tree as R
@@ -72,7 +73,7 @@ data Command
     | StatsDB FilePath
       -- ^ Print statistics related to the DB
 
-    | FTB2Penn FilePath
+    | FTB2Penn FilePath Bool
       -- ^ Convert a FTB XML file to the Penn format
 
 
@@ -186,6 +187,10 @@ ftb2pennOptions = FTB2Penn
        <> short 'f'
        <> metavar "XML"
        <> help "FTB XML (original format) file" )
+  <*> switch
+        ( long "remove-punctuation"
+       <> short 'r'
+       <> help "Remove punctuation (with the expcetion of question marks)" )
 
 
 opts :: Parser Command
@@ -331,9 +336,12 @@ run cmd =
         Right _  -> return ()
 
     -- Misc
-    FTB2Penn filePath -> do
-      penns <- map FTB.toPenn . FTB.parseFTB
-        <$> T.readFile filePath
+    FTB2Penn filePath rmPunc -> do
+      let process = if rmPunc then mapMaybe FTB.rmPunc else id
+      penns <- map FTB.toPenn
+             . process
+             . FTB.parseFTB
+           <$> T.readFile filePath
       forM_ penns $ \penn -> do
         T.putStrLn . Penn.showTree $ penn
 

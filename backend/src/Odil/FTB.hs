@@ -11,13 +11,16 @@ module Odil.FTB
 
 -- * Conversion
 , toPenn
+
+-- * Processing
+, rmPunc
 ) where
 
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Tree as R
-import           Data.Maybe (catMaybes)
+import           Data.Maybe (mapMaybe, catMaybes)
 import           Control.Applicative (optional, some, (*>), (<|>))
 import           Control.Monad (guard)
 
@@ -180,7 +183,7 @@ catSubCat = (,,) <$> attr "cat" <*> optional (attr "subcat") <*> optional (attr 
 
 
 ---------------------------------------------------
--- Higher-level API
+-- Higher-level parsing API
 ---------------------------------------------------
 
 
@@ -200,3 +203,27 @@ parseFTB =
 parseGen :: Q [a] -> T.Text -> [a]
 parseGen q =
   concat . catMaybes . map (runQ q) . parseForest . TagSoup.parseTags
+
+
+---------------------------------------------------
+-- Processing
+---------------------------------------------------
+
+
+-- | Remove all punctuation characters (apart from question marks which can be
+-- also found in ANCOR data).
+rmPunc :: Tree -> Maybe Tree
+rmPunc tree@(R.Node x ts)
+  | isPunc   = Nothing
+  | null ts  = Just tree
+  | otherwise = case mapMaybe rmPunc ts of
+      []  -> Nothing
+      ts' -> Just (R.Node x ts')
+  where
+    isPunc = case x of
+      POS{cat = "PONCT"} -> questionMark ts
+      MWEPOS{catint = "PONCT"} -> questionMark ts
+      _ -> False
+    questionMark = \case
+      [R.Node (Orth "?") _] -> False
+      _ -> True
