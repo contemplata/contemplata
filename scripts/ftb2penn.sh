@@ -2,6 +2,11 @@
 
 # Params
 
+# PARAMS=-r
+PARAMS=
+
+# Args
+
 if [ ! $# -eq 1 ]; then
   # echo Usage: `basename $0` 'INPUT-DIR' 'OUTPUT-FILE'
   echo Usage: `basename $0` 'INPUT-DIR'
@@ -14,5 +19,5 @@ input=$1
 for filename in "$input"/*.xml; do
     # echo "$filename"
     # odil ftb2penn -f "$filename" >> "$output"
-    odil ftb2penn -f "$filename"
+    odil ftb2penn -f "$filename" $PARAMS
 done
