@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE LambdaCase #-}
 
 
 -- | A simple Stanford parser client (for French). Relies on the standard
@@ -27,12 +28,13 @@ import Control.Monad (guard, (<=<))
 
 import qualified Control.Exception as Exc
 
-import           Data.Maybe (catMaybes)
+import           Data.Maybe (catMaybes, maybeToList, mapMaybe)
 -- import Data.Word (Word8, Word16)
 -- import Data.Bits ((.&.), shiftR)
 import qualified Data.List as L
 import qualified Data.Char as C
 import qualified Data.Text as T
+import qualified Data.Tree as R
 import qualified Data.HashMap.Strict as H
 -- import qualified Data.Map.Strict as H
 import qualified Data.Text.Encoding as T
@@ -79,12 +81,20 @@ serverCfg :: String
 serverCfg = "http://localhost:9000/?properties={\"annotators\":\"tokenize,ssplit,pos,parse\",\"parse.model\":\"edu/stanford/nlp/models/lexparser/frenchFactored.ser.gz\",\"pos.model\":\"edu/stanford/nlp/models/pos-tagger/french/french.tagger\",\"tokenize.language\":\"fr\",\"outputFormat\":\"json\"}"
 
 
+-- -- | Parse a given sentence (in French).
+-- parseFR :: T.Text -> IO (Maybe Penn.Tree)
+-- parseFR x = Exc.handle ignoreException $ do
+--   r <- Wreq.post serverCfg (T.encodeUtf8 x)
+--   let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "parse" . _String
+--   return $ parse >>= Penn.parseTree'
+
+
 -- | Parse a given sentence (in French).
 parseFR :: T.Text -> IO (Maybe Penn.Tree)
 parseFR x = Exc.handle ignoreException $ do
   r <- Wreq.post serverCfg (T.encodeUtf8 x)
-  let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "parse" . _String
-  return $ parse >>= Penn.parseTree'
+  let parse = r ^.. Wreq.responseBody . key "sentences" . values . key "parse" . _String
+  return . joinSentences $ map Penn.parseTree parse
 
 
 -- | The alternative server configuration where the tokenization has been already performed.
@@ -100,8 +110,9 @@ parseTokenizedFR :: [Orth] -> IO (Maybe Penn.Tree)
 parseTokenizedFR xs = Exc.handle ignoreException  $ do
   guard . all noSpace $ xs
   r <- Wreq.post tokenizedServerCfg . T.encodeUtf8 . T.unwords $ xs
-  let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "parse" . _String
-  return $ parse >>= Penn.parseTree'
+  let parse = r ^.. Wreq.responseBody . key "sentences" . values . key "parse" . _String
+  -- return $ parse >>= Penn.parseTree'
+  return . joinSentences $ map Penn.parseTree parse
   where
     noSpace = T.all (not . C.isSpace)
 
@@ -120,8 +131,9 @@ parsePosFR :: [(Orth, Pos)] -> IO (Maybe Penn.Tree)
 parsePosFR pos = Exc.handle ignoreException $ do
   let docBS = encodeDoc (docFromPos pos)
   r <- Wreq.post posCfg docBS
-  let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "parse" . _String
-  return $ parse >>= Penn.parseTree'
+  let parse = r ^.. Wreq.responseBody . key "sentences" . values . key "parse" . _String
+  -- return $ parse >>= Penn.parseTree'
+  return . joinSentences $ map Penn.parseTree parse
 
 
 ----------------------------------------------
@@ -148,8 +160,10 @@ parseConsFR :: [(Orth, Pos)] -> [(Int, Int)] -> IO (Maybe Penn.Tree)
 parseConsFR pos cons = Exc.handle ignoreException $ do
   let docBS = encodeDoc (docFromPos pos)
   r <- Wreq.post (consCfg cons) docBS
-  let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "parse" . _String
-  return $ parse >>= Penn.parseTree'
+  -- let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "parse" . _String
+  -- return $ parse >>= Penn.parseTree'
+  let parse = r ^.. Wreq.responseBody . key "sentences" . values . key "parse" . _String
+  return . joinSentences $ map Penn.parseTree parse
 
 
 ----------------------------------------------
@@ -170,9 +184,12 @@ posTagFR :: T.Text -> IO (Maybe [(Orth, Pos)])
 posTagFR sent = Exc.handle ignoreException $ do
   let docBS = encodeDoc (docFromRaw sent)
   r <- Wreq.post taggerCfg docBS
-  let mayParse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "tokens"
-      result = (^.. values) <$> mayParse
-  return (catMaybes . map wordPos <$> result)
+  -- let mayParse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "tokens"
+  --     result = (^.. values) <$> mayParse
+  let mayParse = r ^.. Wreq.responseBody . key "sentences" . values . key "tokens"
+      result = concatMap (^.. values) mayParse
+  -- return (catMaybes . map wordPos <$> result)
+  return . Just $ mapMaybe wordPos result
   where
     wordPos (Aeson.Object m) =
       (,)
@@ -278,7 +295,26 @@ decodeDoc bs = flip Byte.runGetL bs $ do
 ----------------------------------------------
 
 
+-- | Join several sentences.
+joinSentences :: [Penn.Tree] -> Maybe Penn.Tree
+joinSentences
+  = addRoot
+  . concatMap rmRoot
+  where
+    addRoot = \case
+      [] -> Nothing
+      ts -> Just $ R.Node "ROOT" ts
+    rmRoot  = \case
+      R.Node
+        { R.rootLabel="ROOT"
+        , R.subForest=ts } -> ts
+
+
 -- | Convert any exception to `Nothing`.
 ignoreException :: Exc.SomeException -> IO (Maybe a)
 ignoreException _ = return Nothing
 
+
+-- | Convert any exception to `Nothing`.
+ignoreException' :: Exc.SomeException -> IO [a]
+ignoreException' _ = return []
