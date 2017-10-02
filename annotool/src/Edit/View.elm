@@ -213,24 +213,38 @@ bottomStyle =
 ---------------------------------------------------
 
 
+type alias PopupCommand = (String, Msg)
+
+
 viewPopups : M.Model -> List (Html.Html Msg)
 viewPopups model =
     case model.popup of
         Nothing -> []
         Just Popup.Files -> [viewPopupFiles model]
         Just (Popup.Info x) -> [viewPopupInfo x]
+        Just (Popup.Split x) -> [viewPopupSplit x]
 
 
 viewPopupInfo : String -> Html.Html Msg
-viewPopupInfo info = viewPopupGen 125 150 info [("OK", QuitPopup)]
+viewPopupInfo info =
+    viewPopupGen 125 150 info [("OK", QuitPopup)] 0
 
 
 viewPopupFiles : M.Model -> Html.Html Msg
-viewPopupFiles model = viewPopupGen 200 150 "Do you wish to save?"
-  [ ("Yes", Many [SaveFile, QuitPopup, Files])
-  , ("No", Many [QuitPopup, Files])
-  , ("Cancel", QuitPopup)
-  ]
+viewPopupFiles model =
+    viewPopupGen 200 150 "Do you wish to save?"
+        [ ("Yes", Many [SaveFile, QuitPopup, Files])
+        , ("No", Many [QuitPopup, Files])
+        , ("Cancel", QuitPopup)
+        ] 0
+
+
+viewPopupSplit : Popup.SplitPopup -> Html.Html Msg
+viewPopupSplit r =
+    viewPopupSplitGen 125 150 r
+        [ ("OK", Many [SplitFinish r.split, QuitPopup])
+        , ("Cancel", QuitPopup)
+        ] 0
 
 
 -- | Generic popup.
@@ -241,21 +255,111 @@ viewPopupGen
     -- ^ Font size of the commands (in percentage)
     -> String
     -- ^ The message
-    -> List (String, Msg)
+    -> List PopupCommand
     -- ^ A list of commands that the user can perform
+    -> Int
+    -- ^ The position of the default command
     -> Html.Html Msg
-viewPopupGen msgSize cmdSize msg commandList =
+viewPopupGen msgSize cmdSize msg commandList defaultCommand =
     let
-        textElem txt =
-            Html.div
-                [ Atts.class "noselect"
+        textElem = popupTextElem msgSize
+    in
+        viewPopupMostGen cmdSize (textElem msg) commandList defaultCommand
+
+
+-- | Splitting popup
+viewPopupSplitGen
+    : Int
+    -- ^ Font size of the popup message (in percentage)
+    -> Int
+    -- ^ Font size of the commands (in percentage)
+    -> Popup.SplitPopup
+    -- ^ The message
+    -> List PopupCommand
+    -- ^ A list of commands that the user can perform
+    -> Int
+    -- ^ The position of the default command
+    -> Html.Html Msg
+viewPopupSplitGen msgSize cmdSize spl commandList defaultCommand =
+
+    let
+
+        option evVal val =
+            Html.option
+                [ Atts.value (toString val)
+                , Atts.selected (val == evVal) ]
+            [ Html.text (toString val) ]
+        setMsg str =
+            let x = String.toInt str |> Result.toMaybe |> Maybe.withDefault 0
+            in  Msg.SplitChange x
+        splitButton val beg end =
+            Html.select
+                [ Events.on "change" (Decode.map setMsg Events.targetValue)
+                , Atts.id Cfg.splitSelectName
+                , Atts.autofocus True -- ^ doesn't work?
                 , Atts.style
-                    [ "cursor" => "default"
-                    , "margin" => px 5
-                    -- , "font-size" => "125%" ]
+                    [ "cursor" => "pointer"
                     , "font-size" => ps msgSize ]
                 ]
-                [ Html.text txt ]
+                ( List.map (option val) (List.range beg end) )
+
+        textElem = popupTextElem msgSize
+        textCell txt = Html.td [] [textElem txt]
+        tab =
+            Html.table []
+                [ Html.tr []
+                      [ textCell "split: "
+                      , splitButton spl.split 0 (String.length spl.word)
+                      ]
+                -- , Html.tr [] [textCell "from: ", textCell spl.word]
+                , Html.tr []
+                      [ textCell "first: "
+                      , textCell (String.left spl.split spl.word)
+                      ]
+                , Html.tr []
+                      [ textCell "second: "
+                      , textCell (String.dropLeft spl.split spl.word)
+                      ]
+                ]
+
+    in
+
+        viewPopupMostGen cmdSize (Html.div [] [tab, Html.hr [] []]) commandList defaultCommand
+
+
+popupTextElem
+    : Int
+    -- ^ Font size of the popup message (in percentage)
+    -> String
+    -- ^ Text message
+    -> Html.Html Msg
+popupTextElem msgSize txt =
+    Html.span
+        [ Atts.class "noselect"
+        , Atts.style
+            [ "cursor" => "default"
+            , "margin" => px 5
+            -- , "font-size" => "125%" ]
+            , "font-size" => ps msgSize ]
+        ]
+        [ Html.text txt ]
+
+
+-- | Doubly generic popup.
+viewPopupMostGen
+     : Int
+    -- ^ Font size of the commands (in percentage)
+    -> Html.Html Msg
+    -- ^ Main Popup HTML
+    -> List PopupCommand
+    -- ^ A list of commands that the user can perform
+    -> Int
+    -- ^ The position of the default command
+    -> Html.Html Msg
+viewPopupMostGen cmdSize popupHtml commandList defaultCommand =
+
+    let
+
         textButton txt action =
             Html.span
                 [ Atts.class "noselect"
@@ -268,6 +372,7 @@ viewPopupGen msgSize cmdSize msg commandList =
                     , "font-size" => ps cmdSize ]
                 ]
                 [ Html.text txt ]
+
         popupDiv =
             Html.div
                 [ Atts.style
@@ -283,15 +388,22 @@ viewPopupGen msgSize cmdSize msg commandList =
                   -- , "border-radius" => "10%" -- "4px"
                   ]
                 ]
-                [ textElem msg
+                [ popupHtml
                 , Html.div []
                     (L.map (\(cmd, msg) -> textButton cmd msg) commandList)
-                    -- [ textButton "OK" QuitPopup
-                    -- ]
                 ]
+        keyboardHandler code = case code of
+            -- Enter
+            13 -> case L.head (L.drop defaultCommand commandList) of
+                Nothing -> Msg.dummy
+                Just (_, msg) -> msg
+            -- Escape
+            27 -> QuitPopup
+            _  -> Msg.dummy
     in
         Html.div
             [ Atts.class "popup"
+            , popupKeyDownEvents keyboardHandler
             , Atts.style
                   [ "position" => "absolute"
                   , "width" => "100%"
@@ -302,6 +414,7 @@ viewPopupGen msgSize cmdSize msg commandList =
             ]
             [ popupDiv
             ]
+
 
 ---------------------------------------------------
 -- Menu
@@ -1407,6 +1520,26 @@ blockKeyDownEvents =
         Events.onWithOptions "keydown" options decoder
 
 
+-- | Keydown events related to popups.
+popupKeyDownEvents : (Int -> msg) -> Html.Attribute msg
+popupKeyDownEvents tagger =
+    let
+        options =
+            (let default = Events.defaultOptions
+             in {default | stopPropagation=True})
+        filterKey code =
+            if code == 17 then -- CTRL
+                Decode.fail "won't be blocked"
+            else
+                -- Decode.succeed Msg.dummy
+                Decode.succeed (tagger code)
+        decoder =
+            Events.keyCode
+                |> Decode.andThen filterKey
+    in
+        Events.onWithOptions "keydown" options decoder
+
+
 ---------------------------------------------------
 -- Positioning
 ---------------------------------------------------
@@ -1520,7 +1653,6 @@ textGenericGen setAttr attr text value =
                []
           ]
       ]
-
 
 
 -- | Doubly generic list input field.

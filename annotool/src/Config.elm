@@ -1,7 +1,7 @@
 module Config exposing
   ( stdWidth, stdMargin, nodeHeight, moveDown, sideSpace, sideMenuHeight
   -- , testTree1, testTree2, testTree3, testTree4, testTree5
-  , increaseSpeed, windowName, editLabelName, dmzSize
+  , increaseSpeed, windowName, editLabelName, splitSelectName, dmzSize
   , linkDasharray, linkWidth, linkOpacity
   , linkCircleOpacity, linkCircleColor, linkCircleRadius, linkCircleSelectColor
   , linkHeadSize, linkHeadDist, linkHeadDist2, linkTailDist
@@ -105,6 +105,11 @@ windowName : Bool -> String
 windowName flag = case flag of
   True  -> "top"
   False -> "bot"
+
+
+-- | The name of the edit label field.
+splitSelectName : String
+splitSelectName = "splitSelect"
 
 
 ---------------------------------------------------
@@ -280,8 +285,8 @@ linkCircleRadius = 25
 
 
 socketServer : String
--- socketServer = "ws://127.0.0.1:9161"
-socketServer = "ws://vega.info.univ-tours.fr:16340"
+socketServer = "ws://127.0.0.1:9161"
+-- socketServer = "ws://vega.info.univ-tours.fr:16340"
 
 
 ---------------------------------------------------

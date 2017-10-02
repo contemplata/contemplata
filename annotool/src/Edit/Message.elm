@@ -89,6 +89,9 @@ type Msg
   | CommandChar Char
   | Popup Popup.Popup  -- ^ Open a popup window
   | QuitPopup
+  | SplitBegin
+  | SplitChange Int
+  | SplitFinish Int
   -- | Goto C.Addr -- ^ Move to a given node in the focused window
   | Many (List Msg)
 --     -- ^ Tests
@@ -346,6 +349,20 @@ update msg model =
           Anno.TiAnchorAttr True -> Debug.crash "Message: impossible happened (TiAnchorAttr True)!"
           Anno.TiAnchorAttr False -> M.remTimexAnchor nodeId focus model
 
+    SplitBegin ->
+        let pop x = (model, firePopup x Nothing) in
+        case (M.selectWin model.focus model).selMain of
+            Nothing -> pop (Popup.Info "You have to select a leaf")
+            Just nodeId ->
+                case M.getNode nodeId model.focus model of
+                    M.Node _ -> pop (Popup.Info "You have to select a leaf")
+                    M.Leaf r ->
+                        let popup = Popup.Split {word=r.nodeVal, split=0}
+                            focus = Just Cfg.splitSelectName
+                        in (model, firePopup popup focus)
+    SplitChange k -> idle <| M.changeSplit k model
+    SplitFinish k -> idle <| M.performSplit k model
+
     CommandStart -> idle {model | command = Just ""}
 
     CommandChar c -> idle <|
@@ -413,6 +430,23 @@ dummy : Msg
 dummy = Many []
 
 
+firePopup
+    : Popup.Popup
+    -- ^ The popup to fire
+    -> Maybe String
+    -- ^ The (optional) name of the element to focus on
+    -> Cmd Msg
+firePopup popupRaw targetMaybe =
+    let
+        popup = Popup popupRaw
+        popCmd = Task.perform identity (Task.succeed popup)
+        focCmd target = Task.attempt (\_ -> dummy) (Dom.focus target)
+    in
+        case targetMaybe of
+            Nothing -> popCmd
+            Just x  -> Cmd.batch [popCmd, focCmd x]
+
+
 ----------------------------------------------
 -- Command
 ----------------------------------------------
@@ -433,6 +467,7 @@ cmdList =
   , ("dopparsecons", ParseSentCons Server.DiscoDOP)
   , ("deepen", ApplyRules)
   , ("concat", ConcatWords)
+  , ("split", SplitBegin)
 --   , ("undo", Undo)
 --   , ("redo", Redo)
   ]

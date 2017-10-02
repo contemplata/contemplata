@@ -23,8 +23,10 @@ module Odil.Stanford
 
 
 import Control.Monad (guard, (<=<))
+import Control.Arrow (second)
 -- import Control.Monad.IO.Class (liftIO)
 -- import Control.Monad.Trans.Maybe (MaybeT(..))
+import qualified Control.Monad.Trans.State as State
 
 import qualified Control.Exception as Exc
 
@@ -102,19 +104,43 @@ tokenizedServerCfg :: String
 tokenizedServerCfg = "http://localhost:9000/?properties={\"annotators\":\"pos,parse\",\"tokenize.whitespace\":\"true\",\"parse.model\":\"edu/stanford/nlp/models/lexparser/frenchFactored.ser.gz\",\"pos.model\":\"edu/stanford/nlp/models/pos-tagger/french/french.tagger\",\"tokenize.language\":\"fr\",\"outputFormat\":\"json\"}"
 
 
+-- -- | Parse a given sentence (in French).
+-- --
+-- -- Note that input words are not allowed to contain whitespaces (otherwise, the
+-- -- parser fails and returns `Nothing`).
+-- parseTokenizedFR :: [Orth] -> IO (Maybe Penn.Tree)
+-- parseTokenizedFR xs = Exc.handle ignoreException  $ do
+--   guard . all noSpace $ xs
+--   r <- Wreq.post tokenizedServerCfg . T.encodeUtf8 . T.unwords $ xs
+--   let parse = r ^.. Wreq.responseBody . key "sentences" . values . key "parse" . _String
+--   -- return $ parse >>= Penn.parseTree'
+--   return . joinSentences $ map Penn.parseTree parse
+--   where
+--     noSpace = T.all (not . C.isSpace)
+
+
 -- | Parse a given sentence (in French).
 --
 -- Note that input words are not allowed to contain whitespaces (otherwise, the
 -- parser fails and returns `Nothing`).
 parseTokenizedFR :: [Orth] -> IO (Maybe Penn.Tree)
-parseTokenizedFR xs = Exc.handle ignoreException  $ do
-  guard . all noSpace $ xs
+parseTokenizedFR xs0 = Exc.handle ignoreException  $ do
+  let (xs, signatures) = unzip $ map unSpace xs0
   r <- Wreq.post tokenizedServerCfg . T.encodeUtf8 . T.unwords $ xs
   let parse = r ^.. Wreq.responseBody . key "sentences" . values . key "parse" . _String
-  -- return $ parse >>= Penn.parseTree'
-  return . joinSentences $ map Penn.parseTree parse
-  where
-    noSpace = T.all (not . C.isSpace)
+  return $ postProcess signatures parse
+
+
+-- -- | Parse a given sentence (in French).
+-- parseTokenizedFR :: [Orth] -> IO (Maybe Penn.Tree)
+-- parseTokenizedFR xs = parsePosFR' . zip xs $ repeat Nothing
+
+
+postProcess :: [SpaceSignature] -> [T.Text] -> Maybe Penn.Tree
+postProcess signatures parse
+  = fmap (restoreSpaces signatures)
+  . joinSentences
+  $ map Penn.parseTree parse
 
 
 ----------------------------------------------
@@ -128,12 +154,25 @@ posCfg = "http://localhost:9000/?properties={\"annotators\":\"parse\",\"parse.mo
 
 -- | Parse a given sentence, tokenized and with pre-computed POS tags.
 parsePosFR :: [(Orth, Pos)] -> IO (Maybe Penn.Tree)
-parsePosFR pos = Exc.handle ignoreException $ do
-  let docBS = encodeDoc (docFromPos pos)
+parsePosFR = parsePosFR' . map (second Just)
+
+
+-- | Parse a given sentence, tokenized and with pre-computed POS tags.
+parsePosFR' :: [(Orth, Maybe Pos)] -> IO (Maybe Penn.Tree)
+parsePosFR' orthPos = Exc.handle ignoreException $ do
+  let (docBS, signatures) = preProcess orthPos
   r <- Wreq.post posCfg docBS
   let parse = r ^.. Wreq.responseBody . key "sentences" . values . key "parse" . _String
-  -- return $ parse >>= Penn.parseTree'
-  return . joinSentences $ map Penn.parseTree parse
+  -- return . joinSentences $ map Penn.parseTree parse
+  return $ postProcess signatures parse
+
+
+preProcess :: [(Orth, Maybe Pos)] -> (BL.ByteString, [SpaceSignature])
+preProcess orthPos0 =
+  let (orth0, pos) = unzip orthPos0
+      (orth, signatures) = unzip $ map unSpace orth0
+      docBS = encodeDoc . docFromPos $ zip orth pos
+  in  (docBS, signatures)
 
 
 ----------------------------------------------
@@ -157,13 +196,16 @@ consCfg cons =
 
 -- | Parse a given sentence, tokenized and with pre-computed POS tags.
 parseConsFR :: [(Orth, Pos)] -> [(Int, Int)] -> IO (Maybe Penn.Tree)
-parseConsFR pos cons = Exc.handle ignoreException $ do
-  let docBS = encodeDoc (docFromPos pos)
+parseConsFR orthPos cons = Exc.handle ignoreException $ do
+  -- let docBS = encodeDoc (docFromPos pos)
+  -- let docBS = encodeDoc . docFromPos $ map (second Just) pos
+  let (docBS, signatures) = preProcess $ map (second Just) orthPos
   r <- Wreq.post (consCfg cons) docBS
   -- let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "parse" . _String
   -- return $ parse >>= Penn.parseTree'
   let parse = r ^.. Wreq.responseBody . key "sentences" . values . key "parse" . _String
-  return . joinSentences $ map Penn.parseTree parse
+  -- return . joinSentences $ map Penn.parseTree parse
+  return $ postProcess signatures parse
 
 
 ----------------------------------------------
@@ -214,7 +256,7 @@ docFromRaw text =
 
 
 -- | Create a Stanford document from a list of words and their POS tags.
-docFromPos :: [(Orth, Pos)] -> CoreNLP.Document
+docFromPos :: [(Orth, Maybe Pos)] -> CoreNLP.Document
 docFromPos xs =
 
   Proto.def
@@ -242,7 +284,11 @@ docFromPos xs =
     tokens = calcOffsets . trimLast . trimFirst $
       [ Proto.def
         { CoreNLP._Token'word = Just orth
-        , CoreNLP._Token'pos = Just pos
+        , CoreNLP._Token'pos = pos
+        -- , CoreNLP._Token'pos = Just pos
+--         , CoreNLP._Token'pos = case pos of
+--             "" -> Nothing
+--             _  -> Just pos
         , CoreNLP._Token'value = Just orth
         , CoreNLP._Token'before = Just " "
         , CoreNLP._Token'after = Just " "
@@ -291,8 +337,63 @@ decodeDoc bs = flip Byte.runGetL bs $ do
 
 
 ----------------------------------------------
+-- Words with spaces
+----------------------------------------------
+
+
+-- | Space signature tells from where spaces were removed. Internally, the list
+-- of positions were spaces were present.
+type SpaceSignature = [Int]
+
+
+-- | Remove all the spaces from the given word and return the corresponding
+-- space signature.
+unSpace :: T.Text -> (T.Text, SpaceSignature)
+unSpace x =
+  case T.findIndex C.isSpace x of
+    Nothing -> (x, [])
+    Just i  -> second (i:) . unSpace $ removeAt i x
+
+
+-- | Restore spaces in a given text.
+applySignature :: SpaceSignature -> T.Text -> T.Text
+applySignature sign x =
+  case sign of
+    i : is -> addAt i ' ' (applySignature is x)
+    [] -> x
+
+
+-- | Restore spaces in leaves of the given tree. Space signatures are applied
+-- from left to right.
+restoreSpaces :: [SpaceSignature] -> R.Tree T.Text -> R.Tree T.Text
+restoreSpaces signatures =
+  flip State.evalState signatures . go
+  where
+    go (R.Node x ts) = case ts of
+      [] -> do
+        (sign : signs) <- State.get
+        State.put signs
+        return $ R.Node (applySignature sign x) []
+      _ -> R.Node x <$> mapM go ts
+
+
+----------------------------------------------
 -- Utils
 ----------------------------------------------
+
+
+-- | Add at the k'th position the given character.
+addAt :: Int -> Char -> T.Text -> T.Text
+addAt k char txt =
+  let (x, y) = T.splitAt k txt
+  in  T.concat [x, T.singleton char, y]
+
+
+-- | Remove the k'th character.
+removeAt :: Int -> T.Text -> T.Text
+removeAt k txt =
+  let (x, y) = T.splitAt k txt
+  in  T.append x (T.tail y)
 
 
 -- | Join several sentences.

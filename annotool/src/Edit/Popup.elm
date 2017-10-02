@@ -1,5 +1,6 @@
 module Edit.Popup exposing
   ( Popup(..)
+  , SplitPopup
   )
 
 
@@ -7,7 +8,10 @@ module Edit.Popup exposing
 type Popup
   = Files -- SavePopup
   | Info String -- Generic information popup
+  | Split SplitPopup
 
 
--- type alias SavePopup =
---   { }
+type alias SplitPopup =
+  { word : String
+  , split : Int
+  }

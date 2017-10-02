@@ -45,6 +45,8 @@ module Edit.Model exposing
   , attachSel, deleteSel, deleteSelTree, addSel, swapSel
   -- Node annotation:
   , mkEventSel, mkSignalSel, mkTimexSel
+  -- Popup-related
+  , changeSplit, performSplit
   -- , changeTypeSel
   -- Lenses:
   , top, bot, dim, winLens, drag, side, pos, height, widthProp, heightProp
@@ -1128,6 +1130,11 @@ procSel f focus model =
     else model
 
 
+-- -- | Get selected nodes.
+-- getSelected
+--     : Model -> S.Set NodeId
+
+
 ---------------------------------------------------
 -- Delete
 ---------------------------------------------------
@@ -1178,13 +1185,6 @@ deleteSelTree : Focus -> Model -> Model
 deleteSelTree =
   let
       f ids t = rePOS <| L.foldl deleteTree t (S.toList ids)
-      -- We need to re-position the leaves, since
-      -- some might have been deleted
-      rePOS = Tuple.second << R.mapAccum update 0
-      update pos x =
-          case x of
-              Node r -> (pos, Node r)
-              Leaf r -> (pos+1, Leaf {r | leafPos=pos})
   in
       procSel f
 
@@ -1257,16 +1257,16 @@ addNode ids tree =
     identify "?" <| update tree
 
 
+---------------------------------------------------
+-- Re-identification
+---------------------------------------------------
+
+
 -- | Add missing identifiers.
 identify : String -> R.Tree (Maybe Node) -> R.Tree Node
 identify dummyVal tree =
   let
-    findMaxMay =
-        List.maximum
-          <| L.map (\x -> Lens.get nodeId x)
-          <| Util.catMaybes
-          <| R.flatten tree
-    newId1 = case findMaxMay of
+    newId1 = case findMaxID tree of
        Nothing -> 1
        Just ix -> ix + 1
     update newId nodeMay =
@@ -1275,6 +1275,11 @@ identify dummyVal tree =
         Just x  -> (newId, x)
   in
     Tuple.second <| R.mapAccum update newId1 tree
+
+
+-- -- | Completely re-identify the given tree.
+-- reID : R.Tree Node -> R.Tree Node
+-- reID dummyVal tree =
 
 
 ---------------------------------------------------
@@ -1439,7 +1444,7 @@ concatWords model =
         reveal acc =
             if D.isEmpty acc
             then []
-            else [ Str.concat
+            else [ Str.join " "
                        <| L.map (\(_, x) -> x.nodeVal)
                        <| D.toList acc
                  ]
@@ -1587,6 +1592,57 @@ swap left id tree =
   in
     R.swapSubTree left p tree
       |> Util.guard wellFormed
+
+
+---------------------------------------------------
+-- Popups
+---------------------------------------------------
+
+
+-- | Change the value of the split in the popup window.
+changeSplit : Int -> Model -> Model
+changeSplit k model =
+    case model.popup of
+        Just (Popup.Split spl) ->
+            let newSpl = {spl | split = k}
+            in  {model | popup = Just (Popup.Split newSpl)}
+        _ -> model
+
+
+-- | Perform the split on the node in focus.
+performSplit : Int -> Model -> Model
+performSplit splitPlace model =
+    let
+        win = selectWin model.focus model
+        updTree theID tree =
+            let
+                newId1 = case findMaxID (R.map Just tree) of
+                   Nothing -> 1
+                   Just ix -> ix + 1
+                duplicate leaf =
+                    let
+                        left  = {leaf | nodeVal = String.left splitPlace leaf.nodeVal}
+                        right = {leaf
+                                    | nodeVal = String.dropLeft splitPlace leaf.nodeVal
+                                    , nodeId = newId1
+                                }
+                    in
+                        [ R.Node (Leaf left) []
+                        , R.Node (Leaf right) [] ]
+                go (R.Node x ts) = case x of
+                    Node r -> [R.Node x (L.concatMap go ts)]
+                    Leaf r ->
+                        if r.nodeId == theID
+                        then duplicate r
+                        else [R.Node x []]
+            in
+                 case go tree of
+                     [t] -> t
+                     _   -> tree
+    in
+        case win.selMain of
+            Nothing -> model
+            Just id -> updateTree win.tree (rePOS << updTree id) model
 
 
 ---------------------------------------------------
@@ -2323,3 +2379,24 @@ subTreeAt (treeId, theNodeId) model =
         case R.getSubTree pred tree of
             Nothing -> Debug.crash "View.subTreeAt: no node with the given ID"
             Just t  -> t
+
+
+-- | Re-position the leaves of the tree.
+rePOS : R.Tree Node -> R.Tree Node
+rePOS =
+    let
+        update pos x =
+            case x of
+                Node r -> (pos, Node r)
+                Leaf r -> (pos+1, Leaf {r | leafPos=pos})
+    in
+        Tuple.second << R.mapAccum update 0
+
+
+
+findMaxID : R.Tree (Maybe Node) -> Maybe NodeId
+findMaxID tree =
+    List.maximum
+      <| L.map (\x -> Lens.get nodeId x)
+      <| Util.catMaybes
+      <| R.flatten tree
