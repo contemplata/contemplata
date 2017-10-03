@@ -694,6 +694,12 @@ type Timex = Timex
   , tiValue : String
   , tiMod : TimexMod
   , tiAnchor : Maybe Addr
+  , tiBeginPoint : Maybe Addr
+  , tiEndPoint : Maybe Addr
+  -- ^ Both above can be only set if `tiType == Duration`
+  , tiQuant : Maybe String
+  , tiFreq : Maybe String
+  -- ^ Both above can be only set if `tiType == Set`
   }
 
 
@@ -708,6 +714,10 @@ timexDefault = Timex
   , tiValue = ""
   , tiMod = Before
   , tiAnchor = Nothing
+  , tiBeginPoint = Nothing
+  , tiEndPoint = Nothing
+  , tiQuant = Nothing
+  , tiFreq = Nothing
   }
 
 
@@ -721,6 +731,10 @@ type TimexAttr
     | TiValueAttr String
     | TiModAttr TimexMod
     | TiAnchorAttr Bool -- ^ Create if `True`, remove if `False`
+    | TiBeginPointAttr Bool -- ^ Create if `True`, remove if `False`
+    | TiEndPointAttr Bool -- ^ Create if `True`, remove if `False`
+    | TiQuantAttr (Maybe String)
+    | TiFreqAttr (Maybe String)
 
 
 ---------------------------------------------------
@@ -832,6 +846,7 @@ type TimexType
   | Set
 
 
+
 timexTypeStr : List (String, TimexType)
 timexTypeStr =
   [ ("Date", Date)
@@ -908,6 +923,10 @@ encodeTimex (Timex r) = Encode.object
     , ("tiValue", Encode.string r.tiValue)
     , ("tiMod", encodeTimexMod r.tiMod)
     , ("tiAnchor", Util.encodeMaybe encodeAddr r.tiAnchor)
+    , ("tiBeginPoint", Util.encodeMaybe encodeAddr r.tiBeginPoint)
+    , ("tiEndPoint", Util.encodeMaybe encodeAddr r.tiEndPoint)
+    , ("tiQuant", Util.encodeMaybe Encode.string r.tiQuant)
+    , ("tiFreq", Util.encodeMaybe Encode.string r.tiFreq)
     ]
 
 
@@ -947,7 +966,7 @@ encodeAddr (x, y) = Encode.list [Encode.int x, Encode.int y]
 
 timexDecoder : Decode.Decoder Timex
 timexDecoder =
-  let mkTimex cal pred fun typ temp ling val mod anc =
+  let mkTimex cal pred fun typ temp ling val mod anc beg end quant freq =
         Timex
         { tiCalendar=cal
         , tiPred = pred
@@ -958,8 +977,12 @@ timexDecoder =
         , tiValue = val
         , tiMod = mod
         , tiAnchor = anc
+        , tiBeginPoint = beg
+        , tiEndPoint = end
+        , tiQuant = quant
+        , tiFreq = freq
         }
-  in  decodeMap9 mkTimex
+  in  decodeMap13 mkTimex
         (Decode.field "tiCalendar" timexCalendarDecoder)
         (Decode.field "tiPred" Decode.string)
         (Decode.field "tiFunctionInDocument" (Decode.nullable timexFunctionInDocumentDecoder))
@@ -969,6 +992,10 @@ timexDecoder =
         (Decode.field "tiValue" Decode.string)
         (Decode.field "tiMod" timexModDecoder)
         (Decode.field "tiAnchor" (Decode.nullable addrDecoder))
+        (Decode.field "tiBeginPoint" (Decode.nullable addrDecoder))
+        (Decode.field "tiEndPoint" (Decode.nullable addrDecoder))
+        (Decode.field "tiQuant" (Decode.nullable Decode.string))
+        (Decode.field "tiFreq" (Decode.nullable Decode.string))
 
 
 timexCalendarDecoder : Decode.Decoder TimexCalendar
@@ -1031,6 +1058,36 @@ decodeMap9 f m1 m2 m3 m4 m5 m6 m7 m8 m9 =
 
 
 -- | Since map9 (and higher) are not in Json.Decode...
+decodeMap11
+    : (a -> b -> c -> d -> e -> f -> g -> h -> i -> j -> k -> value)
+    -> Decode.Decoder a
+    -> Decode.Decoder b
+    -> Decode.Decoder c
+    -> Decode.Decoder d
+    -> Decode.Decoder e
+    -> Decode.Decoder f
+    -> Decode.Decoder g
+    -> Decode.Decoder h
+    -> Decode.Decoder i
+    -> Decode.Decoder j
+    -> Decode.Decoder k
+    -> Decode.Decoder value
+decodeMap11 f m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 =
+    andThen m1 (\x1 ->
+    andThen m2 (\x2 ->
+    andThen m3 (\x3 ->
+    andThen m4 (\x4 ->
+    andThen m5 (\x5 ->
+    andThen m6 (\x6 ->
+    andThen m7 (\x7 ->
+    andThen m8 (\x8 ->
+    andThen m9 (\x9 ->
+    andThen m10 (\x10 ->
+    andThen m11 (\x11 -> Decode.succeed (f x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11)
+    )))))))))))
+
+
+-- | Since map9 (and higher) are not in Json.Decode...
 decodeMap12
     : (a -> b -> c -> d -> e -> f -> g -> h -> i -> j -> k -> l -> value)
     -> Decode.Decoder a
@@ -1061,6 +1118,40 @@ decodeMap12 f m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 =
     andThen m11 (\x11 ->
     andThen m12 (\x12 -> Decode.succeed (f x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12)
     ))))))))))))
+
+
+-- | Since map9 (and higher) are not in Json.Decode...
+decodeMap13
+    : (a -> b -> c -> d -> e -> f -> g -> h -> i -> j -> k -> l -> m -> value)
+    -> Decode.Decoder a
+    -> Decode.Decoder b
+    -> Decode.Decoder c
+    -> Decode.Decoder d
+    -> Decode.Decoder e
+    -> Decode.Decoder f
+    -> Decode.Decoder g
+    -> Decode.Decoder h
+    -> Decode.Decoder i
+    -> Decode.Decoder j
+    -> Decode.Decoder k
+    -> Decode.Decoder l
+    -> Decode.Decoder m
+    -> Decode.Decoder value
+decodeMap13 f m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 =
+    andThen m1 (\x1 ->
+    andThen m2 (\x2 ->
+    andThen m3 (\x3 ->
+    andThen m4 (\x4 ->
+    andThen m5 (\x5 ->
+    andThen m6 (\x6 ->
+    andThen m7 (\x7 ->
+    andThen m8 (\x8 ->
+    andThen m9 (\x9 ->
+    andThen m10 (\x10 ->
+    andThen m11 (\x11 ->
+    andThen m12 (\x12 ->
+    andThen m13 (\x13 -> Decode.succeed (f x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13)
+    )))))))))))))
 
 
 -- | Just a version of Decode.andThen with swapped arguments.

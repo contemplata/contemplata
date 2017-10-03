@@ -35,8 +35,10 @@ module Edit.Model exposing
   -- Signal lenses:
   , timexCalendar, timexType, timexPred, timexFunctionInDocument
   , timexTemporalFunction, timexLingValue, timexValue, timexMod
+  , timexQuant, timexFreq
   -- Signal modification:
-  , setTimexAttr, setTimexAnchor, remTimexAnchor
+  , setTimexAttr, setTimexType, setTimexAnchor, setTimexBeginPoint, setTimexEndPoint
+  , remTimexAnchor, remTimexBeginPoint, remTimexEndPoint
   -- Node selection:
   , selectNode, selectNodeAux
   -- Links
@@ -1050,7 +1052,26 @@ setTimexAttr attLens id focus newVal model =
     in  updateNode id focus update model
 
 
+setTimexType : NodeId -> Focus -> Anno.TimexType -> Model -> Model
+setTimexType id focus newVal model =
+    let lensTop = nodeTyp => maybeLens => nodeTimex
+        lensType = lensTop => timexType
+        lensBegin = lensTop => timexBeginPoint
+        lensEnd = lensTop => timexEndPoint
+        lensQuant = lensTop => timexQuant
+        lensFreq = lensTop => timexFreq
+        rmDurationRelated = Lens.set lensBegin Nothing >> Lens.set lensEnd Nothing
+        rmSetRelated = Lens.set lensQuant Nothing >> Lens.set lensFreq Nothing
+        update = Lens.set lensType newVal >>
+            case newVal of
+                Anno.Duration -> rmSetRelated
+                Anno.Set -> rmDurationRelated
+                _ -> rmSetRelated >> rmDurationRelated
+    in  updateNode id focus update model
+
+
 -- | Set the anchor (timex) of the given node to the selected node.
+-- Generic version.
 --
 -- The process of deciding which node should be considered as the anchor
 -- is as follows:
@@ -1059,10 +1080,10 @@ setTimexAttr attLens id focus newVal model =
 -- 2. Otherwise, choose the main selected node in the other window
 -- 3. Otherwise, do nothing (should return nothing in this case
 --    so that we can show popup, perhaps?)
-setTimexAnchor :  NodeId -> Focus -> Model -> Either String Model
-setTimexAnchor id focus model =
+-- setTimexAnchorGen :  NodeId -> Focus -> Model -> Either String Model
+setTimexAnchorGen lens id focus model =
     let
-        lens = nodeTyp => maybeLens => nodeTimex => timexAnchor
+        -- lens = nodeTyp => maybeLens => nodeTimex => timexAnchor
         update newVal = Lens.set lens newVal
         anchorMaybe = or anchorInFocus anchorNoFocus
         or x y = case x of
@@ -1100,11 +1121,89 @@ setTimexAnchor id focus model =
                 else Left "The selected node is untyped (not a TIMEX, EVENT, ...)"
 
 
+-- | Set the anchor (timex) of the given node to the selected node.
+setTimexAnchor :  NodeId -> Focus -> Model -> Either String Model
+setTimexAnchor =
+    let lens = nodeTyp => maybeLens => nodeTimex => timexAnchor
+    in  setTimexAnchorGen lens
+--     let
+--         lens = nodeTyp => maybeLens => nodeTimex => timexAnchor
+--         update newVal = Lens.set lens newVal
+--         anchorMaybe = or anchorInFocus anchorNoFocus
+--         or x y = case x of
+--             Nothing -> y
+--             _ -> x
+--         win = selectWin focus model
+--         anchorInFocus =
+--             case S.toList win.selAux of
+--                 [x] -> Just (win.tree, x)
+--                 _   -> Nothing
+--         anchorNoFocus =
+--             let
+--                 otherFocus = case focus of
+--                     Top -> Bot
+--                     Bot -> Top
+--                 otherWin = selectWin otherFocus model
+--             in
+--                 case otherWin.selMain of
+--                     Just x  -> Just (otherWin.tree, x)
+--                     Nothing -> Nothing
+--         isTyped addr =
+--             case R.label (subTreeAt addr model) of
+--                 Leaf _ -> False
+--                 Node r -> case r.nodeTyp of
+--                   Just _  -> True
+--                   Nothing -> False
+--                   -- Just (NodeTimex _) -> True
+--                   -- _ -> False
+--     in
+--         case anchorMaybe of
+--             Nothing -> Left "To perform anchoring, you have to first either: (i) select an additional node in focus, or (ii) select a node in the other window."
+--             Just anchor ->
+--                 if isTyped anchor
+--                 then Right <| updateNode id focus (update anchorMaybe) model
+--                 else Left "The selected node is untyped (not a TIMEX, EVENT, ...)"
+
+
+-- | Set the anchor (timex) of the given node to the selected node.
+setTimexBeginPoint :  NodeId -> Focus -> Model -> Either String Model
+setTimexBeginPoint =
+    let lens = nodeTyp => maybeLens => nodeTimex => timexBeginPoint
+    in  setTimexAnchorGen lens
+
+
+-- | Set the anchor (timex) of the given node to the selected node.
+setTimexEndPoint :  NodeId -> Focus -> Model -> Either String Model
+setTimexEndPoint =
+    let lens = nodeTyp => maybeLens => nodeTimex => timexEndPoint
+    in  setTimexAnchorGen lens
+
+
 -- | Remove the anchor.
 remTimexAnchor :  NodeId -> Focus -> Model -> Model
 remTimexAnchor id focus model =
     let
         lens = nodeTyp => maybeLens => nodeTimex => timexAnchor
+        update = Lens.set lens Nothing
+    in
+        updateNode id focus update model
+
+
+-- | Remove the anchor.
+remTimexBeginPoint :  NodeId -> Focus -> Model -> Model
+remTimexBeginPoint id focus model =
+    let
+        lens = nodeTyp => maybeLens => nodeTimex => timexBeginPoint
+        update = Lens.set lens Nothing
+    in
+        updateNode id focus update model
+
+
+-- | Remove the anchor.
+remTimexEndPoint :  NodeId -> Focus -> Model -> Model
+remTimexEndPoint id focus model =
+    let
+        lens = nodeTyp => maybeLens => nodeTimex => timexEndPoint
         update = Lens.set lens Nothing
     in
         updateNode id focus update model
@@ -2060,6 +2159,42 @@ timexAnchor =
   let
     get (Anno.Timex r) = r.tiAnchor
     update f (Anno.Timex r) = Anno.Timex {r | tiAnchor = f r.tiAnchor}
+  in
+    Lens.create get update
+
+
+timexBeginPoint : Lens.Focus Anno.Timex (Maybe Addr)
+timexBeginPoint =
+  let
+    get (Anno.Timex r) = r.tiBeginPoint
+    update f (Anno.Timex r) = Anno.Timex {r | tiBeginPoint = f r.tiBeginPoint}
+  in
+    Lens.create get update
+
+
+timexEndPoint : Lens.Focus Anno.Timex (Maybe Addr)
+timexEndPoint =
+  let
+    get (Anno.Timex r) = r.tiEndPoint
+    update f (Anno.Timex r) = Anno.Timex {r | tiEndPoint = f r.tiEndPoint}
+  in
+    Lens.create get update
+
+
+timexQuant : Lens.Focus Anno.Timex (Maybe String)
+timexQuant =
+  let
+    get (Anno.Timex r) = r.tiQuant
+    update f (Anno.Timex r) = Anno.Timex {r | tiQuant = f r.tiQuant}
+  in
+    Lens.create get update
+
+
+timexFreq : Lens.Focus Anno.Timex (Maybe String)
+timexFreq =
+  let
+    get (Anno.Timex r) = r.tiFreq
+    update f (Anno.Timex r) = Anno.Timex {r | tiFreq = f r.tiFreq}
   in
     Lens.create get update
 

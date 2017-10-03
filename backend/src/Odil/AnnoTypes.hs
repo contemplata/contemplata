@@ -282,6 +282,12 @@ data Timex = Timex
   , tiMod :: TimexMod
   , tiAnchor :: Maybe C.Addr
     -- ^ TIMEX anchor
+  , tiBeginPoint :: Maybe C.Addr
+  , tiEndPoint :: Maybe C.Addr
+    -- ^ Both above can only be set if `tiType == Duration`
+  , tiQuant :: Maybe T.Text -- CDATA
+  , tiFreq :: Maybe T.Text -- CDATA
+    -- ^ Both above can only be set if `tiType == Set`
   } deriving (Generic,Show,Eq,Ord)
 
 

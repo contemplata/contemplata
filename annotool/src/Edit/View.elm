@@ -843,17 +843,29 @@ viewSideTimex model focus nodeId (Anno.Timex ti) =
 
     inputTimex = inputTimexGen model (SetTimexAttr nodeId focus)
     inpAnchor = inputTimex "Anchor" ti.tiAnchor Anno.TiAnchorAttr
+    inpBeginPoint = inputTimex "Begin" ti.tiBeginPoint Anno.TiBeginPointAttr
+    inpEndPoint = inputTimex "End" ti.tiEndPoint Anno.TiEndPointAttr
 
     textGeneric = textGenericGen (SetTimexAttr nodeId focus)
     inpPred = textGeneric Anno.TiPredAttr "Pred: " ti.tiPred
     inpLingValue = textGeneric Anno.TiLingValueAttr "LingValue: " ti.tiLingValue
     inpValue = textGeneric Anno.TiValueAttr "Value: " ti.tiValue
 
+    mayTextGeneric = mayTextGenericGen (SetTimexAttr nodeId focus)
+    inpQuant = mayTextGeneric Anno.TiQuantAttr "Quant:" ti.tiQuant
+    inpFreq = mayTextGeneric  Anno.TiFreqAttr "Freq:" ti.tiFreq
+
+    typeDependent =
+        case ti.tiType of
+            Anno.Duration -> [inpBeginPoint, inpEndPoint]
+            Anno.Set -> [inpQuant, inpFreq]
+            _ -> []
+
   in
-      [ Html.table []
+      [ Html.table [] <|
             [ inpCalendar, inpFunctionInDocument, inpPred, inpType
             , inpTemporalFunction, inpLingValue, inpValue, inpMod
-            , inpAnchor ]
+            , inpAnchor ] ++ typeDependent
       ]
 
 
@@ -1663,10 +1675,30 @@ ps number =
 
 
 -- | Doubly generic textual input field.
--- textGenericGen focus nodeId attr text value =
 textGenericGen setAttr attr text value =
   let
     setMsg = setAttr << attr
+  in
+    Html.tr []
+      [ Html.td [Atts.class "noselect"] [Html.text text]
+      , Html.td []
+          [Html.input
+               [ Events.onInput setMsg
+               -- , Atts.rows 3
+               , Atts.value value
+               , blockKeyDownEvents ]
+               []
+          ]
+      ]
+
+
+-- | Doubly generic (maybe) textual input field.
+mayTextGenericGen setAttr attr text mayValue =
+  let
+    setMsg = setAttr << attr << Just
+    value = case mayValue of
+      Nothing -> ""
+      Just x  -> x
   in
     Html.tr []
       [ Html.td [Atts.class "noselect"] [Html.text text]

@@ -351,26 +351,40 @@ update msg model =
         Anno.SiTypeAttr x -> M.setSignalAttr M.signalType nodeId focus x model
 
     SetTimexAttr nodeId focus attr ->
-      case attr of
-        Anno.TiAnchorAttr True ->
-            case M.setTimexAnchor nodeId focus model of
+      let
+        setAnchor set =
+            case set nodeId focus model of
                 Left err ->
                     let popup = Popup.Info err
                     in  (model, firePopup popup Nothing)
                 Right model -> idle model
-        _ -> idle <| case attr of
-          Anno.TiCalendarAttr x -> M.setTimexAttr M.timexCalendar nodeId focus x model
-          Anno.TiTypeAttr x -> M.setTimexAttr M.timexType nodeId focus x model
-          Anno.TiFunctionInDocumentAttr x ->
-              M.setTimexAttr M.timexFunctionInDocument nodeId focus x model
-          Anno.TiPredAttr x -> M.setTimexAttr M.timexPred nodeId focus x model
-          Anno.TiTemporalFunctionAttr x ->
-              M.setTimexAttr M.timexTemporalFunction nodeId focus x model
-          Anno.TiLingValueAttr x -> M.setTimexAttr M.timexLingValue nodeId focus x model
-          Anno.TiValueAttr x -> M.setTimexAttr M.timexValue nodeId focus x model
-          Anno.TiModAttr x -> M.setTimexAttr M.timexMod nodeId focus x model
-          Anno.TiAnchorAttr True -> Debug.crash "Message: impossible happened (TiAnchorAttr True)!"
-          Anno.TiAnchorAttr False -> M.remTimexAnchor nodeId focus model
+      in
+        case attr of
+          Anno.TiAnchorAttr True -> setAnchor M.setTimexAnchor
+          Anno.TiBeginPointAttr True -> setAnchor M.setTimexBeginPoint
+          Anno.TiEndPointAttr True -> setAnchor M.setTimexEndPoint
+          _ -> idle <| case attr of
+            Anno.TiCalendarAttr x -> M.setTimexAttr M.timexCalendar nodeId focus x model
+            Anno.TiTypeAttr x -> M.setTimexType nodeId focus x model
+            Anno.TiFunctionInDocumentAttr x ->
+                M.setTimexAttr M.timexFunctionInDocument nodeId focus x model
+            Anno.TiPredAttr x -> M.setTimexAttr M.timexPred nodeId focus x model
+            Anno.TiTemporalFunctionAttr x ->
+                M.setTimexAttr M.timexTemporalFunction nodeId focus x model
+            Anno.TiLingValueAttr x -> M.setTimexAttr M.timexLingValue nodeId focus x model
+            Anno.TiValueAttr x -> M.setTimexAttr M.timexValue nodeId focus x model
+            Anno.TiModAttr x -> M.setTimexAttr M.timexMod nodeId focus x model
+            Anno.TiAnchorAttr True ->
+                Debug.crash "Message: impossible happened (TiAnchorAttr True)!"
+            Anno.TiAnchorAttr False -> M.remTimexAnchor nodeId focus model
+            Anno.TiBeginPointAttr True ->
+                Debug.crash "Message: impossible happened (TiBeginPointAttr True)!"
+            Anno.TiBeginPointAttr False -> M.remTimexBeginPoint nodeId focus model
+            Anno.TiEndPointAttr True ->
+                Debug.crash "Message: impossible happened (TiEndPointAttr True)!"
+            Anno.TiEndPointAttr False -> M.remTimexEndPoint nodeId focus model
+            Anno.TiQuantAttr x -> M.setTimexAttr M.timexQuant nodeId focus x model
+            Anno.TiFreqAttr x -> M.setTimexAttr M.timexFreq nodeId focus x model
 
     SplitBegin ->
         let pop x = (model, firePopup x Nothing) in
