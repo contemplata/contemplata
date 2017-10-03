@@ -1552,13 +1552,14 @@ concatWords model =
         mkTree xs =
             let
                 root = Node {nodeId=0, nodeVal="ROOT", nodeTyp=Nothing}
+                sent = Node {nodeId=1, nodeVal="SENT", nodeTyp=Nothing}
                 leaves = L.map mkLeaf
                          <| L.map2 (,) xs
                          <| L.range 1 (L.length xs)
                 mkLeaf (word, nodeId) = R.leaf <|
-                    Leaf {nodeId=nodeId, nodeVal=word, leafPos=nodeId-1}
+                    Leaf {nodeId=nodeId+1, nodeVal=word, leafPos=nodeId-1}
             in
-                R.Node root leaves
+                R.Node root [R.Node sent leaves]
 
         process idSet tree = mkTree <| go idSet D.empty (getWords tree)
 
