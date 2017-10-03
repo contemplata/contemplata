@@ -87,7 +87,9 @@ type Msg
   | CommandBackspace
   | CommandComplete
   | CommandChar Char
-  | Popup Popup.Popup  -- ^ Open a popup window
+  | Popup              -- ^ Open a popup window
+      Popup.Popup
+      (Maybe String)   -- ^ The (optionl) HTML ID to focus on
   | QuitPopup
   | SplitBegin
   | SplitChange Int
@@ -271,7 +273,16 @@ update msg model =
         M.setTree model.fileId treeId newTree model
           |> Focus.update wlen updateSel
 
-    Popup x -> idle <| {model | popup = Just x}
+    -- Popup x -> idle <| {model | popup = Just x}
+    Popup x targetMaybe ->
+        let
+            target = case targetMaybe of
+                Just x  -> x
+                Nothing -> Cfg.popupDivTemp
+            focCmd = Task.attempt (\_ -> dummy) (Dom.focus target)
+        in
+            ( {model | popup = Just x}
+            , focCmd )
 
     SaveFile ->
       let
@@ -329,11 +340,8 @@ update msg model =
         Anno.TiAnchorAttr True ->
             case M.setTimexAnchor nodeId focus model of
                 Left err ->
-                    let
-                        popup = Popup (Popup.Info err)
-                        task = Task.perform identity (Task.succeed popup)
-                    in
-                        (model, task)
+                    let popup = Popup.Info err
+                    in  (model, firePopup popup Nothing)
                 Right model -> idle model
         _ -> idle <| case attr of
           Anno.TiCalendarAttr x -> M.setTimexAttr M.timexCalendar nodeId focus x model
@@ -391,30 +399,17 @@ update msg model =
         Maybe.map (\cmd -> (newModel, cmd)) |>
         Maybe.withDefault (idle newModel)
 
-    QuitPopup -> idle <| {model | popup = Nothing}
+    QuitPopup ->
+        let
+            target =
+                case model.focus of
+                    M.Top -> Cfg.windowName True
+                    M.Bot -> Cfg.windowName False
+        in
+            ( {model | popup = Nothing}
+            , Task.attempt (\_ -> dummy) (Dom.focus target) )
 
     -- Goto addr -> idle <| M.goto addr model
-
---     SetEventClass nodeId focus x -> idle <|
---       M.setEventAttr M.eventClass nodeId focus x model
-
---     SetEventType nodeId focus x -> idle <|
---       M.setEventAttr M.eventType nodeId focus x model
-
---     SetEventTime nodeId focus x -> idle <|
---       M.setEventAttr M.eventTime nodeId focus x model
-
---     SetEventAspect nodeId focus x -> idle <|
---       M.setEventAttr M.eventAspect nodeId focus x model
-
---     -- Testing websockets
---     TestInput x -> idle <| {model | testInput=x}
---     TestGet x -> idle <| case Decode.decodeString M.fileDecoder x of
---       Ok ts -> M.setTrees ts model
---       Err err -> {model | testInput=err}
---     TestSend ->
---       ( {model | testInput=""}
---       , WebSocket.send Cfg.socketServer model.testInput )
 
     Many msgs ->
       let f msg (mdl0, cmds) =
@@ -438,13 +433,19 @@ firePopup
     -> Cmd Msg
 firePopup popupRaw targetMaybe =
     let
-        popup = Popup popupRaw
+        popup = Popup popupRaw targetMaybe
         popCmd = Task.perform identity (Task.succeed popup)
-        focCmd target = Task.attempt (\_ -> dummy) (Dom.focus target)
     in
-        case targetMaybe of
-            Nothing -> popCmd
-            Just x  -> Cmd.batch [popCmd, focCmd x]
+        popCmd
+--     let
+--         popup = Popup popupRaw
+--         popCmd = Task.perform identity (Task.succeed popup)
+--         target = case targetMaybe of
+--             Just x  -> x
+--             Nothing -> Cfg.popupDivTemp
+--         focCmd = Task.attempt (\_ -> dummy) (Dom.focus target)
+--     in
+--         Cmd.batch [popCmd, focCmd]
 
 
 ----------------------------------------------

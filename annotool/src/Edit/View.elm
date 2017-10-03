@@ -227,12 +227,12 @@ viewPopups model =
 
 viewPopupInfo : String -> Html.Html Msg
 viewPopupInfo info =
-    viewPopupGen 125 150 info [("OK", QuitPopup)] 0
+    viewPopupGen 125 125 info [("OK", QuitPopup)] 0
 
 
 viewPopupFiles : M.Model -> Html.Html Msg
 viewPopupFiles model =
-    viewPopupGen 200 150 "Do you wish to save?"
+    viewPopupGen 200 125 "Do you wish to save?"
         [ ("Yes", Many [SaveFile, QuitPopup, Files])
         , ("No", Many [QuitPopup, Files])
         , ("Cancel", QuitPopup)
@@ -241,7 +241,7 @@ viewPopupFiles model =
 
 viewPopupSplit : Popup.SplitPopup -> Html.Html Msg
 viewPopupSplit r =
-    viewPopupSplitGen 125 150 r
+    viewPopupSplitGen 125 125 r
         [ ("OK", Many [SplitFinish r.split, QuitPopup])
         , ("Cancel", QuitPopup)
         ] 0
@@ -263,8 +263,12 @@ viewPopupGen
 viewPopupGen msgSize cmdSize msg commandList defaultCommand =
     let
         textElem = popupTextElem msgSize
+        div = Html.div
+              [] -- [Atts.id Cfg.popupDivTemp]
+              [textElem msg, Html.hr [] []]
     in
-        viewPopupMostGen cmdSize (textElem msg) commandList defaultCommand
+        -- viewPopupMostGen cmdSize (textElem msg) commandList defaultCommand
+        viewPopupMostGen cmdSize div commandList defaultCommand
 
 
 -- | Splitting popup
@@ -360,18 +364,31 @@ viewPopupMostGen cmdSize popupHtml commandList defaultCommand =
 
     let
 
-        textButton txt action =
-            Html.span
-                [ Atts.class "noselect"
-                , Events.onClick action
-                , Atts.style
-                    [ "cursor" => "pointer"
-                    , "margin-left" => px 15
-                    , "margin-right" => px 15
-                    -- , "font-size" => "150%" ]
-                    , "font-size" => ps cmdSize ]
-                ]
-                [ Html.text txt ]
+        textButton txt action isDefault =
+            let
+                maybeID =
+                    if isDefault
+                    then [Atts.id Cfg.popupDivTemp]
+                    else []
+            in
+                Html.button (
+                    [ Atts.class "noselect"
+                    , Events.onClick action
+                    , Atts.style
+                        [ "cursor" => "pointer"
+                        , "margin-left" => px 5
+                        , "margin-right" => px 5
+                        , "font-size" => ps cmdSize ]
+                    ] ++ maybeID )
+                    [ Html.text txt ]
+
+        commandListWithIDs =
+            L.map2 (,) commandList (L.range 0 (L.length commandList))
+
+        buttons =
+            L.map
+                (\((cmd, msg), cmdID) -> textButton cmd msg (cmdID == defaultCommand))
+                commandListWithIDs
 
         popupDiv =
             Html.div
@@ -389,14 +406,13 @@ viewPopupMostGen cmdSize popupHtml commandList defaultCommand =
                   ]
                 ]
                 [ popupHtml
-                , Html.div []
-                    (L.map (\(cmd, msg) -> textButton cmd msg) commandList)
+                , Html.div [] buttons
                 ]
         keyboardHandler code = case code of
-            -- Enter
-            13 -> case L.head (L.drop defaultCommand commandList) of
-                Nothing -> Msg.dummy
-                Just (_, msg) -> msg
+--             -- Enter (JW: better when handled automatically)
+--             13 -> case L.head (L.drop defaultCommand commandList) of
+--                 Nothing -> Msg.dummy
+--                 Just (_, msg) -> msg
             -- Escape
             27 -> QuitPopup
             _  -> Msg.dummy
@@ -404,6 +420,16 @@ viewPopupMostGen cmdSize popupHtml commandList defaultCommand =
         Html.div
             [ Atts.class "popup"
             , popupKeyDownEvents keyboardHandler
+
+            -- @tabindex required to make the div propagate the keyboard events
+            -- (otherwise they are only propagated when some other HTML items --
+            -- e.g. buttons -- are selected)
+            , Atts.attribute "tabindex" "1"
+
+            -- make the outline invisible (the fact that the window is in focus is
+            -- visible anyway)
+            -- , "outline" => "0"
+
             , Atts.style
                   [ "position" => "absolute"
                   , "width" => "100%"
@@ -451,7 +477,7 @@ viewMenu model = -- fileName =
 --       , menuElem SaveFile (initPos + 120) "Save" ]
 
     Html.div []
-      [ menuElem (Popup Popup.Files) 10 (plainText "Menu")
+      [ menuElem (Popup Popup.Files Nothing) 10 (plainText "Menu")
       , menuElem SaveFile 70 (plainText "Save")
       -- , menuElem EditLabel 120 (plain "Edit")
       , menuElem MkEvent 120 (emphasize 1 "Event")
@@ -1466,7 +1492,7 @@ mainKeyDown ctrl =
 --       13 -> CommandEnter
 
       -- "escape"
-      27 -> Popup Popup.Files
+      27 -> Popup Popup.Files Nothing
 
       _  -> Msg.dummy
   in

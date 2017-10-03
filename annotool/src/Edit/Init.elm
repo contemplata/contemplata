@@ -5,13 +5,15 @@ module Edit.Init exposing
 import Mouse exposing (Position)
 import Window
 import Task
+import Dom as Dom
 
 import Dict as D
 import Set as S
 
+import Config as Cfg
 import Edit.Core exposing (FileId)
 import Edit.Model exposing (Model, Focus(..), File)
-import Edit.Message exposing (Msg(..))
+import Edit.Message exposing (Msg(..), dummy)
 import Edit.Popup as Popup
 
 
@@ -64,9 +66,12 @@ mkEdit fileId file =
       , popup = Nothing -- Just Popup.Files
       }
     initHeight = Task.perform Resize Window.size
+    focusOnTop = Task.attempt
+      (\_ -> dummy)
+      (Dom.focus <| Cfg.windowName True)
     -- initHeight = Cmd.none
   in
-    (model, initHeight)
+    (model, Cmd.batch [initHeight, focusOnTop])
 
 
 -- init : (Model, Cmd Msg)

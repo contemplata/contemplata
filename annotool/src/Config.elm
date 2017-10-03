@@ -1,8 +1,9 @@
 module Config exposing
   ( stdWidth, stdMargin, nodeHeight, moveDown, sideSpace, sideMenuHeight
   -- , testTree1, testTree2, testTree3, testTree4, testTree5
-  , increaseSpeed, windowName, editLabelName, splitSelectName, dmzSize
-  , linkDasharray, linkWidth, linkOpacity
+  , increaseSpeed, windowName, editLabelName, splitSelectName
+  , popupDivTemp
+  , dmzSize, linkDasharray, linkWidth, linkOpacity
   , linkCircleOpacity, linkCircleColor, linkCircleRadius, linkCircleSelectColor
   , linkHeadSize, linkHeadDist, linkHeadDist2, linkTailDist
   , socketServer
@@ -110,6 +111,11 @@ windowName flag = case flag of
 -- | The name of the edit label field.
 splitSelectName : String
 splitSelectName = "splitSelect"
+
+
+-- | The name of the edit label field.
+popupDivTemp : String
+popupDivTemp = "popupDivTemp"
 
 
 ---------------------------------------------------
