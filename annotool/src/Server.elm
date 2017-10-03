@@ -1,4 +1,7 @@
-module Server exposing (ParserTyp(..), Request(..), Answer(..), answerDecoder, encodeReq)
+module Server exposing
+    ( ParserTyp(..), Request(..), Answer(..),  ParseReq(..)
+    , answerDecoder, encodeReq
+    )
 
 
 import Rose as R
@@ -25,6 +28,26 @@ type ParserTyp
   | DiscoDOP
 
 
+type ParseReq a
+    = Single a
+    | Batch (List a)
+
+
+encodeParseReq : (a -> Encode.Value) -> ParseReq a -> Encode.Value
+encodeParseReq encA parseReq =
+    case parseReq of
+        Single x ->
+            Encode.object
+                [ ("tag", Encode.string "Single")
+                , ("contents", encA x)
+                ]
+        Batch xs ->
+            Encode.object
+                [ ("tag", Encode.string "Batch")
+                , ("contents", Encode.list (List.map encA xs))
+                ]
+
+
 type Request
   = GetFiles
     -- ^ Obtain the list of files
@@ -32,10 +55,12 @@ type Request
     -- ^ Request the contents of the given file
   | SaveFile C.FileId M.File
     -- ^ Request the contents of the given file
-  | ParseSent C.FileId C.TreeId ParserTyp (List Orth)
+  | ParseRaw C.FileId C.TreeId String
+    -- ^ Parse the given raw text
+  | ParseSent C.FileId C.TreeId ParserTyp (ParseReq (List Orth))
     -- ^ Parse the given list of words (the IDs are sent so that it can be
     -- checked on return if the user did not switch the file...)
-  | ParseSentPos C.FileId C.TreeId ParserTyp (List (Orth, Pos))
+  | ParseSentPos C.FileId C.TreeId ParserTyp (ParseReq (List (Orth, Pos)))
     -- ^ Like `ParseSent`, but with POS tags
   | ParseSentCons C.FileId C.TreeId ParserTyp (List (Int, Int)) (List (Orth, Pos))
     -- ^ Like `ParseSent`, but with constraints
@@ -60,24 +85,36 @@ encodeReqToVal req = case req of
          , M.encodeFile file ]
       )
     ]
-  ParseSent fileId treeId parTyp ws -> Encode.object
-    [ ("tag", Encode.string "ParseSent")
+  ParseRaw fileId treeId txt -> Encode.object
+    [ ("tag", Encode.string "ParseRaw")
     , ("contents", Encode.list
          [ Encode.string fileId
          , Encode.int treeId
-         , Encode.string (toString parTyp)
-         , Encode.list (List.map Encode.string ws) ]
+         , Encode.string txt ]
       )
     ]
-  ParseSentPos fileId treeId parTyp ws -> Encode.object
-    [ ("tag", Encode.string "ParseSentPos")
-    , ("contents", Encode.list
-         [ Encode.string fileId
-         , Encode.int treeId
-         , Encode.string (toString parTyp)
-         , Encode.list (List.map (encodePair Encode.string) ws) ]
-      )
-    ]
+  ParseSent fileId treeId parTyp parseReq ->
+    let encList ws = Encode.list (List.map Encode.string ws) in
+    Encode.object
+      [ ("tag", Encode.string "ParseSent")
+      , ("contents", Encode.list
+           [ Encode.string fileId
+           , Encode.int treeId
+           , Encode.string (toString parTyp)
+           , encodeParseReq encList parseReq ]
+        )
+      ]
+  ParseSentPos fileId treeId parTyp parseReq ->
+    let encList ws = Encode.list (List.map (encodePair Encode.string) ws) in
+    Encode.object
+      [ ("tag", Encode.string "ParseSentPos")
+      , ("contents", Encode.list
+           [ Encode.string fileId
+           , Encode.int treeId
+           , Encode.string (toString parTyp)
+           , encodeParseReq encList parseReq ]
+        )
+      ]
   ParseSentCons fileId treeId parTyp cons ws -> Encode.object
     [ ("tag", Encode.string "ParseSentCons")
     , ("contents", Encode.list

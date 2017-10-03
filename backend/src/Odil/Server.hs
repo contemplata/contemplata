@@ -24,7 +24,7 @@ module Odil.Server
 
 import GHC.Generics
 
-import Control.Monad (forM_, forever)
+import Control.Monad (forM_, forever, (<=<))
 import Control.Arrow (second)
 import qualified Control.Exception as Exc
 import qualified Control.Concurrent as C
@@ -64,20 +64,31 @@ instance JSON.FromJSON ParserTyp
 instance JSON.ToJSON ParserTyp where
   toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
+data ParseReq a
+  = Single a
+  | Batch [a]
+  deriving (Generic, Show, Ord, Eq)
+
+instance JSON.FromJSON a => JSON.FromJSON (ParseReq a)
+instance JSON.ToJSON a => JSON.ToJSON (ParseReq a) where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+
 -- | Request coming from the client.
 data Request
   = GetFiles
   | GetFile FileId
   | SaveFile FileId File
-  | ParseSent FileId TreeId ParserTyp [Stanford.Orth]
+  | ParseSent FileId TreeId ParserTyp (ParseReq [Stanford.Orth])
     -- ^ FileId and TreeId are sent there and back so that it
     -- can be checked that the user did not move elsewhere before
     -- he/she got the answer for this request
-  | ParseSentPos FileId TreeId ParserTyp [(Stanford.Orth, Stanford.Pos)]
+  | ParseSentPos FileId TreeId ParserTyp (ParseReq [(Stanford.Orth, Stanford.Pos)])
     -- ^ Similar to `ParseSent`, but with POS information
   | ParseSentCons FileId TreeId ParserTyp [(Int, Int)] [(Stanford.Orth, Stanford.Pos)]
     -- ^ Similar to `ParseSent`, but with an additional constraint (constituent
     -- with the given pair of positions must exist in the tree)
+  | ParseRaw FileId TreeId T.Text
+    -- ^ Parse raw sentence
   deriving (Generic, Show)
 
 instance JSON.FromJSON Request
@@ -215,13 +226,38 @@ talk conn state = forever $ do
             let msg = T.concat ["File ", fileId, " saved"]
             WS.sendTextData conn . JSON.encode $ Notification msg
 
-      Right (ParseSent fileId treeId parTyp ws) -> do
-        putStrLn "Parsing tokenized sentence..."
-        treeMay <- case parTyp of
-          Stanford -> Stanford.parseTokenizedFR ws
-          DiscoDOP -> DiscoDOP.tagParseDOP Nothing ws
+      Right (ParseRaw fileId treeId txt) -> do
+        putStrLn "Parsing raw sentence..."
+        treeMay <- Stanford.parseFR txt
         case treeMay of
           Nothing -> do
+            let msg = T.concat ["Could not parse: ", txt]
+            T.putStrLn msg
+            WS.sendTextData conn . JSON.encode $ Notification msg
+          Just t -> do
+            let ret = ParseResult fileId treeId (Penn.toOdilTree t)
+            WS.sendTextData conn (JSON.encode ret)
+            let msg = T.concat ["Parsed successfully"]
+            T.putStrLn msg
+            WS.sendTextData conn . JSON.encode $ Notification msg
+
+      Right (ParseSent fileId treeId parTyp parseReq) -> do
+        putStrLn "Parsing tokenized sentence..."
+        let parser = case parTyp of
+              Stanford -> Stanford.parseTokenizedFR
+              DiscoDOP -> DiscoDOP.tagParseDOP Nothing
+        treeMay <- case parseReq of
+          Single ws -> parser ws
+          Batch wss ->
+            -- make sure that each sentence in the batch was sucessfully parsed
+            -- and join the resulting forest into one tree
+            let process = Stanford.joinSentences <=< allJust
+            in  process <$> mapM parser wss
+        case treeMay of
+          Nothing -> do
+            let ws = case parseReq of
+                       Single x -> x
+                       Batch xs -> concat xs
             let msg = T.concat ["Could not parse: ", T.unwords ws]
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode $ Notification msg
@@ -232,14 +268,25 @@ talk conn state = forever $ do
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode $ Notification msg
 
-      Right (ParseSentPos fileId treeId parTyp ws) -> do
+      -- Right (ParseSentPos fileId treeId parTyp ws) -> do
+      Right (ParseSentPos fileId treeId parTyp parseReq) -> do
         putStrLn "Parsing tokenized+POSed sentence..."
-        treeMay <- case parTyp of
-          Stanford -> Stanford.parsePosFR ws
-          DiscoDOP -> DiscoDOP.parseDOP Nothing ws
+        let parser = case parTyp of
+              Stanford -> Stanford.parsePosFR
+              DiscoDOP -> DiscoDOP.parseDOP Nothing
+        treeMay <- case parseReq of
+          Single ws -> parser ws
+          Batch wss ->
+            -- make sure that each sentence in the batch was sucessfully parsed
+            -- and join the resulting forest into one tree
+            let process = Stanford.joinSentences <=< allJust
+            in  process <$> mapM parser wss
         case treeMay of
           Nothing -> do
-            let ws' = flip map ws $ \(orth, pos) -> T.concat [orth, ":", pos]
+            let ws = case parseReq of
+                       Single x -> x
+                       Batch xs -> concat xs
+                ws' = flip map ws $ \(orth, pos) -> T.concat [orth, ":", pos]
                 msg = T.concat ["Could not parse: ", T.unwords ws']
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode $ Notification msg
@@ -268,3 +315,17 @@ talk conn state = forever $ do
             let msg = T.concat ["Parsed successfully"]
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode $ Notification msg
+
+
+-----------
+-- Utils
+-----------
+
+
+-- | Assure that all values are Just.
+allJust :: [Maybe a] -> Maybe [a]
+allJust [] = Just []
+allJust (x : xs) = do
+  x' <- x
+  xs' <- allJust xs
+  return $ x' : xs'

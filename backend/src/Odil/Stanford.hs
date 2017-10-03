@@ -19,6 +19,9 @@ module Odil.Stanford
 , posTagFR
 -- , docFromPos
 -- , parseProto
+
+-- * Utils
+, joinSentences
 ) where
 
 
@@ -396,6 +399,21 @@ removeAt k txt =
   in  T.append x (T.tail y)
 
 
+-- | Convert any exception to `Nothing`.
+ignoreException :: Exc.SomeException -> IO (Maybe a)
+ignoreException _ = return Nothing
+
+
+-- | Convert any exception to `Nothing`.
+ignoreException' :: Exc.SomeException -> IO [a]
+ignoreException' _ = return []
+
+
+----------------------------------------------
+-- External Utils
+----------------------------------------------
+
+
 -- | Join several sentences.
 joinSentences :: [Penn.Tree] -> Maybe Penn.Tree
 joinSentences
@@ -409,13 +427,3 @@ joinSentences
       R.Node
         { R.rootLabel="ROOT"
         , R.subForest=ts } -> ts
-
-
--- | Convert any exception to `Nothing`.
-ignoreException :: Exc.SomeException -> IO (Maybe a)
-ignoreException _ = return Nothing
-
-
--- | Convert any exception to `Nothing`.
-ignoreException' :: Exc.SomeException -> IO [a]
-ignoreException' _ = return []

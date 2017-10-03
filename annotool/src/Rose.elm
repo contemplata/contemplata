@@ -1,5 +1,5 @@
 module Rose exposing
-  ( Tree(..), Forest, Width, leaf, label
+  ( Tree(..), Forest, Width, leaf, label, subTrees
   , withWidth, getRootSnd
   , map, flatten, mapAccum
   , getSubTree, delSubTree, putSubTree, swapSubTree
@@ -39,6 +39,11 @@ leaf x = Node x []
 -- | Get the label in the root.
 label : Tree a -> a
 label (Node x _) = x
+
+
+-- | The list of subtrees.
+subTrees : Tree a -> List (Tree a)
+subTrees (Node _ xs) = xs
 
 
 -- -- | Find the first occurence of a node which satisfies a given predicate.

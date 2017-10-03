@@ -3,7 +3,7 @@ module Edit.Message exposing (Msg(..), update, dummy, cmdsWithPrefix)
 
 import String
 import List as L
--- import Dict as D
+import Dict as D
 import Set as S
 import Mouse exposing (Position)
 import Task as Task
@@ -56,6 +56,7 @@ type Msg
   | MkSignal -- ^ Create signal
   | MkEvent -- ^ Create event
   | MkTimex -- ^ Create event
+  | ParseRaw  -- ^ Reparse from scratch the sentence in focus
   | ParseSent Server.ParserTyp  -- ^ Reparse the sentence in focus
   | ParseSentPos Server.ParserTyp -- ^ Reparse the sentence in focus, preserve POList (String, String)S tags
   | ParseSentCons Server.ParserTyp  -- ^ Reparse the sentence in focus with the selected nodes as constraints
@@ -228,6 +229,17 @@ update msg model =
     -- Files -> idle <| model -- ^ Handled upstream
     Files -> Debug.crash "Edit.Message.Files: should be handled upstream!"
 
+    ParseRaw ->
+      let
+        treeId = (M.selectWin model.focus model).tree
+        txt = case D.get treeId model.trees of
+                  Nothing -> ""
+                  Just (x, _) -> x
+        req = Server.encodeReq (Server.ParseRaw model.fileId treeId txt)
+        send = WebSocket.send Cfg.socketServer req
+      in
+        (model, send)
+
     ParseSent parTyp -> parseSent parTyp model
 --       let
 --         treeId = (M.selectWin model.focus model).tree
@@ -255,7 +267,10 @@ update msg model =
         win = M.selectWin model.focus model
         treeId = win.tree
         tree = M.getTree treeId model
-        wordsPos = getWordPos tree
+        -- wordsPos = getWordPos tree
+        wordsPos = case getWordPos tree of
+          Server.Single x -> x
+          Server.Batch xs -> List.concat xs
         selection = M.selAll win
         span = getSpan selection tree
         req cns = Server.encodeReq (Server.ParseSentCons model.fileId treeId parTyp cns wordsPos)
@@ -460,6 +475,7 @@ cmdList =
   , ("delete", Delete)
   , ("deltree", DeleteTree)
 --   , ("add", Add)
+  , ("restart", ParseRaw)
   , ("parse", ParseSent Server.Stanford)
   , ("parsepos", ParseSentPos Server.Stanford)
   , ("dopparse", ParseSent Server.DiscoDOP)
@@ -546,16 +562,35 @@ type alias Pos = String
 
 
 -- | Retrieve the words and POS tags from a given tree.
-getWordPos : R.Tree M.Node -> List (Orth, Pos)
-getWordPos tree =
+getWordPos : R.Tree M.Node -> Server.ParseReq (List (Orth, Pos))
+getWordPos tree0 =
   let
     go pos xs = case xs of
       [] -> []
       node :: nodes -> case node of
         M.Leaf r -> (r.nodeVal, pos) :: go "" nodes
         M.Node r -> go r.nodeVal nodes
+    getList = go "" << List.reverse << R.flatten
+    forest = R.subTrees tree0
   in
-    go "" <| List.reverse <| R.flatten tree
+    case forest of
+        [tree] -> Server.Single (getList tree)
+        _ -> Server.Batch (List.map getList forest)
+
+
+-- | Like `getWordPos` but just retrieves words.
+getWords : R.Tree M.Node -> Server.ParseReq (List Orth)
+getWords tree0 =
+  let
+    word node = case node of
+      M.Node _ -> Nothing
+      M.Leaf {nodeVal} -> Just nodeVal
+    getList = List.reverse << Util.catMaybes << List.map word << R.flatten
+    forest = R.subTrees tree0
+  in
+    case forest of
+        [tree] -> Server.Single (getList tree)
+        _ -> Server.Batch (List.map getList forest)
 
 
 ----------------------------------------------
@@ -567,11 +602,7 @@ parseSent : Server.ParserTyp -> M.Model -> (M.Model, Cmd Msg)
 parseSent parTyp model =
     let
         treeId = (M.selectWin model.focus model).tree
-        tree = M.getTree treeId model
-        word node = case node of
-                        M.Node _ -> Nothing
-                        M.Leaf {nodeVal} -> Just nodeVal
-        words = List.reverse <| Util.catMaybes <| List.map word <| R.flatten tree
+        words = getWords (M.getTree treeId model)
         req = Server.encodeReq (Server.ParseSent model.fileId treeId parTyp words)
         send = WebSocket.send Cfg.socketServer req
     in
