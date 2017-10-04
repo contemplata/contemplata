@@ -70,6 +70,12 @@ data Command
     | AddFileDB Bool FilePath FilePath
       -- ^ Add a new file to a given DB
 
+    | RenameFileDB String String FilePath
+      -- ^ Rename a file in a given DB
+
+    | CopyFileDB String String FilePath
+      -- ^ Copy a file in a given DB
+
     | StatsDB FilePath
       -- ^ Print statistics related to the DB
 
@@ -171,6 +177,44 @@ addFileDbOptions = AddFileDB
        <> help "DB directory" )
 
 
+renameFileDbOptions :: Parser Command
+renameFileDbOptions = RenameFileDB
+  <$> strOption
+        ( long "from"
+       <> short 'f'
+       <> metavar "NAME-FROM"
+       <> help "Name of the file in the DB" )
+  <*> strOption
+        ( long "to"
+       <> short 't'
+       <> metavar "NAME-TO"
+       <> help "The new name" )
+  <*> strOption
+        ( long "dbdir"
+       <> short 'd'
+       <> metavar "DIR"
+       <> help "DB directory" )
+
+
+copyFileDbOptions :: Parser Command
+copyFileDbOptions = CopyFileDB
+  <$> strOption
+        ( long "from"
+       <> short 'f'
+       <> metavar "NAME-FROM"
+       <> help "Name of the file in the DB" )
+  <*> strOption
+        ( long "to"
+       <> short 't'
+       <> metavar "NAME-TO"
+       <> help "The new name" )
+  <*> strOption
+        ( long "dbdir"
+       <> short 'd'
+       <> metavar "DIR"
+       <> help "DB directory" )
+
+
 statsDbOptions :: Parser Command
 statsDbOptions = StatsDB
   <$> strOption
@@ -222,6 +266,14 @@ opts = subparser
   <> command "addfiledb"
     (info (helper <*> addFileDbOptions)
       (progDesc "Add a new file to a DB")
+    )
+  <> command "renamefiledb"
+    (info (helper <*> renameFileDbOptions)
+      (progDesc "Rename a file in a DB")
+    )
+  <> command "copyfiledb"
+    (info (helper <*> copyFileDbOptions)
+      (progDesc "Copy a file in a DB")
     )
   <> command "statsdb"
     (info (helper <*> statsDbOptions)
@@ -318,6 +370,20 @@ run cmd =
         case JSON.eitherDecode cs of
           Left err -> Err.throwE "JSON decoding failed"
           Right json -> DB.saveFile fileId json
+      case res of
+        Left err -> T.putStrLn $ "Operation failed: " `T.append` err
+        Right _  -> return ()
+    RenameFileDB from to dbPath -> do
+      let dbConf = DB.defaultConf dbPath
+      res <- DB.runDBT dbConf $ do
+        DB.renameFile (T.pack from) (T.pack to)
+      case res of
+        Left err -> T.putStrLn $ "Operation failed: " `T.append` err
+        Right _  -> return ()
+    CopyFileDB from to dbPath -> do
+      let dbConf = DB.defaultConf dbPath
+      res <- DB.runDBT dbConf $ do
+        DB.copyFile (T.pack from) (T.pack to)
       case res of
         Left err -> T.putStrLn $ "Operation failed: " `T.append` err
         Right _  -> return ()

@@ -23,6 +23,8 @@ module Odil.Server.DB
 , hasFile
 , saveFile
 , loadFile
+, copyFile
+, renameFile
 ) where
 
 
@@ -86,9 +88,14 @@ regHasFile :: FileId -> Register -> Bool
 regHasFile = S.member
 
 
--- | Does the register contain a given file?
+-- | Add file.
 regAddFile :: FileId -> Register -> Register
 regAddFile = S.insert
+
+
+-- | Remove file.
+regRemFile :: FileId -> Register -> Register
+regRemFile = S.delete
 
 
 -- | Size of the register.
@@ -185,6 +192,31 @@ loadFile fid = do
   storeLoadFile fid
 
 
+-- | Rename a DB file.
+renameFile :: FileId -> FileId -> DBT ()
+renameFile from to = do
+  reg <- readReg
+  unless (regHasFile from reg)
+    (Err.throwE "File ID (from) does not exist")
+  when (regHasFile to reg)
+    (Err.throwE "File ID (to) already exists")
+  -- update the DB register
+  writeReg . regAddFile to . regRemFile from $ reg
+  storeRenameFile from to
+
+
+-- | Similar to `renameFile`, but the original file is kept.
+copyFile :: FileId -> FileId -> DBT ()
+copyFile from to = do
+  reg <- readReg
+  unless (regHasFile from reg)
+    (Err.throwE "File ID (from) does not exist")
+  when (regHasFile to reg)
+    (Err.throwE "File ID (to) already exists")
+  writeReg $ regAddFile to reg
+  storeCopyFile from to
+
+
 ---------------------------------------
 -- IO: Register
 ---------------------------------------
@@ -224,6 +256,28 @@ storeSaveFile fid file =
 -- | Store a given file in the store.
 storeLoadFile :: FileId -> DBT File
 storeLoadFile fid = loadJSON =<< storeFilePath fid
+
+
+-- | Rename a given file in the store.
+storeRenameFile
+  :: FileId -- ^ From
+  -> FileId -- ^ To
+  -> DBT ()
+storeRenameFile from to = do
+  pathFrom <- storeFilePath from
+  pathTo <- storeFilePath to
+  liftIO $ Dir.renameFile pathFrom pathTo
+
+
+-- | Copy a given file in the store.
+storeCopyFile
+  :: FileId -- ^ From
+  -> FileId -- ^ To
+  -> DBT ()
+storeCopyFile from to = do
+  pathFrom <- storeFilePath from
+  pathTo <- storeFilePath to
+  liftIO $ Dir.copyFile pathFrom pathTo
 
 
 storeFilePath :: FileId -> DBT FilePath
