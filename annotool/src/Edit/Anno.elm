@@ -692,7 +692,7 @@ type Timex = Timex
   , tiTemporalFunction : Maybe TimexTemporalFunction
   , tiLingValue : String
   , tiValue : String
-  , tiMod : TimexMod
+  , tiMod : Maybe TimexMod
   , tiAnchor : Maybe Addr
   , tiBeginPoint : Maybe Addr
   , tiEndPoint : Maybe Addr
@@ -712,7 +712,7 @@ timexDefault = Timex
   , tiTemporalFunction = Nothing
   , tiLingValue = ""
   , tiValue = ""
-  , tiMod = Before
+  , tiMod = Nothing
   , tiAnchor = Nothing
   , tiBeginPoint = Nothing
   , tiEndPoint = Nothing
@@ -729,7 +729,7 @@ type TimexAttr
     | TiTemporalFunctionAttr (Maybe TimexTemporalFunction)
     | TiLingValueAttr String
     | TiValueAttr String
-    | TiModAttr TimexMod
+    | TiModAttr (Maybe TimexMod)
     | TiAnchorAttr Bool -- ^ Create if `True`, remove if `False`
     | TiBeginPointAttr Bool -- ^ Create if `True`, remove if `False`
     | TiEndPointAttr Bool -- ^ Create if `True`, remove if `False`
@@ -921,7 +921,7 @@ encodeTimex (Timex r) = Encode.object
     , ("tiTemporalFunction", Util.encodeMaybe encodeTimexTemporalFunction r.tiTemporalFunction)
     , ("tiLingValue", Encode.string r.tiLingValue)
     , ("tiValue", Encode.string r.tiValue)
-    , ("tiMod", encodeTimexMod r.tiMod)
+    , ("tiMod", Util.encodeMaybe encodeTimexMod r.tiMod)
     , ("tiAnchor", Util.encodeMaybe encodeAddr r.tiAnchor)
     , ("tiBeginPoint", Util.encodeMaybe encodeAddr r.tiBeginPoint)
     , ("tiEndPoint", Util.encodeMaybe encodeAddr r.tiEndPoint)
@@ -990,7 +990,7 @@ timexDecoder =
         (Decode.field "tiTemporalFunction" (Decode.nullable timexTemporalFunctionDecoder))
         (Decode.field "tiLingValue" Decode.string)
         (Decode.field "tiValue" Decode.string)
-        (Decode.field "tiMod" timexModDecoder)
+        (Decode.field "tiMod" (Decode.nullable timexModDecoder))
         (Decode.field "tiAnchor" (Decode.nullable addrDecoder))
         (Decode.field "tiBeginPoint" (Decode.nullable addrDecoder))
         (Decode.field "tiEndPoint" (Decode.nullable addrDecoder))

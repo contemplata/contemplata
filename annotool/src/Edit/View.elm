@@ -836,10 +836,13 @@ viewSideTimex model focus nodeId (Anno.Timex ti) =
             Anno.TiFunctionInDocumentAttr
     inpType = inputGeneric "Type" ti.tiType Anno.timexTypeStr Anno.TiTypeAttr
     inpTemporalFunction =
-        inputGeneric "Temporal Function" ti.tiTemporalFunction
+        inputGeneric "Temporal Fun" ti.tiTemporalFunction
             (Anno.nullable Anno.timexTemporalFunctionStr)
             Anno.TiTemporalFunctionAttr
-    inpMod = inputGeneric "Mod" ti.tiMod Anno.timexModStr Anno.TiModAttr
+    inpMod =
+        inputGeneric "Mod" ti.tiMod
+            (Anno.nullable Anno.timexModStr)
+            Anno.TiModAttr
 
     inputTimex = inputTimexGen model (SetTimexAttr nodeId focus)
     inpAnchor = inputTimex "Anchor" ti.tiAnchor Anno.TiAnchorAttr
@@ -1680,7 +1683,11 @@ textGenericGen setAttr attr text value =
     setMsg = setAttr << attr
   in
     Html.tr []
-      [ Html.td [Atts.class "noselect"] [Html.text text]
+      [ Html.td
+          [ Atts.class "noselect"
+          , Atts.align "right"
+          ]
+          [Html.text text]
       , Html.td []
           [Html.input
                [ Events.onInput setMsg
@@ -1701,7 +1708,11 @@ mayTextGenericGen setAttr attr text mayValue =
       Just x  -> x
   in
     Html.tr []
-      [ Html.td [Atts.class "noselect"] [Html.text text]
+      [ Html.td
+          [ Atts.class "noselect"
+          , Atts.align "right"
+          ]
+          [Html.text text]
       , Html.td []
           [Html.input
                [ Events.onInput setMsg
@@ -1723,7 +1734,11 @@ inputGenericGen setAttr label value valList attr =
       [ Html.text str ]
   in
     Html.tr []
-      [ Html.td [Atts.class "noselect"] [Html.text (label ++ ": ")]
+      [ Html.td
+          [ Atts.class "noselect"
+          , Atts.align "right"
+          ]
+          [Html.text (label ++ ": ")]
       , Html.td []
           [Html.select
                [ Events.on "change" (Decode.map setMsg Events.targetValue)
@@ -1777,7 +1792,11 @@ inputTimexGen model setAttr label value attr =
                     ]
   in
     Html.tr []
-      [ Html.td [Atts.class "noselect"] [Html.text (label ++ ": ")]
+      [ Html.td
+          [ Atts.class "noselect"
+          , Atts.align "right"
+          ]
+          [Html.text (label ++ ": ")]
       , Html.td [] html
       ]
 

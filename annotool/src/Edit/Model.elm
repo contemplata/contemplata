@@ -2146,7 +2146,7 @@ timexValue =
     Lens.create get update
 
 
-timexMod : Lens.Focus Anno.Timex Anno.TimexMod
+timexMod : Lens.Focus Anno.Timex (Maybe Anno.TimexMod)
 timexMod =
   let
     get (Anno.Timex r) = r.tiMod
