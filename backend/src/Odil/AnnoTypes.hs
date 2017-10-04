@@ -279,7 +279,7 @@ data Timex = Timex
   , tiTemporalFunction :: Maybe TimexTemporalFunction
   , tiLingValue :: T.Text
   , tiValue :: T.Text
-  , tiMod :: TimexMod
+  , tiMod :: Maybe TimexMod
   , tiAnchor :: Maybe C.Addr
     -- ^ TIMEX anchor
   , tiBeginPoint :: Maybe C.Addr

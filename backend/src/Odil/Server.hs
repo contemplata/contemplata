@@ -32,6 +32,8 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Tree as R
 
+import qualified Data.Fixed as Fixed
+import qualified Data.Time as Time
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.ByteString.Lazy as LBS
@@ -103,9 +105,9 @@ data Answer
   | NewFile FileId File
     -- ^ New file to edit
   | ParseResult FileId TreeId Tree
-    -- ^ New file to edit
+    -- ^ Parsing results
   | Notification T.Text
-    -- ^ New file to edit
+    -- ^ Notication message
   deriving (Show)
 
 instance JSON.ToJSON Answer where
@@ -192,14 +194,14 @@ talk conn state = forever $ do
       Left err -> do
         let msg = T.concat ["JSON decoding error: ", T.pack err]
         T.putStrLn msg
-        WS.sendTextData conn . JSON.encode $ Notification msg
+        WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
       Right GetFiles -> do
         DB.runDBT db DB.fileSet >>= \case
           Left err -> do
             let msg = T.concat ["GetFiles error: ", err]
             T.putStrLn msg
-            WS.sendTextData conn . JSON.encode $ Notification msg
+            WS.sendTextData conn . JSON.encode =<< mkNotif msg
           Right fs -> do
             let ret = Files (S.toList fs)
             WS.sendTextData conn (JSON.encode ret)
@@ -209,7 +211,7 @@ talk conn state = forever $ do
           Left err -> do
             let msg = T.concat ["GetFile error: ", err]
             T.putStrLn msg
-            WS.sendTextData conn . JSON.encode $ Notification msg
+            WS.sendTextData conn . JSON.encode =<< mkNotif msg
           Right file -> do
             let ret = NewFile fileId file
             WS.sendTextData conn (JSON.encode ret)
@@ -220,11 +222,11 @@ talk conn state = forever $ do
           Left err -> do
             let msg = T.concat ["Could not save file: ", err]
             T.putStrLn msg
-            WS.sendTextData conn . JSON.encode $ Notification msg
+            WS.sendTextData conn . JSON.encode =<< mkNotif msg
           Right () -> do
             putStrLn "Saved"
             let msg = T.concat ["File ", fileId, " saved"]
-            WS.sendTextData conn . JSON.encode $ Notification msg
+            WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
       Right (ParseRaw fileId treeId txt) -> do
         putStrLn "Parsing raw sentence..."
@@ -233,13 +235,13 @@ talk conn state = forever $ do
           Nothing -> do
             let msg = T.concat ["Could not parse: ", txt]
             T.putStrLn msg
-            WS.sendTextData conn . JSON.encode $ Notification msg
+            WS.sendTextData conn . JSON.encode =<< mkNotif msg
           Just t -> do
             let ret = ParseResult fileId treeId (Penn.toOdilTree t)
             WS.sendTextData conn (JSON.encode ret)
             let msg = T.concat ["Parsed successfully"]
             T.putStrLn msg
-            WS.sendTextData conn . JSON.encode $ Notification msg
+            WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
       Right (ParseSent fileId treeId parTyp parseReq) -> do
         putStrLn "Parsing tokenized sentence..."
@@ -260,13 +262,13 @@ talk conn state = forever $ do
                        Batch xs -> concat xs
             let msg = T.concat ["Could not parse: ", T.unwords ws]
             T.putStrLn msg
-            WS.sendTextData conn . JSON.encode $ Notification msg
+            WS.sendTextData conn . JSON.encode =<< mkNotif msg
           Just t -> do
             let ret = ParseResult fileId treeId (Penn.toOdilTree t)
             WS.sendTextData conn (JSON.encode ret)
             let msg = T.concat ["Parsed successfully"]
             T.putStrLn msg
-            WS.sendTextData conn . JSON.encode $ Notification msg
+            WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
       -- Right (ParseSentPos fileId treeId parTyp ws) -> do
       Right (ParseSentPos fileId treeId parTyp parseReq) -> do
@@ -289,13 +291,13 @@ talk conn state = forever $ do
                 ws' = flip map ws $ \(orth, pos) -> T.concat [orth, ":", pos]
                 msg = T.concat ["Could not parse: ", T.unwords ws']
             T.putStrLn msg
-            WS.sendTextData conn . JSON.encode $ Notification msg
+            WS.sendTextData conn . JSON.encode =<< mkNotif msg
           Just t -> do
             let ret = ParseResult fileId treeId (Penn.toOdilTree t)
             WS.sendTextData conn (JSON.encode ret)
             let msg = T.concat ["Parsed successfully"]
             T.putStrLn msg
-            WS.sendTextData conn . JSON.encode $ Notification msg
+            WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
       Right (ParseSentCons fileId treeId parTyp cons ws) -> do
         putStrLn $ "Parsing tokenized+POSed sentence with constraints: " ++ show cons
@@ -308,18 +310,32 @@ talk conn state = forever $ do
             let ws' = flip map ws $ \(orth, pos) -> T.concat [orth, ":", pos]
                 msg = T.concat ["Could not parse: ", T.unwords ws']
             T.putStrLn msg
-            WS.sendTextData conn . JSON.encode $ Notification msg
+            WS.sendTextData conn . JSON.encode =<< mkNotif msg
           Just t -> do
             let ret = ParseResult fileId treeId (Penn.toOdilTree t)
             WS.sendTextData conn (JSON.encode ret)
             let msg = T.concat ["Parsed successfully"]
             T.putStrLn msg
-            WS.sendTextData conn . JSON.encode $ Notification msg
+            WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
 
 -----------
 -- Utils
 -----------
+
+
+-- | Create notification while adding the current time.
+mkNotif :: T.Text -> IO Answer
+mkNotif msg = do
+  time <- Time.getCurrentTime
+  zone <- Time.getCurrentTimeZone
+  let strTimeRaw
+        = Time.formatTime Time.defaultTimeLocale "%X"
+        . Time.localTimeOfDay
+        $ Time.utcToLocalTime zone time
+      strTime = T.pack $ "[" ++ strTimeRaw ++ "] "
+      notif = T.append strTime msg
+  return $ Notification notif
 
 
 -- | Assure that all values are Just.

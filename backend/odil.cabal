@@ -57,6 +57,7 @@ library
                      , proto-lens >= 0.2 && < 0.3
                      , proto-lens-protoc >= 0.2 && < 0.3
                      , bytes >= 0.15 && < 0.16
+                     , time >= 1.6 && < 1.9
   default-language:    Haskell2010
 
 executable odil
