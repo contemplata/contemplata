@@ -483,7 +483,7 @@ viewMenu model = -- fileName =
       , menuElem MkEvent 120 (emphasize 1 "Event")
       , menuElem MkSignal 180 (emphasize 0 "Signal")
       , menuElem MkTimex 240 (emphasize 0 "Timex")
-      -- , menuElem (Many []) 320 (plainText <| toString model.ctrl)
+      , menuElem (Many []) 320 (plainText <| toString model.ctrl)
       ]
 
 
@@ -1426,7 +1426,8 @@ cmdKeyDown =
       9 -> CommandComplete
       13 -> CommandEnter
       27 -> CommandEscape
-      _ -> CommandChar (Char.toLower <| Char.fromCode code)
+      _ -> CommandString (toString code ++ " ")
+      -- _ -> CommandChar (Char.toLower <| Char.fromCode code)
       -- _ -> Debug.crash <| toString (code, Char.fromCode code, Char.toLower <| Char.fromCode code)
   in
     onKeyDown tag

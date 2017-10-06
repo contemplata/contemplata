@@ -293,8 +293,8 @@ linkCircleRadius = 25
 socketServer : String
 socketServer = "ws://127.0.0.1:9161"
 -- socketServer = "ws://vega.info.univ-tours.fr/odil/websocket"
+-- socketServer = "ws://vega.info.univ-tours.fr/odil/dev/websocket"
 -- socketServer = "ws://vega.info.univ-tours.fr:16340"
--- socketServer = "http://vega.info.univ-tours.fr/odil/websocket"
 
 
 ---------------------------------------------------

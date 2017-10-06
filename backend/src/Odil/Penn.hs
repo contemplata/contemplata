@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
 
 
 -- | Working with the Penn format.
@@ -17,12 +18,13 @@ module Odil.Penn
 
 -- * Conversion
 , toOdilTree
--- , convertPennFile
+, convertPennFile
 ) where
 
 
-import Control.Monad (void)
+import Control.Monad (void, forM)
 import Control.Applicative ((<|>))
+import qualified Data.Functor.Identity as ID
 import qualified Control.Arrow as Arr
 import qualified Control.Monad.Trans.State.Strict as ST
 
@@ -107,6 +109,89 @@ toOdilTree =
 --   -- . parseForest
 
 
+-- | Convert a list of Penn trees to an Odil file.
+convertPennFile :: [Tree] -> Odil.File
+convertPennFile pennForest = ID.runIdentity $ do
+  (turns, treeMap) <- flip ST.runStateT M.empty $ do
+    forM pennForest $ \penn -> do
+      let odil = toOdilTree penn
+          sent = sentFromTree penn
+      k <- ST.gets $ (+1) . M.size
+      ST.modify' $ M.insert k (sent, odil)
+      -- return (k, Nothing) -- speaker N/A
+      return $ Odil.Turn
+        { Odil.speaker = ["_"]      -- speakers N/A
+        , Odil.trees = M.singleton k Nothing } -- speaker N/A
+  return Odil.File
+    { Odil.treeMap = treeMap
+    , Odil.turns = turns -- concat turns
+    , Odil.linkSet = M.empty
+    }
+
+
+-- | Make a raw sentence from a tree.
+sentFromTree :: Tree -> T.Text
+sentFromTree =
+  runMkSent . getLeaves
+  where
+    getLeaves (R.Node x ts) = case ts of
+      [] -> [x]
+      _  -> concatMap getLeaves ts
+    runMkSent = T.strip . T.intercalate " "
+--     runMkSent = T.strip .  flip ST.evalState [] . mkSent
+--     mkSent = \case
+--       [] -> return ""
+--       (x : xs) -> do
+--         case x of
+--           "," -> do
+--             sent <- mkSent xs
+--             return $ T.concat [x, " ", sent]
+--           ":" -> do
+--             sent <- mkSent xs
+--             return $ T.concat [x, " ", sent]
+--           ";" -> do
+--             sent <- mkSent xs
+--             return $ T.concat [x, " ", sent]
+--           "\"" -> do
+--             acc <- ST.get
+--             case acc of
+--               ("\"" : acc') -> do
+--                 ST.put acc'
+--                 sent <- mkSent xs
+--                 if headPunc sent
+--                   then return $ T.concat [x, sent]
+--                   else return $ T.concat [x, " ", sent]
+--               _ -> do
+--                 ST.modify' ("\"":)
+--                 sent <- mkSent xs
+--                 return $ T.concat [" ", x, sent]
+--           "(" -> do
+--             sent <- mkSent xs
+--             return $ T.concat [" ", x, sent]
+--           ")" -> do
+--             sent <- mkSent xs
+--             if headPunc sent
+--               then return $ T.concat [x, sent]
+--               else return $ T.concat [x, " ", sent]
+--           "%" -> do
+--             sent <- mkSent xs
+--             if headPunc sent
+--               then return $ T.concat [x, sent]
+--               else return $ T.concat [x, " ", sent]
+--           _ -> do
+--             sent <- mkSent xs
+--             if (tailPunc x || headPunc sent)
+--               then return $ T.concat [x, sent]
+--               else return $ T.concat [x, " ", sent]
+--     headPunc x = case T.findIndex C.isPunctuation x of
+--       Just 0 -> True
+--       _ -> False
+--     tailPunc = headPunc . T.reverse
+--     headIn xs bl = case xs of
+--       hd:_ -> hd `elem` bl
+--       _ -> True
+
+
 ---------------------------------------------------
 ---------------------------------------------------
 -- Parsing
@@ -176,7 +261,7 @@ labelP = A.takeTill $ \c ->
 
 -- | A leaf parser.
 leafP :: A.Parser Tree
-leafP = flip R.Node [] <$> labelP
+leafP = flip R.Node [] . unEscape <$> labelP
 
 
 ---------------------------------------------------
@@ -188,12 +273,46 @@ leafP = flip R.Node [] <$> labelP
 
 showTree :: Tree -> T.Text
 showTree (R.Node x ts)
-  | null ts = x
+  | null ts = escape x
   | otherwise = T.concat
     [ "(", x, " "
     , T.intercalate " " (map showTree ts)
     , ")"
     ]
+
+
+---------------------------------------------------
+-- Escaping
+---------------------------------------------------
+
+
+escape :: T.Text -> T.Text
+escape x =
+  case M.lookup x . M.fromList $ escapeList of
+    Just y -> y
+    Nothing -> x
+
+
+unEscape :: T.Text -> T.Text
+unEscape =
+  L.foldl' (.) id replaceAll
+  where
+    replaceAll = map
+      (uncurry T.replace)
+      (map swap escapeList)
+    swap (x, y) = (y, x)
+
+
+-- | A list of escape characters.
+escapeList :: [(T.Text, T.Text)]
+escapeList =
+  [ ("(", "-LRB-")
+  , (")", "-RRB-")
+  , ("[", "-RSB-")
+  , ("]", "-RSB-")
+  , ("{", "-LCB-")
+  , ("}", "-RCB-")
+  ]
 
 
 ---------------------------------------------------

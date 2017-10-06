@@ -88,6 +88,7 @@ type Msg
   | CommandBackspace
   | CommandComplete
   | CommandChar Char
+  | CommandString String
   | Popup              -- ^ Open a popup window
       Popup.Popup
       (Maybe String)   -- ^ The (optionl) HTML ID to focus on
@@ -406,6 +407,11 @@ update msg model =
       case model.command of
         Nothing -> model
         Just cmd -> {model | command = Just <| String.append cmd (String.fromChar c)}
+
+    CommandString c -> idle <|
+      case model.command of
+        Nothing -> model
+        Just cmd -> {model | command = Just <| String.append cmd c}
 
     CommandBackspace -> idle <|
       case model.command of

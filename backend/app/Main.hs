@@ -70,6 +70,9 @@ data Command
     | AddFileDB Bool FilePath FilePath
       -- ^ Add a new file to a given DB
 
+    | Penn2JSON
+      -- ^ Convert a PTB-style file to JSON
+
     | RenameFileDB String String FilePath
       -- ^ Rename a file in a given DB
 
@@ -113,6 +116,10 @@ processOptions = Process
        <> short 'r'
        <> metavar "FILE"
        <> help "" )
+
+
+penn2jsonOptions :: Parser Command
+penn2jsonOptions = pure Penn2JSON
 
 
 -- penn2odilOptions :: Parser Command
@@ -283,6 +290,10 @@ opts = subparser
     (info (helper <*> ftb2pennOptions)
       (progDesc "Convert a FTB XML file to the Penn format")
     )
+  <> command "penn2json"
+    (info (helper <*> penn2jsonOptions)
+      (progDesc "Convert a PTB-style file to JSON")
+    )
   )
 
 
@@ -346,6 +357,29 @@ run cmd =
             , linkSet = M.empty
             }
       LBS.putStr (JSON.encode file)
+
+    -- Read the ancor file from stdin and output the resulting
+    -- ODIL file in the JSON format
+    Penn2JSON -> do
+      -- pennForest <- Penn.parseForest <$> T.getContents
+      pennForest <- map Penn.parseTree . T.lines <$> T.getContents
+--       (turns, treeMap) <- flip State.runStateT M.empty $ do
+--         forM pennForest $ \penn -> do
+--           let odil = Penn.toOdilTree penn
+--               sent = ""
+--           k <- State.gets $ (+1) . M.size
+--           State.modify' $ M.insert k (sent, odil)
+--           -- return (k, Nothing) -- speaker N/A
+--           return $ Odil.Turn
+--             { speaker = []      -- speakers N/A
+--             , trees = M.singleton k Nothing } -- speaker N/A
+--       let file = Odil.File
+--             { treeMap = treeMap
+--             , turns = turns -- concat turns
+--             , linkSet = M.empty
+--             }
+      let odil = Penn.convertPennFile pennForest
+      LBS.putStr (JSON.encode odil)
 
 
     -- Server-related
