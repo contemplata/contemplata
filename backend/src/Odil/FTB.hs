@@ -36,6 +36,9 @@ import qualified Odil.Penn as P
 ---------------------------------------------------
 
 
+type TextID = T.Text
+
+
 type Tree = R.Tree Node
 
 
@@ -133,13 +136,15 @@ type P a = PolySoup.P (XmlTree T.Text) a
 type Q a = PolySoup.Q (XmlTree T.Text) a
 
 
-rootQ :: Q [Tree]
+rootQ :: Q [(TextID, Tree)]
 rootQ = named "text" `joinR` every' sentQ
 
 
-sentQ :: Q Tree
-sentQ = fmap (R.Node $ Node "SENT") $
-  named "SENT" `joinR` every' nodeQ
+sentQ :: Q (TextID, Tree)
+sentQ = do
+  (named "SENT" *> attr "textID") `join` \textID -> do
+    children <- every' nodeQ
+    return (textID, R.Node (Node "SENT") children)
 
 
 nodeQ :: Q Tree
@@ -187,8 +192,8 @@ catSubCat = (,,) <$> attr "cat" <*> optional (attr "subcat") <*> optional (attr 
 ---------------------------------------------------
 
 
--- | Parse an entire Ancor file.
-parseFTB :: T.Text -> [Tree]
+-- | Parse an entire FTB file.
+parseFTB :: T.Text -> [(TextID, Tree)]
 parseFTB =
   parseGen rootQ
 

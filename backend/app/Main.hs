@@ -9,14 +9,19 @@ module Main where
 import Control.Monad (when, forM_, forM)
 import Control.Monad.IO.Class (liftIO)
 import qualified Control.Monad.Trans.State as State
+import qualified Control.Arrow as Arr
 
 import qualified Control.Error as Err
 import qualified System.FilePath as FilePath
+import System.FilePath ((</>), (<.>))
+import qualified System.Directory as Dir
+import qualified Data.List as L
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 -- import qualified Data.Set as S
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Aeson as JSON
+import Data.Function (on)
 import Data.Monoid ((<>))
 import Data.Maybe (mapMaybe)
 import qualified Data.Map.Strict as M
@@ -82,7 +87,7 @@ data Command
     | StatsDB FilePath
       -- ^ Print statistics related to the DB
 
-    | FTB2Penn FilePath Bool
+    | FTB2Penn FilePath Bool (Maybe FilePath)
       -- ^ Convert a FTB XML file to the Penn format
 
 
@@ -242,6 +247,11 @@ ftb2pennOptions = FTB2Penn
         ( long "remove-punctuation"
        <> short 'r'
        <> help "Remove punctuation (with the expcetion of question marks)" )
+  <*> (optional . strOption)
+        ( long "outdir"
+       <> short 'o'
+       <> metavar "DIR"
+       <> help "Output directory (for more fine-grained output)" )
 
 
 opts :: Parser Command
@@ -436,14 +446,40 @@ run cmd =
         Right _  -> return ()
 
     -- Misc
-    FTB2Penn filePath rmPunc -> do
-      let process = if rmPunc then mapMaybe FTB.rmPunc else id
-      penns <- map FTB.toPenn
-             . process
-             . FTB.parseFTB
-           <$> T.readFile filePath
-      forM_ penns $ \penn -> do
-        T.putStrLn . Penn.showTree $ penn
+    FTB2Penn filePath rmPunc outPathMay -> do
+      let process =
+            if rmPunc
+            then mapMaybe (\(i, t) -> (,) <$> pure i <*> FTB.rmPunc t)
+            else id
+      pennPairs <- map (Arr.second FTB.toPenn)
+                . process
+                . FTB.parseFTB
+              <$> T.readFile filePath
+      case outPathMay of
+        Nothing -> do
+          forM_ pennPairs $ \(_, penn) -> do
+            T.putStrLn . Penn.showTree $ penn
+        Just dirPath -> do
+          res <- Err.runExceptT $ do
+            liftIO (Dir.doesPathExist dirPath) >>= \case
+              True -> Err.throwE . T.pack $ "the directory '" ++ dirPath ++ "' exists"
+              False -> return ()
+            liftIO $ do
+              Dir.createDirectoryIfMissing True dirPath
+            let pennGrps = L.groupBy ((==) `on` fst) pennPairs
+                fileName = FilePath.takeBaseName filePath
+            forM_ pennGrps $ \pennGrp -> do
+              let (textIDs, pennList) = unzip pennGrp
+              textID <- case textIDs of
+                [] -> Err.throwE "L.groupBy worked unexpectedly"
+                i : _ -> return i
+              let pennStr = T.unlines (map Penn.showTree pennList)
+              liftIO $ do
+                let outFilePath = dirPath </> fileName ++ "-" ++ T.unpack textID <.> "ptb"
+                T.writeFile outFilePath pennStr
+          case res of
+            Left err -> T.putStrLn $ "Error: " `T.append` err
+            Right _  -> return ()
 
 
 -- saveFile :: FileId -> File -> DBT ()
