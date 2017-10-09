@@ -59,8 +59,8 @@ routes :: [(BS.ByteString, AppHandler ())]
 routes =
   [ ("foo", Snap.writeBS "bar")
   , ("echo/:echoparam", echoHandler)
-  , ("odil", FileServe.serveFile "html/index.html")
-  , ("odil/ws", wsHandler)
+  , ("/ws", wsHandler)
+  , ("", FileServe.serveFile "html/index.html")
   -- , ("odil/ws", Snap.redirect "ws://127.0.0.1:9161")
   ]
 --   Snap.ifTop (Snap.writeBS "hello world") <|>
