@@ -41,6 +41,9 @@ packages:
 # (e.g., acme-missiles-0.3)
 extra-deps:
 - polysoup-0.6.3
+- snap-1.0.0.2
+- heist-1.0.1.0
+- map-syntax-0.2.0.2
 
 
 # Override default flag values for local packages and extra-deps

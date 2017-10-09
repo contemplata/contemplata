@@ -19,6 +19,8 @@ module Odil.Server
 
 -- * Server
 , runServer
+, loadDB
+, application
 ) where
 
 
@@ -169,7 +171,9 @@ runServer dbPath serverAddr serverPort = do
 -- | The server application.
 application :: C.MVar DB.DB -> WS.ServerApp
 application state pending = do
+  putStrLn "WS: waiting for request..."
   conn <- WS.acceptRequest pending
+  putStrLn "WS: request obtained"
   WS.forkPingThread conn 30
   -- msg <- WS.receiveData conn
   -- clients <- C.readMVar state
@@ -178,14 +182,20 @@ application state pending = do
 
 talk :: WS.Connection -> C.MVar DB.DB -> IO ()
 talk conn state = forever $ do
+  putStrLn $ "WS: init talking"
   msg <- WS.receiveData conn
-  LBC.putStrLn msg
+  putStrLn "WS: obtained message:"
+  LBC.putStrLn $ LBC.take 100 msg
 
+  putStrLn "WS: taking DB MVar"
   db <- C.takeMVar state
+  putStrLn "WS: DB MVar taken"
   flip Exc.finally (C.putMVar state db) $ do
 
     DB.runDBT db DB.fileNum >>= \case
-      Left err -> T.putStrLn err
+      Left err -> do
+        T.putStrLn "WS: could not start talking because of:"
+        T.putStrLn err
       Right k  -> putStrLn $
         "Talking; the size of the fileMap is " ++ show k
 
