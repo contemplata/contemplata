@@ -190,7 +190,7 @@ talk conn state = forever $ do
   putStrLn "WS: taking DB MVar"
   db <- C.takeMVar state
   putStrLn "WS: DB MVar taken"
-  flip Exc.finally (C.putMVar state db) $ do
+  flip Exc.finally (C.putMVar state db >> putStrLn "WS: DB MVar returned") $ do
 
     DB.runDBT db DB.fileNum >>= \case
       Left err -> do
