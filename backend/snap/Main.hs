@@ -60,8 +60,8 @@ routes =
 --   [ ("foo", Snap.writeBS "bar")
 --   , ("echo/:echoparam", echoHandler)
   [ ("ws", wsHandler)
-  -- , ("style.css", FileServe.serveFileAs "text/css" "html/style.css")
-  , ("style.css", echoHandler)
+  , ("style.css", FileServe.serveFileAs "text/css" "html/style.css")
+  -- , ("style.css", echoHandler)
   , ("", FileServe.serveFile "html/index.html")
   ]
 --   Snap.ifTop (Snap.writeBS "hello world") <|>
