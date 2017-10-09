@@ -57,11 +57,11 @@ type AppHandler = Snap.Handler App App
 
 routes :: [(BS.ByteString, AppHandler ())]
 routes =
-  [ ("foo", Snap.writeBS "bar")
-  , ("echo/:echoparam", echoHandler)
-  , ("/ws", wsHandler)
+--   [ ("foo", Snap.writeBS "bar")
+--   , ("echo/:echoparam", echoHandler)
+  [ ("/ws", wsHandler)
+  , ("/style.css", FileServe.serveFile "html/style.css")
   , ("", FileServe.serveFile "html/index.html")
-  -- , ("odil/ws", Snap.redirect "ws://127.0.0.1:9161")
   ]
 --   Snap.ifTop (Snap.writeBS "hello world") <|>
 --   Snap.route
