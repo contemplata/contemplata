@@ -77,9 +77,15 @@ menuLens = (getMenu, setMenu)
 ---------------------------------------------------
 
 
-main : Program Never TopModel TopMsg
+type alias Flags =
+    { userName : String }
+
+
+-- main : Program Never TopModel TopMsg
+main : Program Flags TopModel TopMsg
 main =
-  Html.program
+  -- Html.program
+  Html.programWithFlags
     { init = topInit
     , view = topView
     , update = topUpdate
@@ -127,6 +133,13 @@ topMsg : Msg -> TopMsg
 topMsg = Right
 
 
+-- | Get the name of the current user.
+currentUser : TopModel -> String
+currentUser top = case top of
+  Edit mod -> mod.user
+  Menu mod -> mod.user
+
+
 ---------------------------------------------------
 -- View
 ---------------------------------------------------
@@ -148,7 +161,7 @@ topUpdate topMsg =
   case topMsg of
     Left (Edit msg) -> case msg of
       Edit.Message.Files -> \model_ ->
-        let (model, cmd) = Menu.mkMenu
+        let (model, cmd) = Menu.mkMenu (currentUser model_)
         in  (Menu model, Cmd.map menuMsg cmd)
       -- Unfortunately, we have to handle `Many` here too, since
       -- `Files` can be embedded inside.
@@ -166,7 +179,7 @@ topUpdate topMsg =
       Server.Files xs -> updateOn menuLens menuMsg
         (Menu.update <| Menu.ShowFiles xs)
       Server.NewFile fileId file -> \model_ ->
-        let (edit, cmd) = Edit.Init.mkEdit fileId file
+        let (edit, cmd) = Edit.Init.mkEdit (currentUser model_) fileId file
         in  (Edit edit, Cmd.map editMsg cmd)
       Server.ParseResult fileId treeId tree ->
         let upd model = (Edit.Model.setTree fileId treeId tree model, Cmd.none)
@@ -206,11 +219,11 @@ topSubscriptions top =
 ---------------------------------------------------
 
 
-topInit : (TopModel, Cmd TopMsg)
-topInit =
+topInit : Flags -> (TopModel, Cmd TopMsg)
+topInit r =
 --   let (edit, cmd) = editInit
 --   in  (Edit edit, Cmd.map Edit cmd)
-  let (model, cmd) = Menu.mkMenu
+  let (model, cmd) = Menu.mkMenu r.userName
   in  (Menu model, Cmd.map menuMsg cmd)
 
 

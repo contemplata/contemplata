@@ -246,6 +246,9 @@ type alias Model =
 
   -- pop-up window
   , popup : Maybe Popup.Popup
+
+  -- the name of the current user
+  , user : String
   }
 
 

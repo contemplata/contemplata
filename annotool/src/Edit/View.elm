@@ -61,7 +61,8 @@ stylesheet =
       [ Atts.attribute "rel" "stylesheet"
       , Atts.attribute "property" "stylesheet"
       -- , attribute "href"      "//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css"
-      , Atts.attribute "href" "style.css"
+      , Atts.attribute "href" "public/css/style.css"
+      -- , Atts.attribute "href" "style.css"
       ]
     children = []
   in

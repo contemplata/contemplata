@@ -22,8 +22,12 @@ import Edit.Popup as Popup
 ---------------------------------------------------
 
 
-mkEdit : FileId -> File -> (Model, Cmd Msg)
-mkEdit fileId file =
+mkEdit
+    : String -- ^ user name
+    -> FileId
+    -> File
+    -> (Model, Cmd Msg)
+mkEdit user fileId file =
   let
     treeId = case D.toList file.treeMap of
       (id, tree) :: _ -> id
@@ -64,6 +68,7 @@ mkEdit fileId file =
       , undoLast = []
       , command = Nothing
       , popup = Nothing -- Just Popup.Files
+      , user = user
       }
     initHeight = Task.perform Resize Window.size
     focusOnTop = Task.attempt

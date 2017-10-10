@@ -36,7 +36,8 @@ import Server
 
 
 type alias Model =
-  { fileIds : List C.FileId }
+  { fileIds : List C.FileId
+  , user : String }
 
 
 ---------------------------------------------------
@@ -78,9 +79,19 @@ view model =
         , "max-width" => Util.px Cfg.menuMaxWidth
         ]
     ]
-    [ viewFiles model
+    [ viewUser model
+    , viewFiles model
     , viewHelp
     ]
+
+
+viewUser : Model -> Html.Html Msg
+viewUser model =
+    Html.div []
+        [ Html.h3 [] [Html.text "User"]
+        , Html.text ("You are logged as " ++ model.user ++ " ")
+        , Html.a [Atts.href "/logout"] [Html.text "(logout)"] ]
+        -- , Html.button [] [Html.text "logout"] ]
 
 
 viewFiles : Model -> Html.Html Msg
@@ -196,10 +207,12 @@ subscriptions _ = Sub.none
 ---------------------------------------------------
 
 
-mkMenu : (Model, Cmd Msg)
-mkMenu =
+mkMenu
+    : String -- ^ User name
+    -> (Model, Cmd Msg)
+mkMenu user =
   let
-    model = {fileIds = []}
+    model = {fileIds = [], user = user}
     init = WebSocket.send Cfg.socketServer (Server.encodeReq Server.GetFiles)
   in
     (model, init)
