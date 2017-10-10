@@ -7,6 +7,7 @@ module Main where
 
 
 import           Control.Monad.IO.Class (liftIO)
+import           Control.Monad (guard)
 import           Control.Lens (makeLenses)
 import           Control.Applicative ((<|>))
 import qualified Control.Concurrent as C
@@ -17,6 +18,8 @@ import qualified Control.Exception as Exc
 -- import           Options.Applicative
 
 import qualified Data.ByteString as BS
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 -- import           Data.Monoid ((<>))
 
 import qualified Odil.Server.DB as DB
@@ -24,33 +27,25 @@ import qualified Odil.Server as Server
 import qualified Odil.Server.Config as ServerCfg
 
 import qualified Snap as Snap
+import qualified Snap.Snaplet.Auth as Auth
+import qualified Snap.Snaplet.Heist as Heist
+-- import           Heist.Interpreted (Splice, bindSplices, Splices)
+import           Snap.Snaplet.Auth.Backends.JsonFile (initJsonFileAuthManager)
+import qualified Snap.Snaplet.Session as Session
+import qualified Snap.Snaplet.Session.Backends.CookieSession as Session
+import qualified Snap.Snaplet.Heist as Heist
 -- import qualified Snap.Core as Core
 -- import           Snap.Core (Snap)
 import qualified Snap.Util.FileServe as FileServe
+
 -- import qualified Snap.Http.Server as Server
 import qualified Network.WebSockets as WS
 import qualified Network.WebSockets.Snap as SnapWS
 
 -- import qualified Snap.Snaplet as Snaplet
-
-
----------------------------------------
--- Application state
----------------------------------------
-
-
--- | Application state.
-data App = App
-  { _db :: C.MVar DB.DB
-    -- ^ Database
-  }
-
-
-makeLenses ''App
-
-
--- | Application handler monad.
-type AppHandler = Snap.Handler App App
+import qualified Handler.Login as Login
+import qualified Handler.Anno as Anno
+import           Application
 
 
 ---------------------------------------
@@ -60,21 +55,39 @@ type AppHandler = Snap.Handler App App
 
 routes :: [(BS.ByteString, AppHandler ())]
 routes =
---   [ ("foo", Snap.writeBS "bar")
---   , ("echo/:echoparam", echoHandler)
-  [ ("ws", wsHandler)
-  , ("style.css", FileServe.serveFileAs "text/css" "html/style.css")
-  -- , ("style.css", echoHandler)
-  , ("", FileServe.serveFile "html/index.html")
+  [ ("/ws", wsHandler)
+  -- , ("/style.css", FileServe.serveFileAs "text/css" "html/style.css")
+  , ("/annotation", Anno.annoHandler)
+  , ("/public", publicHandler)
+  , ("/login", Login.loginHandler)
+  , ("/logout", Login.logoutHandler)
+  -- , ("/public", publicHandler)
+  , ("/createuser", createUserHandler)
+  , ("", Snap.ifTop rootHandler)
   ]
---   Snap.ifTop (Snap.writeBS "hello world") <|>
---   Snap.route
---     [ ("foo", Snap.writeBS "bar")
---     , ("echo/:echoparam", echoHandler)
---     , ("odil", FileServe.serveFile "html/index.html")
---     , ("odil/ws", Snap.redirect "ws://127.0.0.1:9161")
---     ] <|>
---   Snap.dir "static" (FileServe.serveDirectory ".")
+
+
+rootHandler :: AppHandler ()
+rootHandler =
+  loginHandler <|> Snap.redirect "public"
+  where
+    loginHandler = do
+      guard . not =<< Snap.with auth Auth.isLoggedIn
+      Snap.redirect "login"
+
+
+publicHandler :: AppHandler ()
+publicHandler = FileServe.serveDirectory "resources/public"
+
+
+createUserHandler :: AppHandler ()
+createUserHandler = do
+  Just login <- Snap.getParam "login"
+  Just passw <- Snap.getParam "passw"
+  res <- Snap.with auth $ Auth.createUser (T.decodeUtf8 login) passw
+  case res of
+    Left err -> Snap.writeText . T.pack $ show res
+    Right _  -> Snap.writeText "Success"
 
 
 echoHandler :: AppHandler ()
@@ -110,26 +123,33 @@ wsHandler = do
 ----------------------------------
 
 
+-- -- | Application splices.
+-- splices :: Splices (Splice AppHandler)
+-- splices = do
+--   "annoBody" ## Anno.bodySplice
+
+
+----------------------------------
+-- Initialization
+----------------------------------
+
+
 -- | Application initialization.
-appInit :: FilePath -> Snap.SnapletInit App App
-appInit dbPath = Snap.makeSnaplet "snap-odil" "ODIL" Nothing $ do
-  db <- liftIO $ C.newMVar =<< Server.loadDB dbPath
+appInit :: Snap.SnapletInit App App
+appInit = Snap.makeSnaplet "snap-odil" "ODIL" Nothing $ do
+  db <- liftIO $ C.newMVar =<< Server.loadDB "DB"
+  s <- Snap.nestSnaplet "sess" sess $
+       Session.initCookieSessionManager "site_key.txt" "_cookie" Nothing Nothing
+  a <- Snap.nestSnaplet "auth" auth $
+       initJsonFileAuthManager Auth.defAuthSettings sess "pass.json"
+  h <- Snap.nestSnaplet "heist" heist $ Heist.heistInit "templates"
+  Auth.addAuthSplices h auth
+--   Heist.modifyHeistState
+--     $ bindSplices splices
+--     -- $ bindAttributeSplices attrSplices
+--     -- . bindSplices splices
   Snap.addRoutes routes
-  let app = App db
-  return app
-
-
---     s <- nestSnaplet "sess" sess $
---         initCookieSessionManager "site_key.txt" "_cookie" Nothing
---     d <- nestSnaplet "db" db pgsInit
---     a <- nestSnaplet "auth" auth $ initPostgresAuth sess d
---     h <- nestSnaplet "heist" heist $ heistInit "templates"
---     addAuthSplices h auth
---     modifyHeistState
---         $ bindAttributeSplices attrSplices
---         . bindSplices splices
---     addRoutes routes
---     return $ App h s d a
+  return $ App db h s a
 
 
 ---------------------------------------
@@ -139,5 +159,4 @@ appInit dbPath = Snap.makeSnaplet "snap-odil" "ODIL" Nothing $ do
 
 main :: IO ()
 main = do
-  let dbPath = "/home/kuba/work/odil/data/DB-new"
-  Snap.serveSnaplet Snap.defaultConfig (appInit dbPath)
+  Snap.serveSnaplet Snap.defaultConfig appInit

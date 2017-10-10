@@ -44,6 +44,9 @@ extra-deps:
 - snap-1.0.0.2
 - heist-1.0.1.0
 - map-syntax-0.2.0.2
+- digestive-functors-0.8.2.0
+- digestive-functors-heist-0.8.7.0
+- digestive-functors-snap-0.7.0.0
 
 
 # Override default flag values for local packages and extra-deps
