@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 
 module Main where
@@ -11,6 +12,7 @@ import           Control.Applicative ((<|>))
 import qualified Control.Concurrent as C
 -- import qualified Control.Monad.Trans.State.Strict as State
 import qualified Control.Monad.State.Strict as State
+import qualified Control.Exception as Exc
 
 -- import           Options.Applicative
 
@@ -26,7 +28,8 @@ import qualified Snap as Snap
 -- import           Snap.Core (Snap)
 import qualified Snap.Util.FileServe as FileServe
 -- import qualified Snap.Http.Server as Server
-import qualified Network.WebSockets.Snap as WS
+import qualified Network.WebSockets as WS
+import qualified Network.WebSockets.Snap as SnapWS
 
 -- import qualified Snap.Snaplet as Snaplet
 
@@ -85,7 +88,17 @@ echoHandler = do
 wsHandler :: AppHandler ()
 wsHandler = do
   dbMVar <- State.gets _db
-  WS.runWebSocketsSnap $ Server.application dbMVar
+  SnapWS.runWebSocketsSnap $
+    \pending -> Server.application dbMVar pending
+                `Exc.catch` catchHandschakeExc
+                `Exc.catch` catchConnectionExc
+  where
+    catchHandschakeExc (e :: WS.HandshakeException) = do
+      putStrLn "WS: catched the following websocket HandshakeException:"
+      putStrLn $ show e
+    catchConnectionExc (e :: WS.ConnectionException) = do
+      putStrLn "WS: catched the following websocket ConnectionException:"
+      putStrLn $ show e
 
 
 ----------------------------------
