@@ -92,12 +92,16 @@ wsHandler = do
     \pending -> Server.application dbMVar pending
                 `Exc.catch` catchHandschakeExc
                 `Exc.catch` catchConnectionExc
+                `Exc.catch` catchSomeExc
   where
     catchHandschakeExc (e :: WS.HandshakeException) = do
       putStrLn "WS: catched the following websocket HandshakeException:"
       putStrLn $ show e
     catchConnectionExc (e :: WS.ConnectionException) = do
       putStrLn "WS: catched the following websocket ConnectionException:"
+      putStrLn $ show e
+    catchSomeExc (e :: Exc.SomeException) = do
+      putStrLn "WS: catched the following SomeException:"
       putStrLn $ show e
 
 
