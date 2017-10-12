@@ -237,7 +237,7 @@ update msg model =
                   Nothing -> ""
                   Just (x, _) -> x
         req = Server.ParseRaw model.fileId treeId txt
-        send = Server.sendWS model req
+        send = Server.sendWS model.config req
       in
         (model, send)
 
@@ -259,7 +259,7 @@ update msg model =
         treeId = (M.selectWin model.focus model).tree
         wordsPos = getWordPos (M.getTree treeId model)
         req = Server.ParseSentPos model.fileId treeId parTyp wordsPos
-        send = Server.sendWS model req
+        send = Server.sendWS model.config req
       in
         (model, send)
 
@@ -275,7 +275,7 @@ update msg model =
         selection = M.selAll win
         span = getSpan selection tree
         req cns = Server.ParseSentCons model.fileId treeId parTyp cns wordsPos
-        send cns = Server.sendWS model (req cns)
+        send cns = Server.sendWS model.config (req cns)
       in
         (model, send span)
 
@@ -304,7 +304,7 @@ update msg model =
       let
         file = {treeMap = model.trees, turns = model.turns, linkSet = model.links}
         req = Server.SaveFile model.fileId file
-        send = Server.sendWS model req
+        send = Server.sendWS model.config req
       in
         (model, send)
 
@@ -624,7 +624,7 @@ parseSent parTyp model =
         treeId = (M.selectWin model.focus model).tree
         words = getWords (M.getTree treeId model)
         req = Server.ParseSent model.fileId treeId parTyp words
-        send = Server.sendWS model req
+        send = Server.sendWS model.config req
     in
         (model, send)
 

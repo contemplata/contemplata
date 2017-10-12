@@ -36,9 +36,10 @@ import Server
 
 type alias Model =
   { fileIds : List C.FileId
-  , user : String
-  , wsUseProxy : Bool
-  -- ^ Use proxy adress for the websocket server
+  , config : Cfg.Config
+--   , user : String
+--   , wsUseProxy : Bool
+--   -- ^ Use proxy adress for the websocket server
   }
 
 
@@ -63,14 +64,15 @@ update msg model =
     Choice fileId ->
       -- let cmd = WebSocket.send Cfg.socketServer <|
       --             Server.encodeReq (Server.GetFile fileId)
-      let cmd = Server.sendWS model (Server.GetFile fileId)
+      let cmd = Server.sendWS model.config (Server.GetFile fileId)
       in  (model, cmd)
     ShowFiles ids -> idle <| {model | fileIds = ids}
     SetProxy newProxy ->
         let
-            -- newProxy = not model.wsUseProxy
-            newModel = {model | wsUseProxy = newProxy}
-            getFiles = Server.sendWS newModel Server.GetFiles
+            oldConfig = model.config
+            newConfig = {oldConfig | wsUseProxy = newProxy}
+            newModel = {model | config = newConfig}
+            getFiles = Server.sendWS newConfig Server.GetFiles
         in
             (newModel, getFiles)
     Many msgs ->
@@ -110,20 +112,20 @@ viewUser model =
         userSpan =
             Html.span []
                 [ Html.text "You are logged as "
-                , Html.b [] [Html.text model.user]
+                , Html.b [] [Html.text model.config.user]
                 , Html.text " "
                 , Html.a [Atts.href "logout"] [Html.text "(logout)"] ]
                 -- , Html.button [] [Html.text "logout"] ]
         proxyBox =
             Html.input
                 [ Atts.type_ "checkbox"
-                , Atts.checked model.wsUseProxy
-                , Events.onInput (\_ -> Many [ShowFiles [], SetProxy (not model.wsUseProxy)]) ]
+                , Atts.checked model.config.wsUseProxy
+                , Events.onInput (\_ -> Many [ShowFiles [], SetProxy (not model.config.wsUseProxy)]) ]
                 []
-        socketServer =
-            if model.wsUseProxy
-            then Cfg.socketServer
-            else Cfg.socketServerAlt
+--         socketServer =
+--             if model.config.wsUseProxy
+--             then Cfg.socketServer
+--             else Cfg.socketServerAlt
     in
         Html.div []
             [ Html.h3 [] [Html.text "User"]
@@ -252,13 +254,12 @@ subscriptions _ = Sub.none
 
 
 mkMenu
-    : String -- ^ User name
-    -> Bool -- ^ use WS proxy
+    : Cfg.Config
     -> (Model, Cmd Msg)
-mkMenu user useProxy =
+mkMenu config =
   let
-    model = {fileIds = [], user = user, wsUseProxy=useProxy}
-    init = Server.sendWS model Server.GetFiles
+    model = {fileIds = [], config=config}
+    init = Server.sendWS config Server.GetFiles
   in
     (model, init)
 

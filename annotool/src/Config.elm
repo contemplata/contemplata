@@ -1,12 +1,13 @@
 module Config exposing
-  ( stdWidth, stdMargin, nodeHeight, moveDown, sideSpace, sideMenuHeight
+  ( Config
+  , stdMargin, nodeHeight, moveDown, sideSpace, sideMenuHeight
   -- , testTree1, testTree2, testTree3, testTree4, testTree5
   , increaseSpeed, windowName, editLabelName, splitSelectName
   , popupDivTemp
   , dmzSize, linkDasharray, linkWidth, linkOpacity
   , linkCircleOpacity, linkCircleColor, linkCircleRadius, linkCircleSelectColor
   , linkHeadSize, linkHeadDist, linkHeadDist2, linkTailDist
-  , socketServer, socketServerAlt
+  -- , socketServer, socketServerAlt
   -- Main menu
   , menuMaxWidth
   , menuFilesMaxWidth
@@ -20,7 +21,23 @@ import Focus as Lens
 import List as L
 
 import Rose as R
-import Edit.Model as M
+-- import Edit.Model as M
+
+
+---------------------------------------------------
+-- Config inherited from the Snap application
+---------------------------------------------------
+
+
+type alias Config =
+  { user : String
+  -- ^ User name
+  , wsUseProxy : Bool
+  -- ^ Use proxy adress for the websocket server
+  , socketServer : String
+  , socketServerAlt : String
+  -- ^ The main and the alternative address of the websocket server
+  }
 
 
 ---------------------------------------------------
@@ -42,17 +59,6 @@ import Edit.Model as M
 -- stdWidth : Int
 -- stdWidth = 100
 
-
--- | Width of a node.
-stdWidth : M.Node -> Int
-stdWidth x =
-  -- let val = Lens.get M.nodeVal x
-  let
-    (txt, ix) = case x of
-      M.Node r -> (r.nodeVal, "")
-      M.Leaf r -> (r.nodeVal, toString r.leafPos)
-  in  max 30 <| String.length txt * 10 + String.length ix * 6
--- stdWidth x = 100
 
 -- nodeWidth : Int
 -- nodeWidth = 50
@@ -290,25 +296,25 @@ linkCircleRadius = 25
 ---------------------------------------------------
 
 
-socketServer : String
--- socketServer = "ws://127.0.0.1:8000/ws"
-socketServer = "ws://vega.info.univ-tours.fr/odil/dev/ws"
-
-
--- | An alternatie socket server.
-socketServerAlt : String
--- socketServerAlt = "ws://127.0.0.1:9161"
-socketServerAlt = "ws://vega.info.univ-tours.fr:16342/ws"
-
-
-
+-- socketServer : String
+-- -- socketServer = "ws://127.0.0.1:8000/ws"
 -- socketServer = "ws://vega.info.univ-tours.fr/odil/dev/ws"
--- -- socketServer = "ws://vega.info.univ-tours.fr:16342/ws"
-
--- socketServer = "ws://127.0.0.1:9161"
--- socketServer = "ws://vega.info.univ-tours.fr/odil/websocket"
--- socketServer = "ws://vega.info.univ-tours.fr/odil/dev/websocket"
--- socketServer = "ws://vega.info.univ-tours.fr:16340"
+--
+--
+-- -- | An alternatie socket server.
+-- socketServerAlt : String
+-- -- socketServerAlt = "ws://127.0.0.1:9161"
+-- socketServerAlt = "ws://vega.info.univ-tours.fr:16342/ws"
+--
+--
+--
+-- -- socketServer = "ws://vega.info.univ-tours.fr/odil/dev/ws"
+-- -- -- socketServer = "ws://vega.info.univ-tours.fr:16342/ws"
+--
+-- -- socketServer = "ws://127.0.0.1:9161"
+-- -- socketServer = "ws://vega.info.univ-tours.fr/odil/websocket"
+-- -- socketServer = "ws://vega.info.univ-tours.fr/odil/dev/websocket"
+-- -- socketServer = "ws://vega.info.univ-tours.fr:16340"
 
 
 

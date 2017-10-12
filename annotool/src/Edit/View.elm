@@ -151,7 +151,7 @@ viewTree focus model =
     drawTree
       focus win.selMain win.selAux
       <| positionTree (M.getPosition win)
-      <| R.withWidth Cfg.stdWidth Cfg.stdMargin tree
+      <| R.withWidth stdWidth Cfg.stdMargin tree
 
 
 ---------------------------------------------------
@@ -543,7 +543,7 @@ drawInternal node selMain selAux focus at =
   let
     -- width = nodeWidth
     intNode = M.Node node
-    width = Cfg.stdWidth intNode
+    width = stdWidth intNode
     height = Cfg.nodeHeight
     -- nodeId = Lens.get M.nodeId node
     nodeId = node.nodeId
@@ -606,7 +606,7 @@ drawLeaf node selMain selAux focus at =
   let
     -- width = nodeWidth
     leafNode = M.Leaf node
-    width = Cfg.stdWidth leafNode
+    width = stdWidth leafNode
     height = Cfg.nodeHeight
     nodeId = node.nodeId
     auxStyle =
@@ -1138,7 +1138,7 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
 
     nodePos1 nodeId pos tree = nodePos nodeId
       <| positionTree pos
-      <| R.withWidth Cfg.stdWidth Cfg.stdMargin tree
+      <| R.withWidth stdWidth Cfg.stdMargin tree
     posIn addr win shift = Maybe.andThen shift <| nodePos1
       (second addr)
       (M.getPosition win)
@@ -1208,7 +1208,7 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
 --   let
 --     nodePos1 nodeId pos tree = nodePos nodeId
 --       <| positionTree pos
---       <| R.withWidth Cfg.stdWidth Cfg.stdMargin tree
+--       <| R.withWidth stdWidth Cfg.stdMargin tree
 --     begPos = Maybe.andThen shiftTop <| nodePos1
 --       (second from)
 --       (M.getPosition top)
@@ -1831,3 +1831,20 @@ emphasize i x =
         , Html.u [] [Html.text (String.slice i (i+1) x)]
         , Html.text (String.slice (i+1) (String.length x) x)
         ]
+
+
+---------------------------------------------------
+-- Configuration
+---------------------------------------------------
+
+
+-- | Width of a node.
+stdWidth : M.Node -> Int
+stdWidth x =
+  -- let val = Lens.get M.nodeVal x
+  let
+    (txt, ix) = case x of
+      M.Node r -> (r.nodeVal, "")
+      M.Leaf r -> (r.nodeVal, toString r.leafPos)
+  in  max 30 <| String.length txt * 10 + String.length ix * 6
+-- stdWidth x = 100

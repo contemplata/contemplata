@@ -78,7 +78,9 @@ menuLens = (getMenu, setMenu)
 
 
 type alias Flags =
-    { userName : String }
+    { userName : String
+    , websocketServer : String
+    , websocketServerAlt : String }
 
 
 -- main : Program Never TopModel TopMsg
@@ -133,18 +135,24 @@ topMsg : Msg -> TopMsg
 topMsg = Right
 
 
--- | Get the name of the current user.
-currentUser : TopModel -> String
-currentUser top = case top of
-  Edit mod -> mod.user
-  Menu mod -> mod.user
+topCfg : TopModel -> Cfg.Config
+topCfg top = case top of
+  Edit mod -> mod.config
+  Menu mod -> mod.config
 
 
--- | Get the name of the current user.
-currentProxy : TopModel -> Bool
-currentProxy top = case top of
-  Edit mod -> mod.wsUseProxy
-  Menu mod -> mod.wsUseProxy
+-- -- | Get the name of the current user.
+-- currentUser : TopModel -> String
+-- currentUser top = case top of
+--   Edit mod -> mod.user
+--   Menu mod -> mod.user
+--
+--
+-- -- | Get the name of the current user.
+-- currentProxy : TopModel -> Bool
+-- currentProxy top = case top of
+--   Edit mod -> mod.wsUseProxy
+--   Menu mod -> mod.wsUseProxy
 
 
 ---------------------------------------------------
@@ -168,7 +176,7 @@ topUpdate topMsg =
   case topMsg of
     Left (Edit msg) -> case msg of
       Edit.Message.Files -> \model_ ->
-        let (model, cmd) = Menu.mkMenu (currentUser model_) (currentProxy model_)
+        let (model, cmd) = Menu.mkMenu (topCfg model_)
         in  (Menu model, Cmd.map menuMsg cmd)
       -- Unfortunately, we have to handle `Many` here too, since
       -- `Files` can be embedded inside.
@@ -187,7 +195,7 @@ topUpdate topMsg =
         (Menu.update <| Menu.ShowFiles xs)
       Server.NewFile fileId file -> \model_ ->
         let (edit, cmd) =
-                Edit.Init.mkEdit (currentUser model_) (currentProxy model_) fileId file
+                Edit.Init.mkEdit (topCfg model_) fileId file
         in  (Edit edit, Cmd.map editMsg cmd)
       Server.ParseResult fileId treeId tree ->
         let upd model = (Edit.Model.setTree fileId treeId tree model, Cmd.none)
@@ -214,9 +222,10 @@ topSubscriptions top =
     getMsg x = case Decode.decodeString Server.answerDecoder x of
       Ok res -> ServerMsg res
       Err err -> Error err
-    listen = case top of
-      Edit mod -> Server.listenWS mod getMsg
-      Menu mod -> Server.listenWS mod getMsg
+    cfg = case top of
+      Edit mod -> mod.config
+      Menu mod -> mod.config
+    listen = Server.listenWS cfg getMsg
     subordinate = case top of
       Edit mod -> Sub.map editMsg <| Edit.Subs.editSubscriptions mod
       Menu mod -> Sub.map menuMsg <| Menu.subscriptions mod
@@ -231,9 +240,12 @@ topSubscriptions top =
 
 topInit : Flags -> (TopModel, Cmd TopMsg)
 topInit r =
---   let (edit, cmd) = editInit
---   in  (Edit edit, Cmd.map Edit cmd)
-  let (model, cmd) = Menu.mkMenu r.userName True
+  let cfg =
+          { user=r.userName
+          , wsUseProxy=True
+          , socketServer=r.websocketServer
+          , socketServerAlt=r.websocketServerAlt }
+      (model, cmd) = Menu.mkMenu cfg
   in  (Menu model, Cmd.map menuMsg cmd)
 
 

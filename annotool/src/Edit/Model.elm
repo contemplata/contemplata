@@ -80,6 +80,7 @@ import Json.Encode as Encode
 -- import Json.Decode.Pipeline as DePipe
 
 import Util as Util
+import Config as Cfg
 import Rose as R
 import Edit.Core exposing (..)
 import Edit.Anno as Anno
@@ -247,11 +248,8 @@ type alias Model =
   -- pop-up window
   , popup : Maybe Popup.Popup
 
-  -- the name of the current user
-  , user : String
-
-  -- use proxy adress for the websocket server
-  , wsUseProxy : Bool
+  -- the external configuration
+  , config : Cfg.Config
   }
 
 

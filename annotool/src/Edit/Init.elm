@@ -23,12 +23,11 @@ import Edit.Popup as Popup
 
 
 mkEdit
-    : String -- ^ user name
-    -> Bool -- ^ use WS proxy
+    : Cfg.Config
     -> FileId
     -> File
     -> (Model, Cmd Msg)
-mkEdit user useProxy fileId file =
+mkEdit config fileId file =
   let
     treeId = case D.toList file.treeMap of
       (id, tree) :: _ -> id
@@ -69,8 +68,7 @@ mkEdit user useProxy fileId file =
       , undoLast = []
       , command = Nothing
       , popup = Nothing -- Just Popup.Files
-      , user = user
-      , wsUseProxy = useProxy
+      , config = config
       }
     initHeight = Task.perform Resize Window.size
     focusOnTop = Task.attempt

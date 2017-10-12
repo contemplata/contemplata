@@ -185,24 +185,24 @@ encodePair enc (x, y) = Encode.list [enc x, enc y]
 
 
 -- | Send the message to the underlying websocket server.
-sendWS : {record | wsUseProxy : Bool} -> Request -> Cmd msg
-sendWS r req =
+sendWS : Cfg.Config -> Request -> Cmd msg
+sendWS cfg req =
     let
         socketServer =
-            if r.wsUseProxy
-            then Cfg.socketServer
-            else Cfg.socketServerAlt
+            if cfg.wsUseProxy
+            then cfg.socketServer
+            else cfg.socketServerAlt
     in
         WebSocket.send socketServer (encodeReq req)
 
 
 -- | Send the message to the underlying websocket server.
 -- listenWS : {record | wsUseProxy : Bool} -> Request -> Cmd msg
-listenWS r =
+listenWS cfg =
     let
         socketServer =
-            if r.wsUseProxy
-            then Cfg.socketServer
-            else Cfg.socketServerAlt
+            if cfg.wsUseProxy
+            then cfg.socketServer
+            else cfg.socketServerAlt
     in
         WebSocket.listen socketServer
