@@ -1,4 +1,4 @@
-# we assume here that matching is case insensitive
+# We assume here that matching is case insensitive
 
 # Greetings
 allo
@@ -36,6 +36,8 @@ hein alors
 hein
 
 ah pardon
+
+# ^ -- debut de la phrase
 ^pardon
 ^et
 ^donc
