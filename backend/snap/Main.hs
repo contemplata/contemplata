@@ -82,6 +82,7 @@ publicHandler = FileServe.serveDirectory "resources/public"
 
 createUserHandler :: AppHandler ()
 createUserHandler = do
+  guard =<< Snap.with auth Auth.isLoggedIn
   Just login <- Snap.getParam "login"
   Just passw <- Snap.getParam "passw"
   res <- Snap.with auth $ Auth.createUser (T.decodeUtf8 login) passw
