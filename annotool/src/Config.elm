@@ -6,7 +6,7 @@ module Config exposing
   , dmzSize, linkDasharray, linkWidth, linkOpacity
   , linkCircleOpacity, linkCircleColor, linkCircleRadius, linkCircleSelectColor
   , linkHeadSize, linkHeadDist, linkHeadDist2, linkTailDist
-  , socketServer
+  , socketServer, socketServerAlt
   -- Main menu
   , menuMaxWidth
   , menuFilesMaxWidth
@@ -291,7 +291,17 @@ linkCircleRadius = 25
 
 
 socketServer : String
-socketServer = "ws://127.0.0.1:8000/ws"
+-- socketServer = "ws://127.0.0.1:8000/ws"
+socketServer = "ws://vega.info.univ-tours.fr/odil/dev/ws"
+
+
+-- | An alternatie socket server.
+socketServerAlt : String
+-- socketServerAlt = "ws://127.0.0.1:9161"
+socketServerAlt = "ws://vega.info.univ-tours.fr:16342/ws"
+
+
+
 -- socketServer = "ws://vega.info.univ-tours.fr/odil/dev/ws"
 -- -- socketServer = "ws://vega.info.univ-tours.fr:16342/ws"
 
@@ -299,6 +309,8 @@ socketServer = "ws://127.0.0.1:8000/ws"
 -- socketServer = "ws://vega.info.univ-tours.fr/odil/websocket"
 -- socketServer = "ws://vega.info.univ-tours.fr/odil/dev/websocket"
 -- socketServer = "ws://vega.info.univ-tours.fr:16340"
+
+
 
 
 ---------------------------------------------------

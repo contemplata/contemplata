@@ -18,7 +18,6 @@ module Menu exposing
 import Html as Html
 import Html.Attributes as Atts
 import Html.Events as Events
-import WebSocket
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Dict as D
@@ -37,7 +36,10 @@ import Server
 
 type alias Model =
   { fileIds : List C.FileId
-  , user : String }
+  , user : String
+  , wsUseProxy : Bool
+  -- ^ Use proxy adress for the websocket server
+  }
 
 
 ---------------------------------------------------
@@ -48,6 +50,8 @@ type alias Model =
 type Msg
   = Choice C.FileId -- ^ Edit a specific file
   | ShowFiles (List C.FileId)
+  | SetProxy Bool
+  | Many (List Msg)
 --   | ServerMsg Answer -- ^ Get message from the websocket
 --   | Error String  -- ^ An error message
 
@@ -57,10 +61,25 @@ update msg model =
   let idle x = (x, Cmd.none) in
   case msg of
     Choice fileId ->
-      let cmd = WebSocket.send Cfg.socketServer <|
-                  Server.encodeReq (Server.GetFile fileId)
+      -- let cmd = WebSocket.send Cfg.socketServer <|
+      --             Server.encodeReq (Server.GetFile fileId)
+      let cmd = Server.sendWS model (Server.GetFile fileId)
       in  (model, cmd)
     ShowFiles ids -> idle <| {model | fileIds = ids}
+    SetProxy newProxy ->
+        let
+            -- newProxy = not model.wsUseProxy
+            newModel = {model | wsUseProxy = newProxy}
+            getFiles = Server.sendWS newModel Server.GetFiles
+        in
+            (newModel, getFiles)
+    Many msgs ->
+      let f msg (mdl0, cmds) =
+        let (mdl, cmd) = update msg mdl0
+        in  (mdl, cmd :: cmds)
+      in
+        let (mdl, cmds) = List.foldl f (model, []) msgs
+        in  (mdl, Cmd.batch cmds)
 
 
 ---------------------------------------------------
@@ -87,18 +106,43 @@ view model =
 
 viewUser : Model -> Html.Html Msg
 viewUser model =
-    Html.div []
-        [ Html.h3 [] [Html.text "User"]
-        , Html.text ("You are logged as " ++ model.user ++ " ")
-        , Html.a [Atts.href "/logout"] [Html.text "(logout)"] ]
-        -- , Html.button [] [Html.text "logout"] ]
+    let
+        userSpan =
+            Html.span []
+                [ Html.text "You are logged as "
+                , Html.b [] [Html.text model.user]
+                , Html.text " "
+                , Html.a [Atts.href "logout"] [Html.text "(logout)"] ]
+                -- , Html.button [] [Html.text "logout"] ]
+        proxyBox =
+            Html.input
+                [ Atts.type_ "checkbox"
+                , Atts.checked model.wsUseProxy
+                , Events.onInput (\_ -> Many [ShowFiles [], SetProxy (not model.wsUseProxy)]) ]
+                []
+        socketServer =
+            if model.wsUseProxy
+            then Cfg.socketServer
+            else Cfg.socketServerAlt
+    in
+        Html.div []
+            [ Html.h3 [] [Html.text "User"]
+            , Html.ul []
+                [ Html.li [] [userSpan]
+                , Html.li [] [Html.text "Use websocket proxy: ", proxyBox] ]
+                -- , Html.li [] [Html.text <| "Websocket server: " ++ socketServer] ]
+            ]
 
 
 viewFiles : Model -> Html.Html Msg
 viewFiles model =
   let
-    list = Html.ul []
+    realList = Html.ul []
       (List.map viewFileId model.fileIds)
+    list =
+      if List.isEmpty model.fileIds
+      then Html.text "Connecting..."
+      else realList
   in
     Html.div
       [ Atts.style
@@ -209,11 +253,12 @@ subscriptions _ = Sub.none
 
 mkMenu
     : String -- ^ User name
+    -> Bool -- ^ use WS proxy
     -> (Model, Cmd Msg)
-mkMenu user =
+mkMenu user useProxy =
   let
-    model = {fileIds = [], user = user}
-    init = WebSocket.send Cfg.socketServer (Server.encodeReq Server.GetFiles)
+    model = {fileIds = [], user = user, wsUseProxy=useProxy}
+    init = Server.sendWS model Server.GetFiles
   in
     (model, init)
 

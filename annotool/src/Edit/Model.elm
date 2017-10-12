@@ -249,6 +249,9 @@ type alias Model =
 
   -- the name of the current user
   , user : String
+
+  -- use proxy adress for the websocket server
+  , wsUseProxy : Bool
   }
 
 

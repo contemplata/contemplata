@@ -236,8 +236,8 @@ update msg model =
         txt = case D.get treeId model.trees of
                   Nothing -> ""
                   Just (x, _) -> x
-        req = Server.encodeReq (Server.ParseRaw model.fileId treeId txt)
-        send = WebSocket.send Cfg.socketServer req
+        req = Server.ParseRaw model.fileId treeId txt
+        send = Server.sendWS model req
       in
         (model, send)
 
@@ -258,8 +258,8 @@ update msg model =
       let
         treeId = (M.selectWin model.focus model).tree
         wordsPos = getWordPos (M.getTree treeId model)
-        req = Server.encodeReq (Server.ParseSentPos model.fileId treeId parTyp wordsPos)
-        send = WebSocket.send Cfg.socketServer req
+        req = Server.ParseSentPos model.fileId treeId parTyp wordsPos
+        send = Server.sendWS model req
       in
         (model, send)
 
@@ -274,8 +274,8 @@ update msg model =
           Server.Batch xs -> List.concat xs
         selection = M.selAll win
         span = getSpan selection tree
-        req cns = Server.encodeReq (Server.ParseSentCons model.fileId treeId parTyp cns wordsPos)
-        send cns = WebSocket.send Cfg.socketServer (req cns)
+        req cns = Server.ParseSentCons model.fileId treeId parTyp cns wordsPos
+        send cns = Server.sendWS model (req cns)
       in
         (model, send span)
 
@@ -303,8 +303,8 @@ update msg model =
     SaveFile ->
       let
         file = {treeMap = model.trees, turns = model.turns, linkSet = model.links}
-        req = Server.encodeReq (Server.SaveFile model.fileId file)
-        send = WebSocket.send Cfg.socketServer req
+        req = Server.SaveFile model.fileId file
+        send = Server.sendWS model req
       in
         (model, send)
 
@@ -623,8 +623,8 @@ parseSent parTyp model =
     let
         treeId = (M.selectWin model.focus model).tree
         words = getWords (M.getTree treeId model)
-        req = Server.encodeReq (Server.ParseSent model.fileId treeId parTyp words)
-        send = WebSocket.send Cfg.socketServer req
+        req = Server.ParseSent model.fileId treeId parTyp words
+        send = Server.sendWS model req
     in
         (model, send)
 

@@ -140,6 +140,13 @@ currentUser top = case top of
   Menu mod -> mod.user
 
 
+-- | Get the name of the current user.
+currentProxy : TopModel -> Bool
+currentProxy top = case top of
+  Edit mod -> mod.wsUseProxy
+  Menu mod -> mod.wsUseProxy
+
+
 ---------------------------------------------------
 -- View
 ---------------------------------------------------
@@ -161,7 +168,7 @@ topUpdate topMsg =
   case topMsg of
     Left (Edit msg) -> case msg of
       Edit.Message.Files -> \model_ ->
-        let (model, cmd) = Menu.mkMenu (currentUser model_)
+        let (model, cmd) = Menu.mkMenu (currentUser model_) (currentProxy model_)
         in  (Menu model, Cmd.map menuMsg cmd)
       -- Unfortunately, we have to handle `Many` here too, since
       -- `Files` can be embedded inside.
@@ -179,7 +186,8 @@ topUpdate topMsg =
       Server.Files xs -> updateOn menuLens menuMsg
         (Menu.update <| Menu.ShowFiles xs)
       Server.NewFile fileId file -> \model_ ->
-        let (edit, cmd) = Edit.Init.mkEdit (currentUser model_) fileId file
+        let (edit, cmd) =
+                Edit.Init.mkEdit (currentUser model_) (currentProxy model_) fileId file
         in  (Edit edit, Cmd.map editMsg cmd)
       Server.ParseResult fileId treeId tree ->
         let upd model = (Edit.Model.setTree fileId treeId tree model, Cmd.none)
@@ -206,7 +214,9 @@ topSubscriptions top =
     getMsg x = case Decode.decodeString Server.answerDecoder x of
       Ok res -> ServerMsg res
       Err err -> Error err
-    listen = WebSocket.listen Cfg.socketServer getMsg
+    listen = case top of
+      Edit mod -> Server.listenWS mod getMsg
+      Menu mod -> Server.listenWS mod getMsg
     subordinate = case top of
       Edit mod -> Sub.map editMsg <| Edit.Subs.editSubscriptions mod
       Menu mod -> Sub.map menuMsg <| Menu.subscriptions mod
@@ -223,7 +233,7 @@ topInit : Flags -> (TopModel, Cmd TopMsg)
 topInit r =
 --   let (edit, cmd) = editInit
 --   in  (Edit edit, Cmd.map Edit cmd)
-  let (model, cmd) = Menu.mkMenu r.userName
+  let (model, cmd) = Menu.mkMenu r.userName True
   in  (Menu model, Cmd.map menuMsg cmd)
 
 

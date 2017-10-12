@@ -101,6 +101,7 @@ echoHandler = do
 
 wsHandler :: AppHandler ()
 wsHandler = do
+  guard =<< Snap.with auth Auth.isLoggedIn
   dbMVar <- State.gets _db
   SnapWS.runWebSocketsSnap $
     \pending -> Server.application dbMVar pending

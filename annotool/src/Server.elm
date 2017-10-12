@@ -1,6 +1,6 @@
 module Server exposing
     ( ParserTyp(..), Request(..), Answer(..),  ParseReq(..)
-    , answerDecoder, encodeReq
+    , answerDecoder, encodeReq, sendWS, listenWS
     )
 
 
@@ -9,9 +9,11 @@ import Rose as R
 -- import WebSocket
 import Json.Decode as Decode
 import Json.Encode as Encode
+import WebSocket
 
 import Edit.Model as M
 import Edit.Core as C
+import Config as Cfg
 
 
 ---------------------------------------------------
@@ -180,3 +182,27 @@ notificationDecoder =
 
 encodePair : (a -> Encode.Value) -> (a, a) -> Encode.Value
 encodePair enc (x, y) = Encode.list [enc x, enc y]
+
+
+-- | Send the message to the underlying websocket server.
+sendWS : {record | wsUseProxy : Bool} -> Request -> Cmd msg
+sendWS r req =
+    let
+        socketServer =
+            if r.wsUseProxy
+            then Cfg.socketServer
+            else Cfg.socketServerAlt
+    in
+        WebSocket.send socketServer (encodeReq req)
+
+
+-- | Send the message to the underlying websocket server.
+-- listenWS : {record | wsUseProxy : Bool} -> Request -> Cmd msg
+listenWS r =
+    let
+        socketServer =
+            if r.wsUseProxy
+            then Cfg.socketServer
+            else Cfg.socketServerAlt
+    in
+        WebSocket.listen socketServer
