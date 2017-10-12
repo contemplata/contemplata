@@ -46,6 +46,7 @@ import qualified Network.WebSockets.Snap as SnapWS
 import qualified Handler.Login as Login
 import qualified Handler.Anno as Anno
 import qualified Config as Cfg
+import qualified Auth as MyAuth
 import           Application
 
 
@@ -64,6 +65,7 @@ routes =
   , ("/logout", Login.logoutHandler)
   -- , ("/public", publicHandler)
   , ("/createuser", createUserHandler)
+  , ("/password", passwordHandler)
   , ("", Snap.ifTop rootHandler)
   ]
 
@@ -79,17 +81,6 @@ rootHandler =
 
 publicHandler :: AppHandler ()
 publicHandler = FileServe.serveDirectory "resources/public"
-
-
-createUserHandler :: AppHandler ()
-createUserHandler = do
-  guard =<< Snap.with auth Auth.isLoggedIn
-  Just login <- Snap.getParam "login"
-  Just passw <- Snap.getParam "passw"
-  res <- Snap.with auth $ Auth.createUser (T.decodeUtf8 login) passw
-  case res of
-    Left err -> Snap.writeText . T.pack $ show res
-    Right _  -> Snap.writeText "Success"
 
 
 echoHandler :: AppHandler ()
@@ -119,6 +110,44 @@ wsHandler = do
     catchSomeExc (e :: Exc.SomeException) = do
       putStrLn "WS: catched the following SomeException:"
       putStrLn $ show e
+
+
+----------------------------------
+-- Auxiliary handlers
+----------------------------------
+
+
+createUserHandler :: AppHandler ()
+createUserHandler = do
+  isAdmin
+  Just login <- Snap.getParam "login"
+  Just passw <- Snap.getParam "passw"
+  res <- Snap.with auth $ Auth.createUser (T.decodeUtf8 login) passw
+  case res of
+    Left err -> Snap.writeText . T.pack $ show res
+    Right _  -> Snap.writeText "Success"
+
+
+passwordHandler :: AppHandler ()
+passwordHandler = do
+  isAdmin
+  Just login <- Snap.getParam "login"
+  Just passw <- Snap.getParam "passw"
+  Just authUser <- MyAuth.authByLogin (T.decodeUtf8 login)
+  authUser' <- liftIO $ Auth.setPassword authUser passw
+  res <- Snap.with auth $ Auth.saveUser authUser'
+  case res of
+    Left err -> Snap.writeText . T.pack $ show res
+    Right _  -> Snap.writeText "Success"
+
+
+-- | Verify that the admin is logged in.
+isAdmin :: AppHandler ()
+isAdmin = do
+  cfg <- Snap.getSnapletUserConfig
+  adminLogin <- liftIO $ Cfg.fromCfgDef cfg "admin" "admin"
+  Just current <- Snap.with auth Auth.currentUser
+  guard $ adminLogin == Auth.userLogin current
 
 
 ----------------------------------

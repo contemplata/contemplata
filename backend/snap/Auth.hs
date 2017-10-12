@@ -1,5 +1,6 @@
 module Auth
 ( validLogin
+, authByLogin
 ) where
 
 
@@ -19,9 +20,17 @@ import           Application
 -- | Validates the username password combination.
 validLogin :: Text -> ByteString -> AppHandler Bool
 validLogin login passwd = do
-  authMgr <- with auth State.get
-  authUser <- liftIO $ lookupByLogin authMgr login
+  -- authMgr <- with auth State.get
+  -- authUser <- liftIO $ lookupByLogin authMgr login
+  authUser <- authByLogin login
   return $ maybe False authenticate authUser
   where
     authenticate = isNothing . flip authenticatePassword password
     password = ClearText passwd
+
+
+-- | Get auth data by login.
+authByLogin :: Text -> AppHandler (Maybe AuthUser)
+authByLogin login = do
+  authMgr <- with auth State.get
+  liftIO $ lookupByLogin authMgr login
