@@ -8,7 +8,7 @@
     <meta name="author" content="">
     <!--link rel="shortcut icon" href="../../docs-assets/ico/favicon.png"-->
 
-    <title>PARSEME</title>
+    <title>ODIL</title>
 
     <!-- Bootstrap core CSS -->
     <!--link absHref="/bootstrap/css/bootstrap.css" rel="stylesheet">
