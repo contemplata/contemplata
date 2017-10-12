@@ -45,6 +45,7 @@ import qualified Network.WebSockets.Snap as SnapWS
 -- import qualified Snap.Snaplet as Snaplet
 import qualified Handler.Login as Login
 import qualified Handler.Anno as Anno
+import qualified Config as Cfg
 import           Application
 
 
@@ -69,7 +70,7 @@ routes =
 
 rootHandler :: AppHandler ()
 rootHandler =
-  loginHandler <|> Snap.redirect "public"
+  loginHandler <|> Snap.redirect "annotation"
   where
     loginHandler = do
       guard . not =<< Snap.with auth Auth.isLoggedIn
@@ -139,12 +140,16 @@ wsHandler = do
 -- | Application initialization.
 appInit :: Snap.SnapletInit App App
 appInit = Snap.makeSnaplet "snap-odil" "ODIL" Nothing $ do
-  db <- liftIO $ C.newMVar =<< Server.loadDB "DB"
+  cfg <- Snap.getSnapletUserConfig
+  dbPath <- liftIO $ Cfg.fromCfgDef cfg "DB" "DB"
+  db <- liftIO $ C.newMVar =<< Server.loadDB dbPath
   s <- Snap.nestSnaplet "sess" sess $
        Session.initCookieSessionManager "site_key.txt" "_cookie" Nothing Nothing
+  passPath <- liftIO $ Cfg.fromCfgDef cfg "password" "pass.json"
   a <- Snap.nestSnaplet "auth" auth $
-       initJsonFileAuthManager Auth.defAuthSettings sess "pass.json"
-  h <- Snap.nestSnaplet "heist" heist $ Heist.heistInit "templates"
+       initJsonFileAuthManager Auth.defAuthSettings sess passPath
+  tempPath <- liftIO $ Cfg.fromCfgDef cfg "templates" "templates"
+  h <- Snap.nestSnaplet "heist" heist $ Heist.heistInit tempPath
   Auth.addAuthSplices h auth
 --   Heist.modifyHeistState
 --     $ bindSplices splices

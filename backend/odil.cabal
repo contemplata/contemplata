@@ -82,6 +82,7 @@ executable odil-snap
   main-is:             Main.hs
   other-modules:       Application
                      , Auth
+                     , Config
                      , Form.LoginForm
                      , Handler.Home
                      , Handler.Login
@@ -106,6 +107,7 @@ executable odil-snap
                      , digestive-functors-snap >= 0.7 && < 0.8
                      , map-syntax >= 0.2 && < 0.3
                      , xmlhtml >= 0.2 && < 0.3
+                     , configurator >= 0.3 && < 0.4
   default-language:    Haskell2010
 
 test-suite odil-test
