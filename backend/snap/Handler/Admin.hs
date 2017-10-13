@@ -115,7 +115,7 @@ fileHandler = ifAdmin $ do
 
   Just fileName <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
 
-  allAnnotators <- Snap.with auth 
+  allAnnotators <- undefined
   (annoView, annoName) <- D.runForm
     "add-anno-form"
     (addAnnoForm allAnnotators)

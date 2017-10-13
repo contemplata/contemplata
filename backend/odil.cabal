@@ -22,6 +22,7 @@ library
                      , Odil.CoreTypes
                      , Odil.Server.Types
                      , Odil.Server.DB
+                     , Odil.Server.Users
                      , Odil.Server.Config
                      , Odil.AnnoTypes
                      , Odil.Ancor.Types
