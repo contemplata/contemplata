@@ -228,7 +228,7 @@ talk conn state = forever $ do
 
       Right (SaveFile fileId file) -> do
         putStrLn "Saving file..."
-        DB.runDBT db (DB.saveFile fileId file) >>= \case
+        DB.runDBT db (DB.reSaveFile fileId file) >>= \case
           Left err -> do
             let msg = T.concat ["Could not save file: ", err]
             T.putStrLn msg

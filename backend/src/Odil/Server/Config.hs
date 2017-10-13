@@ -11,6 +11,7 @@ module Odil.Server.Config
 -- , dbPath
 , dbRegPath
 , dbStorePath
+, dbAuthPath
 
 -- * Temporary
 -- , tempModel
@@ -56,6 +57,10 @@ dbRegPath = "reg.json"
 
 dbStorePath :: FilePath
 dbStorePath = "store"
+
+
+dbAuthPath :: FilePath
+dbAuthPath = "auth.json"
 
 
 -- -----------

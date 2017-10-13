@@ -45,8 +45,8 @@ import qualified Network.WebSockets.Snap as SnapWS
 -- import qualified Snap.Snaplet as Snaplet
 import qualified Handler.Login as Login
 import qualified Handler.Anno as Anno
+import qualified Handler.Admin as Admin
 import qualified Config as Cfg
-import qualified Auth as MyAuth
 import           Application
 
 
@@ -64,10 +64,19 @@ routes =
   , ("/login", Login.loginHandler)
   , ("/logout", Login.logoutHandler)
   -- , ("/public", publicHandler)
-  , ("/createuser", createUserHandler)
-  , ("/password", passwordHandler)
+  , ("/admin/createuser", Admin.createUserHandler)
+  , ("/admin/password", Admin.passwordHandler)
+  , ("/admin/files", Admin.filesHandler)
+  , ("/admin/file/:filename", Admin.fileHandler)
+  , ("/admin/file/:filename/addanno/:annoname", Admin.fileAddAnnoHandler)
+  , ("/admin/file/:filename/remanno/:annoname", Admin.fileRemoveAnnoHandler)
   , ("", Snap.ifTop rootHandler)
   ]
+
+
+---------------------------------------
+-- Main handlers
+---------------------------------------
 
 
 rootHandler :: AppHandler ()
@@ -113,44 +122,6 @@ wsHandler = do
 
 
 ----------------------------------
--- Auxiliary handlers
-----------------------------------
-
-
-createUserHandler :: AppHandler ()
-createUserHandler = do
-  isAdmin
-  Just login <- Snap.getParam "login"
-  Just passw <- Snap.getParam "passw"
-  res <- Snap.with auth $ Auth.createUser (T.decodeUtf8 login) passw
-  case res of
-    Left err -> Snap.writeText . T.pack $ show res
-    Right _  -> Snap.writeText "Success"
-
-
-passwordHandler :: AppHandler ()
-passwordHandler = do
-  isAdmin
-  Just login <- Snap.getParam "login"
-  Just passw <- Snap.getParam "passw"
-  Just authUser <- MyAuth.authByLogin (T.decodeUtf8 login)
-  authUser' <- liftIO $ Auth.setPassword authUser passw
-  res <- Snap.with auth $ Auth.saveUser authUser'
-  case res of
-    Left err -> Snap.writeText . T.pack $ show res
-    Right _  -> Snap.writeText "Success"
-
-
--- | Verify that the admin is logged in.
-isAdmin :: AppHandler ()
-isAdmin = do
-  cfg <- Snap.getSnapletUserConfig
-  adminLogin <- liftIO $ Cfg.fromCfgDef cfg "admin" "admin"
-  Just current <- Snap.with auth Auth.currentUser
-  guard $ adminLogin == Auth.userLogin current
-
-
-----------------------------------
 -- Initialization
 ----------------------------------
 
@@ -159,11 +130,6 @@ isAdmin = do
 -- splices :: Splices (Splice AppHandler)
 -- splices = do
 --   "annoBody" ## Anno.bodySplice
-
-
-----------------------------------
--- Initialization
-----------------------------------
 
 
 -- | Application initialization.

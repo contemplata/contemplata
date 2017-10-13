@@ -14,6 +14,10 @@ module Odil.Server.Types
 , LeafId
 , Addr
 
+, AnnoName
+, FileMeta(..)
+, defaultMeta
+
 -- * Types
 , Sent
 , Tree

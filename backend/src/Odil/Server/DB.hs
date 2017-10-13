@@ -22,9 +22,20 @@ module Odil.Server.DB
 , fileSet
 , hasFile
 , saveFile
+, reSaveFile
 , loadFile
 , copyFile
 , renameFile
+-- ** Meta-related
+, defaultMeta
+, loadMeta
+, saveMeta
+-- , annoSet
+
+-- * Low-level
+, Register
+, saveJSON
+, loadJSON
 ) where
 
 
@@ -37,12 +48,14 @@ import qualified Control.Error as Err
 import qualified Control.Monad.Trans.Reader as R
 
 import qualified Data.Set as S
+import qualified Data.Map.Strict as M
 import qualified Data.ByteString.Lazy as BLS
 import qualified Data.Text as T
 import qualified System.Directory as Dir
 import System.FilePath ((</>), (<.>))
 
-import Odil.Server.Types
+import Odil.Server.Types -- hiding (annoSet)
+-- import qualified Odil.Server.Types as Types
 import qualified Odil.Server.Config as Cfg
 import qualified Data.Aeson as JSON
 
@@ -60,6 +73,8 @@ data DB = DB
     -- ^ Register path (relative w.r.t. `dbPath`)
   , storePath :: FilePath
     -- ^ Store (files) path (relative w.r.t. `dbPath`)
+  , authPath :: FilePath
+    -- ^ Authorization path (relative w.r.t. `dbPath`)
   }
 
 
@@ -68,43 +83,70 @@ defaultConf :: FilePath -> DB
 defaultConf dbPath = DB
   { dbPath = dbPath
   , regPath = Cfg.dbRegPath
-  , storePath = Cfg.dbStorePath }
+  , storePath = Cfg.dbStorePath
+  , authPath = Cfg.dbAuthPath }
 
 
+---------------------------------------
 ---------------------------------------
 -- DB objects: pure functions only
 ---------------------------------------
+---------------------------------------
 
 
--- | DB register. For the moment, the only meta-data that we need to know about
+  -- | DB register. For the moment, the only meta-data that we need to know about
 -- the files stored in the DB is... none. Actually, we just store a set of files
 -- to annotate, we don't even know if some of them were already annotated or
 -- not.
-type Register = S.Set FileId
+type Register = M.Map FileId FileMeta
 
 
 -- | Does the register contain a given file?
 regHasFile :: FileId -> Register -> Bool
-regHasFile = S.member
+regHasFile = M.member
 
 
 -- | Add file.
-regAddFile :: FileId -> Register -> Register
-regAddFile = S.insert
+regAddFile :: FileId -> FileMeta -> Register -> Register
+regAddFile = M.insert
 
 
 -- | Remove file.
 regRemFile :: FileId -> Register -> Register
-regRemFile = S.delete
+regRemFile = M.delete
+
+
+-- | Get metadata.
+regGetMeta :: FileId -> Register -> Maybe FileMeta
+regGetMeta = M.lookup
+
+
+-- -- | Update metadata.
+-- regUpdateMeta :: FileId -> (FileMeta -> FileMeta) -> Register -> Register
+-- regUpdateMeta = undefined
 
 
 -- | Size of the register.
 regSize :: Register -> Int
-regSize = S.size
+regSize = M.size
+
+
+-- ---------------------------------------
+-- -- Auth-related: pure functions only
+-- ---------------------------------------
+--
+--
+-- -- | DB register. For the moment, the only meta-data that we need to know about
+-- -- the files stored in the DB is... none. Actually, we just store a set of files
+-- -- to annotate, we don't even know if some of them were already annotated or
+-- -- not.
+-- type Register = S.Set FileId
 
 
 ---------------------------------------
+---------------------------------------
 -- DB monad
+---------------------------------------
 ---------------------------------------
 
 
@@ -138,7 +180,7 @@ dbConf = lift R.ask
 
 
 ---------------------------------------
--- Top-level IO communication
+-- Top-level communication
 ---------------------------------------
 
 
@@ -162,8 +204,13 @@ fileNum = regSize <$> readReg
 
 
 -- | Return the set of files stored in the DB.
+fileMap :: DBT (M.Map FileId FileMeta)
+fileMap = readReg
+
+
+-- | Return the set of files stored in the DB.
 fileSet :: DBT (S.Set FileId)
-fileSet = readReg
+fileSet = M.keysSet <$> fileMap
 
 
 -- | Add a file to a DB.
@@ -174,12 +221,22 @@ hasFile fid = do
 
 
 -- | Add a file to a DB.
-saveFile :: FileId -> File -> DBT ()
-saveFile fid file = do
+saveFile :: FileId -> FileMeta -> File -> DBT ()
+saveFile fid meta file = do
   reg <- readReg
-  -- when (regHasFile fid reg)
-  --   (Err.throwE "File ID already exists")
-  writeReg (regAddFile fid reg)
+  writeReg (regAddFile fid meta reg)
+  storeSaveFile fid file
+
+
+-- | Resave file. Metadata is copied if the file already exited, otherwise an
+-- exception is raised.
+reSaveFile :: FileId -> File -> DBT ()
+reSaveFile fid file = do
+  reg <- readReg
+  meta <- case regGetMeta fid reg of
+    Nothing -> Err.throwE "File ID does not exist"
+    Just me -> return me
+  writeReg (regAddFile fid meta reg)
   storeSaveFile fid file
 
 
@@ -196,12 +253,12 @@ loadFile fid = do
 renameFile :: FileId -> FileId -> DBT ()
 renameFile from to = do
   reg <- readReg
-  unless (regHasFile from reg)
-    (Err.throwE "File ID (from) does not exist")
+  meta <- case regGetMeta from reg of
+    Nothing -> Err.throwE "File ID (from) does not exist"
+    Just x  -> return x
   when (regHasFile to reg)
     (Err.throwE "File ID (to) already exists")
-  -- update the DB register
-  writeReg . regAddFile to . regRemFile from $ reg
+  writeReg . regAddFile to meta . regRemFile from $ reg
   storeRenameFile from to
 
 
@@ -213,8 +270,51 @@ copyFile from to = do
     (Err.throwE "File ID (from) does not exist")
   when (regHasFile to reg)
     (Err.throwE "File ID (to) already exists")
-  writeReg $ regAddFile to reg
+  writeReg $ regAddFile to defaultMeta reg
   storeCopyFile from to
+
+
+-- -- | Load a file from a DB.
+-- loadMeta :: FileId -> DBT FileMeta
+-- loadMeta fid = do
+--   reg <- readReg
+--   unless (regHasFile fid reg)
+--     (Err.throwE "File ID does not exist")
+--   let update FileMeta{..} = FileMeta (S.annoSet )
+--   saveReg $ regUpdateMeta fid update reg
+
+
+-- | Load a file from a DB.
+loadMeta :: FileId -> DBT FileMeta
+loadMeta fid = do
+  reg <- readReg
+  case regGetMeta fid reg of
+    Nothing -> Err.throwE "File ID does not exist"
+    Just me -> return me
+
+
+-- | Load a file from a DB.
+saveMeta :: FileId -> FileMeta -> DBT ()
+saveMeta fid meta = do
+  reg <- readReg
+  writeReg $ regAddFile fid meta reg
+
+
+---------------------------------------
+-- Top-level contd.
+--
+-- Auth-related
+---------------------------------------
+
+
+-- -- | Return the set of the annotators which have right to modify
+-- -- the given file.
+-- annoSet :: FileId -> DBT (S.Set FileId)
+-- annoSet fileId = do
+--   reg <- readReg
+--   return $ case M.lookup fileId reg of
+--     Nothing -> S.empty
+--     Just meta -> Types.annoSet meta
 
 
 ---------------------------------------
@@ -224,7 +324,7 @@ copyFile from to = do
 
 -- | Create a new `Register` under a given filepath.
 createReg :: DBT ()
-createReg = writeReg S.empty
+createReg = writeReg M.empty
 
 
 -- | Read the register file.

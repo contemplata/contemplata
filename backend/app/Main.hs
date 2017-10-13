@@ -90,6 +90,9 @@ data Command
     | FTB2Penn FilePath Bool (Maybe FilePath)
       -- ^ Convert a FTB XML file to the Penn format
 
+    | UpdateMeta1 FilePath
+      -- ^ Update meta information in the given DB (in-place)
+
 
 --------------------------------------------------
 -- Options
@@ -254,6 +257,15 @@ ftb2pennOptions = FTB2Penn
        <> help "Output directory (for more fine-grained output)" )
 
 
+updateMetaOptions :: (FilePath -> Command) -> Parser Command
+updateMetaOptions updateMeta = updateMeta
+  <$> strOption
+        ( long "dbdir"
+       <> short 'd'
+       <> metavar "DIR"
+       <> help "DB directory" )
+
+
 opts :: Parser Command
 opts = subparser
   ( command "simplify"
@@ -303,6 +315,10 @@ opts = subparser
   <> command "penn2json"
     (info (helper <*> penn2jsonOptions)
       (progDesc "Convert a PTB-style file to JSON")
+    )
+  <> command "updatemeta1"
+    (info (helper <*> updateMetaOptions UpdateMeta1)
+      (progDesc "Update files' metadata information")
     )
   )
 
@@ -413,7 +429,7 @@ run cmd =
         cs <- liftIO $ LBS.readFile jsonPath
         case JSON.eitherDecode cs of
           Left err -> Err.throwE "JSON decoding failed"
-          Right json -> DB.saveFile fileId json
+          Right json -> DB.saveFile fileId Odil.defaultMeta json
       case res of
         Left err -> T.putStrLn $ "Operation failed: " `T.append` err
         Right _  -> return ()
@@ -480,6 +496,20 @@ run cmd =
           case res of
             Left err -> T.putStrLn $ "Error: " `T.append` err
             Right _  -> return ()
+
+    UpdateMeta1 dbPath -> do
+      let dbConf = DB.defaultConf dbPath
+      res <- DB.runDBT dbConf $ do
+        -- manaully loading the old version of the database
+        let path = DB.dbPath dbConf </> DB.regPath dbConf
+        oldReg <- DB.loadJSON path
+        let newReg = M.fromList
+              [ (x, Odil.defaultMeta)
+              | x <- S.toList oldReg ]
+        DB.saveJSON path (newReg :: DB.Register)
+      case res of
+        Left err -> T.putStrLn $ "Operation failed: " `T.append` err
+        Right _  -> return ()
 
 
 -- saveFile :: FileId -> File -> DBT ()
