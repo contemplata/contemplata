@@ -3,8 +3,12 @@
 
 module Edit.Anno exposing
   (
+  -- * Nodes (in general)
+    nodeLabelSet
+  , NodeAttr (..)
+
   -- * Events
-    Event(..)
+  , Event(..)
   , EventAttr (..)
 
   , EventType(..)
@@ -72,10 +76,87 @@ module Edit.Anno exposing
 import Json.Decode as Decode
 import Json.Encode as Encode
 
+import Set as S
 import Dict as D
 
 import Edit.Core exposing (..)
 import Util
+
+
+---------------------------------------------------
+---------------------------------------------------
+-- General
+---------------------------------------------------
+---------------------------------------------------
+
+
+---------------------------------------------------
+-- Label
+---------------------------------------------------
+
+
+nodeLabelSet : S.Set String
+nodeLabelSet = S.fromList
+  [ "ADJ"
+  , "ADJWH"
+  , "ADV"
+  , "ADVWH"
+  , "AP"
+  , "AdP"
+  , "C"
+  , "CC"
+  , "CL"
+  , "CLO"
+  , "CLR"
+  , "CLS"
+  , "COORD"
+  , "CS"
+  , "DET"
+  , "DETWH"
+  , "ET"
+  , "I"
+  , "MWA"
+  , "MWADV"
+  , "MWC"
+  , "MWCL"
+  , "MWD"
+  , "MWN"
+  , "MWP"
+  , "MWPRO"
+  , "MWV"
+  , "N"
+  , "NC"
+  , "NP"
+  , "NP"
+  , "P"
+  , "PP"
+  , "PREF"
+  , "PRO"
+  , "PROREL"
+  , "PROWH"
+  , "PUNC"
+  , "ROOT"
+  , "SENT"
+  , "Sint"
+  , "Srel"
+  , "Ssub"
+  , "V"
+  , "VIMP"
+  , "VINF"
+  , "VN"
+  , "VP"
+  , "VPP"
+  , "VPR"
+  , "VPinf"
+  , "VPpart"
+  , "VS"
+  -- below, custom additional labels
+  , "PARA_COORD" ]
+
+
+type NodeAttr
+    = NodeLabelAttr String
+    | NodeCommentAttr String
 
 
 ---------------------------------------------------
@@ -98,7 +179,7 @@ type Event = Event
   , evCardinality : String
   , evMod : Maybe EventMod
   , evPred : String
-  , evComment : String
+  -- , evComment : String
   -- , evConfidence :: Confidence
   }
 
@@ -116,7 +197,7 @@ eventDefault = Event
   , evCardinality = ""
   , evMod = Nothing
   , evPred = ""
-  , evComment = ""
+  -- , evComment = ""
   }
 
 
@@ -132,7 +213,7 @@ type EventAttr
     | CardinalityAttr String
     | ModAttr (Maybe EventMod)
     | PredAttr String
-    | CommentAttr String
+    -- | CommentAttr String
 
 
 ---------------------------------------------------
@@ -429,7 +510,7 @@ eventModStr =
 
 eventDecoder : Decode.Decoder Event
 eventDecoder =
-  let mkEvent cls typ inq tns asp pol subj modal car mod pred com =
+  let mkEvent cls typ inq tns asp pol subj modal car mod pred = -- com =
         Event
         { evClass=cls
         , evType=typ
@@ -442,9 +523,9 @@ eventDecoder =
         , evCardinality=car
         , evMod=mod
         , evPred=pred
-        , evComment=com
+        -- , evComment=com
         }
-  in  decodeMap12 mkEvent
+  in  decodeMap11 mkEvent
         (Decode.field "evClass" eventClassDecoder)
         (Decode.field "evType" eventTypeDecoder)
         (Decode.field "evInquisit" eventInquisitDecoder)
@@ -456,7 +537,7 @@ eventDecoder =
         (Decode.field "evCardinality" Decode.string)
         (Decode.field "evMod" (Decode.nullable eventModDecoder))
         (Decode.field "evPred" Decode.string)
-        (Decode.field "evComment" Decode.string)
+        -- (Decode.field "evComment" Decode.string)
 
 
 eventClassDecoder : Decode.Decoder EventClass
@@ -546,7 +627,7 @@ encodeEvent (Event r) = Encode.object
     , ("evCardinality", Encode.string r.evCardinality)
     , ("evMod", Util.encodeMaybe encodeEventMod r.evMod)
     , ("evPred", Encode.string r.evPred)
-    , ("evComment", Encode.string r.evComment)
+    -- , ("evComment", Encode.string r.evComment)
     ]
 
 

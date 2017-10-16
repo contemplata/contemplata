@@ -769,6 +769,69 @@ viewSideEditLabel win model =
     inp
 
 
+-- | The view of the side edit window -- the label.
+viewSideEditLeaf
+    : M.Model -> M.Focus -> C.NodeId -> M.InternalNode -> List (Html.Html Msg)
+viewSideEditLeaf model focus nodeId node =
+  let
+
+    inpLabel = textGenericGen
+               (SetNodeAttr nodeId focus)
+               Anno.NodeLabelAttr
+               "Label: "
+               node.nodeVal
+               (Just <| case focus of
+                            M.Top -> Cfg.editLabelName True
+                            M.Bot -> Cfg.editLabelName False)
+
+    inpComment = textGenericGen
+                 (SetNodeAttr nodeId focus)
+                 Anno.NodeCommentAttr
+                 "Comment: "
+                 node.nodeComment
+                 Nothing
+    -- inpCardinality = textGeneric Anno.CardinalityAttr "Cardinality: " ev.evCardinality
+
+  in
+      [ Html.table [] <|
+            [ inpLabel
+            , inpComment
+            ]
+      ]
+
+
+-- | The view of the side edit window -- the label.
+viewSideEditInternal
+    : M.Model -> M.Focus -> C.NodeId -> M.InternalNode -> List (Html.Html Msg)
+viewSideEditInternal model focus nodeId node =
+  let
+
+    inpLabel = inputGenericConstrainedGen
+               (SetNodeAttr nodeId focus)
+               "Label"
+               node.nodeVal
+               Anno.nodeLabelSet
+               Anno.NodeLabelAttr
+               (Just <| case focus of
+                            M.Top -> Cfg.editLabelName True
+                            M.Bot -> Cfg.editLabelName False)
+
+    inpComment = textGenericGen
+                 (SetNodeAttr nodeId focus)
+                 Anno.NodeCommentAttr
+                 "Comment: "
+                 node.nodeComment
+                 Nothing
+    -- inpCardinality = textGeneric Anno.CardinalityAttr "Cardinality: " ev.evCardinality
+
+  in
+      [ Html.table [] <|
+            [ inpLabel
+            , inpComment
+            ]
+      ]
+
+
 viewSideEvent : M.Focus -> C.NodeId -> Anno.Event -> List (Html.Html Msg)
 viewSideEvent focus nodeId (Anno.Event ev) =
   let
@@ -800,14 +863,16 @@ viewSideEvent focus nodeId (Anno.Event ev) =
             Anno.ModAttr
 
     textGeneric = textGenericGen (SetEventAttr nodeId focus)
-    inpCardinality = textGeneric Anno.CardinalityAttr "Cardinality: " ev.evCardinality
-    inpPred = textGeneric Anno.PredAttr "Pred: " ev.evPred
-    inpComment = textGeneric Anno.CommentAttr "Comment: " ev.evComment
+    inpCardinality = textGeneric Anno.CardinalityAttr "Cardinality: " ev.evCardinality Nothing
+    inpPred = textGeneric Anno.PredAttr "Pred: " ev.evPred Nothing
+    -- inpComment = textGeneric Anno.CommentAttr "Comment: " ev.evComment
 
   in
-      [ Html.table []
+      [ Html.hr [] []
+      , Html.text "Event:"
+      , Html.table []
             [ inpClass, inpType, inpInq, inpTime, inpAspect , inpPolar, inpMood
-            , inpModality, inpCardinality, inpMod, inpPred, inpComment ]
+            , inpModality, inpCardinality, inpMod, inpPred ] -- , inpComment ]
       ]
 
 
@@ -820,13 +885,15 @@ viewSideSignal focus nodeId (Anno.Signal x) =
     inpType = inputGeneric "Type" x.siType Anno.signalTypeStr Anno.SiTypeAttr
 
   in
-      [ Html.table []
+      [ Html.hr [] []
+      , Html.text "Signal:"
+      , Html.table []
             [ inpType ]
       ]
 
 
-viewSideTimex : M.Model -> M.Focus -> C.NodeId -> Anno.Timex -> List (Html.Html Msg)
-viewSideTimex model focus nodeId (Anno.Timex ti) =
+viewSideTimex : M.Model -> M.Focus -> C.NodeId -> M.InternalNode -> Anno.Timex -> List (Html.Html Msg)
+viewSideTimex model focus nodeId node (Anno.Timex ti) =
   let
 
     inputGeneric = inputGenericGen (SetTimexAttr nodeId focus)
@@ -851,9 +918,9 @@ viewSideTimex model focus nodeId (Anno.Timex ti) =
     inpEndPoint = inputTimex "End" ti.tiEndPoint Anno.TiEndPointAttr
 
     textGeneric = textGenericGen (SetTimexAttr nodeId focus)
-    inpPred = textGeneric Anno.TiPredAttr "Pred: " ti.tiPred
-    inpLingValue = textGeneric Anno.TiLingValueAttr "LingValue: " ti.tiLingValue
-    inpValue = textGeneric Anno.TiValueAttr "Value: " ti.tiValue
+    inpPred = textGeneric Anno.TiPredAttr "Pred: " ti.tiPred Nothing
+    inpLingValue = textGeneric Anno.TiLingValueAttr "LingValue: " ti.tiLingValue Nothing
+    inpValue = textGeneric Anno.TiValueAttr "Value: " ti.tiValue Nothing
 
     mayTextGeneric = mayTextGenericGen (SetTimexAttr nodeId focus)
     inpQuant = mayTextGeneric Anno.TiQuantAttr "Quant:" ti.tiQuant
@@ -866,7 +933,10 @@ viewSideTimex model focus nodeId (Anno.Timex ti) =
             _ -> []
 
   in
-      [ Html.table [] <|
+      [ Html.hr [] []
+      -- , Html.h3 [] [Html.text "Timex:"]
+      , Html.text "Timex:"
+      , Html.table [] <|
             [ inpCalendar, inpFunctionInDocument, inpPred, inpType
             , inpTemporalFunction, inpLingValue, inpValue, inpMod
             , inpAnchor ] ++ typeDependent
@@ -881,13 +951,20 @@ viewSideEdit win model =
     selected = case win of
       M.Top -> model.top.selMain
       M.Bot -> model.bot.selMain
+
+    divMain = case selected of
+      Nothing -> []
+      Just nodeId -> case M.getNode nodeId win model of
+        M.Leaf r -> [viewSideEditLabel win model]
+        M.Node r -> viewSideEditInternal model win nodeId r
+
     divChildren = case selected of
       Nothing -> []
       Just nodeId -> case M.getNode nodeId win model of
         M.Leaf r -> []
         M.Node r -> case r.nodeTyp of
           Nothing -> []
-          Just (M.NodeTimex ti) -> viewSideTimex model win nodeId ti
+          Just (M.NodeTimex ti) -> viewSideTimex model win nodeId r ti
           Just (M.NodeSignal si) -> viewSideSignal win nodeId si
           Just (M.NodeEvent ev) -> viewSideEvent win nodeId ev
             -- [ Html.div [] [Html.button [] [Html.text "Send"]]
@@ -899,6 +976,8 @@ viewSideEdit win model =
           -- these functions to modify the entire nodes, and not just their
           -- lalels. In fact, the label-related functions should be later based
           -- on the new ones.
+          --
+          -- UPDATE 16/10/2017: not really sure what I meant in the previous comment...
 
     div = Html.div
       [ Atts.style
@@ -908,7 +987,7 @@ viewSideEdit win model =
         , "margin" => px 5
         ]
       ]
-      (viewSideEditLabel win model :: divChildren)
+      (divMain ++ divChildren)
     top = viewSideDiv win model [div]
   in
     top
@@ -1680,9 +1759,13 @@ ps number =
 
 
 -- | Doubly generic textual input field.
-textGenericGen setAttr attr text value =
+-- `mayId` represents the optional ID of the field.
+textGenericGen setAttr attr text value mayId =
   let
     setMsg = setAttr << attr
+    idAtts = case mayId of
+                 Nothing -> []
+                 Just x -> [Atts.id x]
   in
     Html.tr []
       [ Html.td
@@ -1692,13 +1775,15 @@ textGenericGen setAttr attr text value =
           [Html.text text]
       , Html.td []
           [Html.input
-               [ Events.onInput setMsg
-               -- , Atts.rows 3
-               , Atts.value value
-               , blockKeyDownEvents ]
+               ( [ Events.onInput setMsg
+                 -- , Atts.rows 3
+                 , Atts.value value
+                 , blockKeyDownEvents
+                 ] ++ idAtts )
                []
           ]
       ]
+
 
 
 -- | Doubly generic (maybe) textual input field.
@@ -1746,6 +1831,34 @@ inputGenericGen setAttr label value valList attr =
                [ Events.on "change" (Decode.map setMsg Events.targetValue)
                , blockKeyDownEvents ]
                (List.map (option value) valList)
+          ]
+      ]
+
+
+-- | Doubly generic list input field.
+inputGenericConstrainedGen setAttr label value valSet attr mayId =
+  let
+    setMsg str = setAttr (attr str)
+    option evVal val = Html.option
+      [ Atts.value val
+      , Atts.selected (val == evVal) ]
+      [ Html.text val ]
+  in
+    Html.tr []
+      [ Html.td
+          [ Atts.class "noselect"
+          , Atts.align "right"
+          ]
+          [Html.text (label ++ ": ")]
+      , Html.td []
+          [Html.select
+             ( [ Events.on "change" (Decode.map setMsg Events.targetValue)
+               , blockKeyDownEvents
+               ] ++ case mayId of
+                        Nothing -> []
+                        Just x -> [Atts.id x]
+             )
+               (List.map (option value) (S.toList valSet))
           ]
       ]
 

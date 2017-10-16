@@ -74,6 +74,8 @@ type Msg
   | SideMenuEdit M.Focus
   | SideMenuContext M.Focus
   | SideMenuLog M.Focus
+  -- * Modifying general node's attributes
+  | SetNodeAttr C.NodeId M.Focus Anno.NodeAttr
   -- * Event modification events...
   | SetEventAttr C.NodeId M.Focus Anno.EventAttr
 --   | SetEventClass C.NodeId M.Focus Anno.EventClass
@@ -331,6 +333,11 @@ update msg model =
         M.SideLog
         model
 
+    SetNodeAttr nodeId focus attr -> idle <|
+      case attr of
+        Anno.NodeLabelAttr x -> M.setLabel nodeId focus x model
+        Anno.NodeCommentAttr x -> M.setComment nodeId focus x model
+
     SetEventAttr nodeId focus attr -> idle <|
       case attr of
         Anno.ClassAttr x -> M.setEventAttr M.eventClass nodeId focus x model
@@ -344,7 +351,7 @@ update msg model =
         Anno.CardinalityAttr x -> M.setEventAttr M.eventCardinality nodeId focus x model
         Anno.ModAttr x -> M.setEventAttr M.eventMod nodeId focus x model
         Anno.PredAttr x -> M.setEventAttr M.eventPred nodeId focus x model
-        Anno.CommentAttr x -> M.setEventAttr M.eventComment nodeId focus x model
+        -- Anno.CommentAttr x -> M.setEventAttr M.eventComment nodeId focus x model
         -- _ -> Debug.crash "SetEventAttr: not implemented yet!"
 
     SetSignalAttr nodeId focus attr -> idle <|

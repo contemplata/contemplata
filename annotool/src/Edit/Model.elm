@@ -22,9 +22,12 @@ module Edit.Model exposing
   , getNode, setNode, updateNode, concatWords
   -- Labels:
   , getLabel, setLabel
+  -- Comments:
+  , getComment, setComment
   -- Event lenses:
   , eventClass, eventType, eventTime, eventAspect, eventPolarity, eventMood
-  , eventModality, eventComment, eventInquisit, eventCardinality, eventMod
+  , eventModality -- eventComment
+  , eventInquisit, eventCardinality, eventMod
   , eventPred
   -- Event modification:
   , setEventAttr -- , setEventClass, setEventType, setEventTime, setEventAspect
@@ -123,7 +126,8 @@ type alias Link = (Addr, Addr)
 type alias InternalNode =
     { nodeId : NodeId
     , nodeVal : String
-    , nodeTyp : Maybe NodeTyp }
+    , nodeTyp : Maybe NodeTyp
+    , nodeComment : String }
 
 
 type alias LeafNode =
@@ -131,7 +135,8 @@ type alias LeafNode =
     , nodeVal : String
       -- | The position of the leaf in the underlying sentence.
       -- The positions do not have to be consecutive.
-    , leafPos : Int }
+    , leafPos : Int
+    , nodeComment : String }
 
 
 -- | Node in a syntactic tree is either an internal node or a leaf.
@@ -1008,6 +1013,22 @@ setLabel id focus newLabel model =
 
 
 ---------------------------------------------------
+-- Comments
+---------------------------------------------------
+
+
+getComment : NodeId -> Focus -> Model -> String
+getComment id focus model =
+    Lens.get nodeComment <| getNode id focus model
+
+
+setComment : NodeId -> Focus -> String -> Model -> Model
+setComment id focus newComment model =
+    let update = Lens.set nodeComment newComment
+    in  updateNode id focus update model
+
+
+---------------------------------------------------
 -- Event modification
 ---------------------------------------------------
 
@@ -1374,7 +1395,7 @@ identify dummyVal tree =
        Just ix -> ix + 1
     update newId nodeMay =
       case nodeMay of
-        Nothing -> (newId+1, Node {nodeId=newId, nodeVal=dummyVal, nodeTyp=Nothing})
+        Nothing -> (newId+1, Node {nodeId=newId, nodeVal=dummyVal, nodeTyp=Nothing, nodeComment=""})
         Just x  -> (newId, x)
   in
     Tuple.second <| R.mapAccum update newId1 tree
@@ -1555,13 +1576,13 @@ concatWords model =
 
         mkTree xs =
             let
-                root = Node {nodeId=0, nodeVal="ROOT", nodeTyp=Nothing}
-                sent = Node {nodeId=1, nodeVal="SENT", nodeTyp=Nothing}
+                root = Node {nodeId=0, nodeVal="ROOT", nodeTyp=Nothing, nodeComment=""}
+                sent = Node {nodeId=1, nodeVal="SENT", nodeTyp=Nothing, nodeComment=""}
                 leaves = L.map mkLeaf
                          <| L.map2 (,) xs
                          <| L.range 1 (L.length xs)
                 mkLeaf (word, nodeId) = R.leaf <|
-                    Leaf {nodeId=nodeId+1, nodeVal=word, leafPos=nodeId-1}
+                    Leaf {nodeId=nodeId+1, nodeVal=word, leafPos=nodeId-1, nodeComment=""}
             in
                 R.Node root [R.Node sent leaves]
 
@@ -1913,6 +1934,19 @@ nodeTyp =
     Lens.create get update
 
 
+nodeComment : Lens.Focus Node String
+nodeComment =
+  let
+    get node = case node of
+      Node r -> r.nodeComment
+      Leaf r -> r.nodeComment
+    update f node = case node of
+      Node r -> Node {r | nodeComment = f r.nodeComment}
+      Leaf r -> Leaf {r | nodeComment = f r.nodeComment}
+  in
+    Lens.create get update
+
+
 nodeEvent : Lens.Focus NodeTyp Anno.Event
 nodeEvent =
   let
@@ -2059,13 +2093,13 @@ eventPred =
     Lens.create get update
 
 
-eventComment : Lens.Focus Anno.Event String
-eventComment =
-  let
-    get (Anno.Event r) = r.evComment
-    update f (Anno.Event r) = Anno.Event {r | evComment = f r.evComment}
-  in
-    Lens.create get update
+-- eventComment : Lens.Focus Anno.Event String
+-- eventComment =
+--   let
+--     get (Anno.Event r) = r.evComment
+--     update f (Anno.Event r) = Anno.Event {r | evComment = f r.evComment}
+--   in
+--     Lens.create get update
 
 
 ----------------------------
@@ -2317,18 +2351,20 @@ nodeDecoder = Decode.oneOf [internalDecoder, leafDecoder]
 
 internalDecoder : Decode.Decoder Node
 internalDecoder =
-  Decode.map3 (\id val typ -> Node {nodeId=id, nodeVal=val, nodeTyp=typ})
+  Decode.map4 (\id val typ com -> Node {nodeId=id, nodeVal=val, nodeTyp=typ, nodeComment=com})
     (Decode.field "nodeId" Decode.int)
     (Decode.field "nodeVal" Decode.string)
     (Decode.field "nodeTyp" (Decode.nullable nodeTypDecoder))
+    (Decode.field "nodeComment" Decode.string)
 
 
 leafDecoder : Decode.Decoder Node
 leafDecoder =
-  Decode.map3 (\id val pos -> Leaf {nodeId=id, nodeVal=val, leafPos=pos})
+  Decode.map4 (\id val pos com -> Leaf {nodeId=id, nodeVal=val, leafPos=pos, nodeComment=com})
     (Decode.field "leafId" Decode.int)
     (Decode.field "leafVal" Decode.string)
     (Decode.field "leafPos" Decode.int)
+    (Decode.field "leafComment" Decode.string)
 
 
 nodeTypDecoder : Decode.Decoder NodeTyp
@@ -2454,12 +2490,14 @@ encodeNode node = case node of
     , ("leafId", Encode.int r.nodeId)
     , ("leafVal", Encode.string r.nodeVal)
     , ("leafPos", Encode.int r.leafPos)
+    , ("leafComment", Encode.string r.nodeComment)
     ]
   Node r -> Encode.object
     [ ("tag", Encode.string "Node")
     , ("nodeId", Encode.int r.nodeId)
     , ("nodeVal", Encode.string r.nodeVal)
     , ("nodeTyp", Util.encodeMaybe encodeNodeTyp r.nodeTyp)
+    , ("nodeComment", Encode.string r.nodeComment)
     ]
 
 
@@ -2497,7 +2535,9 @@ mapKeys f d =
 -- | Retrieve the words (leaves) from a given tree and sort them by their
 -- positions in the sentence.
 -- getWords : R.Tree Node -> List Node
-getWords : R.Tree Node -> List {nodeId : NodeId, nodeVal : String, leafPos : Int}
+getWords
+    : R.Tree Node
+    -> List {nodeId : NodeId, nodeVal : String, leafPos : Int, nodeComment : String}
 getWords tree =
     let
         leaf node = case node of

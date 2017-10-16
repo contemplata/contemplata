@@ -109,7 +109,8 @@ apply rule tree0 =
                 newNode = M.Node
                   { nodeId = curId
                   , nodeVal = newLabel
-                  , nodeTyp = Nothing }
+                  , nodeTyp = Nothing
+                  , nodeComment = "" }
               in
                 joinFirst
                   (addRoot newNode (go x) (go y))
