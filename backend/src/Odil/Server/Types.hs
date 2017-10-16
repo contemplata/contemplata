@@ -63,11 +63,13 @@ data Node
   = Node
     { nodeId :: NodeId
     , nodeVal :: T.Text
-    , nodeTyp :: Maybe NodeTyp }
+    , nodeTyp :: Maybe NodeTyp
+    , nodeComment :: T.Text }
   | Leaf
     { leafId :: NodeId
     , leafVal :: T.Text
-    , leafPos :: Int }
+    , leafPos :: Int
+    , leafComment :: T.Text }
   deriving (Generic, Show, Eq, Ord)
 
 

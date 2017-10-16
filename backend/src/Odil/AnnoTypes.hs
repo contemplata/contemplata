@@ -61,7 +61,7 @@ data Event = Event
   , evCardinality :: T.Text
   , evMod :: Maybe EventMod
   , evPred :: T.Text
-  , evComment :: T.Text
+  -- , evComment :: T.Text
     -- ^ Optional comment left by the annotator
 --   , evConfidence :: Confidence
 --     -- ^ Confidence of the annotator w.r.t. to this particular event annotation

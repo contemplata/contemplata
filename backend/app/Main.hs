@@ -8,6 +8,7 @@ module Main where
 
 import Control.Monad (when, forM_, forM)
 import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.Trans.State as State
 import qualified Control.Arrow as Arr
 
@@ -89,6 +90,9 @@ data Command
 
     | FTB2Penn FilePath Bool (Maybe FilePath)
       -- ^ Convert a FTB XML file to the Penn format
+
+    | GetLabels FilePath
+      -- ^ Get the list of (non-terminal) node labels in the DB
 
     | UpdateMeta1 FilePath
       -- ^ Update meta information in the given DB (in-place)
@@ -257,6 +261,15 @@ ftb2pennOptions = FTB2Penn
        <> help "Output directory (for more fine-grained output)" )
 
 
+getLabelsOptions :: Parser Command
+getLabelsOptions = GetLabels
+  <$> strOption
+        ( long "dbdir"
+       <> short 'd'
+       <> metavar "DIR"
+       <> help "DB directory" )
+
+
 updateMetaOptions :: (FilePath -> Command) -> Parser Command
 updateMetaOptions updateMeta = updateMeta
   <$> strOption
@@ -315,6 +328,10 @@ opts = subparser
   <> command "penn2json"
     (info (helper <*> penn2jsonOptions)
       (progDesc "Convert a PTB-style file to JSON")
+    )
+  <> command "labels"
+    (info (helper <*> getLabelsOptions)
+      (progDesc "Retrieve non-terminal labels")
     )
   <> command "updatemeta1"
     (info (helper <*> updateMetaOptions UpdateMeta1)
@@ -496,6 +513,23 @@ run cmd =
           case res of
             Left err -> T.putStrLn $ "Error: " `T.append` err
             Right _  -> return ()
+
+    GetLabels dbPath -> do
+      let dbConf = DB.defaultConf dbPath
+      res <- DB.runDBT dbConf . flip State.execStateT S.empty $ do
+        ids <- S.toList <$> lift DB.fileSet
+        forM_ ids $ \fileId -> do
+          Odil.File{..} <- lift $ DB.loadFile fileId
+          forM_ (M.toList treeMap) $ \(_treeId, (_sent, tree)) -> do
+            let
+              getNodeVal Odil.Node{..} = Just nodeVal
+              getNodeVal Odil.Leaf{..} = Nothing
+              labels = mapMaybe getNodeVal (R.flatten tree)
+            -- liftIO . T.putStrLn . T.unwords $ labels
+            forM_ labels $ \x -> State.modify' (S.insert x)
+      case res of
+        Left err -> T.putStrLn $ "Operation failed: " `T.append` err
+        Right xs  -> forM_ (S.toList xs) T.putStrLn
 
     UpdateMeta1 dbPath -> do
       let dbConf = DB.defaultConf dbPath
