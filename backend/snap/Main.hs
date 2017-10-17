@@ -29,7 +29,6 @@ import qualified Odil.Server.Config as ServerCfg
 import qualified Snap as Snap
 import qualified Snap.Snaplet.Auth as Auth
 import qualified Snap.Snaplet.Heist as Heist
--- import           Heist.Interpreted (Splice, bindSplices, Splices)
 import           Snap.Snaplet.Auth.Backends.JsonFile (initJsonFileAuthManager)
 import qualified Snap.Snaplet.Session as Session
 import qualified Snap.Snaplet.Session.Backends.CookieSession as Session
@@ -37,6 +36,10 @@ import qualified Snap.Snaplet.Heist as Heist
 -- import qualified Snap.Core as Core
 -- import           Snap.Core (Snap)
 import qualified Snap.Util.FileServe as FileServe
+
+import           Heist (Splices)
+import           Heist.Interpreted (Splice, bindSplices)
+import           Data.Map.Syntax ((##))
 
 -- import qualified Snap.Http.Server as Server
 import qualified Network.WebSockets as WS
@@ -82,11 +85,15 @@ routes =
 
 rootHandler :: AppHandler ()
 rootHandler =
-  loginHandler <|> Snap.redirect "annotation"
+  loginHandler <|> adminHandler <|> annoHandler
   where
     loginHandler = do
       guard . not =<< Snap.with auth Auth.isLoggedIn
       Snap.redirect "login"
+    adminHandler = do
+      guard =<< Admin.isAdmin
+      Snap.redirect "admin/files"
+    annoHandler = Snap.redirect "annotation"
 
 
 publicHandler :: AppHandler ()
@@ -105,8 +112,9 @@ wsHandler :: AppHandler ()
 wsHandler = do
   guard =<< Snap.with auth Auth.isLoggedIn
   dbMVar <- State.gets _db
+  cfg <- Snap.getSnapletUserConfig
   SnapWS.runWebSocketsSnap $
-    \pending -> Server.application dbMVar pending
+    \pending -> Server.application dbMVar cfg pending
                 `Exc.catch` catchHandschakeExc
                 `Exc.catch` catchConnectionExc
                 `Exc.catch` catchSomeExc
@@ -127,10 +135,10 @@ wsHandler = do
 ----------------------------------
 
 
--- -- | Application splices.
--- splices :: Splices (Splice AppHandler)
--- splices = do
---   "annoBody" ## Anno.bodySplice
+-- | Application splices.
+globalSplices :: Splices (Splice AppHandler)
+globalSplices = do
+  "ifAdmin" ## Admin.ifAdminSplice
 
 
 -- | Application initialization.
@@ -147,6 +155,8 @@ appInit = Snap.makeSnaplet "snap-odil" "ODIL" Nothing $ do
   tempPath <- liftIO $ Cfg.fromCfgDef cfg "templates" "templates"
   h <- Snap.nestSnaplet "heist" heist $ Heist.heistInit tempPath
   Auth.addAuthSplices h auth
+  Heist.modifyHeistState
+    (bindSplices globalSplices)
 --   Heist.modifyHeistState
 --     $ bindSplices splices
 --     -- $ bindAttributeSplices attrSplices

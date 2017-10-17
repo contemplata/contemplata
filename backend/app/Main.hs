@@ -371,7 +371,7 @@ run cmd =
           forM section $ \turn -> do
             treeList <- forM (Ancor.elems turn) $ \(mayWho, elem) -> do
               let sent = Show.showElem elem
-                  prepare = Pre.prepare []
+              --  prepare = Pre.prepare []
               prepare <- Pre.prepare <$> case rmFile of
                 Nothing -> pure []
                 Just path -> liftIO $ Pre.readConfig path

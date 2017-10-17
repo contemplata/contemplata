@@ -26,8 +26,9 @@ module Odil.Server
 
 import GHC.Generics
 
-import Control.Monad (forM_, forever, (<=<))
-import Control.Arrow (second)
+import           Control.Monad.IO.Class (liftIO)
+import           Control.Monad (forM_, forever, (<=<))
+import           Control.Arrow (second)
 import qualified Control.Exception as Exc
 import qualified Control.Concurrent as C
 import qualified Data.Map.Strict as M
@@ -40,17 +41,21 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Lazy.Char8 as LBC
-import qualified Network.WebSockets as WS
+import qualified Data.Configurator as Cfg
+import qualified Data.Configurator.Types as Cfg
 
 import qualified Data.Aeson as JSON
 import Data.Aeson ((.=))
 
+import qualified Network.WebSockets as WS
+
 import Odil.Server.Types
-import qualified Odil.Server.Config as Cfg
+-- import qualified Odil.Server.Config as Cfg
 import qualified Odil.Server.DB as DB
 import qualified Odil.Stanford as Stanford
 import qualified Odil.DiscoDOP as DiscoDOP
 import qualified Odil.Penn as Penn
+import qualified Odil.Ancor.Preprocess as Pre
 
 
 -----------
@@ -91,7 +96,9 @@ data Request
   | ParseSentCons FileId TreeId ParserTyp [(Int, Int)] [(Stanford.Orth, Stanford.Pos)]
     -- ^ Similar to `ParseSent`, but with an additional constraint (constituent
     -- with the given pair of positions must exist in the tree)
-  | ParseRaw FileId TreeId T.Text
+  | ParseRaw FileId TreeId
+    T.Text -- ^ The sentence
+    Bool   -- ^ Perform pre-processing?
     -- ^ Parse raw sentence
   deriving (Generic, Show)
 
@@ -137,14 +144,10 @@ loadDB :: FilePath -> IO DB.DB
 loadDB dbPath = do
   let db = DB.defaultConf dbPath
   res <- DB.runDBT db DB.createDB
---     mapM_
---       (uncurry DB.saveFile)
---       (M.toList Cfg.tempModel)
   case res of
     Left err -> T.putStrLn $ "Could not create DB: " `T.append` err
     Right _  -> return ()
   return db
-  -- Cfg.tempModel
 
 
 -----------
@@ -159,8 +162,7 @@ runServer
   -> IO ()
 runServer dbPath serverAddr serverPort = do
   state <- C.newMVar =<< loadDB dbPath
-  -- WS.runServer Cfg.serverAddr Cfg.serverPort $ application state
-  WS.runServer serverAddr serverPort $ application state
+  WS.runServer serverAddr serverPort $ application state Cfg.empty
 
 
 -----------
@@ -169,19 +171,19 @@ runServer dbPath serverAddr serverPort = do
 
 
 -- | The server application.
-application :: C.MVar DB.DB -> WS.ServerApp
-application state pending = do
+application :: C.MVar DB.DB -> Cfg.Config -> WS.ServerApp
+application state snapCfg pending = do
   putStrLn "WS: waiting for request..."
   conn <- WS.acceptRequest pending
   putStrLn "WS: request obtained"
   WS.forkPingThread conn 30
   -- msg <- WS.receiveData conn
   -- clients <- C.readMVar state
-  talk conn state
+  talk conn state snapCfg
 
 
-talk :: WS.Connection -> C.MVar DB.DB -> IO ()
-talk conn state = forever $ do
+talk :: WS.Connection -> C.MVar DB.DB -> Cfg.Config -> IO ()
+talk conn state snapCfg = forever $ do
   putStrLn $ "WS: init talking"
   msg <- WS.receiveData conn
   putStrLn "WS: obtained message:"
@@ -248,8 +250,19 @@ talk conn state = forever $ do
             let msg = T.concat ["File ", fileId, " saved"]
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
-      Right (ParseRaw fileId treeId txt) -> do
-        putStrLn "Parsing raw sentence..."
+      Right (ParseRaw fileId treeId txt0 prep) -> do
+
+        txt <-
+          if not prep
+          then do
+            putStrLn "Parsing raw sentence..."
+            return txt0
+          else do
+            putStrLn "Parsing preprocessed sentence..."
+            Just rmPath <- liftIO $ Cfg.lookup snapCfg "remove"
+            extCfg <- liftIO $ Pre.readConfig rmPath
+            return $ Pre.prepare extCfg txt0
+
         treeMay <- Stanford.parseFR txt
         case treeMay of
           Nothing -> do

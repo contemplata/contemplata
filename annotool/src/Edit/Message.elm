@@ -57,7 +57,8 @@ type Msg
   | MkSignal -- ^ Create signal
   | MkEvent -- ^ Create event
   | MkTimex -- ^ Create event
-  | ParseRaw  -- ^ Reparse from scratch the sentence in focus
+  | ParseRaw Bool  -- ^ Reparse from scratch the sentence in focus; the argument determines
+                   -- wheter pre-processing should be used or not
   | ParseSent Server.ParserTyp  -- ^ Reparse the sentence in focus
   | ParseSentPos Server.ParserTyp -- ^ Reparse the sentence in focus, preserve POList (String, String)S tags
   | ParseSentCons Server.ParserTyp  -- ^ Reparse the sentence in focus with the selected nodes as constraints
@@ -234,13 +235,13 @@ update msg model =
     -- Files -> idle <| model -- ^ Handled upstream
     Files -> Debug.crash "Edit.Message.Files: should be handled upstream!"
 
-    ParseRaw ->
+    ParseRaw prep ->
       let
         treeId = (M.selectWin model.focus model).tree
         txt = case D.get treeId model.trees of
                   Nothing -> ""
                   Just (x, _) -> x
-        req = Server.ParseRaw model.fileId treeId txt
+        req = Server.ParseRaw model.fileId treeId txt prep
         send = Server.sendWS model.config req
       in
         (model, send)
@@ -529,7 +530,8 @@ cmdList =
   , ("delete", Delete)
   , ("deltree", DeleteTree)
 --   , ("add", Add)
-  , ("restart", ParseRaw)
+  , ("restart", ParseRaw False)
+  , ("preprocess", ParseRaw True)
   , ("parse", ParseSent Server.Stanford)
   , ("parsepos", ParseSentPos Server.Stanford)
   , ("dopparse", ParseSent Server.DiscoDOP)

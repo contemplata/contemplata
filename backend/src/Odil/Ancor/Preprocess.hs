@@ -252,11 +252,23 @@ type ExtConfig = [String]
 
 
 -- | Compile the configuration into a removal function.
+-- Applies `_compile` as long as any new expressions are removed.
 compile :: ExtConfig -> String -> String
-compile [] = id
-compile (x:xs) =
+compile ext = _compile ext
+--   loop
+--   where
+--     step = compile ext
+--     loop x =
+--       let x' = step x
+--       in  if x == x' then x' else loop x'
+
+
+-- | Compile the configuration into a removal function (one-step).
+_compile :: ExtConfig -> String -> String
+_compile [] = id
+_compile (x:xs) =
   let re = mkRegexG x
-  in  compile xs . replace re
+  in  _compile xs . replace re
 
 
 -- | Read configuration from the given file.

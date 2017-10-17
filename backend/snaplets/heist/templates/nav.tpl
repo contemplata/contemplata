@@ -13,6 +13,14 @@
       <!--li>
         <a href="contact">Contact</a>
       </li-->
+      <ifAdmin>
+        <li>
+          <a href="/admin/files">Files</a>
+        </li>
+        <li>
+          <a href="/annotation">Annotation</a>
+        </li>
+      </ifAdmin>
       <ifLoggedIn>
         <li>
           <a href="/logout">Sign Out</a>

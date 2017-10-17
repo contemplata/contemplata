@@ -57,7 +57,7 @@ type Request
     -- ^ Request the contents of the given file
   | SaveFile C.AnnoName C.FileId M.File
     -- ^ Request the contents of the given file
-  | ParseRaw C.FileId C.TreeId String
+  | ParseRaw C.FileId C.TreeId String Bool
     -- ^ Parse the given raw text
   | ParseSent C.FileId C.TreeId ParserTyp (ParseReq (List Orth))
     -- ^ Parse the given list of words (the IDs are sent so that it can be
@@ -95,12 +95,13 @@ encodeReqToVal req = case req of
          , M.encodeFile file ]
       )
     ]
-  ParseRaw fileId treeId txt -> Encode.object
+  ParseRaw fileId treeId txt prep -> Encode.object
     [ ("tag", Encode.string "ParseRaw")
     , ("contents", Encode.list
          [ Encode.string fileId
          , Encode.int treeId
-         , Encode.string txt ]
+         , Encode.string txt
+         , Encode.bool prep ]
       )
     ]
   ParseSent fileId treeId parTyp parseReq ->

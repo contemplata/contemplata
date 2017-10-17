@@ -10,6 +10,11 @@ module Handler.Admin
 , fileAddAnnoHandler
 , fileRemoveAnnoHandler
 , fileChangeAccessAnnoHandler
+
+-- * Utis
+, isAdmin
+, ifAdmin
+, ifAdminSplice
 ) where
 
 
@@ -32,6 +37,7 @@ import qualified Snap as Snap
 import qualified Snap.Snaplet.Auth as Auth
 import qualified Snap.Snaplet.Heist as Heist
 import           Heist.Interpreted (bindSplices, Splice)
+import           Heist (getParamNode)
 import qualified Text.XmlHtml as X
 
 import           Text.Digestive.Form (Form, (.:))
@@ -242,20 +248,39 @@ liftDB dbComp = do
 
 
 -- | Verify that the admin is logged in.
-isAdmin :: AppHandler ()
+isAdmin :: AppHandler Bool
 isAdmin = do
   cfg <- Snap.getSnapletUserConfig
-  adminLogin <- liftIO $ MyCfg.fromCfgDef cfg "admin" "admin"
-  Just current <- Snap.with auth Auth.currentUser
-  guard $ adminLogin == Auth.userLogin current
+  adminLogin <- liftIO $ MyCfg.fromCfg' cfg "admin"
+  --
+  -- NOTE: this handler must not fail because it is used in
+  -- the splice `ifAdminSplce`! Hence we need to explicitely
+  -- handle the `Nothing` value, and not with pattern matching.
+  --
+  -- Just current <- Snap.with auth Auth.currentUser
+  -- return $ adminLogin == Auth.userLogin current
+  --
+  currentMay <- Snap.with auth Auth.currentUser
+  return $ case currentMay of
+    Nothing -> False
+    Just current -> adminLogin == Auth.userLogin current
 
 
 -- | Verify that the admin is logged in.
 ifAdmin :: AppHandler () -> AppHandler ()
 ifAdmin after = do
   cfg <- Snap.getSnapletUserConfig
-  adminLogin <- liftIO $ MyCfg.fromCfgDef cfg "admin" "admin"
+  adminLogin <- liftIO $ MyCfg.fromCfg' cfg "admin"
   Just current <- Snap.with auth Auth.currentUser
   if adminLogin == Auth.userLogin current
     then after
     else Snap.writeText "Not authorized"
+
+
+-- | Run the contents of the node if the logged user has
+-- administrative rights (currently, every logged-in user
+-- has administrative rights).
+ifAdminSplice :: Splice AppHandler
+ifAdminSplice = lift isAdmin >>= \case
+  False -> return []
+  True -> X.childNodes <$> getParamNode
