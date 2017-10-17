@@ -8,6 +8,7 @@ import Set as S
 import Mouse exposing (Position)
 import Task as Task
 import Dom as Dom
+import Dom.Scroll
 import Focus exposing ((=>))
 import Focus as Focus
 import Window as Window
@@ -73,6 +74,7 @@ type Msg
   | Redo
   | SideMenuEdit M.Focus
   | SideMenuContext M.Focus
+  | ShowContext
   | SideMenuLog M.Focus
   -- * Modifying general node's attributes
   | SetNodeAttr C.NodeId M.Focus Anno.NodeAttr
@@ -326,6 +328,31 @@ update msg model =
         (M.winLens focus => M.side)
         M.SideContext
         model
+
+    ShowContext ->
+        let task = Task.succeed (SideMenuContext model.focus)
+        in  (model, Task.perform identity task)
+--       Focus.set
+--         (M.winLens model.focus => M.side)
+--         M.SideContext
+--         model
+
+--     SideMenuContext focus ->
+--       let
+--         target = Cfg.sideDivName <| case focus of
+--           M.Top -> True
+--           M.Bot -> False
+--       in
+--         ( Focus.set
+--             (M.winLens focus => M.side)
+--             M.SideContext
+--             model
+--         , Task.attempt
+--             (\_ -> dummy)
+--             -- (Dom.focus target)
+--             -- (Dom.Scroll.toTop target)
+--             (Dom.Scroll.toY target 10000)
+--         )
 
     SideMenuLog focus -> idle <|
       Focus.set

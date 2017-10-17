@@ -45,12 +45,11 @@ view model =
     ]
     ( [ stylesheet
       , viewWindow M.Top model
-      , viewSideWindow M.Top model
-      , viewWindow M.Bot model
-      , viewSideWindow M.Bot model
-      ]
-          ++ viewLinks model
-          ++ viewPopups model
+      ] ++ viewSideWindow M.Top model ++
+      [ viewWindow M.Bot model
+      ] ++ viewSideWindow M.Bot model
+        ++ viewLinks model
+        ++ viewPopups model
     )
 
 
@@ -657,16 +656,24 @@ drawLeaf node selMain selAux focus at =
 
 
 -- | The view of a side window.
-viewSideWindow : M.Focus -> M.Model -> Html.Html Msg
+viewSideWindow : M.Focus -> M.Model -> List (Html.Html Msg)
 viewSideWindow focus model =
-  case (M.selectWin focus model).side of
-    M.SideEdit -> viewSideEdit focus model
-    M.SideContext -> viewSideContext focus model
-    M.SideLog -> viewSideLog focus model
+    let
+        theSide = (M.selectWin focus model).side
+        context = viewSideContext (theSide == M.SideContext) focus model
+        edit = viewSideEdit (theSide == M.SideEdit) focus model
+        log = viewSideLog (theSide == M.SideLog) focus model
+    in
+        [context, edit, log]
 
 
-viewSideDiv : M.Focus -> M.Model -> List (Html.Html Msg) -> Html.Html Msg
-viewSideDiv win model children =
+viewSideDiv
+    : Bool        -- ^ Visible?
+    -> M.Focus
+    -> M.Model
+    -> List (Html.Html Msg)
+    -> Html.Html Msg
+viewSideDiv visible win model children =
   let
     dim = model.dim
     div = Html.div
@@ -690,13 +697,20 @@ viewSideDiv win model children =
         -- elements
         -- (https://philipwalton.com/articles/what-no-one-told-you-about-z-index/)
         , "z-index" => "-1"
+        , "display" => if visible then "block" else "none"
         ]
       -- @tabindex required to make the div propagate the keyboard events
       -- (see the `view` function)
       , Atts.attribute "tabindex" "1"
+      , Atts.id <| Cfg.sideDivName <|
+          case win of
+              M.Top -> True
+              M.Bot -> False
       ]
     topChildren = [viewSideMenu win model]
   in
+    -- `topChildren` after `children` so that they stay on top,
+    -- if I remember correctly
     div (children ++ topChildren)
 
 
@@ -738,7 +752,7 @@ viewSideMenu focus model =
           , "top" => px pos ]
       ]
       [ menuElem (SideMenuEdit focus) (sideWin == M.SideEdit) (emphasize 0 "Edit")
-      , menuElem (SideMenuContext focus) (sideWin == M.SideContext) (plainText "Context")
+      , menuElem (SideMenuContext focus) (sideWin == M.SideContext) (emphasize 0 "Context")
       , menuElem (SideMenuLog focus) (sideWin == M.SideLog) (plainText "Messages") ]
 
 
@@ -944,8 +958,8 @@ viewSideTimex model focus nodeId node (Anno.Timex ti) =
 
 
 -- | The view of a side window.
-viewSideEdit : M.Focus -> M.Model -> Html.Html Msg
-viewSideEdit win model =
+viewSideEdit : Bool -> M.Focus -> M.Model -> Html.Html Msg
+viewSideEdit visible win model =
   let
 
     selected = case win of
@@ -988,7 +1002,7 @@ viewSideEdit win model =
         ]
       ]
       (divMain ++ divChildren)
-    top = viewSideDiv win model [div]
+    top = viewSideDiv visible win model [div]
   in
     top
 
@@ -999,8 +1013,12 @@ viewSideEdit win model =
 
 
 -- | The view of a side window.
-viewSideContext : M.Focus -> M.Model -> Html.Html Msg
-viewSideContext foc model =
+viewSideContext
+    : Bool           -- ^ Visible?
+    -> M.Focus
+    -> M.Model
+    -> Html.Html Msg
+viewSideContext visible foc model =
   let
     treeSelected = (M.selectWin foc model).tree
     viewTree spks (treeId, mayWho) =
@@ -1009,7 +1027,7 @@ viewSideContext foc model =
                    Just (x, _) -> x
       in  viewSent foc (treeId == treeSelected) treeId sent spks mayWho
     viewTurn turn = List.map (viewTree turn.speaker) (D.toList turn.trees)
-    div = viewSideDiv foc model
+    div = viewSideDiv visible foc model
       [ Html.ul
           [Atts.style
              [ "position" => "absolute"
@@ -1021,6 +1039,10 @@ viewSideContext foc model =
 --              (D.toList model.trees)
 --           )
           (List.concat <| List.map viewTurn model.turns)
+--       , Html.p
+--           [ Atts.id <| Cfg.selectSentName True
+--           , Atts.style ["position" => "absolute", "bottom" => px 0] ]
+--           [Html.text "test text"]
       ]
   in
     div
@@ -1036,8 +1058,14 @@ viewSent
   -> Html.Html Msg
 viewSent foc isSelected treeId sent spks who =
   let
-    styl = if isSelected
-      then [Atts.style ["font-weight" => "bold"]]
+    paraAtts = if isSelected
+      then [ Atts.style ["font-weight" => "bold"] ]
+      else []
+    liAtts = if isSelected
+      then [ Atts.id <| Cfg.selectSentName <|
+                 case foc of
+                     M.Top -> True
+                     M.Bot -> False ]
       else []
     spk = case who of
             Nothing ->
@@ -1050,10 +1078,10 @@ viewSent foc isSelected treeId sent spks who =
                 Nothing -> "?"
     para = Html.p
       -- [Atts.style ["font-weight" => "bold"]]
-      styl
+      paraAtts
       -- [Html.text <| toString treeId ++ "." ++ spk ++ ": " ++ sent]
       [Html.text <| spk ++ ": " ++ sent]
-    li = Html.li [] <| Util.single <|
+    li = Html.li liAtts <| Util.single <|
       Html.div
         [ Atts.class "noselect"
         , Events.onClick (SelectTree foc treeId)
@@ -1105,11 +1133,11 @@ viewSent foc isSelected treeId sent spks who =
 
 
 -- | The view of a side window.
-viewSideLog : M.Focus -> M.Model -> Html.Html Msg
-viewSideLog foc model =
+viewSideLog : Bool -> M.Focus -> M.Model -> Html.Html Msg
+viewSideLog visible foc model =
   let
     treeSelected = (M.selectWin foc model).tree
-    div = viewSideDiv foc model
+    div = viewSideDiv visible foc model
       [ Html.ul
           [Atts.style
              [ "position" => "absolute"
@@ -1534,6 +1562,9 @@ mainKeyDown ctrl =
       -- "a"
       65 -> Add
 
+      -- "c"
+      67 -> ShowContext
+
       -- "s"
       83 -> MkSignal
 
@@ -1567,7 +1598,7 @@ mainKeyDown ctrl =
       17 -> CtrlDown
 
       -- "c"
-      67 -> Connect
+      -- 67 -> Connect
 
       -- "p"
       80 -> ParseSent Server.Stanford

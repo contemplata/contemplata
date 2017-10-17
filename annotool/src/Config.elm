@@ -2,7 +2,8 @@ module Config exposing
   ( Config
   , stdMargin, nodeHeight, moveDown, sideSpace, sideMenuHeight
   -- , testTree1, testTree2, testTree3, testTree4, testTree5
-  , increaseSpeed, windowName, editLabelName, splitSelectName
+  , increaseSpeed, windowName, editLabelName, selectSentName, splitSelectName
+  , sideDivName
   , popupDivTemp
   , dmzSize, linkDasharray, linkWidth, linkOpacity
   , linkCircleOpacity, linkCircleColor, linkCircleRadius, linkCircleSelectColor
@@ -105,6 +106,20 @@ editLabelName : Bool -> String
 editLabelName flag = case flag of
   True  -> "topEdit"
   False -> "botEdit"
+
+
+-- | The name of the edit label field.
+selectSentName : Bool -> String
+selectSentName flag = case flag of
+  True  -> "topSelectSent"
+  False -> "botSelectSent"
+
+
+-- | The name of the edit label field.
+sideDivName : Bool -> String
+sideDivName flag = case flag of
+  True  -> "topSideDiv"
+  False -> "botSideDiv"
 
 
 -- | The name of the main editing windows.
