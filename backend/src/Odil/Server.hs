@@ -79,9 +79,9 @@ instance JSON.ToJSON a => JSON.ToJSON (ParseReq a) where
 
 -- | Request coming from the client.
 data Request
-  = GetFiles
-  | GetFile FileId
-  | SaveFile FileId File
+  = GetFiles AnnoName
+  | GetFile AnnoName FileId
+  | SaveFile AnnoName FileId File
   | ParseSent FileId TreeId ParserTyp (ParseReq [Stanford.Orth])
     -- ^ FileId and TreeId are sent there and back so that it
     -- can be checked that the user did not move elsewhere before
@@ -206,8 +206,9 @@ talk conn state = forever $ do
         T.putStrLn msg
         WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
-      Right GetFiles -> do
-        DB.runDBT db DB.fileSet >>= \case
+      Right (GetFiles anno) -> do
+        DB.runDBT db (DB.fileSetFor anno $ const True) >>= \case
+        -- DB.runDBT db DB.fileSet >>= \case
           Left err -> do
             let msg = T.concat ["GetFiles error: ", err]
             T.putStrLn msg
@@ -216,8 +217,11 @@ talk conn state = forever $ do
             let ret = Files (S.toList fs)
             WS.sendTextData conn (JSON.encode ret)
 
-      Right (GetFile fileId) -> do
-        DB.runDBT db (DB.loadFile fileId) >>= \case
+      Right (GetFile anno fileId) -> do
+        let getFile = do
+              Just _ <- DB.accessLevel fileId anno
+              DB.loadFile fileId
+        DB.runDBT db getFile >>= \case
           Left err -> do
             let msg = T.concat ["GetFile error: ", err]
             T.putStrLn msg
@@ -226,9 +230,15 @@ talk conn state = forever $ do
             let ret = NewFile fileId file
             WS.sendTextData conn (JSON.encode ret)
 
-      Right (SaveFile fileId file) -> do
+      Right (SaveFile anno fileId file) -> do
         putStrLn "Saving file..."
-        DB.runDBT db (DB.reSaveFile fileId file) >>= \case
+        let saveFile = do
+              Just accLevel <- DB.accessLevel fileId anno
+              if accLevel < Write
+                then fail "you are not authorized to modify this file"
+                else return ()
+              DB.reSaveFile fileId file
+        DB.runDBT db saveFile >>= \case
           Left err -> do
             let msg = T.concat ["Could not save file: ", err]
             T.putStrLn msg

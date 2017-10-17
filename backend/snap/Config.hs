@@ -3,6 +3,7 @@
 
 module Config
 ( fromCfg
+, fromCfg'
 , fromCfgDef
 ) where
 
@@ -20,6 +21,18 @@ fromCfg cfg key = do
     Just path -> do
       putStrLn $ "[Config] Using the configured " ++ T.unpack key ++ " value: " ++ show path
       return $ Just path
+
+
+-- | Like `fromCfg` but fails when the value is not specified in the config.
+fromCfg' :: (Show a, Cfg.Configured a) => Cfg.Config -> Cfg.Name -> IO a
+fromCfg' cfg key = do
+  Cfg.lookup cfg key >>= \case
+    Nothing -> do
+      let msg = "[Config] Value for '" ++ T.unpack key ++ "' not configured!"
+      putStrLn msg >> fail msg
+    Just val -> do
+      putStrLn $ "[Config] Using the configured " ++ T.unpack key ++ " value: " ++ show val
+      return $ val
 
 
 -- | Configuration with default value.

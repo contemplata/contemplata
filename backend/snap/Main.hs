@@ -70,6 +70,7 @@ routes =
   , ("/admin/file/:filename", Admin.fileHandler)
   , ("/admin/file/:filename/addanno/:annoname", Admin.fileAddAnnoHandler)
   , ("/admin/file/:filename/remanno/:annoname", Admin.fileRemoveAnnoHandler)
+  , ("/admin/file/:filename/changeaccess/:annoname", Admin.fileChangeAccessAnnoHandler)
   , ("", Snap.ifTop rootHandler)
   ]
 
@@ -140,7 +141,7 @@ appInit = Snap.makeSnaplet "snap-odil" "ODIL" Nothing $ do
   db <- liftIO $ C.newMVar =<< Server.loadDB dbPath
   s <- Snap.nestSnaplet "sess" sess $
        Session.initCookieSessionManager "site_key.txt" "_cookie" Nothing Nothing
-  passPath <- liftIO $ Cfg.fromCfgDef cfg "password" "pass.json"
+  passPath <- liftIO $ Cfg.fromCfg' cfg "password" -- "pass.json"
   a <- Snap.nestSnaplet "auth" auth $
        initJsonFileAuthManager Auth.defAuthSettings sess passPath
   tempPath <- liftIO $ Cfg.fromCfgDef cfg "templates" "templates"

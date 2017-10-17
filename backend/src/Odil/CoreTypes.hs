@@ -10,6 +10,7 @@ module Odil.CoreTypes
 
 , AnnoName
 , FileMeta(..)
+, AccessLevel (..)
 , defaultMeta
 ) where
 
@@ -17,6 +18,7 @@ module Odil.CoreTypes
 import GHC.Generics
 
 import qualified Data.Set as S
+import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Aeson as JSON
 
@@ -55,17 +57,34 @@ type Addr = (TreeId, NodeId)
 type AnnoName = T.Text
 
 
+-- | Level of acces to a file.
+-- Note: `Read` is the lowest possible access level (an assumption we rely on).
+data AccessLevel
+  = Read  -- ^ Can only read
+  | Write -- ^ Can both write and read
+  deriving (Show, Eq, Ord, Generic)
+
+
 -- | Metadata of a given document.
 data FileMeta = FileMeta
-  { annoSet :: S.Set AnnoName
+  { annoMap :: M.Map AnnoName AccessLevel
     -- ^ Annotators who can modify the file
   } deriving (Show, Eq, Ord, Generic)
 
 
 defaultMeta :: FileMeta
 defaultMeta = FileMeta
-  { annoSet = S.empty }
+  { annoMap = M.empty }
 
+
+----------------
+-- JSON instances
+----------------
+
+
+instance JSON.FromJSON AccessLevel
+instance JSON.ToJSON AccessLevel where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
 instance JSON.FromJSON FileMeta
 instance JSON.ToJSON FileMeta where

@@ -16,6 +16,7 @@ module Odil.Server.Types
 
 , AnnoName
 , FileMeta(..)
+, AccessLevel (..)
 , defaultMeta
 
 -- * Types

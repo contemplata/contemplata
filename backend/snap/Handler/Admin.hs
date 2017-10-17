@@ -9,6 +9,7 @@ module Handler.Admin
 , fileHandler
 , fileAddAnnoHandler
 , fileRemoveAnnoHandler
+, fileChangeAccessAnnoHandler
 ) where
 
 
@@ -19,6 +20,7 @@ import qualified Control.Concurrent as C
 import qualified Control.Monad.State.Strict as State
 
 import qualified Data.Set as S
+import qualified Data.Map.Strict as M
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -41,6 +43,7 @@ import qualified Text.Digestive.Snap as D
 
 import           Odil.Server.Types
 import qualified Odil.Server.DB as DB
+import qualified Odil.Server.Users as Users
 
 import qualified Auth as MyAuth
 import qualified Config as MyCfg
@@ -115,45 +118,64 @@ fileHandler = ifAdmin $ do
 
   Just fileName <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
 
-  allAnnotators <- undefined
+  allAnnotators <- do
+    cfg <- Snap.getSnapletUserConfig
+    passPath <- liftIO $ MyCfg.fromCfg' cfg "password" -- "pass.json"
+    liftIO $ Users.listUsers passPath
   (annoView, annoName) <- D.runForm
     "add-anno-form"
     (addAnnoForm allAnnotators)
 
-  annotators <- liftDB $ S.toList . annoSet <$> DB.loadMeta fileName
+  case annoName of
+    Nothing -> return ()
+    -- Just an -> modifyAppl fileName an
+    Just an -> liftDB $ DB.addAnnotator fileName an Read
 
+  annotations <- liftDB $ M.toList . annoMap <$> DB.loadMeta fileName
   let localSplices = do
         "fileName" ## return
           [X.TextNode fileName]
         "currentAnnotators" ## return
-          (map (mkElem fileName) annotators)
+          (map (mkElem fileName) annotations)
 
-      showPage = Heist.heistLocal
-        ( bindSplices localSplices .
-          bindDigestiveSplices annoView )
-        ( Heist.render "admin/file" )
-
-  case annoName of
-    Nothing -> showPage
-    Just an -> do
-      modifyAppl fileName an
-      showPage
+  Heist.heistLocal
+    ( bindSplices localSplices .
+      bindDigestiveSplices annoView )
+    ( Heist.render "admin/file" )
 
   where
 
-    modifyAppl fileName annoName = liftDB $ do
-      meta <- DB.loadMeta fileName
-      let newAnno = S.insert annoName (annoSet meta)
-          newMeta = meta {annoSet = newAnno}
-      DB.saveMeta fileName newMeta
+    mkElem fileName (annoName, access) = X.Element "tr" []
+        [ mkText annoName
+        , mkLink "remove" "Click to remove" $
+          T.intercalate "/" [fileName, "remanno", annoName]
+        , mkLink (T.pack $ show access) "Click to change" $
+          T.intercalate "/" [fileName, "changeaccess", annoName]
+        ]
 
-    mkElem fileName anno = X.Element "li"
-      [("class", "list-group-item")]
-      [mkRemLink fileName anno]
+    mkText x = X.Element "td" [] [X.TextNode x]
+    mkLink x tip href = X.Element "td" [] [X.Element "a"
+        [ ("href", href)
+        , ("title", tip) ]
+        [X.TextNode x] ]
 
-    mkRemLink fileName anno = X.Element "a"
-      [("href", T.intercalate "/" [fileName, "remanno", anno])]
-      [X.TextNode anno]
+--     mkElem fileName anno = X.Element "li"
+--       [("class", "list-group-item")]
+--       [mkRemLink fileName anno]
+
+--     mkRemLink fileName anno = X.Element "a"
+--       [ ("href", T.intercalate "/" [fileName, "remanno", anno])
+--       , ("title", "Click to remove") ]
+--       [X.TextNode anno]
+
+--     mkText x = X.Element "td" [] [X.TextNode x]
+--     mkCheck x = if x then "✓" else "" -- "❌"
+--     mkLink x = X.Element "td" [] [X.Element "a"
+--         [ ("href", href) ]
+--         [X.TextNode x] ]
+--     href = T.concat [br, "/member?", args]
+--     args = T.decodeUtf8 $ printUrlEncoded $ M.fromList $
+--         [ ("id", [B.pack $ show subid]) ]
 
 
 -- | Login form for a user.
@@ -175,11 +197,7 @@ fileAddAnnoHandler = ifAdmin $ do
   let fileName = T.decodeUtf8 fileNameBS
   Just annoName <- fmap T.decodeUtf8 <$> Snap.getParam "annoname"
   -- Snap.writeText $ T.concat [fileName, ": ", annoName]
-  liftDB $ do
-    meta <- DB.loadMeta fileName
-    let newAnno = S.insert annoName (annoSet meta)
-        newMeta = meta {annoSet = newAnno}
-    DB.saveMeta fileName newMeta
+  liftDB $ DB.addAnnotator fileName annoName Read
   Snap.redirect $ "/admin/file/" `BS.append` fileNameBS
 
 
@@ -189,11 +207,17 @@ fileRemoveAnnoHandler = ifAdmin $ do
   Just fileNameBS <- Snap.getParam "filename"
   let fileName = T.decodeUtf8 fileNameBS
   Just annoName <- fmap T.decodeUtf8 <$> Snap.getParam "annoname"
-  liftDB $ do
-    meta <- DB.loadMeta fileName
-    let newAnno = S.delete annoName (annoSet meta)
-        newMeta = meta {annoSet = newAnno}
-    DB.saveMeta fileName newMeta
+  liftDB $ DB.remAnnotator fileName annoName
+  Snap.redirect $ "/admin/file/" `BS.append` fileNameBS
+
+
+-- | Remmove annotator from a file handler.
+fileChangeAccessAnnoHandler :: AppHandler ()
+fileChangeAccessAnnoHandler = ifAdmin $ do
+  Just fileNameBS <- Snap.getParam "filename"
+  let fileName = T.decodeUtf8 fileNameBS
+  Just annoName <- fmap T.decodeUtf8 <$> Snap.getParam "annoname"
+  liftDB $ DB.changeAccessAnnotator fileName annoName
   Snap.redirect $ "/admin/file/" `BS.append` fileNameBS
 
 

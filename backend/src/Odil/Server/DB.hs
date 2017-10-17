@@ -20,6 +20,8 @@ module Odil.Server.DB
 , createDB
 , fileNum
 , fileSet
+, fileSetFor
+, accessLevel
 , hasFile
 , saveFile
 , reSaveFile
@@ -30,7 +32,10 @@ module Odil.Server.DB
 , defaultMeta
 , loadMeta
 , saveMeta
--- , annoSet
+, addAnnotator
+, remAnnotator
+, changeAccessAnnotator
+-- , annoMap
 
 -- * Low-level
 , Register
@@ -47,6 +52,7 @@ import qualified Control.Exception as Exc
 import qualified Control.Error as Err
 import qualified Control.Monad.Trans.Reader as R
 
+import           Data.Maybe (maybeToList)
 import qualified Data.Set as S
 import qualified Data.Map.Strict as M
 import qualified Data.ByteString.Lazy as BLS
@@ -54,7 +60,7 @@ import qualified Data.Text as T
 import qualified System.Directory as Dir
 import System.FilePath ((</>), (<.>))
 
-import Odil.Server.Types -- hiding (annoSet)
+import Odil.Server.Types -- hiding (annoMap)
 -- import qualified Odil.Server.Types as Types
 import qualified Odil.Server.Config as Cfg
 import qualified Data.Aeson as JSON
@@ -213,6 +219,32 @@ fileSet :: DBT (S.Set FileId)
 fileSet = M.keysSet <$> fileMap
 
 
+-- | Check the access level of the given annotator for the given file.
+accessLevel
+  :: FileId
+  -> AnnoName
+  -> DBT (Maybe AccessLevel)
+accessLevel fileName annoName = do
+  theFileMap <- fileMap
+  return $
+    M.lookup annoName . annoMap =<<
+    M.lookup fileName theFileMap
+
+
+-- | Return the set of files with a corresponding access restriction.
+fileSetFor
+  :: AnnoName
+  -> (AccessLevel -> Bool)
+  -> DBT (S.Set FileId)
+fileSetFor annoName hasAccess = do
+  theFileMap <- fileMap
+  return $ S.fromList
+    [ fileId
+    | (fileId, FileMeta{..}) <- M.toList theFileMap
+    , accLev <- maybeToList (M.lookup annoName annoMap)
+    , hasAccess accLev ]
+
+
 -- | Add a file to a DB.
 hasFile :: FileId -> DBT Bool
 hasFile fid = do
@@ -274,15 +306,11 @@ copyFile from to = do
   storeCopyFile from to
 
 
--- -- | Load a file from a DB.
--- loadMeta :: FileId -> DBT FileMeta
--- loadMeta fid = do
---   reg <- readReg
---   unless (regHasFile fid reg)
---     (Err.throwE "File ID does not exist")
---   let update FileMeta{..} = FileMeta (S.annoSet )
---   saveReg $ regUpdateMeta fid update reg
-
+---------------------------------------
+-- Top-level contd.
+--
+-- Meta-related
+---------------------------------------
 
 -- | Load a file from a DB.
 loadMeta :: FileId -> DBT FileMeta
@@ -300,6 +328,47 @@ saveMeta fid meta = do
   writeReg $ regAddFile fid meta reg
 
 
+-- | Add annotator to a given file.
+addAnnotator :: FileId -> AnnoName -> AccessLevel -> DBT ()
+addAnnotator fileName annoName accLev = do
+  meta <- loadMeta fileName
+  let newAnno = M.insert annoName accLev (annoMap meta)
+      newMeta = meta {annoMap = newAnno}
+  saveMeta fileName newMeta
+
+
+-- | Add annotator to a given file.
+remAnnotator :: FileId -> AnnoName -> DBT ()
+remAnnotator fileName annoName = do
+  meta <- loadMeta fileName
+  let newAnno = M.delete annoName (annoMap meta)
+      newMeta = meta {annoMap = newAnno}
+  saveMeta fileName newMeta
+
+
+-- | Add annotator to a given file.
+changeAccessAnnotator :: FileId -> AnnoName -> DBT ()
+changeAccessAnnotator fileName annoName =
+  changeMeta fileName $ \meta -> do
+    let accLevMay = M.lookup annoName (annoMap meta)
+        turnLevel = \case
+          Read -> Write
+          Write -> Read
+    return $ case accLevMay of
+      Nothing -> meta
+      Just x ->
+        let newAnno = M.insert annoName (turnLevel x) (annoMap meta)
+        in  meta {annoMap = newAnno}
+
+
+-- | Add annotator to a given file.
+changeMeta :: FileId -> (FileMeta -> DBT FileMeta) -> DBT ()
+changeMeta fileName metaModif = do
+  meta <- loadMeta fileName
+  newMeta <- metaModif meta
+  saveMeta fileName newMeta
+
+
 ---------------------------------------
 -- Top-level contd.
 --
@@ -309,12 +378,12 @@ saveMeta fid meta = do
 
 -- -- | Return the set of the annotators which have right to modify
 -- -- the given file.
--- annoSet :: FileId -> DBT (S.Set FileId)
--- annoSet fileId = do
+-- annoMap :: FileId -> DBT (S.Set FileId)
+-- annoMap fileId = do
 --   reg <- readReg
 --   return $ case M.lookup fileId reg of
 --     Nothing -> S.empty
---     Just meta -> Types.annoSet meta
+--     Just meta -> Types.annoMap meta
 
 
 ---------------------------------------
