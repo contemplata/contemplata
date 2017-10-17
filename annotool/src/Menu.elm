@@ -62,9 +62,7 @@ update msg model =
   let idle x = (x, Cmd.none) in
   case msg of
     Choice fileId ->
-      -- let cmd = WebSocket.send Cfg.socketServer <|
-      --             Server.encodeReq (Server.GetFile fileId)
-      let cmd = Server.sendWS model.config (Server.GetFile fileId)
+      let cmd = Server.sendWS model.config (Server.GetFile model.config.user fileId)
       in  (model, cmd)
     ShowFiles ids -> idle <| {model | fileIds = ids}
     SetProxy newProxy ->
@@ -72,7 +70,7 @@ update msg model =
             oldConfig = model.config
             newConfig = {oldConfig | wsUseProxy = newProxy}
             newModel = {model | config = newConfig}
-            getFiles = Server.sendWS newConfig Server.GetFiles
+            getFiles = Server.sendWS newConfig (Server.GetFiles newConfig.user)
         in
             (newModel, getFiles)
     Many msgs ->
@@ -259,7 +257,7 @@ mkMenu
 mkMenu config =
   let
     model = {fileIds = [], config=config}
-    init = Server.sendWS config Server.GetFiles
+    init = Server.sendWS config (Server.GetFiles config.user)
   in
     (model, init)
 

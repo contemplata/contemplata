@@ -307,7 +307,7 @@ update msg model =
     SaveFile ->
       let
         file = {treeMap = model.trees, turns = model.turns, linkSet = model.links}
-        req = Server.SaveFile model.fileId file
+        req = Server.SaveFile model.config.user model.fileId file
         send = Server.sendWS model.config req
       in
         (model, send)

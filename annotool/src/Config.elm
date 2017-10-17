@@ -22,6 +22,7 @@ import Focus as Lens
 import List as L
 
 import Rose as R
+import Edit.Core exposing (AnnoName)
 -- import Edit.Model as M
 
 
@@ -31,7 +32,7 @@ import Rose as R
 
 
 type alias Config =
-  { user : String
+  { user : AnnoName
   -- ^ User name
   , wsUseProxy : Bool
   -- ^ Use proxy adress for the websocket server

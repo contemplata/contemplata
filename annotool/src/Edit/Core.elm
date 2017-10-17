@@ -2,6 +2,7 @@
 
 module Edit.Core exposing
   ( FileId
+  , AnnoName
   , NodeId
   , TreeId
   , Addr
@@ -9,6 +10,10 @@ module Edit.Core exposing
 
 
 type alias FileId = String
+
+
+-- | Annotator identifier.
+type alias AnnoName = String
 
 
 -- | Tree identifier

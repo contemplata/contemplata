@@ -51,11 +51,11 @@ encodeParseReq encA parseReq =
 
 
 type Request
-  = GetFiles
-    -- ^ Obtain the list of files
-  | GetFile C.FileId
+  = GetFiles C.AnnoName
+    -- ^ Obtain the list of files for a given annotator
+  | GetFile C.AnnoName C.FileId
     -- ^ Request the contents of the given file
-  | SaveFile C.FileId M.File
+  | SaveFile C.AnnoName C.FileId M.File
     -- ^ Request the contents of the given file
   | ParseRaw C.FileId C.TreeId String
     -- ^ Parse the given raw text
@@ -75,15 +75,23 @@ encodeReq = Encode.encode 0 << encodeReqToVal
 encodeReqToVal : Request -> Encode.Value
 encodeReqToVal req = case req of
   -- GetFiles -> Encode.string "getfiles"
-  GetFiles -> Encode.object [("tag", Encode.string "GetFiles")]
-  GetFile id -> Encode.object
-    [ ("tag", Encode.string "GetFile")
-    , ("contents", Encode.string id)
+  GetFiles annoName -> Encode.object
+    [ ("tag", Encode.string "GetFiles")
+    , ("contents", Encode.string annoName)
     ]
-  SaveFile fileId file -> Encode.object
+  GetFile annoName id -> Encode.object
+    [ ("tag", Encode.string "GetFile")
+    -- , ("contents", Encode.string id)
+    , ("contents", Encode.list
+         [ Encode.string annoName
+         , Encode.string id ]
+      )
+    ]
+  SaveFile annoName fileId file -> Encode.object
     [ ("tag", Encode.string "SaveFile")
     , ("contents", Encode.list
-         [ Encode.string fileId
+         [ Encode.string annoName
+         , Encode.string fileId
          , M.encodeFile file ]
       )
     ]
