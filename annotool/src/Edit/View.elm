@@ -149,6 +149,7 @@ viewTree focus model =
   in
     drawTree
       focus win.selMain win.selAux
+      <| markMisplaced first
       <| positionTree (M.getPosition win)
       <| R.withWidth stdWidth Cfg.stdMargin tree
 
@@ -496,9 +497,9 @@ drawTree
    : M.Focus -- ^ Which window is it in?
   -> Maybe C.NodeId -- ^ Selected main
   -> S.Set C.NodeId -- ^ Selected auxiliaries
-  -> R.Tree (M.Node, Position) -- ^ Tree to draw
+  -> R.Tree ((M.Node, Position), NodeTyp) -- ^ Tree to draw
   -> Html.Html Msg
-drawTree focus selMain selAux (R.Node (node, pos) subTrees) =
+drawTree focus selMain selAux (R.Node ((node, pos), mark) subTrees) =
   let
     lineCfg = { defLineCfg
       | strokeWidth = 2
@@ -508,11 +509,11 @@ drawTree focus selMain selAux (R.Node (node, pos) subTrees) =
       [] -> []
       t :: ts ->
         drawTree focus selMain selAux t
-          :: viewLine lineCfg pos (R.getRootSnd t)
+          :: viewLine lineCfg pos (second <| first <| R.label t)
           :: drawForest ts
   in
     Html.div []
-      (  drawNode node selMain selAux focus pos
+      (  drawNode node selMain selAux focus pos mark
       :: drawForest subTrees )
 
 
@@ -523,6 +524,7 @@ drawNode
   -> S.Set C.NodeId
   -> M.Focus
   -> Position
+  -> NodeTyp -- ^ Should be marked as misplaced?
   -> Html.Html Msg
 drawNode node =
     case node of
@@ -537,8 +539,9 @@ drawInternal
   -> S.Set C.NodeId
   -> M.Focus
   -> Position
+  -> NodeTyp -- ^ Should be marked as misplaced?
   -> Html.Html Msg
-drawInternal node selMain selAux focus at =
+drawInternal node selMain selAux focus at mark =
   let
     -- width = nodeWidth
     intNode = M.Node node
@@ -548,8 +551,10 @@ drawInternal node selMain selAux focus at =
     nodeId = node.nodeId
     auxStyle =
       ( if S.member nodeId selAux || Just nodeId == selMain
-          then ["background-color" => "#BC0000"]
-          else ["background-color" => "#3C8D2F"] )
+        then ["background-color" => "#BC0000"]
+        else if mark == Misplaced
+        then ["background-color" => "#EF597B"]
+        else ["background-color" => "#3C8D2F"] )
       ++
       ( if Just nodeId == selMain
           then ["border" => "solid", "border-color" => "black"]
@@ -600,8 +605,9 @@ drawLeaf
   -> S.Set C.NodeId
   -> M.Focus
   -> Position
+  -> NodeTyp -- ^ Should be marked as misplaced?
   -> Html.Html Msg
-drawLeaf node selMain selAux focus at =
+drawLeaf node selMain selAux focus at mark =
   let
     -- width = nodeWidth
     leafNode = M.Leaf node
@@ -610,8 +616,10 @@ drawLeaf node selMain selAux focus at =
     nodeId = node.nodeId
     auxStyle =
       ( if S.member nodeId selAux || Just nodeId == selMain
-          then ["background-color" => "#BC0000"]
-          else ["background-color" => "#1F5C9A"] ) -- "#1F9A6D"
+        then ["background-color" => "#BC0000"]
+        else if mark == Misplaced
+        then ["background-color" => "#EF597B"]
+        else ["background-color" => "#1F5C9A"] ) -- "#1F9A6D"
       ++
       ( if Just nodeId == selMain
           then ["border" => "solid", "border-color" => "black"]
@@ -1704,12 +1712,12 @@ popupKeyDownEvents tagger =
 positionTree : Position -> R.Tree (M.Node, R.Width) -> R.Tree (M.Node, Position)
 positionTree pos (R.Node (node, rootWidth) subTrees) =
   let
-    forestWidth = List.sum <| L.map R.getRootSnd subTrees
+    forestWidth = List.sum <| L.map (R.label >> second) subTrees
     positionF w0 forest = case forest of
       [] -> []
       t :: ts ->
         let
-          tw = R.getRootSnd t
+          tw = second <| R.label t
           tpos = {x = w0 + tw // 2, y = pos.y + Cfg.moveDown}
         in
           positionTree tpos t :: positionF (w0 + tw) ts
@@ -1723,6 +1731,136 @@ nodePos nodeId tree = Maybe.map second <|
   Util.find
     (\node -> Lens.get M.nodeId (first node) == nodeId)
     (R.flatten tree)
+
+
+---------------------------------------------------
+-- Determine which nodes should be marked
+-- as "misplaced" or "non-projective"
+---------------------------------------------------
+
+
+-- | To mark nodes as misplaced.
+type NodeTyp = Normal | Misplaced
+
+
+-- | Determine which leaves should be marked as "misplaced".
+addSpans
+    : (a -> M.Node)
+    -> R.Tree a
+    -> R.Tree (a, (Int, Int))
+addSpans getNode =
+    let
+        go (R.Node wrapper forest0) =
+            case getNode wrapper of
+                M.Node _ ->
+                    let forest = L.map go forest0
+                        beg = spanBeg forest
+                        end = spanEnd forest
+                        span = (beg, end)
+                    in  R.Node (wrapper, span) forest
+                M.Leaf r ->
+                    let span = (r.leafPos, r.leafPos)
+                    in  R.Node (wrapper, span) []
+        spanBeg xs =
+            case L.minimum <| L.map (first << second << R.label) xs of
+                Nothing -> Debug.crash "Edit.View.addSpans: spanBeg"
+                Just x  -> x
+        spanEnd xs =
+            case L.maximum <| L.map (second << second << R.label) xs of
+                Nothing -> Debug.crash "Edit.View.addSpans: spanEnd"
+                Just x  -> x
+    in
+        go
+
+
+-- | Determine which leaves should be marked as "misplaced".
+markMisplaced
+    : (a -> M.Node)
+    -> R.Tree a
+    -> R.Tree (a, NodeTyp)
+markMisplaced getNode =
+    let
+        markTree prevSpan (R.Node (wrapper, span) forest) =
+            let
+                nodeTyp = case prevSpan of
+                    Nothing -> Normal
+                    Just (_, prevEnd) ->
+                        if prevEnd < first span
+                        then Normal
+                        else Misplaced
+            in
+                (Just span, R.Node (wrapper, nodeTyp) (markForest forest))
+        markForest =
+            second << Util.mapAccumL markTree Nothing
+        markRoot (R.Node (wrapper, span) forest) =
+            R.Node (wrapper, Normal) (markForest forest)
+    in
+        propagateMarks << markRoot << addSpans getNode
+
+
+-- | Propagate the markings downward to the leaves.
+propagateMarks
+    : R.Tree (a, NodeTyp)
+    -> R.Tree (a, NodeTyp)
+propagateMarks =
+    let
+        propTyp typ =
+            case typ of
+                Normal -> Nothing
+                x -> Just x
+        markTree fromUp (R.Node (wrapper, typ) forest) =
+            case fromUp of
+                Nothing ->
+                    let newTyp = propTyp typ
+                    in  R.Node (wrapper, typ) (markForest newTyp forest)
+                Just newTyp ->
+                    R.Node (wrapper, newTyp) (markForest fromUp forest)
+        markForest : Maybe NodeTyp -> R.Forest (a, NodeTyp) -> R.Forest (a, NodeTyp)
+        markForest fromUp = L.map (markTree fromUp)
+    in
+        markTree Nothing
+
+
+-- -- | Determine which leaves should be marked as "misplaced".
+-- markMisplacedLeaves
+--     : (a -> M.Node)
+--     -> R.Tree a
+--     -> R.Tree (a, NodeTyp)
+-- markMisplacedLeaves getNode =
+--     let
+--         -- Leave only the highest position in the set
+--         trim s = case L.maximum (S.toList s) of
+--                      Just x -> S.singleton x
+--                      Nothing -> Debug.crash
+--                        "markMisplacedLeaves: the set should never be empty!"
+--         -- The leaf is marked as normal if the accumulator is a set of
+--         -- consecutive numbers. Otherwise, it is marked as misplaced.
+--         whatTyp pos acc =
+--             let
+--                 newAcc = S.insert pos acc
+--             in
+--                 if isConsecutive (S.toList newAcc)
+--                 then (trim newAcc, Normal)
+--                 else (newAcc, Misplaced)
+--         update acc wrapper =
+--             case getNode wrapper of
+--                 M.Node r -> (acc, (wrapper, Normal))
+--                 M.Leaf r ->
+--                     let (newAcc, nodeTyp) = whatTyp r.leafPos acc
+--                     in  (newAcc, (wrapper, nodeTyp))
+--     in
+--         second << R.mapAccum update S.empty
+--
+--
+-- -- | Is the given list of numbers consecutive, i.e.,
+-- -- [k, k+1, k+2, ...].
+-- isConsecutive : List Int -> Bool
+-- isConsecutive theList =
+--     case theList of
+--         (x :: y :: xs) ->
+--             x+1 == y && isConsecutive (y :: xs)
+--         [] -> True
+--         [x] -> True
 
 
 ---------------------------------------------------
