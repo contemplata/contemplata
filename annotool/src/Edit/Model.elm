@@ -9,7 +9,7 @@ module Edit.Model exposing
   -- Model types:
   , Model, Dim, Window, SideWindow(..), Drag, Focus(..)
   -- Other:
-  , selectWin, dragOn, getTree, selAll
+  , selectWin, dragOn, getTree, getTreeMay, getReprId, selAll
   , getPosition, nextTree, prevTree, moveCursor, moveCursorTo
   , treeNum, treePos
   -- History:
@@ -19,7 +19,9 @@ module Edit.Model exposing
   -- Logging:
   , log
   -- Nodes:
-  , getNode, setNode, updateNode, concatWords
+  , getNode, setNode, updateNode
+  -- TODO (think of the name):
+  , concatWords, join
   -- Labels:
   , getLabel, setLabel
   -- Comments:
@@ -336,14 +338,20 @@ type HistAtom
   = TreeModif -- ^ Modified a tree
     { treeId : TreeId
       -- ^ To which tree ID does it refer
-    , restoreTree : R.Tree Node
-      -- ^ The tree to restore
+    , restoreTree : Maybe (R.Tree Node)
+      -- ^ The tree to restore (or remove, if `Nothing`)
     }
   | LinkModif
     { addLinkSet : D.Dict Link LinkData
       -- ^ The links to add
     , delLinkSet : D.Dict Link LinkData
       -- ^ The links to remove
+    }
+  | PartModif -- ^ Modified a partition
+    { treeId : TreeId
+      -- ^ To which tree ID does it refer
+    , restorePart : S.Set TreeId
+      -- ^ The partition to restore
     }
 
 
@@ -378,8 +386,8 @@ applyAtom histAtom model =
   case histAtom of
     TreeModif r ->
       let
-        oldTree = getTree r.treeId model
-        tmpModel = updateTree_ r.treeId (\_ -> r.restoreTree) model
+        oldTree = getTreeMay r.treeId model
+        tmpModel = setTree_ r.treeId r.restoreTree model
         newModel = focusOnTree r.treeId tmpModel
         newAtom = TreeModif {r | restoreTree = oldTree}
       in
@@ -390,6 +398,14 @@ applyAtom histAtom model =
         -- newModel = {model | links = newLinks}
         newModel = Lens.set (file => linkSet) newLinks model
         newAtom = LinkModif {addLinkSet = r.delLinkSet, delLinkSet = r.addLinkSet}
+      in
+        (newModel, newAtom)
+    PartModif r ->
+      let
+        oldPart = getPart r.treeId model
+        tmpModel = Lens.update (file => partMap) (D.insert r.treeId r.restorePart) model
+        newModel = focusOnTree r.treeId tmpModel
+        newAtom = PartModif {r | restorePart = oldPart}
       in
         (newModel, newAtom)
 
@@ -484,14 +500,18 @@ log msg model =
 
 
 -- | Set a tree under a given ID.
-updateTree : TreeId -> (R.Tree Node -> R.Tree Node) -> Model -> Model
+updateTree
+    : TreeId
+    -- -> (R.Tree Node -> Maybe (R.Tree Node))
+    -> (R.Tree Node -> R.Tree Node)
+    -> Model -> Model
 updateTree treeId update model =
 
   let
 
     -- calculate the new tree and update the model
     oldTree = getTree treeId model
-    newModel = updateTree_ treeId update model
+    newModel = updateTree_ treeId (Just << update) model
     newTree = getTree treeId newModel
 
     -- we also calculate the set of deleted nodes
@@ -505,26 +525,61 @@ updateTree treeId update model =
     delLinks = L.filter isToDelete <| D.toList model.file.linkSet
     linkModif = deleteLinks (S.fromList <| L.map Tuple.first delLinks)
 
-
   in
 
      newModel
        |> linkModif
-       |> saveModif (TreeModif {treeId = treeId, restoreTree = oldTree})
+       |> saveModif (TreeModif {treeId = treeId, restoreTree = Just oldTree})
 --        |> updateSelection Top <- performed always after the update
 --        |> updateSelection Bot
 
 
--- | An internal version of `updateTree` which does not update the history.
-updateTree_ : TreeId -> (R.Tree Node -> R.Tree Node) -> Model -> Model
-updateTree_ treeId update model =
+-- -- | An internal version of `updateTree` which does not update the history.
+-- updateTree_ : TreeId -> (R.Tree Node -> R.Tree Node) -> Model -> Model
+-- updateTree_ treeId update model =
+--   let
+--     alter v = case v of
+--       Nothing -> Debug.crash "Model.updateTree_: no tree with the given ID"
+--       -- Just (sent, tree) -> Just (sent, update tree)
+--       Just tree -> Just (update tree)
+--     newTrees = D.update treeId alter model.file.treeMap
+--     -- newModel = {model | trees = newTrees}
+--     newModel = Lens.set (file => treeMap) newTrees model
+--   in
+--     newModel
+
+
+-- | An internal version of `updateTree` which does *not* update the history.
+updateTree_
+    : TreeId
+    -> (R.Tree Node -> Maybe (R.Tree Node))
+    -> Model -> Model
+updateTree_ treeId0 update model =
   let
+    treeId = getReprId treeId0 model
     alter v = case v of
       Nothing -> Debug.crash "Model.updateTree_: no tree with the given ID"
-      -- Just (sent, tree) -> Just (sent, update tree)
-      Just tree -> Just (update tree)
+      -- Just tree -> Just (update tree)
+      Just tree -> update tree
     newTrees = D.update treeId alter model.file.treeMap
-    -- newModel = {model | trees = newTrees}
+    newModel = Lens.set (file => treeMap) newTrees model
+  in
+    newModel
+
+
+-- | Similar to `updateTree_`, but does not require the tree to be present
+-- in the underlying map.
+setTree_
+    : TreeId
+    -> Maybe (R.Tree Node)
+    -> Model -> Model
+setTree_ treeId0 treeMay model =
+  let
+    treeId = getReprId treeId0 model
+    newTrees =
+        case treeMay of
+            Nothing -> D.remove treeId model.file.treeMap
+            Just tr -> D.insert treeId tr model.file.treeMap
     newModel = Lens.set (file => treeMap) newTrees model
   in
     newModel
@@ -533,6 +588,52 @@ updateTree_ treeId update model =
 -- | Return the set of node IDs in the given tree.
 nodesIn : R.Tree Node -> S.Set NodeId
 nodesIn = S.fromList << L.map (Lens.get nodeId) << R.flatten
+
+
+---------------------------------------------------
+-- Removal
+---------------------------------------------------
+
+
+-- | Remove the tree under a given ID.
+removeTree : TreeId -> Model -> Model
+removeTree treeId model =
+
+  let
+
+    -- calculate the new tree and update the model
+    -- oldTree = D.get treeId model.file.treeMap
+    oldTree = getTreeMay treeId model
+    -- newModel = removeTree_ treeId model
+    newModel = setTree_ treeId Nothing model
+
+    -- and delete the corresponding links, if needed
+    isToDelete ((from, to), linkData_) =
+      let toDel (trId, _) = trId == treeId
+      in  toDel from || toDel to
+    delLinks = L.filter isToDelete <| D.toList model.file.linkSet
+    linkModif = deleteLinks (S.fromList <| L.map Tuple.first delLinks)
+
+  in
+
+     newModel
+       |> linkModif
+       |> saveModif (TreeModif {treeId = treeId, restoreTree = oldTree})
+
+
+
+-- -- | An internal tree removal function which does *not* update the history.
+-- --
+-- -- NOTE: the tree removed is not the representant, but the given tree
+-- -- (this is in contrast to many other functions like `updateTree`).
+-- removeTree_ : TreeId -> Model -> Model
+-- removeTree_ treeId model =
+--   let
+--     alter _ = Nothing
+--     newTrees = D.update treeId alter model.file.treeMap
+--     newModel = Lens.set (file => treeMap) newTrees model
+--   in
+--     newModel
 
 
 ---------------------------------------------------
@@ -747,25 +848,33 @@ dragOn model =
 --     _ -> Nothing
 
 
+-- | Get a partition representative for a given treeID.
+getReprId : TreeId -> Model -> TreeId
+getReprId treeId model =
+  case D.get treeId model.file.partMap of
+    Nothing -> Debug.crash "Model.getReprId: no partition for the given ID"
+    Just st ->
+        case S.toList st of
+            xMin :: _ -> xMin
+            [] -> Debug.crash "Model.getReprId: empty partition"
+
+
 -- | Get a tree under a given ID.
 getTree : TreeId -> Model -> R.Tree Node
 getTree treeId model =
-  case D.get treeId model.file.treeMap of
+  case getTreeMay treeId model of
     Nothing -> Debug.crash "Model.getTree: no tree with the given ID"
     -- Just (_, t) -> t
     Just t -> t
 
 
--- -- | Set a tree under a given ID.
--- setTree : TreeId -> R.Tree Node -> Model -> Model
--- setTree treeId newTree model =
---   let
---     alter v = case v of
---       Nothing -> Debug.crash "Model.setTree: no tree with the given ID"
---       Just (sent, _) -> Just (sent, newTree
---     newTrees = D.update treeId alter model.trees
---   in
---     {model | tree = newTrees}
+-- | Get a tree under a given ID.  A version of `getTree` which does not
+-- assume that the tree exists (which is wrong to assume if, e.g., we undo
+-- a previous removal).
+getTreeMay : TreeId -> Model -> Maybe (R.Tree Node)
+getTreeMay treeId0 model =
+  let treeId = getReprId treeId0 model
+  in  D.get treeId model.file.treeMap
 
 
 -- | Retrieve all selected nodes.
@@ -811,6 +920,8 @@ treePos win model =
     go 1 (D.keys model.file.treeMap)
 
 
+-- | Number of trees in the model. Note that it does not necessarily correspond
+-- to the number of turns or turn elements.
 treeNum : Model -> Int
 treeNum model = D.size model.file.treeMap
 
@@ -1413,9 +1524,9 @@ identify dummyVal tree =
     Tuple.second <| R.mapAccum update newId1 tree
 
 
--- -- | Completely re-identify the given tree.
--- reID : R.Tree Node -> R.Tree Node
--- reID dummyVal tree =
+-- | Completely re-identify the given tree.
+reID : R.Tree Node -> R.Tree Node
+reID = identify "?" << R.map Just
 
 
 ---------------------------------------------------
@@ -1606,6 +1717,46 @@ concatWords model =
 
 
 ---------------------------------------------------
+-- Join sentences
+---------------------------------------------------
+
+
+join : TreeId -> TreeId -> Model -> Model
+join tid1 tid2 model =
+    let
+        newRepr = if tid1 < tid2 then tid1 else tid2
+        oldRepr = if tid1 < tid2 then tid2 else tid1
+        newPart = S.union (getPart newRepr model) (getPart oldRepr model)
+        newTree = joinTrees (getTree newRepr model) (getTree oldRepr model)
+        joinTrees t1 t2 =
+            let root = Node {nodeId=0, nodeVal="ROOT", nodeTyp=Nothing, nodeComment=""}
+            in  reID <| rePOS <| R.Node root (R.subTrees t1 ++ R.subTrees t2)
+    in
+        setPart newRepr newPart <| setPart oldRepr newPart <|
+        updateTree newRepr (\_ -> newTree) <| removeTree oldRepr <|
+        model
+
+
+-- | Set partition for the given tree ID.
+setPart : TreeId -> S.Set TreeId -> Model -> Model
+setPart treeId newPart model =
+    let
+        oldPart = getPart treeId model
+        newModel = Lens.update (file => partMap) (D.insert treeId newPart) model
+    in
+        newModel
+            |> saveModif (PartModif {treeId = treeId, restorePart = oldPart})
+
+
+getPart : TreeId -> Model -> S.Set TreeId
+getPart treeId model =
+    case D.get treeId model.file.partMap of
+        -- Nothing -> S.empty
+        Nothing -> Debug.crash "getPart: no partition for a given ID"
+        Just st -> st
+
+
+---------------------------------------------------
 -- Attach subtree
 ---------------------------------------------------
 
@@ -1626,7 +1777,6 @@ attachSel model =
       (Just from, Just to) ->
         case attach from to inTree of
           Just newTree ->
-            -- Lens.update trees (D.insert win.tree newTree) model
             updateTree win.tree (\_ -> newTree) model
           Nothing -> model
       _ -> model
@@ -2310,19 +2460,19 @@ maybeLens =
 ---------------------------------------------------
 
 
--- | Change the treeMap of the model.
-setTrees : TreeMap -> Model -> Model
-setTrees treeDict model = Debug.crash "setTrees: not implemented"
---   let
---     treeId = case D.toList treeDict of
---       (id, tree) :: _ -> id
---       _ -> Debug.crash "setTrees: empty tree dictionary"
---   in
---     {model | trees = treeDict}
---       |> Lens.set (top => tree) treeId
---       |> Lens.set (bot => tree) treeId
--- --       |> updateSelect Top
--- --       |> updateSelect Bot
+-- -- | Change the treeMap of the model.
+-- setTrees : TreeMap -> Model -> Model
+-- setTrees treeDict model = Debug.crash "setTrees: not implemented"
+-- --   let
+-- --     treeId = case D.toList treeDict of
+-- --       (id, tree) :: _ -> id
+-- --       _ -> Debug.crash "setTrees: empty tree dictionary"
+-- --   in
+-- --     {model | trees = treeDict}
+-- --       |> Lens.set (top => tree) treeId
+-- --       |> Lens.set (bot => tree) treeId
+-- -- --       |> updateSelect Top
+-- -- --       |> updateSelect Bot
 
 
 ---------------------------------------------------

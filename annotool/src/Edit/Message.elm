@@ -71,6 +71,7 @@ type Msg
   | Files -- ^ Go back to files menu
   | SaveFile  -- ^ Save the current file
   | ConcatWords  -- ^ Merge two (or more) words
+  | Join  -- ^ Merge the two trees in view
   | Undo
   | Redo
   | SideMenuEdit M.Focus
@@ -234,6 +235,15 @@ update msg model =
 
     -- Files -> idle <| model -- ^ Handled upstream
     Files -> Debug.crash "Edit.Message.Files: should be handled upstream!"
+
+    Join ->
+      let
+        treeTop = (M.selectWin M.Top model).tree
+        treeBot = (M.selectWin M.Bot model).tree
+        newModel = M.join treeTop treeBot model
+      in
+        idle newModel
+        -- parseSent Server.Stanford newModel
 
     ParseRaw prep ->
       let
@@ -544,6 +554,7 @@ cmdList =
   , ("dopparsecons", ParseSentCons Server.DiscoDOP)
   , ("deepen", ApplyRules)
   , ("concat", ConcatWords)
+  , ("join", Join)
   , ("split", SplitBegin)
 --   , ("undo", Undo)
 --   , ("redo", Redo)

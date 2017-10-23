@@ -1036,7 +1036,8 @@ viewSideContext visible foc model =
       let sent = case D.get treeId model.file.sentMap of
                    Nothing -> ""
                    Just x -> x
-      in  viewSent foc (treeId == treeSelected) treeId sent spks mayWho
+          isSelected = M.getReprId treeId model == M.getReprId treeSelected model
+      in  viewSent foc isSelected treeId sent spks mayWho
     viewTurn turn = List.map (viewTree turn.speaker) (D.toList turn.trees)
     div = viewSideDiv visible foc model
       [ Html.ul
