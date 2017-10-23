@@ -1,0 +1,19 @@
+Modifications à faire sur l’outil (avec les plus importantes en premier)
+
+* Segmentation et synchronisation
+  - Commande de fusion / segmentation de tours de parole
+  - Affichage temporel avec chevauchements (2+ colonnes) 
+  - Synchroniser la fenêtre Context avec l’arbre supérieur affiché après un Edit
+
+* Prétraitements lexicaux
+  - Appliquer récursivement les règles de suppression d’items (« et », « voilà »...) 
+  - Permettre la suppression manuelle de tous les mots (DUMMY) 
+  - Rajouter manuellement un mot (exemple : ôté automatiquement par erreur)
+
+* Edition d’attributs 
+  - Préciser la liste des POS autorisés pour le type de nœuds (mode EDIT) DONE
+
+* Documentation
+  - Bien préciser les différences entre FTB et Standford
+  - Documenter les spécificités dues à l’oral (Rhapsodie ou non) 
+  - Documenter toutes les fonctions de CONTEMPLATA

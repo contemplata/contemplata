@@ -122,11 +122,7 @@ convertPennFile pennForest = ID.runIdentity $ do
       return $ Odil.Turn
         { Odil.speaker = ["_"]      -- speakers N/A
         , Odil.trees = M.singleton k Nothing } -- speaker N/A
-  return Odil.File
-    { Odil.treeMap = treeMap
-    , Odil.turns = turns -- concat turns
-    , Odil.linkSet = M.empty
-    }
+  return $ Odil.mkNewFile treeMap turns
 
 
 -- | Make a raw sentence from a tree.

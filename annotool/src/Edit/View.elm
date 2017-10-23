@@ -1030,9 +1030,12 @@ viewSideContext visible foc model =
   let
     treeSelected = (M.selectWin foc model).tree
     viewTree spks (treeId, mayWho) =
-      let sent = case D.get treeId model.trees of
+--       let sent = case D.get treeId model.trees of
+--                    Nothing -> ""
+--                    Just (x, _) -> x
+      let sent = case D.get treeId model.file.sentMap of
                    Nothing -> ""
-                   Just (x, _) -> x
+                   Just x -> x
       in  viewSent foc (treeId == treeSelected) treeId sent spks mayWho
     viewTurn turn = List.map (viewTree turn.speaker) (D.toList turn.trees)
     div = viewSideDiv visible foc model
@@ -1046,7 +1049,7 @@ viewSideContext visible foc model =
 --              (\(treeId, (sent, _)) -> viewSent foc (treeId == treeSelected) treeId sent)
 --              (D.toList model.trees)
 --           )
-          (List.concat <| List.map viewTurn model.turns)
+          (List.concat <| List.map viewTurn model.file.turns)
 --       , Html.p
 --           [ Atts.id <| Cfg.selectSentName True
 --           , Atts.style ["position" => "absolute", "bottom" => px 0] ]
@@ -1184,7 +1187,8 @@ viewLinks : M.Model -> List (Html.Html Msg)
 viewLinks model =
   L.concatMap
     (viewLink model)
-    (D.toList model.links)
+    -- (D.toList model.links)
+    (D.toList model.file.linkSet)
 
 
 viewLink

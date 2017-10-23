@@ -238,9 +238,12 @@ update msg model =
     ParseRaw prep ->
       let
         treeId = (M.selectWin model.focus model).tree
-        txt = case D.get treeId model.trees of
+        -- txt = case D.get treeId model.trees of
+        --           Nothing -> ""
+        --           Just (x, _) -> x
+        txt = case D.get treeId model.file.sentMap of
                   Nothing -> ""
-                  Just (x, _) -> x
+                  Just x -> x
         req = Server.ParseRaw model.fileId treeId txt prep
         send = Server.sendWS model.config req
       in
@@ -307,8 +310,9 @@ update msg model =
 
     SaveFile ->
       let
-        file = {treeMap = model.trees, turns = model.turns, linkSet = model.links}
-        req = Server.SaveFile model.config.user model.fileId file
+        -- file = {treeMap = model.trees, turns = model.turns, linkSet = model.links}
+        -- req = Server.SaveFile model.config.user model.fileId file
+        req = Server.SaveFile model.config.user model.fileId model.file
         send = Server.sendWS model.config req
       in
         (model, send)

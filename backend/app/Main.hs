@@ -394,11 +394,7 @@ run cmd =
             return $ Odil.Turn
               { speaker = Ancor.speaker turn
               , trees = M.fromList treeList }
-      let file = Odil.File
-            { treeMap = treeMap
-            , turns = concat turns2
-            , linkSet = M.empty
-            }
+      let file = Odil.mkNewFile treeMap (concat turns2)
       LBS.putStr (JSON.encode file)
 
     -- Read the ancor file from stdin and output the resulting
@@ -520,7 +516,7 @@ run cmd =
         ids <- S.toList <$> lift DB.fileSet
         forM_ ids $ \fileId -> do
           Odil.File{..} <- lift $ DB.loadFile fileId
-          forM_ (M.toList treeMap) $ \(_treeId, (_sent, tree)) -> do
+          forM_ (M.toList treeMap) $ \(_treeId, tree) -> do
             let
               getNodeVal Odil.Node{..} = Just nodeVal
               getNodeVal Odil.Leaf{..} = Nothing
@@ -568,7 +564,7 @@ main =
 numberOfLeavesF :: Odil.File -> Int
 numberOfLeavesF Odil.File{..} = sum
   [ numberOfLeavesT tree
-  | (treeId, (sent, tree)) <- M.toList treeMap ]
+  | (treeId, tree) <- M.toList treeMap ]
 
 
 -- | Number of leaves in a given tree.

@@ -52,12 +52,13 @@ mkEdit config fileId file =
       }
     model =
       { fileId = fileId
-      , trees = file.treeMap
-      , turns = file.turns
+      , file = file
+      -- , trees = file.treeMap
+      -- , turns = file.turns
+      -- , links = file.linkSet
       , top = top
       , bot = bot
       , focus = Top
-      , links = file.linkSet
       , selLink = Nothing
       , dim = dim
       , ctrl = False

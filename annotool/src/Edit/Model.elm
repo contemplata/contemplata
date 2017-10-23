@@ -55,9 +55,9 @@ module Edit.Model exposing
   -- , changeTypeSel
   -- Lenses:
   , top, bot, dim, winLens, drag, side, pos, height, widthProp, heightProp
-  , nodeId, nodeVal, trees
+  , nodeId, nodeVal, treeMap, sentMap, partMap, trees
   -- Pseudo-lenses:
-  , setTrees
+  -- , setTrees
   -- Various:
   , setTree, getWords, subTreeAt
   -- JSON decoding:
@@ -97,6 +97,8 @@ import Edit.Popup as Popup
 
 type alias File =
   { treeMap : TreeMap
+  , sentMap : D.Dict TreeId Sent
+  , partMap : D.Dict TreeId (S.Set TreeId)
   , turns : List Turn
   , linkSet : D.Dict Link LinkData }
 
@@ -105,7 +107,8 @@ type alias File =
 type alias Sent = String
 
 
-type alias TreeMap = D.Dict TreeId (Sent, R.Tree Node)
+-- type alias TreeMap = D.Dict TreeId (Sent, R.Tree Node)
+type alias TreeMap = D.Dict TreeId (R.Tree Node)
 
 
 -- | A speech turn.
@@ -208,11 +211,16 @@ switchSignal signal r =
 type alias Model =
   { fileId : FileId
 
-  -- the underlying map of trees
-  , trees : TreeMap
-  -- the list of turns (TODO: trees, turns, and links, could be grouped in a
-  -- file)
-  , turns : List Turn
+  -- the underlying file
+  , file : File
+
+--   -- the underlying map of trees
+--   , trees : TreeMap
+--   -- the list of turns (TODO: trees, turns, and links, could be grouped in a
+--   -- file)
+--   , turns : List Turn
+--   -- links between the nodes
+--   , links : D.Dict Link LinkData
 
   , top : Window
   , bot : Window
@@ -222,9 +230,6 @@ type alias Model =
 
   -- , dragOn : Maybe (Focus, Drag)
   -- , dragOn : Maybe Focus
-
-  -- links between the nodes
-  , links : D.Dict Link LinkData
 
   -- | Selected link (if any)
   , selLink : Maybe Link
@@ -381,8 +386,9 @@ applyAtom histAtom model =
         (newModel, newAtom)
     LinkModif r ->
       let
-        newLinks = D.union r.addLinkSet <| D.diff model.links r.delLinkSet
-        newModel = {model | links = newLinks}
+        newLinks = D.union r.addLinkSet <| D.diff model.file.linkSet r.delLinkSet
+        -- newModel = {model | links = newLinks}
+        newModel = Lens.set (file => linkSet) newLinks model
         newAtom = LinkModif {addLinkSet = r.delLinkSet, delLinkSet = r.addLinkSet}
       in
         (newModel, newAtom)
@@ -495,8 +501,8 @@ updateTree treeId update model =
     isToDelete ((from, to), linkData_) =
       let toDel (trId, ndId) = trId == treeId && S.member ndId delNodes
       in  toDel from || toDel to
-    delLinks = L.filter isToDelete <| D.toList model.links
-    -- linkModif = deleteLinks (S.fromList delLinks)
+    -- delLinks = L.filter isToDelete <| D.toList model.links
+    delLinks = L.filter isToDelete <| D.toList model.file.linkSet
     linkModif = deleteLinks (S.fromList <| L.map Tuple.first delLinks)
 
 
@@ -515,9 +521,11 @@ updateTree_ treeId update model =
   let
     alter v = case v of
       Nothing -> Debug.crash "Model.updateTree_: no tree with the given ID"
-      Just (sent, tree) -> Just (sent, update tree)
-    newTrees = D.update treeId alter model.trees
-    newModel = {model | trees = newTrees}
+      -- Just (sent, tree) -> Just (sent, update tree)
+      Just tree -> Just (update tree)
+    newTrees = D.update treeId alter model.file.treeMap
+    -- newModel = {model | trees = newTrees}
+    newModel = Lens.set (file => treeMap) newTrees model
   in
     newModel
 
@@ -536,14 +544,15 @@ nodesIn = S.fromList << L.map (Lens.get nodeId) << R.flatten
 deleteLinks : S.Set Link -> Model -> Model
 deleteLinks delLinks model =
   let
-    linkData link = case D.get link model.links of
+    linkData link = case D.get link model.file.linkSet of
       Nothing -> Nothing
       Just data -> Just (link, data)
     oldLinks = D.fromList <| Util.catMaybes <| L.map linkData (S.toList delLinks)
   in
     if S.isEmpty delLinks
     then model
-    else Lens.update links (\s -> D.diff s oldLinks) model
+    -- else Lens.update links (\s -> D.diff s oldLinks) model
+    else Lens.update (file => linkSet) (\s -> D.diff s oldLinks) model
       |> saveModif (LinkModif {addLinkSet = oldLinks, delLinkSet = D.empty})
 
 
@@ -591,7 +600,7 @@ connectHelp {nodeFrom, nodeTo, focusTo} model =
     treeFrom = (selectWin focusFrom model).tree
     treeTo = (selectWin focusTo model).tree
     link = ((treeFrom, nodeFrom), (treeTo, nodeTo))
-    (alter, modif) = case D.get link model.links of
+    (alter, modif) = case D.get link model.file.linkSet of
       Nothing ->
         ( D.insert link linkDataDefault
         , LinkModif {addLinkSet = D.empty, delLinkSet = D.singleton link linkDataDefault} )
@@ -599,7 +608,8 @@ connectHelp {nodeFrom, nodeTo, focusTo} model =
         ( D.remove link
         , LinkModif {delLinkSet = D.empty, addLinkSet = D.singleton link linkData} )
   in
-    Lens.update links alter model |> saveModif modif
+    -- Lens.update links alter model |> saveModif modif
+    Lens.update (file => linkSet) alter model |> saveModif modif
 
 
 -- | Connect a link to a signal.
@@ -626,7 +636,7 @@ addSignal
   -> Model
 addSignal link signal model =
   let
-    (alter, modif) = case D.get link model.links of
+    (alter, modif) = case D.get link model.file.linkSet of
       Nothing ->
         Debug.crash "addSignal: should never happen!"
       Just oldData ->
@@ -639,7 +649,8 @@ addSignal link signal model =
               , addLinkSet = D.singleton link oldData }
           )
   in
-    Lens.update links alter model |> saveModif modif
+    -- Lens.update links alter model |> saveModif modif
+    Lens.update (file => linkSet) alter model |> saveModif modif
 
 
 ---------------------------------------------------
@@ -739,9 +750,10 @@ dragOn model =
 -- | Get a tree under a given ID.
 getTree : TreeId -> Model -> R.Tree Node
 getTree treeId model =
-  case D.get treeId model.trees of
+  case D.get treeId model.file.treeMap of
     Nothing -> Debug.crash "Model.getTree: no tree with the given ID"
-    Just (_, t) -> t
+    -- Just (_, t) -> t
+    Just t -> t
 
 
 -- -- | Set a tree under a given ID.
@@ -796,11 +808,11 @@ treePos win model =
         then i
         else go (i + 1) tl
   in
-    go 1 (D.keys model.trees)
+    go 1 (D.keys model.file.treeMap)
 
 
 treeNum : Model -> Int
-treeNum model = D.size model.trees
+treeNum model = D.size model.file.treeMap
 
 
 -- getPosition : Focus -> Model -> Position
@@ -845,7 +857,7 @@ nextTree x model =
         then hd2
         else go (hd2 :: tl)
   in
-    go (D.keys model.trees)
+    go (D.keys model.file.treeMap)
 
 
 -- | Retrieve the next tree in the underlying model.
@@ -860,7 +872,7 @@ prevTree x model =
         then hd1
         else go (hd2 :: tl)
   in
-    go (D.keys model.trees)
+    go (D.keys model.file.treeMap)
 
 
 -- | Wrapper for prevTree and nextTree.
@@ -1821,6 +1833,42 @@ bot = Lens.create
   (\fn model -> {model | bot = fn model.bot})
 
 
+file : Lens.Focus { record | file : a } a
+file = Lens.create
+  .file
+  (\fn model -> {model | file = fn model.file})
+
+
+treeMap : Lens.Focus { record | treeMap : a } a
+treeMap = Lens.create
+  .treeMap
+  (\fn model -> {model | treeMap = fn model.treeMap})
+
+
+sentMap : Lens.Focus { record | sentMap : a } a
+sentMap = Lens.create
+  .sentMap
+  (\fn model -> {model | sentMap = fn model.sentMap})
+
+
+partMap : Lens.Focus { record | partMap : a } a
+partMap = Lens.create
+  .partMap
+  (\fn model -> {model | partMap = fn model.partMap})
+
+
+linkSet : Lens.Focus { record | linkSet : a } a
+linkSet = Lens.create
+  .linkSet
+  (\fn model -> {model | linkSet = fn model.linkSet})
+
+
+turns : Lens.Focus { record | turns : a } a
+turns = Lens.create
+  .turns
+  (\fn model -> {model | turns = fn model.turns})
+
+
 trees : Lens.Focus { record | trees : a } a
 trees = Lens.create
   .trees
@@ -1840,10 +1888,10 @@ dim = Lens.create
   (\fn model -> {model | dim = fn model.dim})
 
 
-links : Lens.Focus { record | links : a } a
-links = Lens.create
-  .links
-  (\fn model -> {model | links = fn model.links})
+-- links : Lens.Focus { record | links : a } a
+-- links = Lens.create
+--   .links
+--   (\fn model -> {model | links = fn model.links})
 
 
 -- select : Lens.Focus { record | select : a } a
@@ -2264,17 +2312,17 @@ maybeLens =
 
 -- | Change the treeMap of the model.
 setTrees : TreeMap -> Model -> Model
-setTrees treeDict model =
-  let
-    treeId = case D.toList treeDict of
-      (id, tree) :: _ -> id
-      _ -> Debug.crash "setTrees: empty tree dictionary"
-  in
-    {model | trees = treeDict}
-      |> Lens.set (top => tree) treeId
-      |> Lens.set (bot => tree) treeId
---       |> updateSelect Top
---       |> updateSelect Bot
+setTrees treeDict model = Debug.crash "setTrees: not implemented"
+--   let
+--     treeId = case D.toList treeDict of
+--       (id, tree) :: _ -> id
+--       _ -> Debug.crash "setTrees: empty tree dictionary"
+--   in
+--     {model | trees = treeDict}
+--       |> Lens.set (top => tree) treeId
+--       |> Lens.set (bot => tree) treeId
+-- --       |> updateSelect Top
+-- --       |> updateSelect Bot
 
 
 ---------------------------------------------------
@@ -2284,8 +2332,10 @@ setTrees treeDict model =
 
 fileDecoder : Decode.Decoder File
 fileDecoder =
-  Decode.map3 File
+  Decode.map5 File
     (Decode.field "treeMap" treeMapDecoder)
+    (Decode.field "sentMap" sentMapDecoder)
+    (Decode.field "partMap" partMapDecoder)
     (Decode.field "turns" (Decode.list turnDecoder))
     (Decode.field "linkSet" linkSetDecoder )
 
@@ -2334,11 +2384,27 @@ addrDecoder =
     (Decode.index 1 Decode.int)
 
 
+-- treeMapDecoder : Decode.Decoder TreeMap
+-- treeMapDecoder = Decode.map (mapKeys toInt) <| Decode.dict <|
+--   Decode.map2 (\sent tree -> (sent, tree))
+--     (Decode.index 0 Decode.string)
+--     (Decode.index 1 treeDecoder)
+
 treeMapDecoder : Decode.Decoder TreeMap
-treeMapDecoder = Decode.map (mapKeys toInt) <| Decode.dict <|
-  Decode.map2 (\sent tree -> (sent, tree))
-    (Decode.index 0 Decode.string)
-    (Decode.index 1 treeDecoder)
+treeMapDecoder = Decode.map (mapKeys toInt) <| Decode.dict treeDecoder
+
+
+sentMapDecoder : Decode.Decoder (D.Dict TreeId Sent)
+sentMapDecoder = Decode.map (mapKeys toInt) <| Decode.dict Decode.string
+
+
+partMapDecoder : Decode.Decoder (D.Dict TreeId (S.Set TreeId))
+-- partMapDecoder = Decode.map (mapKeys toInt) <| Decode.dict <| Decode.set Decode.int
+partMapDecoder =
+    Decode.map (mapKeys toInt)
+        <| Decode.dict
+        <| Decode.map S.fromList
+        <| Decode.list Decode.int
 
 
 treeDecoder : Decode.Decoder (R.Tree Node)
@@ -2405,6 +2471,8 @@ encodeFile file =
   Encode.object
     [ ("tag", Encode.string "File")
     , ("treeMap", encodeTreeMap file.treeMap)
+    , ("sentMap", encodeSentMap file.sentMap)
+    , ("partMap", encodePartMap file.partMap)
     , ("turns", Encode.list (L.map encodeTurn file.turns))
     , ("linkSet", encodeLinkSet file.linkSet)
     ]
@@ -2463,14 +2531,41 @@ encodeAddr (treeId, nodeId) = Encode.list
   , Encode.int nodeId ]
 
 
+-- encodeTreeMap : TreeMap -> Encode.Value
+-- encodeTreeMap =
+--   let
+--     encodeSentTree (sent, tree) = Encode.list
+--       [ encodeSent sent
+--       , encodeTree tree ]
+--     encodePair (treeId, sentTree) =
+--       (toString treeId, encodeSentTree sentTree)
+--   in
+--     Encode.object << L.map encodePair << D.toList
+
 encodeTreeMap : TreeMap -> Encode.Value
 encodeTreeMap =
   let
-    encodeSentTree (sent, tree) = Encode.list
-      [ encodeSent sent
-      , encodeTree tree ]
-    encodePair (treeId, sentTree) =
-      (toString treeId, encodeSentTree sentTree)
+    encodePair (treeId, tree) =
+      (toString treeId, encodeTree tree)
+  in
+    Encode.object << L.map encodePair << D.toList
+
+
+encodeSentMap : D.Dict TreeId Sent -> Encode.Value
+encodeSentMap =
+  let
+    encodePair (treeId, sent) =
+      (toString treeId, encodeSent sent)
+  in
+    Encode.object << L.map encodePair << D.toList
+
+
+encodePartMap : D.Dict TreeId (S.Set TreeId) -> Encode.Value
+encodePartMap =
+  let
+    encodeIdSet = Encode.list << L.map Encode.int << S.toList
+    encodePair (treeId, idSet) =
+      (toString treeId, encodeIdSet idSet)
   in
     Encode.object << L.map encodePair << D.toList
 

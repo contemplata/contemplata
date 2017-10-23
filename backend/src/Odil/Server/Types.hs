@@ -28,6 +28,7 @@ module Odil.Server.Types
 , Turn (..)
 , Link (..)
 , LinkData (..)
+, mkNewFile
 
 -- * JSON
 ) where
@@ -84,20 +85,59 @@ data NodeTyp
 
 -- | A file.
 data File = File
-  { treeMap :: M.Map TreeId (Sent, Tree)
-  -- { treeMap :: M.Map TreeId Tree
+  { treeMap :: M.Map TreeId Tree
     -- ^ The annotated trees
+    --
+    -- IMPORTANT: the trees are assigned only to partition representatives (see
+    -- `partMap`).
+    --
+    -- UPDATE 23/10/2017: We assume that `TreeId`s determine the order of the
+    -- trees in the turn (i.e. the trees with lower id's are first).
+    --
+    -- UPDATE 23/10/2017: We change the type of the `treeMap` from:
+    --   :: M.Map TreeId (Sent, Tree)
+    -- to:
+    --   :: M.Map TreeId Tree,
+    -- where information about sentences is now preserved in `sentMap`.
+
+  , sentMap :: M.Map TreeId Sent
+    -- ^ The corresponding (raw) sentences (NEW 23/10/2017)
+
+  , partMap :: M.Map TreeId (S.Set TreeId)
+    -- ^ Tree partitions, which groups the trees in sets of trees (NEW
+    -- 23/10/2017)
+
   , turns :: [Turn]
     -- ^ The list of turns in the file (we don't preserve the division on
     -- episodes and sections)
-  , linkSet :: M.Map Link LinkData }
-  deriving (Generic, Show, Eq)
+
+  , linkSet :: M.Map Link LinkData
+
+  } deriving (Generic, Show, Eq)
+
+
+-- | Create a new `File` with singleton partitions from a (treeId -> (sent,
+-- tree)) map.
+mkNewFile :: M.Map TreeId (Sent, Tree) -> [Turn] -> File
+mkNewFile treeMap0 turns =
+  File
+    { treeMap = fmap snd treeMap0
+    , sentMap = fmap fst treeMap0
+    , partMap = singMap
+    , turns = turns
+    , linkSet = M.empty
+    }
+  where
+    singMap = M.fromList
+      . map (\(i, _) -> (i, S.singleton i))
+      . M.toList
+      $ treeMap0
 
 
 -- | A turn (related to `Ancor.Turn`) can contain several utterances (and,
 -- hence, trees), and for each tree we *might* know who is the author of this
--- utterance (speaker ID). We also *might* know (`speaker`) the list of
--- speakers.
+-- utterance (speaker ID, i.e., its position in the `speaker` list). We also
+-- *might* know (`speaker`) the list of speakers.
 data Turn = Turn
   { speaker :: [T.Text]
   , trees :: M.Map TreeId (Maybe Int)
