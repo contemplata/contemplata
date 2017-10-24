@@ -248,12 +248,13 @@ update msg model =
     ParseRaw prep ->
       let
         treeId = (M.selectWin model.focus model).tree
-        -- txt = case D.get treeId model.trees of
-        --           Nothing -> ""
-        --           Just (x, _) -> x
-        txt = case D.get treeId model.file.sentMap of
+        txtFor id = case D.get id model.file.sentMap of
                   Nothing -> ""
                   Just x -> x
+        txt = String.join " "
+              <| L.map txtFor
+              <| S.toList
+              <| M.getPart treeId model
         req = Server.ParseRaw model.fileId treeId txt prep
         send = Server.sendWS model.config req
       in
@@ -304,7 +305,7 @@ update msg model =
         (newTree, newSel) = Rule.apply Rule.theRule (M.getTree treeId model)
         updateSel win = {win | selAux = newSel, selMain = Nothing}
       in
-        M.setTree model.fileId treeId newTree model
+        M.setTreeCheck model.fileId treeId newTree model
           |> Focus.update wlen updateSel
 
     -- Popup x -> idle <| {model | popup = Just x}
@@ -554,6 +555,7 @@ cmdList =
   , ("dopparsecons", ParseSentCons Server.DiscoDOP)
   , ("deepen", ApplyRules)
   , ("concat", ConcatWords)
+  , ("connect", Connect)
   , ("join", Join)
   , ("split", SplitBegin)
 --   , ("undo", Undo)

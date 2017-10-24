@@ -21,7 +21,7 @@ module Edit.Model exposing
   -- Nodes:
   , getNode, setNode, updateNode
   -- TODO (think of the name):
-  , concatWords, join
+  , concatWords, join, getPart
   -- Labels:
   , getLabel, setLabel
   -- Comments:
@@ -61,7 +61,7 @@ module Edit.Model exposing
   -- Pseudo-lenses:
   -- , setTrees
   -- Various:
-  , setTree, getWords, subTreeAt
+  , setTreeCheck, getWords, subTreeAt
   -- JSON decoding:
   , treeMapDecoder, fileDecoder, treeDecoder, nodeDecoder
   -- JSON encoding:
@@ -271,6 +271,7 @@ type alias Command = String
 
 type alias Window =
   { tree : TreeId
+  -- ^ NOTE: it is not guaranteed to be a tree representative (cf. file partitions)
 
   -- | Main selected node (if any)
   , selMain : Maybe NodeId
@@ -499,7 +500,34 @@ log msg model =
 --        |> saveModif (TreeModif {treeId = treeId, restoreTree = oldTree})
 
 
--- | Set a tree under a given ID.
+-- | Set the tree under a given ID. Does not require that the tree already
+-- exists (in contrast to `updateTree`, for example).
+setTree : TreeId -> Maybe (R.Tree Node) -> Model -> Model
+setTree treeId newTree model =
+
+  let
+
+    -- Calculate the new tree and update the model
+    oldTree = getTreeMay treeId model
+    newModel = setTree_ treeId newTree model
+
+    -- Delete the corresponding links, if needed. We assume that the new tree
+    -- has nothing in common with the previous one, therefore, all previous
+    -- links get deleted.
+    isToDelete ((from, to), linkData_) =
+      let toDel (trId, ndId_) = trId == treeId
+      in  toDel from || toDel to
+    delLinks = L.filter isToDelete <| D.toList model.file.linkSet
+    linkModif = deleteLinks (S.fromList <| L.map Tuple.first delLinks)
+
+  in
+
+     newModel
+       |> linkModif
+       |> saveModif (TreeModif {treeId = treeId, restoreTree = oldTree})
+
+
+-- | Update the tree under a given ID.
 updateTree
     : TreeId
     -- -> (R.Tree Node -> Maybe (R.Tree Node))
@@ -534,22 +562,7 @@ updateTree treeId update model =
 --        |> updateSelection Bot
 
 
--- -- | An internal version of `updateTree` which does not update the history.
--- updateTree_ : TreeId -> (R.Tree Node -> R.Tree Node) -> Model -> Model
--- updateTree_ treeId update model =
---   let
---     alter v = case v of
---       Nothing -> Debug.crash "Model.updateTree_: no tree with the given ID"
---       -- Just (sent, tree) -> Just (sent, update tree)
---       Just tree -> Just (update tree)
---     newTrees = D.update treeId alter model.file.treeMap
---     -- newModel = {model | trees = newTrees}
---     newModel = Lens.set (file => treeMap) newTrees model
---   in
---     newModel
-
-
--- | An internal version of `updateTree` which does *not* update the history.
+-- | An internal version of `updateTree`, which does *not* update the history.
 updateTree_
     : TreeId
     -> (R.Tree Node -> Maybe (R.Tree Node))
@@ -567,8 +580,7 @@ updateTree_ treeId0 update model =
     newModel
 
 
--- | Similar to `updateTree_`, but does not require the tree to be present
--- in the underlying map.
+-- | An internal version of `setTree`, which does *not* update the history.
 setTree_
     : TreeId
     -> Maybe (R.Tree Node)
@@ -597,43 +609,7 @@ nodesIn = S.fromList << L.map (Lens.get nodeId) << R.flatten
 
 -- | Remove the tree under a given ID.
 removeTree : TreeId -> Model -> Model
-removeTree treeId model =
-
-  let
-
-    -- calculate the new tree and update the model
-    -- oldTree = D.get treeId model.file.treeMap
-    oldTree = getTreeMay treeId model
-    -- newModel = removeTree_ treeId model
-    newModel = setTree_ treeId Nothing model
-
-    -- and delete the corresponding links, if needed
-    isToDelete ((from, to), linkData_) =
-      let toDel (trId, _) = trId == treeId
-      in  toDel from || toDel to
-    delLinks = L.filter isToDelete <| D.toList model.file.linkSet
-    linkModif = deleteLinks (S.fromList <| L.map Tuple.first delLinks)
-
-  in
-
-     newModel
-       |> linkModif
-       |> saveModif (TreeModif {treeId = treeId, restoreTree = oldTree})
-
-
-
--- -- | An internal tree removal function which does *not* update the history.
--- --
--- -- NOTE: the tree removed is not the representant, but the given tree
--- -- (this is in contrast to many other functions like `updateTree`).
--- removeTree_ : TreeId -> Model -> Model
--- removeTree_ treeId model =
---   let
---     alter _ = Nothing
---     newTrees = D.update treeId alter model.file.treeMap
---     newModel = Lens.set (file => treeMap) newTrees model
---   in
---     newModel
+removeTree treeId = setTree treeId Nothing
 
 
 ---------------------------------------------------
@@ -722,7 +698,7 @@ connectSignal
 connectSignal link focus model =
   let
     win = selectWin focus model
-    treeId = win.tree
+    treeId = getReprId win.tree model
   in
     case win.selMain of
       Nothing -> model
@@ -888,15 +864,16 @@ selAll win =
 
 -- | Change a tree in focus, provided that it has the appropriate
 -- file and tree IDs.
-setTree : FileId -> TreeId -> R.Tree Node -> Model -> Model
-setTree fileId treeId tree model =
+setTreeCheck : FileId -> TreeId -> R.Tree Node -> Model -> Model
+setTreeCheck fileId treeId0 tree model =
   let
     win = selectWin model.focus model
-    treeIdSel = win.tree
+    treeId = getReprId treeId0 model
+    treeIdSel = getReprId win.tree model
     fileIdSel = model.fileId
   in
     if fileId == fileIdSel && treeId == treeIdSel
-    then updateTree win.tree (\_ -> tree) model
+    then updateTree treeIdSel (\_ -> tree) model
     else model
 
 
@@ -1240,7 +1217,7 @@ setTimexAnchorGen lens id focus model =
         win = selectWin focus model
         anchorInFocus =
             case S.toList win.selAux of
-                [x] -> Just (win.tree, x)
+                [x] -> Just (getReprId win.tree model, x)
                 _   -> Nothing
         anchorNoFocus =
             let
@@ -1250,7 +1227,7 @@ setTimexAnchorGen lens id focus model =
                 otherWin = selectWin otherFocus model
             in
                 case otherWin.selMain of
-                    Just x  -> Just (otherWin.tree, x)
+                    Just x  -> Just (getReprId otherWin.tree model, x)
                     Nothing -> Nothing
         isTyped addr =
             case R.label (subTreeAt addr model) of
@@ -1526,7 +1503,13 @@ identify dummyVal tree =
 
 -- | Completely re-identify the given tree.
 reID : R.Tree Node -> R.Tree Node
-reID = identify "?" << R.map Just
+reID =
+    let
+        update newId x =
+            ( newId + 1
+            , Lens.set nodeId newId x )
+    in
+        Tuple.second << R.mapAccum update 0
 
 
 ---------------------------------------------------
@@ -1721,8 +1704,17 @@ concatWords model =
 ---------------------------------------------------
 
 
+-- | Internal join function which does not check that the two given ids can really be joined.
 join : TreeId -> TreeId -> Model -> Model
 join tid1 tid2 model =
+    if getReprId tid1 model == getReprId tid2 model
+    then model
+    else joinIndeed tid1 tid2 model
+
+
+-- | Internal join function which does not check that the two given ids can really be joined.
+joinIndeed : TreeId -> TreeId -> Model -> Model
+joinIndeed tid1 tid2 model =
     let
         newRepr = if tid1 < tid2 then tid1 else tid2
         oldRepr = if tid1 < tid2 then tid2 else tid1
@@ -1733,7 +1725,11 @@ join tid1 tid2 model =
             in  reID <| rePOS <| R.Node root (R.subTrees t1 ++ R.subTrees t2)
     in
         setPart newRepr newPart <| setPart oldRepr newPart <|
-        updateTree newRepr (\_ -> newTree) <| removeTree oldRepr <|
+        -- NOTE: the only reason to first remove the `newRepr` tree and then to
+        -- update it is to get the corresponding links deleted.
+        setTree newRepr (Just newTree) <| removeTree newRepr <|
+        -- updateTree newRepr (\_ -> newTree) <|
+        removeTree oldRepr <|
         model
 
 

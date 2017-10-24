@@ -1028,16 +1028,14 @@ viewSideContext
     -> Html.Html Msg
 viewSideContext visible foc model =
   let
-    treeSelected = (M.selectWin foc model).tree
+    treeSelected = M.getReprId (M.selectWin foc model).tree model
     viewTree spks (treeId, mayWho) =
---       let sent = case D.get treeId model.trees of
---                    Nothing -> ""
---                    Just (x, _) -> x
       let sent = case D.get treeId model.file.sentMap of
                    Nothing -> ""
                    Just x -> x
-          isSelected = M.getReprId treeId model == M.getReprId treeSelected model
-      in  viewSent foc isSelected treeId sent spks mayWho
+          treeIdRepr = M.getReprId treeId model
+          isSelected = treeIdRepr == treeSelected
+      in  viewSent foc isSelected treeIdRepr sent spks mayWho
     viewTurn turn = List.map (viewTree turn.speaker) (D.toList turn.trees)
     div = viewSideDiv visible foc model
       [ Html.ul
@@ -1063,7 +1061,7 @@ viewSideContext visible foc model =
 viewSent
   : M.Focus -- ^ Where is the focus on
   -> Bool -- ^ Is the tree currently viewed?
-  -> C.TreeId -- ^ The tree ID ...
+  -> C.TreeId -- ^ The tree ID (the representative) ...
   -> M.Sent -- ^ ... and the sentence corresponding to the tree
   -> List String -- ^ Speakers of the turn
   -> Maybe Int -- ^ Who is speaking now
