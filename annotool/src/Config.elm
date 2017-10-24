@@ -88,7 +88,7 @@ sideSpace = 15
 
 -- | Height of the side menu.
 sideMenuHeight : Int
-sideMenuHeight = 20
+sideMenuHeight = 25
 
 
 -- | Size of the demilitarized zone. Use so that scrollbars do

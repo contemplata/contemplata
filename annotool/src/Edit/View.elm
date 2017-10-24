@@ -1020,6 +1020,88 @@ viewSideEdit visible win model =
 ---------------------------------------------------
 
 
+-- -- | The view of a side window.
+-- viewSideContext
+--     : Bool           -- ^ Visible?
+--     -> M.Focus
+--     -> M.Model
+--     -> Html.Html Msg
+-- viewSideContext visible foc model =
+--   let
+--     treeSelected = M.getReprId (M.selectWin foc model).tree model
+--     viewTree spks (treeId, mayWho) =
+--       let sent = case D.get treeId model.file.sentMap of
+--                    Nothing -> ""
+--                    Just x -> x
+--           treeIdRepr = M.getReprId treeId model
+--           isSelected = treeIdRepr == treeSelected
+--       in  viewSent foc isSelected treeIdRepr sent spks mayWho
+--     viewTurn turn = List.map (viewTree turn.speaker) (D.toList turn.trees)
+--     div = viewSideDiv visible foc model
+--       [ Html.ul
+--           [Atts.style
+--              [ "position" => "absolute"
+--              , "top" => px Cfg.sideMenuHeight
+--              ]
+--           ]
+-- --           (List.map
+-- --              (\(treeId, (sent, _)) -> viewSent foc (treeId == treeSelected) treeId sent)
+-- --              (D.toList model.trees)
+-- --           )
+--           (List.concat <| List.map viewTurn model.file.turns)
+-- --       , Html.p
+-- --           [ Atts.id <| Cfg.selectSentName True
+-- --           , Atts.style ["position" => "absolute", "bottom" => px 0] ]
+-- --           [Html.text "test text"]
+--       ]
+--   in
+--     div
+
+
+-- viewSent
+--   : M.Focus -- ^ Where is the focus on
+--   -> Bool -- ^ Is the tree currently viewed?
+--   -> C.TreeId -- ^ The tree ID (the representative) ...
+--   -> M.Sent -- ^ ... and the sentence corresponding to the tree
+--   -> List String -- ^ Speakers of the turn
+--   -> Maybe Int -- ^ Who is speaking now
+--   -> Html.Html Msg
+-- viewSent foc isSelected treeId sent spks who =
+--   let
+--     paraAtts = if isSelected
+--       then [ Atts.style ["font-weight" => "bold"] ]
+--       else []
+--     liAtts = if isSelected
+--       then [ Atts.id <| Cfg.selectSentName <|
+--                  case foc of
+--                      M.Top -> True
+--                      M.Bot -> False ]
+--       else []
+--     spk = case who of
+--             Nothing ->
+--               case spks of
+--                 (x :: _) -> x
+--                 _ -> "?"
+--             Just i ->
+--               case List.head (List.drop (i-1) spks) of
+--                 Just x -> x
+--                 Nothing -> "?"
+--     para = Html.p
+--       -- [Atts.style ["font-weight" => "bold"]]
+--       paraAtts
+--       -- [Html.text <| toString treeId ++ "." ++ spk ++ ": " ++ sent]
+--       [Html.text <| spk ++ ": " ++ sent]
+--     li = Html.li liAtts <| Util.single <|
+--       Html.div
+--         [ Atts.class "noselect"
+--         , Events.onClick (SelectTree foc treeId)
+--         , Atts.style ["cursor" => "pointer"]
+--         ]
+--         [para]
+--   in
+--     li
+
+
 -- | The view of a side window.
 viewSideContext
     : Bool           -- ^ Visible?
@@ -1027,111 +1109,179 @@ viewSideContext
     -> M.Model
     -> Html.Html Msg
 viewSideContext visible foc model =
+
   let
+
     treeSelected = M.getReprId (M.selectWin foc model).tree model
-    viewTree spks (treeId, mayWho) =
-      let sent = case D.get treeId model.file.sentMap of
-                   Nothing -> ""
-                   Just x -> x
-          treeIdRepr = M.getReprId treeId model
-          isSelected = treeIdRepr == treeSelected
-      in  viewSent foc isSelected treeIdRepr sent spks mayWho
-    viewTurn turn = List.map (viewTree turn.speaker) (D.toList turn.trees)
-    div = viewSideDiv visible foc model
-      [ Html.ul
+--     viewTree spks (treeId, mayWho) =
+--       let sent = case D.get treeId model.file.sentMap of
+--                    Nothing -> ""
+--                    Just x -> x
+--           treeIdRepr = M.getReprId treeId model
+--           isSelected = treeIdRepr == treeSelected
+--       in  viewSent foc isSelected treeIdRepr sent spks mayWho
+--
+--     viewTurn turn =
+--         List.map
+--             (viewTree turn.speaker)
+--             (D.toList turn.trees)
+--
+--     div = viewSideDiv visible foc model
+--       [ Html.ul
+--           [Atts.style
+--              [ "position" => "absolute"
+--              , "top" => px Cfg.sideMenuHeight
+--              ]
+--           ]
+--           (List.concat <| List.map viewTurn model.file.turns)
+--       ]
+
+    -- | The set of all speakers in the file.
+    spkAll : S.Set String
+    spkAll = Util.unions <| List.map getSpeakers <| model.file.turns
+
+    spkHeader =
+        Html.thead []
+            [Html.tr [] <| List.map viewSpkHead <| S.toList spkAll]
+
+    viewSpkHead : String -> Html.Html Msg
+    viewSpkHead spk = Html.th [] [Html.text spk]
+
+    viewTurnAlt : D.Dict String C.TreeId -> Html.Html Msg
+    viewTurnAlt turnDict =
+        let
+            viewSpk spk =
+                case D.get spk turnDict of
+                    Nothing -> Html.td [] []
+                    Just treeId ->
+                        let
+                            sent = case D.get treeId model.file.sentMap of
+                                       Nothing -> ""
+                                       Just x -> x
+                            treeIdRepr = M.getReprId treeId model
+                            isSelected = treeIdRepr == treeSelected
+                        in
+                            Html.td [] [viewSentAlt foc isSelected treeIdRepr sent spk]
+        in
+            Html.tr []
+            <| List.map viewSpk
+            <| S.toList spkAll
+
+
+
+    divAlt = viewSideDiv visible foc model
+      [ Html.table
           [Atts.style
              [ "position" => "absolute"
              , "top" => px Cfg.sideMenuHeight
              ]
-          ]
---           (List.map
---              (\(treeId, (sent, _)) -> viewSent foc (treeId == treeSelected) treeId sent)
---              (D.toList model.trees)
---           )
-          (List.concat <| List.map viewTurn model.file.turns)
---       , Html.p
---           [ Atts.id <| Cfg.selectSentName True
---           , Atts.style ["position" => "absolute", "bottom" => px 0] ]
---           [Html.text "test text"]
+          ] <|
+          spkHeader ::
+          (List.map viewTurnAlt <| List.map inverseTurn <| model.file.turns)
       ]
+
   in
-    div
+
+    divAlt
 
 
-viewSent
-  : M.Focus -- ^ Where is the focus on
-  -> Bool -- ^ Is the tree currently viewed?
+-- | Tranform a turn so that it becomes a map from speakers to the corresponding
+-- trees.  It assumes that a speaker speeks at most once in a given turn.
+inverseTurn : M.Turn -> D.Dict String C.TreeId
+inverseTurn turn =
+    let
+        inverse (treeId, mayWho) =
+            let
+                default =
+                    case turn.speaker of
+                        [x] -> x
+                        _ -> "?"
+                spk = mayWho
+                    |> Maybe.andThen (\id -> Util.at (id - 1) turn.speaker)
+                    |> Maybe.withDefault default
+            in
+                (spk, treeId)
+    in
+        D.fromList
+            <| L.map inverse
+            <| D.toList turn.trees
+
+
+-- | Retrieve the set of speakers in the given turn.
+getSpeakers : M.Turn -> S.Set String
+getSpeakers = S.fromList << D.keys << inverseTurn
+
+
+viewSentAlt
+  : M.Focus   -- ^ Where is the focus on
+  -> Bool     -- ^ Is the tree currently viewed?
   -> C.TreeId -- ^ The tree ID (the representative) ...
-  -> M.Sent -- ^ ... and the sentence corresponding to the tree
-  -> List String -- ^ Speakers of the turn
-  -> Maybe Int -- ^ Who is speaking now
+  -> M.Sent   -- ^ ... and the sentence corresponding to the tree
+  -> String   -- ^ The speaker
   -> Html.Html Msg
-viewSent foc isSelected treeId sent spks who =
+viewSentAlt foc isSelected treeId sent spk =
   let
     paraAtts = if isSelected
       then [ Atts.style ["font-weight" => "bold"] ]
       else []
-    liAtts = if isSelected
+    divAtts = if isSelected
       then [ Atts.id <| Cfg.selectSentName <|
                  case foc of
                      M.Top -> True
                      M.Bot -> False ]
       else []
-    spk = case who of
-            Nothing ->
-              case spks of
-                (x :: _) -> x
-                _ -> "?"
-            Just i ->
-              case List.head (List.drop (i-1) spks) of
-                Just x -> x
-                Nothing -> "?"
-    para = Html.p
-      -- [Atts.style ["font-weight" => "bold"]]
+    para = Html.span -- Html.p
       paraAtts
-      -- [Html.text <| toString treeId ++ "." ++ spk ++ ": " ++ sent]
-      [Html.text <| spk ++ ": " ++ sent]
-    li = Html.li liAtts <| Util.single <|
-      Html.div
+      -- [Html.text <| spk ++ ": " ++ sent]
+      [Html.text sent]
+    div =
+      Html.div (
         [ Atts.class "noselect"
         , Events.onClick (SelectTree foc treeId)
         , Atts.style ["cursor" => "pointer"]
-        ]
+        ] ++ divAtts )
         [para]
   in
-    li
+    div
 
 
--- viewFileId
+-- viewSent
 --   : M.Focus -- ^ Where is the focus on
 --   -> Bool -- ^ Is the tree currently viewed?
---   -> C.TreeId -- ^ The tree ID ...
---   -> R.Tree M.Node -- ^ ... and the tree itself
+--   -> C.TreeId -- ^ The tree ID (the representative) ...
+--   -> M.Sent -- ^ ... and the sentence corresponding to the tree
+--   -> List String -- ^ Speakers of the turn
+--   -> Maybe Int -- ^ Who is speaking now
 --   -> Html.Html Msg
--- viewFileId foc isSelected treeId tree =
+-- viewSent foc isSelected treeId sent spks who =
 --   let
---     terminal node = case node of
---       M.Node r -> Nothing
---       M.Leaf r -> Just r.nodeVal
---     sent
---        = String.concat
---       <| L.reverse
---       <| L.map (\x -> " " ++ x)
---       <| Util.catMaybes
---       <| L.map terminal
---       <| R.flatten tree
---     styl = if isSelected
---       then [Atts.style ["font-weight" => "bold"]]
+--     paraAtts = if isSelected
+--       then [ Atts.style ["font-weight" => "bold"] ]
 --       else []
+--     liAtts = if isSelected
+--       then [ Atts.id <| Cfg.selectSentName <|
+--                  case foc of
+--                      M.Top -> True
+--                      M.Bot -> False ]
+--       else []
+--     spk = case who of
+--             Nothing ->
+--               case spks of
+--                 (x :: _) -> x
+--                 _ -> "?"
+--             Just i ->
+--               case List.head (List.drop (i-1) spks) of
+--                 Just x -> x
+--                 Nothing -> "?"
 --     para = Html.p
---       -- [Atts.style ["font-weight" => "bold"]]
---       styl
---       [Html.text <| treeId ++ ":" ++ sent]
---     li =  Html.li [] <| Util.single <|
+--       paraAtts
+--       [Html.text <| spk ++ ": " ++ sent]
+--     li = Html.li liAtts <| Util.single <|
 --       Html.div
 --         [ Atts.class "noselect"
 --         , Events.onClick (SelectTree foc treeId)
---         , Atts.style ["cursor" => "pointer"]]
+--         , Atts.style ["cursor" => "pointer"]
+--         ]
 --         [para]
 --   in
 --     li

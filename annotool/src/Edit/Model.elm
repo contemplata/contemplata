@@ -1,7 +1,7 @@
 module Edit.Model exposing
   (
   -- Data types:
-    TreeMap, Sent, File
+    TreeMap, Sent, File, Turn
   , Node(..), NodeTyp(..), Link, Command
   , InternalNode, LeafNode
   , LinkData

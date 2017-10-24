@@ -1,12 +1,13 @@
 module Util exposing
-    ( split, catMaybes, find, unless, mappend, guard, and
-    , mapAccumL, average, single, px, isJust
+    ( split, catMaybes, find, at, unless, mappend, guard, and
+    , mapAccumL, average, single, px, isJust, unions
     -- * JSON
     , encodeMaybe
     )
 
 
 import List as L
+import Set as S
 import Json.Encode as Encode
 
 
@@ -51,6 +52,15 @@ find p xs =
         False -> find p tl
 
 
+-- | Retrieve the element on the given position.
+at : Int -> List a -> Maybe a
+at i xs =
+  case (i, xs) of
+    (_, []) -> Nothing
+    (0, hd :: _) -> Just hd
+    (_, _ :: tl) -> at (i - 1) tl
+
+
 mapAccumL : (acc -> a -> (acc, b)) -> acc -> List a -> (acc, List b)
 mapAccumL f acc xs =
   case xs of
@@ -61,6 +71,13 @@ mapAccumL f acc xs =
         (acc2, ys) = mapAccumL f acc1 tl
       in
         (acc2, y :: ys)
+
+
+unions : List (S.Set comparable) -> S.Set comparable
+unions xs =
+  case xs of
+    [] -> S.empty
+    x :: tl -> S.union x (unions tl)
 
 
 unless : Bool -> a -> Maybe a
