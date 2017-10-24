@@ -11,7 +11,7 @@ import Dict as D
 import Set as S
 
 import Config as Cfg
-import Edit.Core exposing (FileId)
+import Edit.Core exposing (FileId, TreeId(..))
 import Edit.Model exposing (Model, Focus(..), File)
 import Edit.Message exposing (Msg(..), dummy)
 import Edit.Popup as Popup
@@ -32,10 +32,10 @@ mkEdit config fileId file =
     treeId = case D.toList file.treeMap of
       (id, tree) :: _ -> id
       _ -> Debug.crash "setTrees: empty tree dictionary"
-    top = win treeId Top
-    bot = win treeId Bot
-    win name foc =
-      { tree = name
+    top = win Top
+    bot = win Bot
+    win foc =
+      { tree = TreeId treeId
       , pos = Position 400 50
       , selMain = Nothing
       , selAux = S.empty

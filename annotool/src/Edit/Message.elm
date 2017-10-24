@@ -39,7 +39,7 @@ type Msg
   | DragAt Position
   | DragEnd Position
   | Select M.Focus C.NodeId
-  | SelectTree M.Focus C.TreeId
+  | SelectTree M.Focus C.PartId
   | SelectLink M.Link
   | Focus M.Focus
   | Resize Window.Size -- ^ The height and width of the entire window
@@ -238,8 +238,8 @@ update msg model =
 
     Join ->
       let
-        treeTop = (M.selectWin M.Top model).tree
-        treeBot = (M.selectWin M.Bot model).tree
+        treeTop = M.getReprId (M.selectWin M.Top model).tree model
+        treeBot = M.getReprId (M.selectWin M.Bot model).tree model
         newModel = M.join treeTop treeBot model
       in
         idle newModel
@@ -247,7 +247,7 @@ update msg model =
 
     ParseRaw prep ->
       let
-        treeId = (M.selectWin model.focus model).tree
+        treeId = M.getReprId (M.selectWin model.focus model).tree model
         txtFor id = case D.get id model.file.sentMap of
                   Nothing -> ""
                   Just x -> x
@@ -275,7 +275,7 @@ update msg model =
 
     ParseSentPos parTyp ->
       let
-        treeId = (M.selectWin model.focus model).tree
+        treeId = M.getReprId (M.selectWin model.focus model).tree model
         wordsPos = getWordPos (M.getTree treeId model)
         req = Server.ParseSentPos model.fileId treeId parTyp wordsPos
         send = Server.sendWS model.config req
@@ -285,7 +285,7 @@ update msg model =
     ParseSentCons parTyp ->
       let
         win = M.selectWin model.focus model
-        treeId = win.tree
+        treeId = M.getReprId win.tree model
         tree = M.getTree treeId model
         -- wordsPos = getWordPos tree
         wordsPos = case getWordPos tree of
@@ -301,7 +301,7 @@ update msg model =
     ApplyRules -> idle <|
       let
         wlen = M.winLens model.focus
-        treeId = (Focus.get wlen model).tree
+        treeId = M.getReprId (Focus.get wlen model).tree model
         (newTree, newSel) = Rule.apply Rule.theRule (M.getTree treeId model)
         updateSel win = {win | selAux = newSel, selMain = Nothing}
       in
@@ -674,7 +674,7 @@ getWords tree0 =
 parseSent : Server.ParserTyp -> M.Model -> (M.Model, Cmd Msg)
 parseSent parTyp model =
     let
-        treeId = (M.selectWin model.focus model).tree
+        treeId = M.getReprId (M.selectWin model.focus model).tree model
         words = getWords (M.getTree treeId model)
         req = Server.ParseSent model.fileId treeId parTyp words
         send = Server.sendWS model.config req

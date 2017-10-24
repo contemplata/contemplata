@@ -57,14 +57,14 @@ type Request
     -- ^ Request the contents of the given file
   | SaveFile C.AnnoName C.FileId M.File
     -- ^ Request the contents of the given file
-  | ParseRaw C.FileId C.TreeId String Bool
+  | ParseRaw C.FileId C.PartId String Bool
     -- ^ Parse the given raw text
-  | ParseSent C.FileId C.TreeId ParserTyp (ParseReq (List Orth))
+  | ParseSent C.FileId C.PartId ParserTyp (ParseReq (List Orth))
     -- ^ Parse the given list of words (the IDs are sent so that it can be
     -- checked on return if the user did not switch the file...)
-  | ParseSentPos C.FileId C.TreeId ParserTyp (ParseReq (List (Orth, Pos)))
+  | ParseSentPos C.FileId C.PartId ParserTyp (ParseReq (List (Orth, Pos)))
     -- ^ Like `ParseSent`, but with POS tags
-  | ParseSentCons C.FileId C.TreeId ParserTyp (List (Int, Int)) (List (Orth, Pos))
+  | ParseSentCons C.FileId C.PartId ParserTyp (List (Int, Int)) (List (Orth, Pos))
     -- ^ Like `ParseSent`, but with constraints
 
 
@@ -143,7 +143,7 @@ type Answer
     -- ^ The list of files
   | NewFile C.FileId M.File
     -- ^ New file to edit
-  | ParseResult C.FileId C.TreeId (R.Tree M.Node)
+  | ParseResult C.FileId C.PartId (R.Tree M.Node)
     -- ^ New file to edit
   | Notification String
     -- ^ Just a notification message from a server

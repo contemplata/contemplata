@@ -70,6 +70,9 @@ module Edit.Anno exposing
   -- ** JSON
   , encodeTimex
   , timexDecoder
+
+  -- * Utils
+  , encodeAddr
   )
 
 

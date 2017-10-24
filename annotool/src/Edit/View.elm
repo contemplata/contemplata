@@ -144,7 +144,8 @@ viewTree : M.Focus -> M.Model -> Html.Html Msg
 viewTree focus model =
   let
     win = M.selectWin focus model
-    tree = M.getTree win.tree model
+    treeId = M.getReprId win.tree model
+    tree = M.getTree treeId model
     -- select = M.selAll win
   in
     drawTree
@@ -1145,7 +1146,11 @@ viewSideContext visible foc model =
             [Html.tr [] <| List.map viewSpkHead <| S.toList spkAll]
 
     viewSpkHead : String -> Html.Html Msg
-    viewSpkHead spk = Html.th [] [Html.text spk]
+    viewSpkHead spk =
+        let color = backColor foc model in
+        Html.th
+            [Atts.style ["border-bottom" => ("2px solid " ++ color)]]
+            [Html.text spk]
 
     viewTurnAlt : D.Dict String C.TreeId -> Html.Html Msg
     viewTurnAlt turnDict =
@@ -1155,7 +1160,7 @@ viewSideContext visible foc model =
                     Nothing -> Html.td [] []
                     Just treeId ->
                         let
-                            sent = case D.get treeId model.file.sentMap of
+                            sent = case D.get (C.unTreeId treeId) model.file.sentMap of
                                        Nothing -> ""
                                        Just x -> x
                             treeIdRepr = M.getReprId treeId model
@@ -1174,6 +1179,8 @@ viewSideContext visible foc model =
           [Atts.style
              [ "position" => "absolute"
              , "top" => px Cfg.sideMenuHeight
+             , "border-collapse" => "collapse"
+               -- ^ so that bottom border is continuous
              ]
           ] <|
           spkHeader ::
@@ -1200,7 +1207,7 @@ inverseTurn turn =
                     |> Maybe.andThen (\id -> Util.at (id - 1) turn.speaker)
                     |> Maybe.withDefault default
             in
-                (spk, treeId)
+                (spk, C.TreeId treeId)
     in
         D.fromList
             <| L.map inverse
@@ -1215,7 +1222,7 @@ getSpeakers = S.fromList << D.keys << inverseTurn
 viewSentAlt
   : M.Focus   -- ^ Where is the focus on
   -> Bool     -- ^ Is the tree currently viewed?
-  -> C.TreeId -- ^ The tree ID (the representative) ...
+  -> C.PartId -- ^ The tree ID (the representative) ...
   -> M.Sent   -- ^ ... and the sentence corresponding to the tree
   -> String   -- ^ The speaker
   -> Html.Html Msg
@@ -1375,14 +1382,14 @@ viewLink model ((from, to), linkData) =
   in
 
     if
-      top.tree == first from &&
-      bot.tree == first to
+      M.getReprId top.tree model == first from &&
+      M.getReprId bot.tree model == first to
     then
       viewLinkDir model (top, bot) (trimTop, trimBot) (from, to, linkData.signalAddr)
     else if
-      bot.tree == first from &&
-      top.tree == first to &&
-      top.tree /= bot.tree
+      M.getReprId bot.tree model == first from &&
+      M.getReprId top.tree model == first to &&
+      M.getReprId top.tree model /= M.getReprId bot.tree model
     then
       -- viewLinkDir model (top, bot) (trimTop, trimBot) (from, to, linkData.signalAddr)
       viewLinkDir model (bot, top) (trimBot, trimTop) (from, to, linkData.signalAddr)
@@ -1410,20 +1417,20 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
     posIn addr win shift = Maybe.andThen shift <| nodePos1
       (second addr)
       (M.getPosition win)
-      (M.getTree win.tree model)
+      (M.getTree (M.getReprId win.tree model) model)
 
     fromPos =
-      if first from == top.tree
+      if first from == M.getReprId top.tree model
       then posIn from top shiftTop
       else posIn from bot shiftBot
     toPos = -- posIn to bot shiftBot
-      if first to == bot.tree
+      if first to == M.getReprId bot.tree model
       then posIn to bot shiftBot
       else posIn to top shiftTop
     signPos = case signalMay of
       Nothing -> Nothing
       Just addr ->
-        if first addr == bot.tree
+        if first addr == M.getReprId bot.tree model
         then posIn addr bot shiftBot
         else posIn addr top shiftTop
 
