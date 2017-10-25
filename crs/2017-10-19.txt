@@ -9,8 +9,8 @@ Modifications à faire sur l’outil (avec les plus importantes en premier)
   - [DONE] Synchroniser la fenêtre Context avec l’arbre supérieur affiché après un Edit
 
 * Prétraitements lexicaux
-  - Appliquer récursivement les règles de suppression d’items (« et », « voilà »...) 
-  - Permettre la suppression manuelle de tous les mots (DUMMY)
+  - [REJECTED] Permettre la suppression manuelle de tous les mots (DUMMY)
+  - Appliquer récursivement les règles de suppression d’items (« et », « voilà »...)
   - [DONE (commande <restart>)] Rajouter manuellement un mot (exemple :
       ôté automatiquement par erreur)
     
@@ -26,8 +26,8 @@ Modifications à faire sur l’outil (avec les plus importantes en premier)
 
 # My own tasks
 
-* Joining speech turns: via CTRL+click (if possible)
-* Joining speech turns: we could enforce that only speech turns
+* [DONE] Joining speech turns: via CTRL+click (if possible)
+* [REJECT] Joining speech turns: we could enforce that only speech turns
   corresponding to the same speaker can be joined
 
 * Add appropriate menu commands
@@ -36,7 +36,5 @@ Modifications à faire sur l’outil (avec les plus importantes en premier)
 * Put low-level model functions into a separate module (so, e.g.,
   unsafe datatypes are not visible)
 
-## Cancelled
-
-* Side menu in a separate HTML window/div/sth. than the side window?
+* [REJECT] Side menu in a separate HTML window/div/sth. than the side window?
   -> Won't be so easy....
