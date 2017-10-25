@@ -1,19 +1,39 @@
+# CR de la réunion
+
 Modifications à faire sur l’outil (avec les plus importantes en premier)
 
 * Segmentation et synchronisation
-  - Commande de fusion / segmentation de tours de parole
-  - Affichage temporel avec chevauchements (2+ colonnes) 
-  - Synchroniser la fenêtre Context avec l’arbre supérieur affiché après un Edit
+  - [DONE] Commande de fusion
+  - [DONE] / segmentation de tours de parole
+  - [DONE] Affichage temporel avec chevauchements (2+ colonnes)
+  - [DONE] Synchroniser la fenêtre Context avec l’arbre supérieur affiché après un Edit
 
 * Prétraitements lexicaux
   - Appliquer récursivement les règles de suppression d’items (« et », « voilà »...) 
-  - Permettre la suppression manuelle de tous les mots (DUMMY) 
-  - Rajouter manuellement un mot (exemple : ôté automatiquement par erreur)
+  - Permettre la suppression manuelle de tous les mots (DUMMY)
+  - [DONE (commande <restart>)] Rajouter manuellement un mot (exemple :
+      ôté automatiquement par erreur)
+    
 
 * Edition d’attributs 
-  - Préciser la liste des POS autorisés pour le type de nœuds (mode EDIT) DONE
+  - [DONE] Préciser la liste des POS autorisés pour le type de nœuds (mode EDIT)
 
 * Documentation
   - Bien préciser les différences entre FTB et Standford
   - Documenter les spécificités dues à l’oral (Rhapsodie ou non) 
   - Documenter toutes les fonctions de CONTEMPLATA
+
+
+# My own tasks
+
+* Side menu in a separate HTML window/div/sth. than the side window?
+
+* Joining speech turns: via CTRL+click (if possible)
+* Joining speech turns: we could enforce that only speech turns
+  corresponding to the same speaker can be joined
+
+* Add appropriate menu commands
+* Menu groups: segmentation, syntax, [deepen,] temporal
+
+* Put low-level model functions into a separate module (so, e.g.,
+  unsafe datatypes are not visible)

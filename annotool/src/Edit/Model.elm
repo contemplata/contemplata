@@ -21,7 +21,7 @@ module Edit.Model exposing
   -- Nodes:
   , getNode, setNode, updateNode
   -- TODO (think of the name):
-  , concatWords, join, getPart
+  , concatWords, splitTree, join, getPart
   -- Labels:
   , getLabel, setLabel
   -- Comments:
@@ -1705,6 +1705,48 @@ concatWords model =
 
 
 ---------------------------------------------------
+-- Tree splitting
+---------------------------------------------------
+
+
+-- | Split the current tree into several sentences.
+splitTree : Model -> Model
+splitTree model =
+
+    let
+
+        -- Group words into segments
+        go idSet acc xs =
+            case xs of
+                hd :: tl ->
+                    if S.member hd.nodeId idSet then
+                        L.reverse acc :: go idSet [hd] tl
+                    else
+                        go idSet (hd :: acc) tl
+                [] -> [L.reverse acc]
+
+        mkSent xs =
+            let
+                sent = Node {nodeId=0, nodeVal="SENT", nodeTyp=Nothing, nodeComment=""}
+                leaves = L.map (R.leaf << Leaf) xs
+            in
+                R.Node sent leaves
+
+        mkTree xss =
+            let
+                root = Node {nodeId=0, nodeVal="ROOT", nodeTyp=Nothing, nodeComment=""}
+                subTrees = L.map mkSent xss
+            in
+                R.Node root subTrees
+
+        process idSet tree = reID <| mkTree <| go idSet [] (getWords tree)
+
+    in
+
+        procSel process model.focus model
+
+
+---------------------------------------------------
 -- Join sentences
 ---------------------------------------------------
 
@@ -2792,10 +2834,7 @@ mapKeys f d =
 
 -- | Retrieve the words (leaves) from a given tree and sort them by their
 -- positions in the sentence.
--- getWords : R.Tree Node -> List Node
-getWords
-    : R.Tree Node
-    -> List {nodeId : NodeId, nodeVal : String, leafPos : Int, nodeComment : String}
+getWords : R.Tree Node -> List LeafNode
 getWords tree =
     let
         leaf node = case node of

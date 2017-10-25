@@ -485,7 +485,7 @@ viewMenu model = -- fileName =
       , menuElem MkEvent 120 (emphasize 1 "Event")
       , menuElem MkSignal 180 (emphasize 0 "Signal")
       , menuElem MkTimex 240 (emphasize 0 "Timex")
-      -- , menuElem (Many []) 320 (plainText <| toString model.ctrl)
+      , menuElem (Many []) 320 (plainText <| toString model.ctrl)
       ]
 
 
@@ -701,8 +701,8 @@ viewSideDiv visible win model children =
         , "overflow" => "auto"
         -- make the (focus-related) outline invisible
         , "outline" => "0"
-        -- z-index important because of its interactions with popup windows note
-        -- that it creates a "stacking context" for all the children HTML
+        -- z-index important because of its interactions with popup windows;
+        -- note that it creates a "stacking context" for all the children HTML
         -- elements
         -- (https://philipwalton.com/articles/what-no-one-told-you-about-z-index/)
         , "z-index" => "-1"
@@ -736,6 +736,9 @@ viewSideMenu focus model =
     menuElem onClick selected txt = Html.span
       [ Atts.class "noselect"
       , Events.onClick onClick
+--       -- @tabindex required to make the div propagate the keyboard events
+--       -- (see the `view` function)
+--       , Atts.attribute "tabindex" "1"
       , Atts.style <|
         [ "cursor" => "pointer"
         -- NOTE: inline-block hidden because we want the side menu to be
@@ -758,7 +761,12 @@ viewSideMenu focus model =
           -- , "width" => "100%" -- <- hids the scrollbar! hence opacity
           , "opacity" => "0.9"
           -- , "z-index" => "1"
-          , "top" => px pos ]
+          , "top" => px pos
+          -- make the (focus-related) outline invisible
+          , "outline" => "0" ]
+      -- @tabindex required to make the div propagate the keyboard events
+      -- (see the `view` function)
+      , Atts.attribute "tabindex" "1"
       ]
       [ menuElem (SideMenuEdit focus) (sideWin == M.SideEdit) (emphasize 0 "Edit")
       , menuElem (SideMenuContext focus) (sideWin == M.SideContext) (emphasize 0 "Context")
@@ -1245,7 +1253,13 @@ viewSentAlt foc isSelected treeId sent spk =
       Html.div (
         [ Atts.class "noselect"
         , Events.onClick (SelectTree foc treeId)
-        , Atts.style ["cursor" => "pointer"]
+        , Atts.style
+            [ "cursor" => "pointer"
+            -- make the (focus-related) outline invisible
+            , "outline" => "0" ]
+        -- @tabindex required to make the div propagate the keyboard events
+        -- (see the `view` function)
+        , Atts.attribute "tabindex" "1"
         ] ++ divAtts )
         [para]
   in

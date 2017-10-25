@@ -10,7 +10,6 @@ import Task as Task
 import Dom as Dom
 import Dom.Scroll
 import Focus exposing ((=>))
-import Focus as Focus
 import Window as Window
 import WebSocket
 import Json.Decode as Decode
@@ -71,6 +70,7 @@ type Msg
   | Files -- ^ Go back to files menu
   | SaveFile  -- ^ Save the current file
   | ConcatWords  -- ^ Merge two (or more) words
+  | SplitTree  -- ^ Split the tree
   | Join  -- ^ Merge the two trees in view
   | Undo
   | Redo
@@ -128,26 +128,26 @@ update msg model =
   onFst (M.freezeHist << M.updateSelection) <| case msg of
 
     DragStart focus xy -> idle <|
-      Focus.set
+      Lens.set
         (M.winLens focus => M.drag)
         (Just (M.Drag xy xy))
         model
 
     DragAt xy -> idle <|
-      Focus.update
+      Lens.update
         (M.winLens (M.dragOn model) => M.drag)
         (Maybe.map (\{start} -> M.Drag start xy))
         model
 
     DragEnd _ -> idle
-      <| Focus.update (M.winLens (M.dragOn model))
+      <| Lens.update (M.winLens (M.dragOn model))
            (\win -> { win | drag = Nothing, pos = M.getPosition win})
       <| model
 
     Focus win -> idle <| {model | focus = win}
 
     Resize x -> idle <|
-      Focus.update M.dim
+      Lens.update M.dim
         (\dim -> {dim | height=x.height, width=x.width})
         model
 
@@ -159,7 +159,7 @@ update msg model =
           False -> -Cfg.increaseSpeed
         propLens = if horizontalAxe then M.heightProp else M.widthProp
       in
-        Focus.update
+        Lens.update
           (M.dim => propLens)
           (\x -> trim <| x + change)
           model
@@ -190,9 +190,9 @@ update msg model =
             (Dom.focus target)
         )
 
-    Next -> idle <| M.moveCursor True model
+    Next -> (M.moveCursor True model, focusOnTurn model.focus)
 
-    Previous -> idle <| M.moveCursor False model
+    Previous -> (M.moveCursor False model, focusOnTurn model.focus)
 
     ChangeLabel nodeId win newLabel ->
         idle <| M.setLabel nodeId win newLabel model
@@ -203,7 +203,7 @@ update msg model =
           M.Top -> Cfg.editLabelName True
           M.Bot -> Cfg.editLabelName False
       in
-        ( Focus.set
+        ( Lens.set
             (M.winLens model.focus => M.side)
             M.SideEdit
             model
@@ -301,12 +301,12 @@ update msg model =
     ApplyRules -> idle <|
       let
         wlen = M.winLens model.focus
-        treeId = M.getReprId (Focus.get wlen model).tree model
+        treeId = M.getReprId (Lens.get wlen model).tree model
         (newTree, newSel) = Rule.apply Rule.theRule (M.getTree treeId model)
         updateSel win = {win | selAux = newSel, selMain = Nothing}
       in
         M.setTreeCheck model.fileId treeId newTree model
-          |> Focus.update wlen updateSel
+          |> Lens.update wlen updateSel
 
     -- Popup x -> idle <| {model | popup = Just x}
     Popup x targetMaybe ->
@@ -330,28 +330,18 @@ update msg model =
 
     ConcatWords -> parseSent Server.Stanford <| M.concatWords model
 
+    SplitTree -> parseSent Server.Stanford <| M.splitTree model
+
     Undo -> idle <| M.undo model
     Redo -> idle <| M.redo model
 
-    SideMenuEdit focus -> idle <|
-      Focus.set
-        (M.winLens focus => M.side)
-        M.SideEdit
-        model
+    SideMenuEdit focus -> sideMenu focus M.SideEdit model
 
-    SideMenuContext focus -> idle <|
-      Focus.set
-        (M.winLens focus => M.side)
-        M.SideContext
-        model
+    SideMenuContext focus -> sideMenu focus M.SideContext model
 
     ShowContext ->
         let task = Task.succeed (SideMenuContext model.focus)
         in  (model, Task.perform identity task)
---       Focus.set
---         (M.winLens model.focus => M.side)
---         M.SideContext
---         model
 
 --     SideMenuContext focus ->
 --       let
@@ -359,7 +349,7 @@ update msg model =
 --           M.Top -> True
 --           M.Bot -> False
 --       in
---         ( Focus.set
+--         ( Lens.set
 --             (M.winLens focus => M.side)
 --             M.SideContext
 --             model
@@ -370,11 +360,7 @@ update msg model =
 --             (Dom.Scroll.toY target 10000)
 --         )
 
-    SideMenuLog focus -> idle <|
-      Focus.set
-        (M.winLens focus => M.side)
-        M.SideLog
-        model
+    SideMenuLog focus -> sideMenu focus M.SideLog model
 
     SetNodeAttr nodeId focus attr -> idle <|
       case attr of
@@ -555,9 +541,10 @@ cmdList =
   , ("dopparsecons", ParseSentCons Server.DiscoDOP)
   , ("deepen", ApplyRules)
   , ("concat", ConcatWords)
+  , ("splittree", SplitTree)
   , ("connect", Connect)
   , ("join", Join)
-  , ("split", SplitBegin)
+  , ("splitwords", SplitBegin)
 --   , ("undo", Undo)
 --   , ("redo", Redo)
   ]
@@ -714,3 +701,45 @@ spanTree (R.Node val ts) =
                 x = get L.minimum <| L.map (Tuple.first << span) <| ts1
                 y = get L.maximum <| L.map (Tuple.second << span) <| ts1
              in R.Node (val, (x, y)) ts1
+
+
+-- | Focus on the given main window.
+focusOnWindow : M.Focus -> Cmd Msg
+focusOnWindow focus =
+    let
+        isTop = focus == M.Top
+    in
+        Task.attempt
+            (\_ -> dummy)
+            (Dom.focus <| Cfg.windowName isTop)
+
+
+----------------------------------------------
+-- Side menu
+----------------------------------------------
+
+
+sideMenu : M.Focus -> M.SideWindow -> M.Model -> (M.Model, Cmd Msg)
+sideMenu focus sideWindow model =
+    let
+        newModel =
+            Lens.set
+                (M.winLens focus => M.side)
+                sideWindow
+                model
+    in
+        (newModel, focusOnWindow focus)
+
+
+-- | Focus on the selected turn in the side (context) window.
+focusOnTurn : M.Focus -> Cmd Msg
+focusOnTurn focus =
+    let
+        target = Cfg.selectSentName <|
+            case focus of
+                M.Top -> True
+                M.Bot -> False
+    in
+        Task.attempt
+            (\_ -> dummy)
+            (Dom.focus target)
