@@ -37,9 +37,9 @@ loginUserHandler :: LoginData -> AppHandler ()
 loginUserHandler loginData = do
   with auth . loginByUsername username password $
     loginRemember loginData
-  -- -- NOTE: unfortunately "" does not redirect to the root, but to "/login"?!
+  -- NOTE: unfortunately "" does not redirect to the root, but to "/login"?!
   -- redirect "../"
-  redirect ""
+  redirect "."
   where
     username = loginUsername loginData
     password = ClearText . T.encodeUtf8 $ loginPassword loginData
