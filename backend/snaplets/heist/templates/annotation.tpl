@@ -2,6 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
+    <base href="http://localhost:8000/"/>
     <title>Main</title>
     <style>html,head,body { padding:0; margin:0; } body { font-family: calibri, helvetica, arial, sans-serif; }</style>
     <script type="text/javascript" src="public/main.js"></script>

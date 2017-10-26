@@ -6,7 +6,7 @@
       <span class="icon-bar"></span>
       <span class="icon-bar"></span>
     </button-->
-    <a class="navbar-brand" href="/">ODIL</a>
+    <a class="navbar-brand" href="">ODIL</a>
   </div>
   <div class="navbar-collapse collapse">
     <ul class="nav navbar-nav navbar-right">
@@ -15,20 +15,20 @@
       </li-->
       <ifAdmin>
         <li>
-          <a href="/admin/files">Files</a>
+          <a href="admin/files">Files</a>
         </li>
         <li>
-          <a href="/annotation">Annotation</a>
+          <a href="annotation">Annotation</a>
         </li>
       </ifAdmin>
       <ifLoggedIn>
         <li>
-          <a href="/logout">Sign Out</a>
+          <a href="logout">Sign Out</a>
         </li>
       </ifLoggedIn>
       <ifLoggedOut>
         <li>
-          <a href="/login">Sign In</a>
+          <a href="login">Sign In</a>
         </li>
       </ifLoggedOut>
     </ul>
