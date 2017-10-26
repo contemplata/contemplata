@@ -8,7 +8,8 @@
     <meta name="author" content="">
     <!--link rel="shortcut icon" href="../../docs-assets/ico/favicon.png"-->
 
-    <base href="http://localhost:8000/"/>
+    <!--base href="http://localhost:8000/"/-->
+    <hrefBase/>
 
     <title>ODIL</title>
 

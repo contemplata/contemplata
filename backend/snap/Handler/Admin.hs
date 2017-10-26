@@ -110,7 +110,7 @@ fileList =
       [("class", "list-group-item")]
       [mkLink fileId]
     mkLink fileId = X.Element "a"
-      [("href", "file/" `T.append` fileId)]
+      [("href", "admin/file/" `T.append` fileId)]
       [X.TextNode fileId]
 
 
@@ -154,9 +154,9 @@ fileHandler = ifAdmin $ do
     mkElem fileName (annoName, access) = X.Element "tr" []
         [ mkText annoName
         , mkLink "remove" "Click to remove" $
-          T.intercalate "/" [fileName, "remanno", annoName]
+          T.intercalate "/" ["admin", "file", fileName, "remanno", annoName]
         , mkLink (T.pack $ show access) "Click to change" $
-          T.intercalate "/" [fileName, "changeaccess", annoName]
+          T.intercalate "/" ["admin", "file", fileName, "changeaccess", annoName]
         ]
 
     mkText x = X.Element "td" [] [X.TextNode x]
@@ -164,24 +164,6 @@ fileHandler = ifAdmin $ do
         [ ("href", href)
         , ("title", tip) ]
         [X.TextNode x] ]
-
---     mkElem fileName anno = X.Element "li"
---       [("class", "list-group-item")]
---       [mkRemLink fileName anno]
-
---     mkRemLink fileName anno = X.Element "a"
---       [ ("href", T.intercalate "/" [fileName, "remanno", anno])
---       , ("title", "Click to remove") ]
---       [X.TextNode anno]
-
---     mkText x = X.Element "td" [] [X.TextNode x]
---     mkCheck x = if x then "✓" else "" -- "❌"
---     mkLink x = X.Element "td" [] [X.Element "a"
---         [ ("href", href) ]
---         [X.TextNode x] ]
---     href = T.concat [br, "/member?", args]
---     args = T.decodeUtf8 $ printUrlEncoded $ M.fromList $
---         [ ("id", [B.pack $ show subid]) ]
 
 
 -- | Login form for a user.

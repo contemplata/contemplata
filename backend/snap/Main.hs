@@ -7,6 +7,7 @@ module Main where
 
 
 import           Control.Monad.IO.Class (liftIO)
+import           Control.Monad.Trans.Class (lift)
 import           Control.Monad (guard)
 import           Control.Lens (makeLenses)
 import           Control.Applicative ((<|>))
@@ -38,8 +39,9 @@ import qualified Snap.Snaplet.Heist as Heist
 import qualified Snap.Util.FileServe as FileServe
 
 import           Heist (Splices)
-import           Heist.Interpreted (Splice, bindSplices)
+import           Heist.Interpreted (Splice, bindSplices, bindAttributeSplices)
 import           Data.Map.Syntax ((##))
+import qualified Text.XmlHtml as X
 
 -- import qualified Snap.Http.Server as Server
 import qualified Network.WebSockets as WS
@@ -139,6 +141,20 @@ wsHandler = do
 globalSplices :: Splices (Splice AppHandler)
 globalSplices = do
   "ifAdmin" ## Admin.ifAdminSplice
+  "hrefBase" ## hrefBase
+  where
+    hrefBase = lift $ do
+      cfg <- Snap.getSnapletUserConfig
+      base <- liftIO $ Cfg.fromCfg' cfg "href-base"
+      return [X.Element "base" [("href", base)] []]
+
+
+-- -- | Application splices.
+-- globalAttrSplices :: Splices (AttrSplice AppHandler)
+-- globalAttrSplices = do
+--   "hrefBase" ## hrefBase
+--   where
+--     hrefBase = do
 
 
 -- | Application initialization.
@@ -156,11 +172,8 @@ appInit = Snap.makeSnaplet "snap-odil" "ODIL" Nothing $ do
   h <- Snap.nestSnaplet "heist" heist $ Heist.heistInit tempPath
   Auth.addAuthSplices h auth
   Heist.modifyHeistState
+    -- (bindAttributeSplices attrSplices)
     (bindSplices globalSplices)
---   Heist.modifyHeistState
---     $ bindSplices splices
---     -- $ bindAttributeSplices attrSplices
---     -- . bindSplices splices
   Snap.addRoutes routes
   return $ App db h s a
 
