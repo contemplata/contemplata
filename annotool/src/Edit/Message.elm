@@ -60,7 +60,7 @@ type Msg
                    -- wheter pre-processing should be used or not
   | ParseSent Server.ParserTyp  -- ^ Reparse the sentence in focus
   | ParseSentPos Server.ParserTyp -- ^ Reparse the sentence in focus, preserve POList (String, String)S tags
-  | ParseSentCons Server.ParserTyp  -- ^ Reparse the sentence in focus with the selected nodes as constraints
+  -- | ParseSentCons Server.ParserTyp  -- ^ Reparse the sentence in focus with the selected nodes as constraints
   | ApplyRules -- ^ Apply the (flattening) rules
   | CtrlDown
   | CtrlUp
@@ -69,9 +69,10 @@ type Msg
   | Swap Bool
   | Files -- ^ Go back to files menu
   | SaveFile  -- ^ Save the current file
-  | ConcatWords  -- ^ Merge two (or more) words
   | SplitTree  -- ^ Split the tree
   | Join  -- ^ Merge the two trees in view
+  -- | ConcatWords  -- ^ Merge two (or more) words
+  -- | Break -- ^ Break the given partition into its components
   | Undo
   | Redo
   | SideMenuEdit M.Focus
@@ -99,10 +100,10 @@ type Msg
       Popup.Popup
       (Maybe String)   -- ^ The (optionl) HTML ID to focus on
   | QuitPopup
-  | SplitBegin
+  -- | SplitBegin
   | SplitChange Int
-  | SplitFinish Int
-  -- | Goto C.Addr -- ^ Move to a given node in the focused window
+  -- | SplitFinish Int
+  -- -- | Goto C.Addr -- ^ Move to a given node in the focused window
   | Many (List Msg)
 --     -- ^ Tests
 --   | TestInput String
@@ -250,12 +251,26 @@ update msg model =
         idle newModel
         -- parseSent Server.Stanford newModel
 
+--     Break ->
+--       let
+--         partId = M.getReprId (M.selectWin model.focus model).tree model
+--         txtFor id = case D.get id model.file.sentMap of
+--                   Nothing -> ""
+--                   Just x -> x
+--         txts = L.map txtFor
+--                <| S.toList
+--                <| M.getPart partId model
+--         req = Server.Break model.fileId partId txts
+--         send = Server.sendWS model.config req
+--       in
+--         (model, send)
+
     ParseRaw prep ->
       let
         treeId = M.getReprId (M.selectWin model.focus model).tree model
         txtFor id = case D.get id model.file.sentMap of
                   Nothing -> ""
-                  Just x -> x
+                  Just x -> M.sentToString x
         txt = String.join " "
               <| L.map txtFor
               <| S.toList
@@ -281,27 +296,27 @@ update msg model =
     ParseSentPos parTyp ->
       let
         treeId = M.getReprId (M.selectWin model.focus model).tree model
-        wordsPos = getWordPos (M.getTree treeId model)
+        wordsPos = getWordPos (M.getSent treeId model) (M.getTree treeId model)
         req = Server.ParseSentPos model.fileId treeId parTyp wordsPos
         send = Server.sendWS model.config req
       in
         (model, send)
 
-    ParseSentCons parTyp ->
-      let
-        win = M.selectWin model.focus model
-        treeId = M.getReprId win.tree model
-        tree = M.getTree treeId model
-        -- wordsPos = getWordPos tree
-        wordsPos = case getWordPos tree of
-          Server.Single x -> x
-          Server.Batch xs -> List.concat xs
-        selection = M.selAll win
-        span = getSpan selection tree
-        req cns = Server.ParseSentCons model.fileId treeId parTyp cns wordsPos
-        send cns = Server.sendWS model.config (req cns)
-      in
-        (model, send span)
+--     ParseSentCons parTyp ->
+--       let
+--         win = M.selectWin model.focus model
+--         treeId = M.getReprId win.tree model
+--         tree = M.getTree treeId model
+--         -- wordsPos = getWordPos tree
+--         wordsPos = case getWordPos tree of
+--           Server.Single x -> x
+--           Server.Batch xs -> List.concat xs
+--         selection = M.selAll win
+--         span = getSpan selection tree
+--         req cns = Server.ParseSentCons model.fileId treeId parTyp cns wordsPos
+--         send cns = Server.sendWS model.config (req cns)
+--       in
+--         (model, send span)
 
     ApplyRules -> idle <|
       let
@@ -333,7 +348,7 @@ update msg model =
       in
         (model, send)
 
-    ConcatWords -> parseSent Server.Stanford <| M.concatWords model
+    -- ConcatWords -> parseSent Server.Stanford <| M.concatWords model
 
     SplitTree -> parseSent Server.Stanford <| M.splitTree model
 
@@ -428,19 +443,19 @@ update msg model =
             Anno.TiQuantAttr x -> M.setTimexAttr M.timexQuant nodeId focus x model
             Anno.TiFreqAttr x -> M.setTimexAttr M.timexFreq nodeId focus x model
 
-    SplitBegin ->
-        let pop x = (model, firePopup x Nothing) in
-        case (M.selectWin model.focus model).selMain of
-            Nothing -> pop (Popup.Info "You have to select a leaf")
-            Just nodeId ->
-                case M.getNode nodeId model.focus model of
-                    M.Node _ -> pop (Popup.Info "You have to select a leaf")
-                    M.Leaf r ->
-                        let popup = Popup.Split {word=r.nodeVal, split=0}
-                            focus = Just Cfg.splitSelectName
-                        in (model, firePopup popup focus)
+--     SplitBegin ->
+--         let pop x = (model, firePopup x Nothing) in
+--         case (M.selectWin model.focus model).selMain of
+--             Nothing -> pop (Popup.Info "You have to select a leaf")
+--             Just nodeId ->
+--                 case M.getNode nodeId model.focus model of
+--                     M.Node _ -> pop (Popup.Info "You have to select a leaf")
+--                     M.Leaf r ->
+--                         let popup = Popup.Split {word=r.nodeVal, split=0}
+--                             focus = Just Cfg.splitSelectName
+--                         in (model, firePopup popup focus)
     SplitChange k -> idle <| M.changeSplit k model
-    SplitFinish k -> idle <| M.performSplit k model
+--     SplitFinish k -> idle <| M.performSplit k model
 
     CommandStart -> idle {model | command = Just ""}
 
@@ -542,14 +557,16 @@ cmdList =
   , ("parsepos", ParseSentPos Server.Stanford)
   , ("dopparse", ParseSent Server.DiscoDOP)
   , ("dopparsepos", ParseSentPos Server.DiscoDOP)
-  , ("parsecons", ParseSentCons Server.Stanford)
-  , ("dopparsecons", ParseSentCons Server.DiscoDOP)
+  -- , ("parsecons", ParseSentCons Server.Stanford)
+  -- , ("dopparsecons", ParseSentCons Server.DiscoDOP)
   , ("deepen", ApplyRules)
-  , ("concat", ConcatWords)
   , ("splittree", SplitTree)
   , ("connect", Connect)
   , ("join", Join)
-  , ("splitwords", SplitBegin)
+  -- , ("break", Break)
+  -- , ("splitwords", SplitBegin)
+  -- , ("concat", ConcatWords)
+
 --   , ("undo", Undo)
 --   , ("redo", Redo)
   ]
@@ -627,13 +644,23 @@ type alias Pos = String
 
 
 -- | Retrieve the words and POS tags from a given tree.
-getWordPos : R.Tree M.Node -> Server.ParseReq (List (Orth, Pos))
-getWordPos tree0 =
+getWordPos
+    : M.Sent
+       -- ^ The sentence
+    -> R.Tree M.Node
+      -- ^ The corresponding tree
+    -> Server.ParseReq (List (Orth, Pos))
+getWordPos sent tree0 =
   let
+    orth i =
+        case Util.at i sent of
+            Nothing -> ""
+            Just tok -> tok.orth
     go pos xs = case xs of
       [] -> []
       node :: nodes -> case node of
-        M.Leaf r -> (r.nodeVal, pos) :: go "" nodes
+        -- M.Leaf r -> (r.nodeVal, pos) :: go "" nodes
+        M.Leaf r -> (orth r.leafPos, pos) :: go "" nodes
         M.Node r -> go r.nodeVal nodes
     getList = go "" << List.reverse << R.flatten
     forest = R.subTrees tree0
@@ -644,12 +671,17 @@ getWordPos tree0 =
 
 
 -- | Like `getWordPos` but just retrieves words.
-getWords : R.Tree M.Node -> Server.ParseReq (List Orth)
-getWords tree0 =
+getWords : M.Sent -> R.Tree M.Node -> Server.ParseReq (List Orth)
+getWords sent tree0 =
   let
+    orth i =
+        case Util.at i sent of
+            Nothing -> ""
+            Just tok -> tok.orth
     word node = case node of
       M.Node _ -> Nothing
-      M.Leaf {nodeVal} -> Just nodeVal
+      -- M.Leaf {nodeVal} -> Just nodeVal
+      M.Leaf {leafPos} -> Just (orth leafPos)
     getList = List.reverse << Util.catMaybes << List.map word << R.flatten
     forest = R.subTrees tree0
   in
@@ -667,7 +699,7 @@ parseSent : Server.ParserTyp -> M.Model -> (M.Model, Cmd Msg)
 parseSent parTyp model =
     let
         treeId = M.getReprId (M.selectWin model.focus model).tree model
-        words = getWords (M.getTree treeId model)
+        words = getWords (M.getSent treeId model) (M.getTree treeId model)
         req = Server.ParseSent model.fileId treeId parTyp words
         send = Server.sendWS model.config req
     in

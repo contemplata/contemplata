@@ -57,8 +57,13 @@ type Request
     -- ^ Request the contents of the given file
   | SaveFile C.AnnoName C.FileId M.File
     -- ^ Request the contents of the given file
+  | Break C.FileId C.PartId (List String)
+    -- ^ Break the given partition into its components
   | ParseRaw C.FileId C.PartId String Bool
     -- ^ Parse the given raw text
+    -- QUESTION: do we really need to pass the string? After all, it should be
+    -- on the server side as well...
+    -- ANSWER: yes, we cannot be sure that the partition on the server is the same!
   | ParseSent C.FileId C.PartId ParserTyp (ParseReq (List Orth))
     -- ^ Parse the given list of words (the IDs are sent so that it can be
     -- checked on return if the user did not switch the file...)
@@ -93,6 +98,14 @@ encodeReqToVal req = case req of
          [ Encode.string annoName
          , Encode.string fileId
          , M.encodeFile file ]
+      )
+    ]
+  Break fileId partId txts -> Encode.object
+    [ ("tag", Encode.string "Break")
+    , ("contents", Encode.list
+         [ Encode.string fileId
+         , Encode.int partId
+         , Encode.list (List.map Encode.string txts) ]
       )
     ]
   ParseRaw fileId treeId txt prep -> Encode.object

@@ -10,6 +10,7 @@ import Control.Monad (when, forM_, forM)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.Trans.State as State
+import           Control.Monad.Trans.Maybe (runMaybeT, MaybeT(..))
 import qualified Control.Arrow as Arr
 
 import qualified Control.Error as Err
@@ -24,7 +25,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Aeson as JSON
 import Data.Function (on)
 import Data.Monoid ((<>))
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, catMaybes)
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Tree as R
@@ -33,7 +34,7 @@ import Options.Applicative
 import qualified Odil.Ancor.Types as Ancor
 import qualified Odil.Ancor.IO.Parse as Parse
 import qualified Odil.Ancor.IO.Show as Show
-import qualified Odil.Ancor.Preprocess as Pre
+import qualified Odil.Ancor.Preprocess.Token as Pre
 import qualified Odil.Server.Types as Odil
 import qualified Odil.Server.Config as ServerCfg
 import qualified Odil.Server.DB as DB
@@ -349,17 +350,17 @@ run cmd =
     Simplify ancorFile -> do
       file <- T.readFile ancorFile
       T.putStrLn . Show.showAncor . Parse.parseTrans $ file
-    Preprocess rmFile -> do
-      sentences <- T.lines <$> T.getContents
-      prepare <- Pre.prepare <$> case rmFile of
-        Nothing -> pure []
-        Just path -> Pre.readConfig path
-      T.putStr . T.unlines . map prepare $ sentences
---     Penn2Odil pennPath origPath -> do
---       penn <- Penn.parseForest <$> T.readFile pennPath
---       orig <- T.lines <$> T.readFile origPath
---       let file = Penn.convertPennFile (zip orig penn)
---       LBS.putStr (JSON.encode file)
+--     Preprocess rmFile -> do
+--       sentences <- T.lines <$> T.getContents
+--       prepare <- Pre.prepare <$> case rmFile of
+--         Nothing -> pure []
+--         Just path -> Pre.readConfig path
+--       T.putStr . T.unlines . map prepare $ sentences
+-- --     Penn2Odil pennPath origPath -> do
+-- --       penn <- Penn.parseForest <$> T.readFile pennPath
+-- --       orig <- T.lines <$> T.readFile origPath
+-- --       let file = Penn.convertPennFile (zip orig penn)
+-- --       LBS.putStr (JSON.encode file)
 
     -- Read the ancor file from stdin and output the resulting
     -- ODIL file in the JSON format
@@ -370,24 +371,17 @@ run cmd =
         forM ancor $ \section -> do
           forM section $ \turn -> do
             treeList <- forM (Ancor.elems turn) $ \(mayWho, elem) -> do
-              let sent = Show.showElem elem
-              --  prepare = Pre.prepare []
               prepare <- Pre.prepare <$> case rmFile of
                 Nothing -> pure []
                 Just path -> liftIO $ Pre.readConfig path
-              penn <- liftIO $ Stanford.parseFR (prepare sent) >>= \case
-                Nothing -> do
-                  let try err cmd = cmd >>= \case
-                        Nothing -> error err
-                        Just x  -> return x
-                  -- error "A problem occurred with the Stanford parser!"
-                  toks <- try "Didn't manage to tokenize with Stanford" $
-                    Stanford.posTagFR (prepare sent)
-                  -- try "None of the parsers managed to parse the sentence" $
-                  --   DiscoDOP.tagParseDOP Nothing (map fst toks)
-                  return $ dummyTree toks
+              -- let sent = Show.showElem elem
+              let sent0 = Show.elem2sent elem
+                  prepSent = prepare sent0
+              (sent, odil) <- liftIO $ parseWith Stanford.parseFR prepSent >>= \case
                 Just x -> return x
-              let odil = Penn.toOdilTree penn
+                Nothing -> try "Didn't manage to tokenize with Stanford" $
+                  parseWith (fmap (fmap dummyTree) . Stanford.posTagFR) prepSent
+              -- let odil = Penn.toOdilTree penn
               k <- State.gets $ (+1) . M.size
               State.modify' $ M.insert k (sent, odil)
               return (k, fmap Ancor.unWho mayWho)
@@ -585,3 +579,29 @@ dummyTree =
   R.Node "ROOT" . map mkLeaf
   where
     mkLeaf (orth, pos) = R.Node pos [R.Node orth []]
+
+
+-- | Try a Maybe computation and raise error on `Nothing`.
+try :: String -> IO (Maybe a) -> IO a
+try err cmd = cmd >>= \case
+  Nothing -> error err
+  Just x  -> return x
+
+
+-------------------------------------------------------
+-- Parsing utils
+-------------------------------------------------------
+
+
+-- | TODO: move to a higher-level module.
+parseWith
+  :: (T.Text -> IO (Maybe Penn.Tree))
+     -- ^ The parsing function
+  -> [(Odil.Token, Maybe T.Text)]
+     -- ^ The sentence to parse, together with the pre-processing result
+  -> IO (Maybe (Odil.Sent, Odil.Tree))
+parseWith parseFun sentPrep = do
+  runMaybeT $ do
+    let txt = T.intercalate " " . catMaybes . map snd $ sentPrep
+    penn <- MaybeT (parseFun txt)
+    return $ Penn.toOdilTree' penn sentPrep

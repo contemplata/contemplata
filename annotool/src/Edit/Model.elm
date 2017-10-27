@@ -1,17 +1,20 @@
 module Edit.Model exposing
   (
   -- Data types:
-    TreeMap, Sent, File, Turn
+    TreeMap, Sent, Token, File, Turn
   , Node(..), NodeTyp(..), Link, Command
   , InternalNode, LeafNode
   , LinkData
   , isNode, isLeaf
+  , sentToString, emptyToken
   -- Model types:
   , Model, Dim, Window, SideWindow(..), Drag, Focus(..)
   -- Other:
   , selectWin, dragOn, getTree, getTreeMay, getReprId, selAll
   , getPosition, nextTree, prevTree, moveCursor, moveCursorTo
   , treeNum, treePos
+  -- Sentence:
+  , getToken, getTokenMay, getSent
   -- History:
   , freezeHist, undo, redo
   -- Selection:
@@ -21,7 +24,8 @@ module Edit.Model exposing
   -- Nodes:
   , getNode, setNode, updateNode
   -- TODO (think of the name):
-  , concatWords, splitTree, join, getPart
+  -- , concatWords
+  , splitTree, join, getPart
   -- Labels:
   , getLabel, setLabel
   -- Comments:
@@ -53,8 +57,8 @@ module Edit.Model exposing
   -- Node annotation:
   , mkEventSel, mkSignalSel, mkTimexSel
   -- Popup-related
-  , changeSplit, performSplit
-  -- , changeTypeSel
+  , changeSplit --, performSplit
+  -- -- , changeTypeSel
   -- Lenses:
   , top, bot, dim, winLens, drag, side, pos, height, widthProp, heightProp
   , nodeId, nodeVal, treeMap, sentMap, partMap, trees
@@ -105,8 +109,28 @@ type alias File =
   , linkSet : D.Dict Link LinkData }
 
 
--- | An original sentence.
-type alias Sent = String
+-- | An original sentence: a list of tokens
+type alias Sent = List Token
+
+
+type alias Token =
+    { orth : String
+    , afterSpace : Bool
+      -- ^ Is the token after space or not?
+      -- NOTE: `True` for leading tokens, for convenience (consider
+    -- sentence concatenation)
+    }
+
+
+emptyToken : Token
+emptyToken = {orth = "", afterSpace = True}
+
+
+sentToString : Sent -> String
+sentToString
+    =  String.trim
+    << String.concat
+    << L.map (\tok -> (if tok.afterSpace then " " else "") ++ tok.orth)
 
 
 type alias TreeMap = D.Dict PartId (R.Tree Node)
@@ -136,7 +160,7 @@ type alias InternalNode =
 
 type alias LeafNode =
     { nodeId : NodeId
-    , nodeVal : String
+    -- , nodeVal : String
       -- | The position of the leaf in the underlying sentence.
       -- The positions do not have to be consecutive.
     , leafPos : Int
@@ -875,6 +899,34 @@ setTreeCheck fileId treeId tree model =
     else model
 
 
+-- | Retrieve the sentence corresponding to the given partition.
+getSent : PartId -> Model -> Sent
+getSent partId model =
+    let
+        lookup key dict =
+            case D.get key dict of
+                Nothing -> Debug.crash "Mode.getSent: got Nothing"
+                Just vl -> vl
+        part = getPart partId model
+        sents = L.map (flip lookup model.file.sentMap) (S.toList part)
+    in
+        L.concat sents
+
+
+-- | Get the token on the given position in the given partition.
+getToken : Int -> PartId -> Model -> Token
+getToken pos partId model =
+    case getTokenMay pos partId model of
+        Nothing -> Debug.crash "Model.getToken: got Nothing"
+        Just tok -> tok
+
+
+-- | Get the token on the given position in the given partition.
+getTokenMay : Int -> PartId -> Model -> Maybe Token
+getTokenMay pos partId model =
+    Util.at pos (getSent partId model)
+
+
 ---------------------------------------------------
 -- Position
 ---------------------------------------------------
@@ -1104,11 +1156,20 @@ setNode id focus newNode = updateNode id focus (\_ -> newNode)
 ---------------------------------------------------
 
 
+-- | Get label of a given node.  Works for both non-terminals and terminals.
 getLabel : NodeId -> Focus -> Model -> String
 getLabel id focus model =
-    Lens.get nodeVal <| getNode id focus model
+    let
+        node = getNode id focus model
+    in
+        case node of
+            Node r -> r.nodeVal
+            Leaf r ->
+                let partId = getReprId (selectWin focus model).tree model
+                in  (getToken r.leafPos partId model).orth
 
 
+-- | NOTE: will siltently fail for terminal nodes.
 setLabel : NodeId -> Focus -> String -> Model -> Model
 setLabel id focus newLabel model =
     let update = Lens.set nodeVal newLabel
@@ -1655,53 +1716,53 @@ mkTimexSel =
 ---------------------------------------------------
 
 
--- | Concatenate selected words (if contiguous) and destroy the tree (side-effet...).
-concatWords : Model -> Model
-concatWords model =
-
-    let
-
-        -- Concatenate the contiguous words
-        go idSet acc xs =
-            case xs of
-                hd :: tl ->
-                    if S.member hd.nodeId idSet then
-                        go idSet (D.insert hd.leafPos hd acc) tl
-                    else
-                        reveal acc ++ [hd.nodeVal] ++ go idSet D.empty tl
-                    -- if (S.member hd.nodeId idSet) && (D.member (hd.leafPos - 1) acc) then
-                    --     go idSet (D.insert hd.leafPos hd acc) tl
-                    -- else if (not <| S.member hd.nodeId idSet) then
-                    --     reveal acc ++ [hd.nodeVal] ++ go idSet D.empty tl
-                    -- else
-                    --     reveal acc ++ go idSet (D.singleton hd.leafPos hd) tl
-                [] -> reveal acc
-        reveal acc =
-            if D.isEmpty acc
-            then []
-            else [ Str.join " "
-                       <| L.map (\(_, x) -> x.nodeVal)
-                       <| D.toList acc
-                 ]
-
-
-        mkTree xs =
-            let
-                root = Node {nodeId=0, nodeVal="ROOT", nodeTyp=Nothing, nodeComment=""}
-                sent = Node {nodeId=1, nodeVal="SENT", nodeTyp=Nothing, nodeComment=""}
-                leaves = L.map mkLeaf
-                         <| L.map2 (,) xs
-                         <| L.range 1 (L.length xs)
-                mkLeaf (word, nodeId) = R.leaf <|
-                    Leaf {nodeId=nodeId+1, nodeVal=word, leafPos=nodeId-1, nodeComment=""}
-            in
-                R.Node root [R.Node sent leaves]
-
-        process idSet tree = mkTree <| go idSet D.empty (getWords tree)
-
-    in
-
-        procSel process model.focus model
+-- -- | Concatenate selected words (if contiguous) and destroy the tree (side-effet...).
+-- concatWords : Model -> Model
+-- concatWords model =
+--
+--     let
+--
+--         -- Concatenate the contiguous words
+--         go idSet acc xs =
+--             case xs of
+--                 hd :: tl ->
+--                     if S.member hd.nodeId idSet then
+--                         go idSet (D.insert hd.leafPos hd acc) tl
+--                     else
+--                         reveal acc ++ [hd.nodeVal] ++ go idSet D.empty tl
+--                     -- if (S.member hd.nodeId idSet) && (D.member (hd.leafPos - 1) acc) then
+--                     --     go idSet (D.insert hd.leafPos hd acc) tl
+--                     -- else if (not <| S.member hd.nodeId idSet) then
+--                     --     reveal acc ++ [hd.nodeVal] ++ go idSet D.empty tl
+--                     -- else
+--                     --     reveal acc ++ go idSet (D.singleton hd.leafPos hd) tl
+--                 [] -> reveal acc
+--         reveal acc =
+--             if D.isEmpty acc
+--             then []
+--             else [ Str.join " "
+--                        <| L.map (\(_, x) -> x.nodeVal)
+--                        <| D.toList acc
+--                  ]
+--
+--
+--         mkTree xs =
+--             let
+--                 root = Node {nodeId=0, nodeVal="ROOT", nodeTyp=Nothing, nodeComment=""}
+--                 sent = Node {nodeId=1, nodeVal="SENT", nodeTyp=Nothing, nodeComment=""}
+--                 leaves = L.map mkLeaf
+--                          <| L.map2 (,) xs
+--                          <| L.range 1 (L.length xs)
+--                 mkLeaf (word, nodeId) = R.leaf <|
+--                     Leaf {nodeId=nodeId+1, nodeVal=word, leafPos=nodeId-1, nodeComment=""}
+--             in
+--                 R.Node root [R.Node sent leaves]
+--
+--         process idSet tree = mkTree <| go idSet D.empty (getWords tree)
+--
+--     in
+--
+--         procSel process model.focus model
 
 
 ---------------------------------------------------
@@ -1949,42 +2010,42 @@ changeSplit k model =
         _ -> model
 
 
--- | Perform the split on the node in focus.
-performSplit : Int -> Model -> Model
-performSplit splitPlace model =
-    let
-        win = selectWin model.focus model
-        updTree theID tree =
-            let
-                newId1 = case findMaxID (R.map Just tree) of
-                   Nothing -> 1
-                   Just ix -> ix + 1
-                duplicate leaf =
-                    let
-                        left  = {leaf | nodeVal = String.left splitPlace leaf.nodeVal}
-                        right = {leaf
-                                    | nodeVal = String.dropLeft splitPlace leaf.nodeVal
-                                    , nodeId = newId1
-                                }
-                    in
-                        [ R.Node (Leaf left) []
-                        , R.Node (Leaf right) [] ]
-                go (R.Node x ts) = case x of
-                    Node r -> [R.Node x (L.concatMap go ts)]
-                    Leaf r ->
-                        if r.nodeId == theID
-                        then duplicate r
-                        else [R.Node x []]
-            in
-                 case go tree of
-                     [t] -> t
-                     _   -> tree
-    in
-        case win.selMain of
-            Nothing -> model
-            Just id ->
-                let treeId = getReprId win.tree model
-                in  updateTree treeId (rePOS << updTree id) model
+-- -- | Perform the split on the node in focus.
+-- performSplit : Int -> Model -> Model
+-- performSplit splitPlace model =
+--     let
+--         win = selectWin model.focus model
+--         updTree theID tree =
+--             let
+--                 newId1 = case findMaxID (R.map Just tree) of
+--                    Nothing -> 1
+--                    Just ix -> ix + 1
+--                 duplicate leaf =
+--                     let
+--                         left  = {leaf | nodeVal = String.left splitPlace leaf.nodeVal}
+--                         right = {leaf
+--                                     | nodeVal = String.dropLeft splitPlace leaf.nodeVal
+--                                     , nodeId = newId1
+--                                 }
+--                     in
+--                         [ R.Node (Leaf left) []
+--                         , R.Node (Leaf right) [] ]
+--                 go (R.Node x ts) = case x of
+--                     Node r -> [R.Node x (L.concatMap go ts)]
+--                     Leaf r ->
+--                         if r.nodeId == theID
+--                         then duplicate r
+--                         else [R.Node x []]
+--             in
+--                  case go tree of
+--                      [t] -> t
+--                      _   -> tree
+--     in
+--         case win.selMain of
+--             Nothing -> model
+--             Just id ->
+--                 let treeId = getReprId win.tree model
+--                 in  updateTree treeId (rePOS << updTree id) model
 
 
 ---------------------------------------------------
@@ -2160,15 +2221,16 @@ nodeId =
     Lens.create get update
 
 
+-- | NOTE: does nothing for leaf nodes.
 nodeVal : Lens.Focus Node String
 nodeVal =
   let
     get node = case node of
       Node r -> r.nodeVal
-      Leaf r -> r.nodeVal
+      Leaf r -> ""
     update f node = case node of
       Node r -> Node {r | nodeVal = f r.nodeVal}
-      Leaf r -> Leaf {r | nodeVal = f r.nodeVal}
+      Leaf r -> Leaf r -- Leaf {r | nodeVal = f r.nodeVal}
   in
     Lens.create get update
 
@@ -2600,7 +2662,18 @@ treeMapDecoder = Decode.map (mapKeys <| toInt) <| Decode.dict treeDecoder
 
 
 sentMapDecoder : Decode.Decoder (D.Dict TreeIdBare Sent)
-sentMapDecoder = Decode.map (mapKeys toInt) <| Decode.dict Decode.string
+sentMapDecoder = Decode.map (mapKeys toInt) <| Decode.dict sentDecoder
+
+
+sentDecoder : Decode.Decoder Sent
+sentDecoder = Decode.list tokenDecoder
+
+
+tokenDecoder : Decode.Decoder Token
+tokenDecoder =
+  Decode.map2 Token
+    (Decode.field "orth" Decode.string)
+    (Decode.field "afterSpace" Decode.bool)
 
 
 partMapDecoder : Decode.Decoder (D.Dict TreeIdBare (S.Set TreeIdBare))
@@ -2631,9 +2704,10 @@ internalDecoder =
 
 leafDecoder : Decode.Decoder Node
 leafDecoder =
-  Decode.map4 (\id val pos com -> Leaf {nodeId=id, nodeVal=val, leafPos=pos, nodeComment=com})
+  -- Decode.map4 (\id val pos com -> Leaf {nodeId=id, nodeVal=val, leafPos=pos, nodeComment=com})
+  Decode.map3 (\id pos com -> Leaf {nodeId=id, leafPos=pos, nodeComment=com})
     (Decode.field "leafId" Decode.int)
-    (Decode.field "leafVal" Decode.string)
+    -- (Decode.field "leafVal" Decode.string)
     (Decode.field "leafPos" Decode.int)
     (Decode.field "leafComment" Decode.string)
 
@@ -2765,6 +2839,19 @@ encodeSentMap =
     Encode.object << L.map encodePair << D.toList
 
 
+encodeSent : Sent -> Encode.Value
+encodeSent = Encode.list << L.map encodeToken
+
+
+encodeToken : Token -> Encode.Value
+encodeToken tok =
+  Encode.object
+    [ ("tag", Encode.string "Token")
+    , ("orth", Encode.string tok.orth)
+    , ("afterSpace", Encode.bool tok.afterSpace)
+    ]
+
+
 encodePartMap : D.Dict TreeIdBare (S.Set TreeIdBare) -> Encode.Value
 encodePartMap =
   let
@@ -2773,10 +2860,6 @@ encodePartMap =
       (toString treeId, encodeIdSet idSet)
   in
     Encode.object << L.map encodePair << D.toList
-
-
-encodeSent : Sent -> Encode.Value
-encodeSent = Encode.string
 
 
 encodeTree : R.Tree Node -> Encode.Value
@@ -2788,7 +2871,7 @@ encodeNode node = case node of
   Leaf r -> Encode.object
     [ ("tag", Encode.string "Leaf")
     , ("leafId", Encode.int r.nodeId)
-    , ("leafVal", Encode.string r.nodeVal)
+    -- , ("leafVal", Encode.string r.nodeVal)
     , ("leafPos", Encode.int r.leafPos)
     , ("leafComment", Encode.string r.nodeComment)
     ]

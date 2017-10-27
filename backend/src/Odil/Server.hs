@@ -35,6 +35,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Tree as R
 
+import           Data.Maybe (maybeToList)
 import qualified Data.Fixed as Fixed
 import qualified Data.Time as Time
 import qualified Data.Text as T
@@ -96,10 +97,15 @@ data Request
   | ParseSentCons FileId TreeId ParserTyp [(Int, Int)] [(Stanford.Orth, Stanford.Pos)]
     -- ^ Similar to `ParseSent`, but with an additional constraint (constituent
     -- with the given pair of positions must exist in the tree)
-  | ParseRaw FileId TreeId
+  | ParseRaw FileId
+    TreeId -- ^ Partition ID
     T.Text -- ^ The sentence
     Bool   -- ^ Perform pre-processing?
     -- ^ Parse raw sentence
+  | Break FileId
+    TreeId   -- ^ Partition ID
+    [T.Text] -- ^ The list of sentences to parse
+    -- ^ Break the given partition into its turn components
   deriving (Generic, Show)
 
 instance JSON.FromJSON Request
@@ -275,6 +281,25 @@ talk conn state snapCfg = forever $ do
             let msg = T.concat ["Parsed successfully"]
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
+
+      Right (Break fileId partId txts) -> do
+        putStrLn "Breaking the given partition..."
+        let msg = T.unlines txts
+        T.putStrLn msg
+        WS.sendTextData conn . JSON.encode =<< mkNotif msg
+
+--         treeMay <- Stanford.parseFR txt
+--         case treeMay of
+--           Nothing -> do
+--             let msg = T.concat ["Could not parse: ", txt]
+--             T.putStrLn msg
+--             WS.sendTextData conn . JSON.encode =<< mkNotif msg
+--           Just t -> do
+--             let ret = ParseResult fileId treeId (Penn.toOdilTree t)
+--             WS.sendTextData conn (JSON.encode ret)
+--             let msg = T.concat ["Parsed successfully"]
+--             T.putStrLn msg
+--             WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
       Right (ParseSent fileId treeId parTyp parseReq) -> do
         putStrLn "Parsing tokenized sentence..."

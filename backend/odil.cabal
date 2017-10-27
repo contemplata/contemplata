@@ -29,6 +29,7 @@ library
                      , Odil.Ancor.IO.Parse
                      , Odil.Ancor.IO.Show
                      , Odil.Ancor.Preprocess
+                     , Odil.Ancor.Preprocess.Token
                      , Odil.Stanford
                      , Odil.DiscoDOP
                      , Odil.Penn

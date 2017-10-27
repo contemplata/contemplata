@@ -3,12 +3,21 @@
 {-# LANGUAGE LambdaCase #-}
 
 
-module Odil.Ancor.IO.Show (showTurn, showSection, showAncor, showToken, showElem) where
+module Odil.Ancor.IO.Show
+  ( showTurn
+  , showSection
+  , showAncor
+  , showToken
+  , showElem
+
+  , elem2sent
+  ) where
 
 
 import qualified Data.Text as T
 
 import Odil.Ancor.Types
+import qualified Odil.Server.Types as Odil
 
 
 showAncor :: Episode -> T.Text
@@ -41,3 +50,20 @@ showToken = \case
   Pause x -> x
   Inaudible -> "[pi]"
   Pronounce x -> T.concat ["<", x ,">"]
+
+
+---------------------------------------------------
+-- Odil Sentence
+---------------------------------------------------
+
+
+-- | Show a given element.
+elem2sent :: Elem -> Odil.Sent
+elem2sent = map convertToken
+
+
+-- | Convert Ancor token to the ODIL representation.
+convertToken :: Token -> Odil.Token
+convertToken tok = Odil.Token
+  { Odil.orth = showToken tok
+  , Odil.afterSpace = True }

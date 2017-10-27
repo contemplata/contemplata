@@ -21,6 +21,7 @@ module Odil.Server.Types
 
 -- * Types
 , Sent
+, Token (..)
 , Tree
 , Node (..)
 , NodeTyp (..)
@@ -53,7 +54,17 @@ import Odil.CoreTypes
 
 
 -- | A sentence underlying a syntactic tree.
-type Sent = T.Text
+-- type Sent = T.Text
+type Sent = [Token]
+
+
+-- | Sentence token
+data Token = Token
+  { orth :: T.Text
+    -- ^ Orthographic form (original, as in the source file)
+  , afterSpace :: Bool
+    -- ^ Is it after space?  NOTE: should be true by default.
+  } deriving (Generic, Show, Eq, Ord)
 
 
 -- | A syntactic tree.
@@ -70,6 +81,8 @@ data Node
   | Leaf
     { leafId :: NodeId
     , leafVal :: T.Text
+      -- ^ NOTE: This can be different than in the corresponding sentence token,
+      -- because we preprocess tokens for the sake of parsing!
     , leafPos :: Int
     , leafComment :: T.Text }
   deriving (Generic, Show, Eq, Ord)
@@ -183,6 +196,10 @@ instance JSON.ToJSONKey Link
 
 instance JSON.FromJSON LinkData
 instance JSON.ToJSON LinkData where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+
+instance JSON.FromJSON Token
+instance JSON.ToJSON Token where
   toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
 instance JSON.FromJSON Turn
