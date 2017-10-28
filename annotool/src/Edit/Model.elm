@@ -126,6 +126,24 @@ emptyToken : Token
 emptyToken = {orth = "", afterSpace = True}
 
 
+mergeToks : Token -> Token -> Token
+mergeToks x y =
+    let
+        ySpace =
+            if y.afterSpace
+            then " "
+            else ""
+    in
+        { orth = Str.concat [x.orth, ySpace, y.orth]
+        , afterSpace = x.afterSpace }
+
+
+concatToks : List Token -> Token
+concatToks =
+    let strip tok = {tok | orth = Str.trim tok.orth}
+    in  strip << L.foldl mergeToks emptyToken
+
+
 sentToString : Sent -> String
 sentToString
     =  String.trim
@@ -506,6 +524,41 @@ log msg model =
 -- Primitive modification operations
 ---------------------------------------------------
 ---------------------------------------------------
+
+
+---------------------------------------------------
+-- Sentence-wise
+---------------------------------------------------
+
+
+-- | Set the sentence under a given ID.  A tricky function which seems trivial...
+-- Returns `Nothing` if fails for some reasons.
+setSent : PartId -> Sent -> Model -> Maybe Model
+setSent treeId newSent model = Debug.crash "Model.setSent: not implemented yet!"
+--
+--   let
+--
+--     -- calculate the new tree and update the model
+--     oldTree = getTree treeId model
+--     newModel = updateTree_ treeId (Just << update) model
+--     newTree = getTree treeId newModel
+--
+--     -- we also calculate the set of deleted nodes
+--     delNodes = S.diff (nodesIn oldTree) (nodesIn newTree)
+--
+--     -- and delete the corresponding links, if needed
+--     isToDelete ((from, to), linkData_) =
+--       let toDel (trId, ndId) = trId == treeId && S.member ndId delNodes
+--       in  toDel from || toDel to
+--     -- delLinks = L.filter isToDelete <| D.toList model.links
+--     delLinks = L.filter isToDelete <| D.toList model.file.linkSet
+--     linkModif = deleteLinks (S.fromList <| L.map Tuple.first delLinks)
+--
+--   in
+--
+--      newModel
+--        |> linkModif
+--        |> saveModif (TreeModif {treeId = treeId, restoreTree = Just oldTree})
 
 
 ---------------------------------------------------
@@ -1423,9 +1476,22 @@ procSel f focus model =
     else model
 
 
--- -- | Get selected nodes.
--- getSelected
---     : Model -> S.Set NodeId
+-- | Process selected nodes in a given window.
+procSelWithSent
+  :  (S.Set NodeId -> Sent -> R.Tree Node -> (Sent, R.Tree Node))
+  -> Focus -> Model -> Model
+procSelWithSent f focus model =
+  let
+      win = selectWin focus model
+      treeId = getReprId win.tree model
+      sent = getSent treeId model
+      tree = getTree treeId model
+      (newSent, newTree) = f (selAll win) sent tree
+  in
+      model |>
+      updateTree treeId (\_ -> newTree) |>
+      setSent treeId newSent |>
+      Maybe.withDefault model
 
 
 ---------------------------------------------------
@@ -1720,53 +1786,120 @@ mkTimexSel =
 ---------------------------------------------------
 
 
--- -- | Concatenate selected words (if contiguous) and destroy the tree (side-effet...).
--- concatWords : Model -> Model
--- concatWords model =
---
+-- | Concatenate selected words (if contiguous) and destroy the tree (side-effet...).
+concatWords : Model -> Model
+concatWords model =
+    let
+        process idSet sent tree =
+            (\toks -> (L.map Tuple.first toks, treeFromSent toks)) <|
+            concatSelectedToks (leafPosSet tree idSet) <|
+            syncTreeWithSent sent tree
+    in
+        procSelWithSent process model.focus model
+
+
+-- | Concatenate user-selected tokens.
+concatSelectedToks
+     : S.Set Int -- ^ Position IDs
+    -> List (Token, Maybe String)
+    -> List (Token, Maybe String)
+concatSelectedToks posSet =
+    let
+        go pos acc xs =
+            case xs of
+                hd :: tl ->
+                    if S.member pos posSet then
+                        go (pos+1) (hd :: acc) tl
+                    else
+                        reveal acc :: hd :: go (pos+1) [] tl
+                [] -> [reveal acc]
+        reveal toks =
+            let (xs0, ys0) = L.unzip toks
+                xs = concatToks xs0
+                ys = Str.join " " <| Util.catMaybes ys0
+            in  (xs, Just ys)
+    in
+        go 0 []
+
+
+-- | Retrieve the set of selected leaf positions.
+leafPosSet : R.Tree Node -> S.Set NodeId -> S.Set Int
+leafPosSet tree idSet =
+    let
+        getSelected node =
+            case node of
+                Node _ -> Nothing
+                Leaf r ->
+                    if S.member r.nodeId idSet
+                    then Just r.leafPos
+                    else Nothing
+    in
+        R.flatten tree |>
+        L.map getSelected |>
+        Util.catMaybes |>
+        S.fromList
+
+
+-- | Syncronize the tree with the corresponding sentence.
+syncTreeWithSent : Sent -> R.Tree Node -> List (Token, Maybe String)
+syncTreeWithSent sent tree =
+    let
+        go pos toks leaves =
+            case (toks, leaves) of
+                (tok :: toksRest, leaf :: leavesRest) ->
+                    if leaf.leafPos == pos
+                    then (tok, Just leaf.nodeVal) :: go (pos+1) toksRest leavesRest
+                    else (tok, Nothing) :: go (pos+1) toksRest leaves
+                (tok :: toksRest, []) ->
+                    (tok, Nothing) :: go (pos+1) toksRest []
+                ([], _) -> []
+    in
+        go 0 sent (getWords tree)
+
+
+-- | Make a (completely flat) tree from the given list of strings.
+treeFromSent : List (Token, Maybe String) -> R.Tree Node
+treeFromSent = treeFromSent_ << determinePositions
+
+
+-- | Make a (completely flat) tree from the given list of strings. The second
+-- elements in the input list represent positions in the sentence (and thus
+-- indicate the corresponding tokens).
+treeFromSent_ : List (String, Int) -> R.Tree Node
+treeFromSent_ xs =
+    let
+        root = Node {nodeId=0, nodeVal="ROOT", nodeTyp=Nothing, nodeComment=""}
+        leaves = L.map mkLeaf
+                 <| L.map2 (,) xs
+                 <| L.range 1 (L.length xs)
+        mkLeaf ((word, leafPos), nodeId) = R.leaf <|
+            Leaf {nodeId=nodeId, nodeVal=word, leafPos=leafPos, nodeComment=""}
+    in
+        R.Node root leaves
+
+
+
+-- | Determine positions of the Just strings in the list.
+-- Discard the Nothing values.
+determinePositions : List (Token, Maybe String) -> List (String, Int)
+determinePositions =
+    let
+        upd pos (tok, mayStr) =
+            case mayStr of
+                Nothing  -> (pos + 1, Nothing)
+                Just str -> (pos + 1, Just (str, pos))
+    in
+        Util.catMaybes << Tuple.second << Util.mapAccumL upd 0
 --     let
---
---         -- Concatenate the contiguous words
---         go idSet acc xs =
---             case xs of
---                 hd :: tl ->
---                     if S.member hd.nodeId idSet then
---                         go idSet (D.insert hd.leafPos hd acc) tl
---                     else
---                         reveal acc ++ [hd.nodeVal] ++ go idSet D.empty tl
---                     -- if (S.member hd.nodeId idSet) && (D.member (hd.leafPos - 1) acc) then
---                     --     go idSet (D.insert hd.leafPos hd acc) tl
---                     -- else if (not <| S.member hd.nodeId idSet) then
---                     --     reveal acc ++ [hd.nodeVal] ++ go idSet D.empty tl
---                     -- else
---                     --     reveal acc ++ go idSet (D.singleton hd.leafPos hd) tl
---                 [] -> reveal acc
---         reveal acc =
---             if D.isEmpty acc
---             then []
---             else [ Str.join " "
---                        <| L.map (\(_, x) -> x.nodeVal)
---                        <| D.toList acc
---                  ]
---
---
---         mkTree xs =
---             let
---                 root = Node {nodeId=0, nodeVal="ROOT", nodeTyp=Nothing, nodeComment=""}
---                 sent = Node {nodeId=1, nodeVal="SENT", nodeTyp=Nothing, nodeComment=""}
---                 leaves = L.map mkLeaf
---                          <| L.map2 (,) xs
---                          <| L.range 1 (L.length xs)
---                 mkLeaf (word, nodeId) = R.leaf <|
---                     Leaf {nodeId=nodeId+1, nodeVal=word, leafPos=nodeId-1, nodeComment=""}
---             in
---                 R.Node root [R.Node sent leaves]
---
---         process idSet tree = mkTree <| go idSet D.empty (getWords tree)
---
+--         go pos toks =
+--             case toks of
+--                 [] -> []
+--                 (tok, mayStr) :: toksRest ->
+--                     case mayStr of
+--                         Nothing -> go (pos+1) toksRest
+--                         Just str -> (str, pos) :: go (pos+1) toksRest
 --     in
---
---         procSel process model.focus model
+--         go 0
 
 
 ---------------------------------------------------
