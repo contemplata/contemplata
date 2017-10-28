@@ -29,6 +29,7 @@ import qualified Data.Functor.Identity as ID
 import qualified Control.Arrow as Arr
 import qualified Control.Monad.Trans.State.Strict as ST
 
+import qualified Data.Traversable as Trav
 import qualified Data.Attoparsec.Text as A
 import qualified Data.Tree as R
 import qualified Data.Set as S
@@ -55,7 +56,9 @@ type Tree = R.Tree T.Text
 
 
 ---------------------------------------------------
+---------------------------------------------------
 -- Conversion
+---------------------------------------------------
 ---------------------------------------------------
 
 
@@ -232,7 +235,7 @@ toOdilTree' tree0 toks0
 
     finalize (tree, sync) =
       ( reverse . map fst $ left sync
-      , tree )
+      , reID tree )
 
     markLeaves (R.Node x ts) = case ts of
       [] -> R.Node (x, True) []
@@ -321,17 +324,6 @@ splitTok =
           right' = stripTok right
       in  (left', right')
 
---     finalize (left, right) =
---       let left' = stripTok left
---           right' =
---             let tok = stripTok right
---             in  if lastSpace left
---                 then tok {Odil.afterSpace = True}
---                 else tok
---       in  (left', right')
---
---     lastSpace tok = " " `T.isSuffixOf` Odil.orth tok
-
     go pref tok
       | T.null pref =
           let emptyTok = Odil.Token "" False
@@ -366,6 +358,18 @@ stripTok tok = tok
       then True
       else False
   }
+
+
+-- | Re-identify the nodes in the given tree.
+-- The old identifiers are discarded.
+reID :: Odil.Tree -> Odil.Tree
+reID =
+  snd . Trav.mapAccumL update 0
+  where
+    update k node = (k + 1, setId k node)
+    setId k node = case node of
+      Odil.Leaf{} -> node {Odil.leafId = k}
+      Odil.Node{} -> node {Odil.nodeId = k}
 
 
 ---------------------------------------------------

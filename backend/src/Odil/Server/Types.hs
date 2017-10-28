@@ -29,7 +29,12 @@ module Odil.Server.Types
 , Turn (..)
 , Link (..)
 , LinkData (..)
+
+-- * Utils
 , mkNewFile
+-- , emptyTok
+-- , mergeToks
+-- , concatToks
 
 -- * JSON
 ) where
@@ -37,6 +42,7 @@ module Odil.Server.Types
 
 import GHC.Generics
 
+import           Data.List (foldl')
 import qualified Data.Set as S
 import qualified Data.Map.Strict as M
 import qualified Data.Tree as R
@@ -65,6 +71,35 @@ data Token = Token
   , afterSpace :: Bool
     -- ^ Is it after space?  NOTE: should be true by default.
   } deriving (Generic, Show, Eq, Ord)
+
+
+-- | Token concatenation.
+emptyTok :: Token
+emptyTok = Token {orth = "", afterSpace = False}
+
+
+-- | Merge two tokens.
+mergeToks :: Token -> Token -> Token
+mergeToks x y = Token
+  { orth = T.concat [orth x, ySpace, orth y]
+  , afterSpace = afterSpace x }
+  where
+    ySpace =
+      if afterSpace y
+      then " "
+      else ""
+
+
+-- -- | Token concatenation.
+-- concatToks :: [Token] -> Token
+-- concatToks =
+--   let strip tok = tok {orth = T.strip (orth tok)}
+--   in  strip . foldl' mergeToks emptyTok
+
+
+instance Monoid Token where
+  mempty = emptyTok
+  mappend = mergeToks
 
 
 -- | A syntactic tree.

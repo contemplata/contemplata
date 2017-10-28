@@ -148,15 +148,14 @@ viewTree focus model =
     win = M.selectWin focus model
     treeId = M.getReprId win.tree model
     tree = M.getTree treeId model
-    sent = tokenMap treeId model
 
   in
 
     drawTree
-      focus win.selMain win.selAux sent
+      focus win.selMain win.selAux
       <| markMisplaced first
       <| positionTree (M.getPosition win)
-      <| R.withWidth (stdWidth sent) Cfg.stdMargin tree
+      <| R.withWidth stdWidth Cfg.stdMargin tree
 
 
 -- | Retrieve the token map (position -> token) for a given partition.
@@ -517,10 +516,9 @@ drawTree
    : M.Focus -- ^ Which window is it in?
   -> Maybe C.NodeId -- ^ Selected main
   -> S.Set C.NodeId -- ^ Selected auxiliaries
-  -> (Int -> M.Token) -- ^ The corresponding sentence (position -> token)
   -> R.Tree ((M.Node, Position), NodeTyp) -- ^ Tree to draw
   -> Html.Html Msg
-drawTree focus selMain selAux sent (R.Node ((node, pos), mark) subTrees) =
+drawTree focus selMain selAux (R.Node ((node, pos), mark) subTrees) =
   let
     lineCfg = { defLineCfg
       | strokeWidth = 2
@@ -529,46 +527,44 @@ drawTree focus selMain selAux sent (R.Node ((node, pos), mark) subTrees) =
     drawForest forest = case forest of
       [] -> []
       t :: ts ->
-        drawTree focus selMain selAux sent t
+        drawTree focus selMain selAux t
           :: viewLine lineCfg pos (second <| first <| R.label t)
           :: drawForest ts
   in
     Html.div []
-      (  drawNode sent node selMain selAux focus pos mark
+      (  drawNode node selMain selAux focus pos mark
       :: drawForest subTrees )
 
 
 -- | Draw a tree node.
 drawNode
-   : (Int -> M.Token) -- ^ The corresponding sentence (position -> token)
-  -> M.Node
+   : M.Node
   -> Maybe C.NodeId
   -> S.Set C.NodeId
   -> M.Focus
   -> Position
   -> NodeTyp -- ^ Should be marked as misplaced?
   -> Html.Html Msg
-drawNode sent node =
+drawNode node =
     case node of
-        M.Node r -> drawInternal sent r
-        M.Leaf r -> drawLeaf sent r
+        M.Node r -> drawInternal r
+        M.Leaf r -> drawLeaf r
 
 
 -- | Draw an internal tree node.
 drawInternal
-   : (Int -> M.Token) -- ^ The corresponding sentence (position -> token)
-  -> M.InternalNode
+   : M.InternalNode
   -> Maybe C.NodeId
   -> S.Set C.NodeId
   -> M.Focus
   -> Position
   -> NodeTyp -- ^ Should be marked as misplaced?
   -> Html.Html Msg
-drawInternal sent node selMain selAux focus at mark =
+drawInternal node selMain selAux focus at mark =
   let
     -- width = nodeWidth
     intNode = M.Node node
-    width = stdWidth sent intNode
+    width = stdWidth intNode
     height = Cfg.nodeHeight
     -- nodeId = Lens.get M.nodeId node
     nodeId = node.nodeId
@@ -623,19 +619,18 @@ drawInternal sent node selMain selAux focus at mark =
 
 -- | Draw a leaf tree node.
 drawLeaf
-   : (Int -> M.Token) -- ^ The corresponding sentence (position -> token)
-  -> M.LeafNode
+   : M.LeafNode
   -> Maybe C.NodeId
   -> S.Set C.NodeId
   -> M.Focus
   -> Position
   -> NodeTyp -- ^ Should be marked as misplaced?
   -> Html.Html Msg
-drawLeaf sent node selMain selAux focus at mark =
+drawLeaf node selMain selAux focus at mark =
   let
     -- width = nodeWidth
     leafNode = M.Leaf node
-    width = stdWidth sent leafNode
+    width = stdWidth leafNode
     height = Cfg.nodeHeight
     nodeId = node.nodeId
     auxStyle =
@@ -649,8 +644,8 @@ drawLeaf sent node selMain selAux focus at mark =
           then ["border" => "solid", "border-color" => "black"]
           else ["border" => "none"] )
     htmlLeaf =
-        -- [ Html.text node.nodeVal
-        [ Html.text (sent node.leafPos).orth
+        [ Html.text node.nodeVal
+        -- [ Html.text (sent node.leafPos).orth
         , Html.sub [] [Html.text <| toString node.leafPos] ]
   in
     Html.div
@@ -1383,22 +1378,19 @@ viewLinks
 viewLinks model =
   let
       getPart focus = M.getReprId (M.selectWin focus model).tree model
-      topSent = tokenMap (getPart M.Top) model
-      botSent = tokenMap (getPart M.Bot) model
   in
       L.concatMap
-          (viewLink model (topSent, botSent))
+          (viewLink model)
           (D.toList model.file.linkSet)
 
 
 
 viewLink
    : M.Model
-    -> (Int -> M.Token, Int -> M.Token)
   -- -> (C.Addr, C.Addr)
   -> (M.Link, M.LinkData)
   -> List (Html.Html Msg)
-viewLink model sent ((from, to), linkData) =
+viewLink model ((from, to), linkData) =
   let
     top = model.top
     bot = model.bot
@@ -1431,14 +1423,14 @@ viewLink model sent ((from, to), linkData) =
       M.getReprId top.tree model == first from &&
       M.getReprId bot.tree model == first to
     then
-      viewLinkDir model (top, bot) sent (trimTop, trimBot) (from, to, linkData.signalAddr)
+      viewLinkDir model (top, bot) (trimTop, trimBot) (from, to, linkData.signalAddr)
     else if
       M.getReprId bot.tree model == first from &&
       M.getReprId top.tree model == first to &&
       M.getReprId top.tree model /= M.getReprId bot.tree model
     then
       -- viewLinkDir model (top, bot) (trimTop, trimBot) (from, to, linkData.signalAddr)
-      viewLinkDir model (bot, top) sent (trimBot, trimTop) (from, to, linkData.signalAddr)
+      viewLinkDir model (bot, top) (trimBot, trimTop) (from, to, linkData.signalAddr)
     else
       []
 
@@ -1446,8 +1438,6 @@ viewLink model sent ((from, to), linkData) =
 viewLinkDir
    : M.Model
   -> (M.Window, M.Window)
-  -> (Int -> M.Token, Int -> M.Token)
-     -- ^ The (top, bottom) windows
   -> (Position -> Maybe Position, Position -> Maybe Position)
      -- ^ Shifting functions, which calculate the absolute positions for the
      -- corresponding (top/bottom) workspaces (return `Nothing` when they go
@@ -1455,32 +1445,31 @@ viewLinkDir
   -> (C.Addr, C.Addr, Maybe C.Addr)
      -- ^ (from, to, maybe signal) addresses
   -> List (Html.Html Msg)
-viewLinkDir model (top, bot) (topSent, botSent) (shiftTop, shiftBot) (from, to, signalMay) =
+viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
   let
 
-    nodePos1 nodeId pos tree sent = nodePos nodeId
+    nodePos1 nodeId pos tree = nodePos nodeId
       <| positionTree pos
-      <| R.withWidth (stdWidth sent) Cfg.stdMargin tree
-    posIn addr win sent shift = Maybe.andThen shift <| nodePos1
+      <| R.withWidth stdWidth Cfg.stdMargin tree
+    posIn addr win shift = Maybe.andThen shift <| nodePos1
       (second addr)
       (M.getPosition win)
       (M.getTree (M.getReprId win.tree model) model)
-      sent
 
     fromPos =
       if first from == M.getReprId top.tree model
-      then posIn from top topSent shiftTop
-      else posIn from bot botSent shiftBot
+      then posIn from top shiftTop
+      else posIn from bot shiftBot
     toPos = -- posIn to bot shiftBot
       if first to == M.getReprId bot.tree model
-      then posIn to bot botSent shiftBot
-      else posIn to top topSent shiftTop
+      then posIn to bot shiftBot
+      else posIn to top shiftTop
     signPos = case signalMay of
       Nothing -> Nothing
       Just addr ->
         if first addr == M.getReprId bot.tree model
-        then posIn addr bot botSent shiftBot
-        else posIn addr top topSent shiftTop
+        then posIn addr bot shiftBot
+        else posIn addr top shiftTop
 
     lineCfg = { defLineCfg
       | strokeDasharray = Just Cfg.linkDasharray
@@ -2264,16 +2253,16 @@ inputTimexGen model setAttr label value attr =
                 let
                     subTree = M.subTreeAt addr model
                     rootLabel = Lens.get M.nodeVal <| R.label subTree
-                    -- words = String.join " " <| L.map (\r -> r.nodeVal) <| M.getWords subTree
-                    -- string = rootLabel ++ " (\"" ++ words ++ "\")"
-                    positions = L.map (\r -> r.leafPos) <| M.getWords subTree
-                    beg = case L.minimum positions of
-                              Nothing -> ""
-                              Just x  -> toString x
-                    end = case L.maximum positions of
-                              Nothing -> ""
-                              Just x  -> toString x
-                    string = rootLabel ++ " (\"" ++ beg ++ ", " ++ end ++ "\")"
+                    words = String.join " " <| L.map (\r -> r.nodeVal) <| M.getWords subTree
+                    string = rootLabel ++ " (\"" ++ words ++ "\")"
+--                     positions = L.map (\r -> r.leafPos) <| M.getWords subTree
+--                     beg = case L.minimum positions of
+--                               Nothing -> ""
+--                               Just x  -> toString x
+--                     end = case L.maximum positions of
+--                               Nothing -> ""
+--                               Just x  -> toString x
+--                     string = rootLabel ++ " (\"" ++ beg ++ ", " ++ end ++ "\")"
                 in
                     [ Html.span
                           [ Atts.class "noselect"
@@ -2337,17 +2326,12 @@ emphasize i x =
 
 
 -- | Width of a node.
-stdWidth
-    :  (Int -> M.Token)
-    -> M.Node
-    -> Int
-stdWidth sent x =
+stdWidth : M.Node -> Int
+stdWidth x =
   -- let val = Lens.get M.nodeVal x
   let
     (txt, ix) = case x of
       M.Node r -> (r.nodeVal, "")
-      M.Leaf r ->
-          ( (sent r.leafPos).orth
-          , toString r.leafPos )
+      M.Leaf r -> (r.nodeVal, toString r.leafPos)
   in  max 30 <| String.length txt * 10 + String.length ix * 6
 -- stdWidth x = 100

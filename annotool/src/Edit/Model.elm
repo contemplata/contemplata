@@ -160,10 +160,13 @@ type alias InternalNode =
 
 type alias LeafNode =
     { nodeId : NodeId
-    -- , nodeVal : String
-      -- | The position of the leaf in the underlying sentence.
-      -- The positions do not have to be consecutive.
+    , nodeVal : String
+      -- ^ Orth value, which is not necessarily equal to the orth values of the
+      -- corresponding tokens.
     , leafPos : Int
+      -- ^ The position of the leaf in the underlying sentence.
+      -- The positions are not guaranteed to be consecutive (some tokens are not
+      -- taken into account when parsing).
     , nodeComment : String }
 
 
@@ -1159,14 +1162,15 @@ setNode id focus newNode = updateNode id focus (\_ -> newNode)
 -- | Get label of a given node.  Works for both non-terminals and terminals.
 getLabel : NodeId -> Focus -> Model -> String
 getLabel id focus model =
-    let
-        node = getNode id focus model
-    in
-        case node of
-            Node r -> r.nodeVal
-            Leaf r ->
-                let partId = getReprId (selectWin focus model).tree model
-                in  (getToken r.leafPos partId model).orth
+    Lens.get nodeVal <| getNode id focus model
+--     let
+--         node = getNode id focus model
+--     in
+--         case node of
+--             Node r -> r.nodeVal
+--             Leaf r ->
+--                 let partId = getReprId (selectWin focus model).tree model
+--                 in  (getToken r.leafPos partId model).orth
 
 
 -- | NOTE: will siltently fail for terminal nodes.
@@ -1473,7 +1477,7 @@ deleteNode id tree =
 deleteSelTree : Focus -> Model -> Model
 deleteSelTree =
   let
-      f ids t = rePOS <| L.foldl deleteTree t (S.toList ids)
+      f ids t = L.foldl deleteTree t (S.toList ids)
   in
       procSel f
 
@@ -1835,9 +1839,13 @@ joinIndeed tid1 tid2 model =
         newTree = joinTrees
                   (getTree newRepr model)
                   (getTree oldRepr model)
-        joinTrees t1 t2 =
+        addPOS mod = R.map <| Lens.update leafPos (\k->k+mod)
+        joinTrees t1 t2Init =
             let root = Node {nodeId=0, nodeVal="ROOT", nodeTyp=Nothing, nodeComment=""}
-            in  reID <| rePOS <| R.Node root (R.subTrees t1 ++ R.subTrees t2)
+                shift = L.length <| getSent newRepr model
+                t2 = addPOS shift t2Init
+            -- in  reID <| rePOS <| R.Node root (R.subTrees t1 ++ R.subTrees t2)
+            in  reID <| R.Node root (R.subTrees t1 ++ R.subTrees t2)
     in
         setPart newRepr newPart <|
         setPart oldRepr newPart <|
@@ -2221,16 +2229,29 @@ nodeId =
     Lens.create get update
 
 
--- | NOTE: does nothing for leaf nodes.
 nodeVal : Lens.Focus Node String
 nodeVal =
   let
     get node = case node of
       Node r -> r.nodeVal
-      Leaf r -> ""
+      Leaf r -> r.nodeVal
     update f node = case node of
       Node r -> Node {r | nodeVal = f r.nodeVal}
-      Leaf r -> Leaf r -- Leaf {r | nodeVal = f r.nodeVal}
+      Leaf r -> Leaf {r | nodeVal = f r.nodeVal}
+  in
+    Lens.create get update
+
+
+-- | NOTE: does nothing reasonable for internal nodes.
+leafPos : Lens.Focus Node Int
+leafPos =
+  let
+    get node = case node of
+      Node r -> 0
+      Leaf r -> r.leafPos
+    update f node = case node of
+      Node r -> Node r
+      Leaf r -> Leaf {r | leafPos = f r.leafPos}
   in
     Lens.create get update
 
@@ -2704,10 +2725,10 @@ internalDecoder =
 
 leafDecoder : Decode.Decoder Node
 leafDecoder =
-  -- Decode.map4 (\id val pos com -> Leaf {nodeId=id, nodeVal=val, leafPos=pos, nodeComment=com})
-  Decode.map3 (\id pos com -> Leaf {nodeId=id, leafPos=pos, nodeComment=com})
+  Decode.map4 (\id val pos com -> Leaf {nodeId=id, nodeVal=val, leafPos=pos, nodeComment=com})
+  -- Decode.map3 (\id pos com -> Leaf {nodeId=id, leafPos=pos, nodeComment=com})
     (Decode.field "leafId" Decode.int)
-    -- (Decode.field "leafVal" Decode.string)
+    (Decode.field "leafVal" Decode.string)
     (Decode.field "leafPos" Decode.int)
     (Decode.field "leafComment" Decode.string)
 
@@ -2871,7 +2892,7 @@ encodeNode node = case node of
   Leaf r -> Encode.object
     [ ("tag", Encode.string "Leaf")
     , ("leafId", Encode.int r.nodeId)
-    -- , ("leafVal", Encode.string r.nodeVal)
+    , ("leafVal", Encode.string r.nodeVal)
     , ("leafPos", Encode.int r.leafPos)
     , ("leafComment", Encode.string r.nodeComment)
     ]
@@ -2941,17 +2962,23 @@ subTreeAt (treeId, theNodeId) model =
             Just t  -> t
 
 
--- | Re-position the leaves of the tree.
-rePOS : R.Tree Node -> R.Tree Node
-rePOS =
-    let
-        update pos x =
-            case x of
-                Node r -> (pos, Node r)
-                Leaf r -> (pos+1, Leaf {r | leafPos=pos})
-    in
-        Tuple.second << R.mapAccum update 0
+-- -- | Re-position the leaves of the tree.
+-- rePOS : R.Tree Node -> R.Tree Node
+-- rePOS =
+--     let
+--         update pos x =
+--             case x of
+--                 Node r -> (pos, Node r)
+--                 Leaf r -> (pos+1, Leaf {r | leafPos=pos})
+--     in
+--         Tuple.second << R.mapAccum update 0
 
+
+-- | Add the given shift to all positions in the leaves.
+addPOS : Int -> R.Tree Node -> R.Tree Node
+addPOS shift =
+    let update = Lens.update leafPos (\k->k+shift)
+    in  R.map update
 
 
 findMaxID : R.Tree (Maybe Node) -> Maybe NodeId

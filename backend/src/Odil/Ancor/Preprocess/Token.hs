@@ -106,25 +106,27 @@ rmPronounce = remove isPronounce
 
 
 joinAcronyms :: Retok
-joinAcronyms lst = lst
---   let (xs, ys) = L.span acroElem lst
---   in  case xs of
---         [] -> onTail joinAcronyms ys
---         _  -> mkAcro xs : joinAcronyms ys
---   where
---     acroElem mayTok = maybe False id $ do
---       tok <- mayTok
---       Plain x <- pure tok
---       [c] <- pure (T.unpack x)
---       guard $ C.isUpper c
---       return True
---     onTail f xs = case xs of
---       hd : tl -> hd : f tl
---       [] -> []
---     mkAcro = Just . Plain . T.concat . mapMaybe extract
---     extract tok = case tok of
---       Just (Plain x) -> Just x
---       _ -> Nothing
+joinAcronyms lst =
+  let (xs, ys) = L.span acroElem lst
+  in  case xs of
+        [] -> onTail joinAcronyms ys
+        _  -> mkAcro xs : joinAcronyms ys
+  where
+    acroElem (odilTok, mayTok) = maybe False id $ do
+      tok <- mayTok
+      Plain x <- pure tok
+      [c] <- pure (T.unpack x)
+      guard $ C.isUpper c
+      return True
+    onTail f xs = case xs of
+      hd : tl -> hd : f tl
+      [] -> []
+    mkAcro =
+      let onSecond = Just . Plain . T.concat . mapMaybe extract
+      in  Arr.first mconcat . Arr.second onSecond . unzip
+    extract tok = case tok of
+      Just (Plain x) -> Just x
+      _ -> Nothing
 
 
 ---------------------------------------------------
