@@ -71,7 +71,7 @@ type Msg
   | SaveFile  -- ^ Save the current file
   | SplitTree  -- ^ Split the tree
   | Join  -- ^ Merge the two trees in view
-  -- | ConcatWords  -- ^ Merge two (or more) words
+  | ConcatWords  -- ^ Merge two (or more) words
   -- | Break -- ^ Break the given partition into its components
   | Undo
   | Redo
@@ -348,7 +348,7 @@ update msg model =
       in
         (model, send)
 
-    -- ConcatWords -> parseSent Server.Stanford <| M.concatWords model
+    ConcatWords -> parseSent Server.Stanford <| M.concatWords model
 
     SplitTree -> parseSent Server.Stanford <| M.splitTree model
 
@@ -565,7 +565,7 @@ cmdList =
   , ("join", Join)
   -- , ("break", Break)
   -- , ("splitwords", SplitBegin)
-  -- , ("concat", ConcatWords)
+  , ("concat", ConcatWords)
 
 --   , ("undo", Undo)
 --   , ("redo", Redo)

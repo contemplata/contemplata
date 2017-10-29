@@ -24,7 +24,7 @@ module Edit.Model exposing
   -- Nodes:
   , getNode, setNode, updateNode
   -- TODO (think of the name):
-  -- , concatWords
+  , concatWords
   , splitTree, join, getPart
   -- Labels:
   , getLabel, setLabel
@@ -115,6 +115,7 @@ type alias Sent = List Token
 
 type alias Token =
     { orth : String
+      -- ^ NOTE: We assume that `orth` is trimmed (no whitespaces on any side).
     , afterSpace : Bool
       -- ^ Is the token after space or not?
       -- NOTE: `True` for leading tokens, for convenience (consider
@@ -141,14 +142,14 @@ mergeToks x y =
 concatToks : List Token -> Token
 concatToks =
     let strip tok = {tok | orth = Str.trim tok.orth}
-    in  strip << L.foldl mergeToks emptyToken
+    in  strip << L.foldr mergeToks emptyToken
 
 
 sentToString : Sent -> String
-sentToString
-    =  String.trim
-    << String.concat
-    << L.map (\tok -> (if tok.afterSpace then " " else "") ++ tok.orth)
+sentToString = .orth << concatToks
+--     =  String.trim
+--     << String.concat
+--     << L.map (\tok -> (if tok.afterSpace then " " else "") ++ tok.orth)
 
 
 type alias TreeMap = D.Dict PartId (R.Tree Node)
@@ -398,6 +399,12 @@ type HistAtom
     , restorePart : S.Set TreeIdBare
       -- ^ The partition to restore
     }
+  | SentModif -- ^ Modified a sentence
+    { treeId : TreeIdBare
+      -- ^ To which tree ID does it refer
+    , restoreSent : Sent
+      -- ^ The sentel to restore
+    }
 
 
 -- | Save the given atomic modification in the editing history.
@@ -453,6 +460,15 @@ applyAtom histAtom model =
                    (D.insert r.treeId r.restorePart) model
         newModel = focusOnTree r.treeId tmpModel
         newAtom = PartModif {r | restorePart = oldPart}
+      in
+        (newModel, newAtom)
+    SentModif r ->
+      let
+        oldSent = getSent_ r.treeId model
+        newModel = Lens.update
+                   (file => sentMap)
+                   (D.insert r.treeId r.restoreSent) model
+        newAtom = SentModif {r | restoreSent = oldSent}
       in
         (newModel, newAtom)
 
@@ -534,31 +550,78 @@ log msg model =
 -- | Set the sentence under a given ID.  A tricky function which seems trivial...
 -- Returns `Nothing` if fails for some reasons.
 setSent : PartId -> Sent -> Model -> Maybe Model
-setSent treeId newSent model = Debug.crash "Model.setSent: not implemented yet!"
---
---   let
---
---     -- calculate the new tree and update the model
---     oldTree = getTree treeId model
---     newModel = updateTree_ treeId (Just << update) model
---     newTree = getTree treeId newModel
---
---     -- we also calculate the set of deleted nodes
---     delNodes = S.diff (nodesIn oldTree) (nodesIn newTree)
---
---     -- and delete the corresponding links, if needed
---     isToDelete ((from, to), linkData_) =
---       let toDel (trId, ndId) = trId == treeId && S.member ndId delNodes
---       in  toDel from || toDel to
---     -- delLinks = L.filter isToDelete <| D.toList model.links
---     delLinks = L.filter isToDelete <| D.toList model.file.linkSet
---     linkModif = deleteLinks (S.fromList <| L.map Tuple.first delLinks)
---
---   in
---
---      newModel
---        |> linkModif
---        |> saveModif (TreeModif {treeId = treeId, restoreTree = Just oldTree})
+setSent partId newSent model =
+    let
+        sentMap = getSentMap partId model
+    in
+        case reAlignSent (D.values sentMap) newSent of
+            Nothing -> Nothing
+            Just newSentList ->
+                let update (treeId, new) = setSent_ treeId new
+                in  Just <|
+                    L.foldl update model <|
+                    L.map2 (,) (D.keys sentMap) newSentList
+
+
+-- | Set a single sentence under a given ID.
+setSent_ : TreeIdBare -> Sent -> Model -> Model
+setSent_ treeId sent model =
+    let
+        oldSent = getSent_ treeId model
+        newModel = Lens.update (file => sentMap) (D.insert treeId sent) model
+    in
+        newModel |> saveModif (SentModif {treeId = treeId, restoreSent = oldSent})
+
+
+-- | Take (a) a list of sentences and (b) a sentence, such that concatenated (a)
+-- and (b) represent a tokenization of the same text, and split (b) in such
+-- places that the resulting list of sentences is aligned with (a) (i.e. both
+-- lists have the same length and their respective elements correspond to the
+-- same chunks of text).
+reAlignSent : List Sent -> Sent -> Maybe (List Sent)
+reAlignSent chunks sent =
+--   Debug.log (toString chunks) <|
+--   Debug.log (toString sent) <|
+  case chunks of
+      [] ->
+          if L.isEmpty sent
+          then Just []
+          else Nothing
+      chunk :: chunksRest ->
+          case divideWithPrefix (sentToString chunk) sent of
+              Nothing -> Nothing
+              Just (pref, suff) ->
+                  let cons x xs = x :: xs
+                  in  Maybe.map (cons pref) (reAlignSent chunksRest suff)
+
+
+-- | Divide the given sentence with the given prefix so that the first element
+-- of the resulting pair corresponds to the prefix and the second -- to the
+-- suffix.
+divideWithPrefix : String -> Sent -> Maybe (Sent, Sent)
+divideWithPrefix txt sent =
+    if Str.isEmpty txt
+    then Just ([], sent)
+    else
+        case sent of
+            [] -> Nothing
+            tok :: sentRest ->
+                case stripPrefix tok.orth txt of
+                    Nothing -> Nothing
+                    Just suff ->
+                        let onFirst f (x, y) = (f x, y)
+                            cons x xs = x :: xs
+                        in  Maybe.map
+                            (onFirst <| cons tok)
+                            (divideWithPrefix (Str.trimLeft suff) sentRest)
+
+
+-- | Strip the prefix and return the suffix.
+stripPrefix : String -> String -> Maybe String
+stripPrefix pref x =
+    if Str.startsWith pref x
+    then Just <| Str.dropLeft (Str.length pref) x
+    else Nothing
 
 
 ---------------------------------------------------
@@ -957,16 +1020,27 @@ setTreeCheck fileId treeId tree model =
 
 -- | Retrieve the sentence corresponding to the given partition.
 getSent : PartId -> Model -> Sent
-getSent partId model =
+getSent partId = L.concat << D.values << getSentMap partId
+
+
+-- | Retrieve the sentences corresponding to the given partition.
+getSentMap : PartId -> Model -> D.Dict TreeIdBare Sent
+getSentMap partId model =
     let
-        lookup key dict =
-            case D.get key dict of
-                Nothing -> Debug.crash "Mode.getSent: got Nothing"
-                Just vl -> vl
         part = getPart partId model
-        sents = L.map (flip lookup model.file.sentMap) (S.toList part)
+        sents = L.map
+                (\treeId -> (treeId, getSent_ treeId model))
+                (S.toList part)
     in
-        L.concat sents
+        D.fromList sents
+
+
+-- | Get the sentence corresponding to the given ID.
+getSent_ : TreeIdBare -> Model -> Sent
+getSent_ treeId model =
+    case D.get treeId model.file.sentMap of
+        Nothing -> Debug.crash "Model.getSent_: got Nothing"
+        Just sent -> sent
 
 
 -- | Get the token on the given position in the given partition.
@@ -1811,13 +1885,16 @@ concatSelectedToks posSet =
                     if S.member pos posSet then
                         go (pos+1) (hd :: acc) tl
                     else
-                        reveal acc :: hd :: go (pos+1) [] tl
-                [] -> [reveal acc]
+                        reveal acc ++ [hd] ++ go (pos+1) [] tl
+                [] -> reveal acc
         reveal toks =
-            let (xs0, ys0) = L.unzip toks
-                xs = concatToks xs0
-                ys = Str.join " " <| Util.catMaybes ys0
-            in  (xs, Just ys)
+            if L.isEmpty toks
+            then []
+            else
+                let (xs, ys) = L.unzip <| L.reverse toks
+                    tok = concatToks xs
+                    str = Str.join " " <| Util.catMaybes ys
+                in  [(tok, Just str)]
     in
         go 0 []
 
@@ -1869,13 +1946,14 @@ treeFromSent_ : List (String, Int) -> R.Tree Node
 treeFromSent_ xs =
     let
         root = Node {nodeId=0, nodeVal="ROOT", nodeTyp=Nothing, nodeComment=""}
+        sent = Node {nodeId=1, nodeVal="SENT", nodeTyp=Nothing, nodeComment=""}
         leaves = L.map mkLeaf
                  <| L.map2 (,) xs
                  <| L.range 1 (L.length xs)
         mkLeaf ((word, leafPos), nodeId) = R.leaf <|
-            Leaf {nodeId=nodeId, nodeVal=word, leafPos=leafPos, nodeComment=""}
+            Leaf {nodeId=nodeId+1, nodeVal=word, leafPos=leafPos, nodeComment=""}
     in
-        R.Node root leaves
+        R.Node root [R.Node sent leaves]
 
 
 
@@ -1890,16 +1968,6 @@ determinePositions =
                 Just str -> (pos + 1, Just (str, pos))
     in
         Util.catMaybes << Tuple.second << Util.mapAccumL upd 0
---     let
---         go pos toks =
---             case toks of
---                 [] -> []
---                 (tok, mayStr) :: toksRest ->
---                     case mayStr of
---                         Nothing -> go (pos+1) toksRest
---                         Just str -> (str, pos) :: go (pos+1) toksRest
---     in
---         go 0
 
 
 ---------------------------------------------------
