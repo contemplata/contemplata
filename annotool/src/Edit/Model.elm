@@ -24,7 +24,7 @@ module Edit.Model exposing
   -- Nodes:
   , getNode, setNode, updateNode
   -- TODO (think of the name):
-  , concatWords
+  , concatWords, dumify
   , splitTree, join, getPart
   -- Labels:
   , getLabel, setLabel
@@ -647,6 +647,9 @@ stripPrefix pref x =
 
 -- | Set the tree under a given ID. Does not require that the tree already
 -- exists (in contrast to `updateTree`, for example).
+-- NOTE: this is not really a high-level function, from the high-level point of
+-- view it should be not possible to remove a tree. Put differently, this
+-- function leaves the model in an invalid state!
 setTree : PartId -> Maybe (R.Tree Node) -> Model -> Model
 setTree treeId newTree model =
 
@@ -2219,7 +2222,7 @@ swap left id tree =
 
 
 ---------------------------------------------------
--- Popups
+-- Popups: splitting
 ---------------------------------------------------
 
 
@@ -2330,6 +2333,33 @@ splitToken tokID splitPlace toks =
         case rightToks of
             [] -> toks
             hd :: tl -> leftToks ++ splitTok hd ++ tl
+
+
+---------------------------------------------------
+-- Dummy
+---------------------------------------------------
+
+
+-- | Replace the tree assigned to the given partition by the dummy tree.
+dumify : PartId -> Model -> Model
+dumify partId model =
+    let
+        oldSent = getSent partId model
+        newSent = [concatToks oldSent]
+    in
+        setTree partId (Just dummyTree) model
+        |> setSent partId newSent
+        |> Maybe.withDefault model
+
+
+-- | A dummy tree, corresponding to an empty sentence.
+dummyTree : R.Tree Node
+dummyTree =
+    let
+        root = Node {nodeId=0, nodeVal="ROOT", nodeTyp=Nothing, nodeComment=""}
+        leaf = Leaf {nodeId=1, nodeVal="", leafPos=0, nodeComment=""}
+    in
+        R.Node root [R.Node leaf []]
 
 
 ---------------------------------------------------

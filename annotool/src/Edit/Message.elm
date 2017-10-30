@@ -103,6 +103,7 @@ type Msg
   | SplitBegin
   | SplitChange Int
   | SplitFinish Int
+  | Dummy
   -- -- | Goto C.Addr -- ^ Move to a given node in the focused window
   | Many (List Msg)
 --     -- ^ Tests
@@ -507,6 +508,10 @@ update msg model =
             ( {model | popup = Nothing}
             , Task.attempt (\_ -> dummy) (Dom.focus target) )
 
+    Dummy -> idle <|
+        let partId = M.getReprId (M.selectWin model.focus model).tree model
+        in  M.dumify partId model
+
     -- Goto addr -> idle <| M.goto addr model
 
     Many msgs ->
@@ -573,6 +578,7 @@ cmdList =
   -- , ("break", Break)
   , ("splitword", SplitBegin)
   , ("concat", ConcatWords)
+  , ("dummy", Dummy)
 
 --   , ("undo", Undo)
 --   , ("redo", Redo)
