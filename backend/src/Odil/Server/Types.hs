@@ -32,6 +32,7 @@ module Odil.Server.Types
 
 -- * Utils
 , mkNewFile
+, sentFromText
 -- , emptyTok
 -- , mergeToks
 -- , concatToks
@@ -62,6 +63,13 @@ import Odil.CoreTypes
 -- | A sentence underlying a syntactic tree.
 -- type Sent = T.Text
 type Sent = [Token]
+
+
+-- | Create a sentence from text.
+sentFromText :: T.Text -> Sent
+sentFromText =
+  let mkTok x = Token {orth=x, afterSpace=True}
+  in  map mkTok . T.words
 
 
 -- | Sentence token

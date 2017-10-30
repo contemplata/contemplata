@@ -156,7 +156,7 @@ type Answer
     -- ^ The list of files
   | NewFile C.FileId M.File
     -- ^ New file to edit
-  | ParseResult C.FileId C.PartId (R.Tree M.Node)
+  | ParseResult C.FileId C.PartId (Maybe M.Sent) (R.Tree M.Node)
     -- ^ New file to edit
   | Notification String
     -- ^ Just a notification message from a server
@@ -181,9 +181,10 @@ newFileDecoder =
 
 parseResultDecoder : Decode.Decoder Answer
 parseResultDecoder =
-  Decode.map3 ParseResult
+  Decode.map4 ParseResult
     (Decode.field "fileId" Decode.string)
     (Decode.field "treeId" Decode.int)
+    (Decode.field "sent" (Decode.nullable M.sentDecoder))
     (Decode.field "tree" M.treeDecoder)
 
 

@@ -100,9 +100,9 @@ type Msg
       Popup.Popup
       (Maybe String)   -- ^ The (optionl) HTML ID to focus on
   | QuitPopup
-  -- | SplitBegin
+  | SplitBegin
   | SplitChange Int
-  -- | SplitFinish Int
+  | SplitFinish Int
   -- -- | Goto C.Addr -- ^ Move to a given node in the focused window
   | Many (List Msg)
 --     -- ^ Tests
@@ -268,13 +268,14 @@ update msg model =
     ParseRaw prep ->
       let
         treeId = M.getReprId (M.selectWin model.focus model).tree model
-        txtFor id = case D.get id model.file.sentMap of
-                  Nothing -> ""
-                  Just x -> M.sentToString x
-        txt = String.join " "
-              <| L.map txtFor
-              <| S.toList
-              <| M.getPart treeId model
+--         txtFor id = case D.get id model.file.sentMap of
+--                   Nothing -> ""
+--                   Just x -> M.sentToString x
+--         txt = String.join " "
+--               <| L.map txtFor
+--               <| S.toList
+--               <| M.getPart treeId model
+        txt = M.sentToString <| M.getSent treeId model
         req = Server.ParseRaw model.fileId treeId txt prep
         send = Server.sendWS model.config req
       in
@@ -296,7 +297,8 @@ update msg model =
     ParseSentPos parTyp ->
       let
         treeId = M.getReprId (M.selectWin model.focus model).tree model
-        wordsPos = getWordPos (M.getSent treeId model) (M.getTree treeId model)
+        -- wordsPos = getWordPos (M.getSent treeId model) (M.getTree treeId model)
+        wordsPos = getWordPos (M.getTree treeId model)
         req = Server.ParseSentPos model.fileId treeId parTyp wordsPos
         send = Server.sendWS model.config req
       in
@@ -443,19 +445,24 @@ update msg model =
             Anno.TiQuantAttr x -> M.setTimexAttr M.timexQuant nodeId focus x model
             Anno.TiFreqAttr x -> M.setTimexAttr M.timexFreq nodeId focus x model
 
---     SplitBegin ->
---         let pop x = (model, firePopup x Nothing) in
---         case (M.selectWin model.focus model).selMain of
---             Nothing -> pop (Popup.Info "You have to select a leaf")
---             Just nodeId ->
---                 case M.getNode nodeId model.focus model of
---                     M.Node _ -> pop (Popup.Info "You have to select a leaf")
---                     M.Leaf r ->
---                         let popup = Popup.Split {word=r.nodeVal, split=0}
---                             focus = Just Cfg.splitSelectName
---                         in (model, firePopup popup focus)
+    SplitBegin ->
+        let
+            pop x = (model, firePopup x Nothing)
+            win = M.selectWin model.focus model
+            partId = M.getReprId win.tree model
+        in
+            case win.selMain of
+                Nothing -> pop (Popup.Info "You have to select a leaf")
+                Just nodeId ->
+                    case M.getNode nodeId model.focus model of
+                        M.Node _ -> pop (Popup.Info "You have to select a leaf")
+                        M.Leaf r ->
+                            let nodeVal = (M.getToken r.leafPos partId model).orth
+                                popup = Popup.Split {word=nodeVal, split=0}
+                                focus = Just Cfg.splitSelectName
+                            in (model, firePopup popup focus)
     SplitChange k -> idle <| M.changeSplit k model
---     SplitFinish k -> idle <| M.performSplit k model
+    SplitFinish k -> idle <| M.performSplit k model
 
     CommandStart -> idle {model | command = Just ""}
 
@@ -564,7 +571,7 @@ cmdList =
   , ("connect", Connect)
   , ("join", Join)
   -- , ("break", Break)
-  -- , ("splitwords", SplitBegin)
+  , ("splitword", SplitBegin)
   , ("concat", ConcatWords)
 
 --   , ("undo", Undo)
@@ -644,23 +651,13 @@ type alias Pos = String
 
 
 -- | Retrieve the words and POS tags from a given tree.
-getWordPos
-    : M.Sent
-       -- ^ The sentence
-    -> R.Tree M.Node
-      -- ^ The corresponding tree
-    -> Server.ParseReq (List (Orth, Pos))
-getWordPos sent tree0 =
+getWordPos : R.Tree M.Node -> Server.ParseReq (List (Orth, Pos))
+getWordPos tree0 =
   let
-    orth i =
-        case Util.at i sent of
-            Nothing -> ""
-            Just tok -> tok.orth
     go pos xs = case xs of
       [] -> []
       node :: nodes -> case node of
-        -- M.Leaf r -> (r.nodeVal, pos) :: go "" nodes
-        M.Leaf r -> (orth r.leafPos, pos) :: go "" nodes
+        M.Leaf r -> (r.nodeVal, pos) :: go "" nodes
         M.Node r -> go r.nodeVal nodes
     getList = go "" << List.reverse << R.flatten
     forest = R.subTrees tree0
@@ -671,23 +668,67 @@ getWordPos sent tree0 =
 
 
 -- | Like `getWordPos` but just retrieves words.
-getWords : M.Sent -> R.Tree M.Node -> Server.ParseReq (List Orth)
-getWords sent tree0 =
+getWords : R.Tree M.Node -> Server.ParseReq (List Orth)
+getWords tree0 =
   let
-    orth i =
-        case Util.at i sent of
-            Nothing -> ""
-            Just tok -> tok.orth
     word node = case node of
       M.Node _ -> Nothing
-      -- M.Leaf {nodeVal} -> Just nodeVal
-      M.Leaf {leafPos} -> Just (orth leafPos)
+      M.Leaf {nodeVal} -> Just nodeVal
     getList = List.reverse << Util.catMaybes << List.map word << R.flatten
     forest = R.subTrees tree0
   in
     case forest of
         [tree] -> Server.Single (getList tree)
         _ -> Server.Batch (List.map getList forest)
+
+
+-- NOTE: Below are versions which retrieve the orth values from the underlying
+-- sentence (the list of tokens).
+--
+-- -- | Retrieve the words and POS tags from a given tree.
+-- getWordPos
+--     : M.Sent
+--        -- ^ The sentence
+--     -> R.Tree M.Node
+--       -- ^ The corresponding tree
+--     -> Server.ParseReq (List (Orth, Pos))
+-- getWordPos sent tree0 =
+--   let
+--     orth i =
+--         case Util.at i sent of
+--             Nothing -> ""
+--             Just tok -> tok.orth
+--     go pos xs = case xs of
+--       [] -> []
+--       node :: nodes -> case node of
+--         -- M.Leaf r -> (r.nodeVal, pos) :: go "" nodes
+--         M.Leaf r -> (orth r.leafPos, pos) :: go "" nodes
+--         M.Node r -> go r.nodeVal nodes
+--     getList = go "" << List.reverse << R.flatten
+--     forest = R.subTrees tree0
+--   in
+--     case forest of
+--         [tree] -> Server.Single (getList tree)
+--         _ -> Server.Batch (List.map getList forest)
+--
+--
+-- -- | Like `getWordPos` but just retrieves words.
+-- getWords : M.Sent -> R.Tree M.Node -> Server.ParseReq (List Orth)
+-- getWords sent tree0 =
+--   let
+--     orth i =
+--         case Util.at i sent of
+--             Nothing -> ""
+--             Just tok -> tok.orth
+--     word node = case node of
+--       M.Node _ -> Nothing
+--       M.Leaf {leafPos} -> Just (orth leafPos)
+--     getList = List.reverse << Util.catMaybes << List.map word << R.flatten
+--     forest = R.subTrees tree0
+--   in
+--     case forest of
+--         [tree] -> Server.Single (getList tree)
+--         _ -> Server.Batch (List.map getList forest)
 
 
 ----------------------------------------------
@@ -699,7 +740,8 @@ parseSent : Server.ParserTyp -> M.Model -> (M.Model, Cmd Msg)
 parseSent parTyp model =
     let
         treeId = M.getReprId (M.selectWin model.focus model).tree model
-        words = getWords (M.getSent treeId model) (M.getTree treeId model)
+        -- words = getWords (M.getSent treeId model) (M.getTree treeId model)
+        words = getWords (M.getTree treeId model)
         req = Server.ParseSent model.fileId treeId parTyp words
         send = Server.sendWS model.config req
     in

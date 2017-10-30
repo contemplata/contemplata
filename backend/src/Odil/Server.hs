@@ -27,6 +27,7 @@ module Odil.Server
 import GHC.Generics
 
 import           Control.Monad.IO.Class (liftIO)
+import           Control.Monad.Trans.Maybe (runMaybeT, MaybeT(..))
 import           Control.Monad (forM_, forever, (<=<))
 import           Control.Arrow (second)
 import qualified Control.Exception as Exc
@@ -35,7 +36,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Tree as R
 
-import           Data.Maybe (maybeToList)
+import           Data.Maybe (maybeToList, catMaybes)
 import qualified Data.Fixed as Fixed
 import qualified Data.Time as Time
 import qualified Data.Text as T
@@ -56,7 +57,7 @@ import qualified Odil.Server.DB as DB
 import qualified Odil.Stanford as Stanford
 import qualified Odil.DiscoDOP as DiscoDOP
 import qualified Odil.Penn as Penn
-import qualified Odil.Ancor.Preprocess as Pre
+import qualified Odil.Ancor.Preprocess.Token as Pre
 
 
 -----------
@@ -119,7 +120,11 @@ data Answer
     -- ^ The list of files
   | NewFile FileId File
     -- ^ New file to edit
-  | ParseResult FileId TreeId Tree
+  | ParseResult
+    FileId
+    TreeId
+    (Maybe Sent) -- ^ The resulting tokenization, if changed
+    Tree -- ^ The resulting tree
     -- ^ Parsing results
   | Notification T.Text
     -- ^ Notication message
@@ -132,9 +137,10 @@ instance JSON.ToJSON Answer where
     NewFile fileId file -> JSON.object
       [ "fileId" .= fileId
       , "file" .= file ]
-    ParseResult fileId treeId tree -> JSON.object
+    ParseResult fileId treeId sentMay tree -> JSON.object
       [ "fileId" .= fileId
       , "treeId" .= treeId
+      , "sent" .= sentMay
       , "tree" .= tree ]
     Notification msg -> JSON.object
       [ "notification" .= msg ]
@@ -258,29 +264,63 @@ talk conn state snapCfg = forever $ do
 
       Right (ParseRaw fileId treeId txt0 prep) -> do
 
-        txt <-
+        prepare <-
           if not prep
           then do
             putStrLn "Parsing raw sentence..."
-            return txt0
+            return Pre.prepareDummy
           else do
-            putStrLn "Parsing preprocessed sentence..."
-            Just rmPath <- liftIO $ Cfg.lookup snapCfg "remove"
-            extCfg <- liftIO $ Pre.readConfig rmPath
-            return $ Pre.prepare extCfg txt0
+           putStrLn "Parsing preprocessed sentence..."
+           Just rmPath <- liftIO $ Cfg.lookup snapCfg "remove"
+           extCfg <- liftIO $ Pre.readConfig rmPath
+           return $ Pre.prepare extCfg
 
-        treeMay <- Stanford.parseFR txt
-        case treeMay of
+        let sent0 = sentFromText txt0
+            prepSent = prepare sent0
+
+        resultMay <- liftIO $ parseWith Stanford.parseFR prepSent >>= \case
+          Just x -> return (Just x)
+          Nothing -> parseWith (fmap (fmap dummyTree) . Stanford.posTagFR) prepSent >>= \case
+            Just x -> return (Just x)
+            Nothing -> return Nothing
+
+        case resultMay of
           Nothing -> do
-            let msg = T.concat ["Could not parse: ", txt]
+            let msg = T.concat ["Could not parse: ", txt0]
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
-          Just t -> do
-            let ret = ParseResult fileId treeId (Penn.toOdilTree t)
+          Just (sent, tree) -> do
+            let ret = ParseResult fileId treeId (Just sent) tree
             WS.sendTextData conn (JSON.encode ret)
             let msg = T.concat ["Parsed successfully"]
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
+
+--       Right (ParseRaw fileId treeId txt0 prep) -> do
+--
+--         txt <-
+--           if not prep
+--           then do
+--             putStrLn "Parsing raw sentence..."
+--             return txt0
+--           else do
+--             putStrLn "Parsing preprocessed sentence..."
+--             Just rmPath <- liftIO $ Cfg.lookup snapCfg "remove"
+--             extCfg <- liftIO $ Pre.readConfig rmPath
+--             return $ Pre.prepare extCfg txt0
+--
+--         treeMay <- Stanford.parseFR txt
+--         case treeMay of
+--           Nothing -> do
+--             let msg = T.concat ["Could not parse: ", txt]
+--             T.putStrLn msg
+--             WS.sendTextData conn . JSON.encode =<< mkNotif msg
+--           Just t -> do
+--             let ret = ParseResult fileId treeId (Penn.toOdilTree t)
+--             WS.sendTextData conn (JSON.encode ret)
+--             let msg = T.concat ["Parsed successfully"]
+--             T.putStrLn msg
+--             WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
       Right (Break fileId partId txts) -> do
         putStrLn "Breaking the given partition..."
@@ -322,7 +362,7 @@ talk conn state snapCfg = forever $ do
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
           Just t -> do
-            let ret = ParseResult fileId treeId (Penn.toOdilTree t)
+            let ret = ParseResult fileId treeId Nothing (Penn.toOdilTree t)
             WS.sendTextData conn (JSON.encode ret)
             let msg = T.concat ["Parsed successfully"]
             T.putStrLn msg
@@ -351,7 +391,7 @@ talk conn state snapCfg = forever $ do
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
           Just t -> do
-            let ret = ParseResult fileId treeId (Penn.toOdilTree t)
+            let ret = ParseResult fileId treeId Nothing (Penn.toOdilTree t)
             WS.sendTextData conn (JSON.encode ret)
             let msg = T.concat ["Parsed successfully"]
             T.putStrLn msg
@@ -370,7 +410,7 @@ talk conn state snapCfg = forever $ do
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
           Just t -> do
-            let ret = ParseResult fileId treeId (Penn.toOdilTree t)
+            let ret = ParseResult fileId treeId Nothing (Penn.toOdilTree t)
             WS.sendTextData conn (JSON.encode ret)
             let msg = T.concat ["Parsed successfully"]
             T.putStrLn msg
@@ -403,3 +443,26 @@ allJust (x : xs) = do
   x' <- x
   xs' <- allJust xs
   return $ x' : xs'
+
+
+-- | Create a dummy tree from a list of words and their POS tags.
+-- | TODO: move to a higher-level module (there is a copy in `app/Main.hs`).
+dummyTree :: [(Stanford.Orth, Stanford.Pos)] -> Penn.Tree
+dummyTree sent =
+  R.Node "ROOT" [R.Node "SENT" $ map mkLeaf sent]
+  where
+    mkLeaf (orth, pos) = R.Node pos [R.Node orth []]
+
+
+-- | TODO: move to a higher-level module (there is a copy in `app/Main.hs`).
+parseWith
+  :: (T.Text -> IO (Maybe Penn.Tree))
+     -- ^ The parsing function
+  -> [(Token, Maybe T.Text)]
+     -- ^ The sentence to parse, together with the pre-processing result
+  -> IO (Maybe (Sent, Tree))
+parseWith parseFun sentPrep = do
+  runMaybeT $ do
+    let txt = T.intercalate " " . catMaybes . map snd $ sentPrep
+    penn <- MaybeT (parseFun txt)
+    return $ Penn.toOdilTree' penn sentPrep

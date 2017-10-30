@@ -260,11 +260,11 @@ viewPopupFiles model =
 
 
 viewPopupSplit : Popup.SplitPopup -> Html.Html Msg
-viewPopupSplit r = Debug.crash "View.viewPopupSplit: not implemented"
---     viewPopupSplitGen 125 125 r
---         [ ("OK", Many [SplitFinish r.split, QuitPopup])
---         , ("Cancel", QuitPopup)
---         ] 0
+viewPopupSplit r =
+    viewPopupSplitGen 125 125 r
+        [ ("OK", Many [SplitFinish r.split, QuitPopup])
+        , ("Cancel", QuitPopup)
+        ] 0
 
 
 -- | Generic popup.
@@ -1940,7 +1940,7 @@ nodePos nodeId tree = Maybe.map second <|
 type NodeTyp = Normal | Misplaced
 
 
--- | Determine which leaves should be marked as "misplaced".
+-- | Determine node spans.
 addSpans
     : (a -> M.Node)
     -> R.Tree a

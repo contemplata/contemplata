@@ -57,7 +57,7 @@ module Edit.Model exposing
   -- Node annotation:
   , mkEventSel, mkSignalSel, mkTimexSel
   -- Popup-related
-  , changeSplit --, performSplit
+  , changeSplit, performSplit
   -- -- , changeTypeSel
   -- Lenses:
   , top, bot, dim, winLens, drag, side, pos, height, widthProp, heightProp
@@ -65,9 +65,9 @@ module Edit.Model exposing
   -- Pseudo-lenses:
   -- , setTrees
   -- Various:
-  , setTreeCheck, getWords, subTreeAt
+  , setTreeCheck, setSentCheck, getWords, subTreeAt
   -- JSON decoding:
-  , treeMapDecoder, fileDecoder, treeDecoder, nodeDecoder
+  , treeMapDecoder, fileDecoder, treeDecoder, sentDecoder, nodeDecoder
   -- JSON encoding:
   , encodeFile
   )
@@ -548,7 +548,7 @@ log msg model =
 
 
 -- | Set the sentence under a given ID.  A tricky function which seems trivial...
--- Returns `Nothing` if fails for some reasons.
+-- Returns `Nothing` if it fails for some reasons.
 setSent : PartId -> Sent -> Model -> Maybe Model
 setSent partId newSent model =
     let
@@ -1055,6 +1055,20 @@ getToken pos partId model =
 getTokenMay : Int -> PartId -> Model -> Maybe Token
 getTokenMay pos partId model =
     Util.at pos (getSent partId model)
+
+
+-- | Change the sentence in focus, provided that it has the appropriate
+-- file and tree IDs.
+setSentCheck : FileId -> PartId -> Sent -> Model -> Model
+setSentCheck fileId treeId sent model =
+  let
+    win = selectWin model.focus model
+    treeIdSel = getReprId win.tree model
+    fileIdSel = model.fileId
+  in
+    if fileId == fileIdSel && treeId == treeIdSel
+    then Maybe.withDefault model <| setSent treeIdSel sent model
+    else model
 
 
 ---------------------------------------------------
@@ -2219,42 +2233,103 @@ changeSplit k model =
         _ -> model
 
 
--- -- | Perform the split on the node in focus.
--- performSplit : Int -> Model -> Model
--- performSplit splitPlace model =
---     let
---         win = selectWin model.focus model
---         updTree theID tree =
---             let
---                 newId1 = case findMaxID (R.map Just tree) of
---                    Nothing -> 1
---                    Just ix -> ix + 1
---                 duplicate leaf =
---                     let
---                         left  = {leaf | nodeVal = String.left splitPlace leaf.nodeVal}
---                         right = {leaf
---                                     | nodeVal = String.dropLeft splitPlace leaf.nodeVal
---                                     , nodeId = newId1
---                                 }
---                     in
---                         [ R.Node (Leaf left) []
---                         , R.Node (Leaf right) [] ]
---                 go (R.Node x ts) = case x of
---                     Node r -> [R.Node x (L.concatMap go ts)]
---                     Leaf r ->
---                         if r.nodeId == theID
---                         then duplicate r
---                         else [R.Node x []]
---             in
---                  case go tree of
---                      [t] -> t
---                      _   -> tree
---     in
---         case win.selMain of
---             Nothing -> model
---             Just id ->
---                 let treeId = getReprId win.tree model
---                 in  updateTree treeId (rePOS << updTree id) model
+-- | Perform the split on the selected terminal node.
+performSplit : Int -> Model -> Model
+performSplit splitPlace model =
+    let
+        win = selectWin model.focus model
+        partId = getReprId win.tree model
+        updTree theID tokID tree =
+            let
+                newId1 = case findMaxID (R.map Just tree) of
+                   Nothing -> 1
+                   Just ix -> ix + 1
+                single leaf =
+                    let
+                        new =
+                            if leaf.leafPos > tokID
+                            then {leaf | leafPos = leaf.leafPos + 1}
+                            else leaf
+                    in
+                        [R.Node (Leaf new) []]
+                duplicate leaf =
+                    let
+                        nodeVal = (getToken leaf.leafPos partId model).orth
+                        leftVal = String.left splitPlace nodeVal
+                        rightVal = String.dropLeft splitPlace nodeVal
+                        left  = {leaf | nodeVal = String.trim leftVal}
+                        right = {leaf
+                                    | nodeVal = String.trim rightVal
+                                    , nodeId = newId1
+                                    , leafPos = leaf.leafPos + 1
+                                }
+                    in
+                        [ R.Node (Leaf left) []
+                        , R.Node (Leaf right) [] ]
+                go (R.Node x ts) = case x of
+                    Node r -> [R.Node x (L.concatMap go ts)]
+                    Leaf r ->
+                        if r.nodeId == theID
+                        then duplicate r
+                        else single r
+            in
+                 case go tree of
+                     [t] -> t
+                     _   -> tree
+    in
+        case win.selMain of
+            Nothing -> model
+            Just id ->
+                let tokID = Lens.get leafPos <| getNode id model.focus model
+                in  updateTree partId (updTree id tokID) model
+                    |> performTokenSplit tokID splitPlace partId
+
+
+-- | Split the given token in the sentence corresponding to the given partition.
+performTokenSplit
+    : Int  -- ^ The token ID (position)
+    -> Int -- ^ Split place
+    -> PartId
+    -> Model
+    -> Model
+performTokenSplit tokID splitPlace partId model =
+    let
+        oldSent = getSent partId model
+        newSent = splitToken tokID splitPlace oldSent
+    in
+        setSent partId newSent model
+            |> Maybe.withDefault model
+
+
+-- | Split the given token in the sentence.
+splitToken
+    : Int  -- ^ The token ID (position)
+    -> Int -- ^ Split place
+    -> Sent
+    -> Sent
+splitToken tokID splitPlace toks =
+    let
+        leftToks  = L.take tokID toks
+        rightToks = L.drop tokID toks
+        splitTok tok =
+            let
+                leftOrth = String.left splitPlace tok.orth
+                rightOrth = String.dropLeft splitPlace tok.orth
+                left =
+                    { orth = String.trim leftOrth
+                    , afterSpace = tok.afterSpace }
+                right =
+                    { orth = String.trim rightOrth
+                    , afterSpace =
+                        String.endsWith " " leftOrth ||
+                        String.startsWith " " rightOrth
+                    }
+            in
+                [left, right]
+    in
+        case rightToks of
+            [] -> toks
+            hd :: tl -> leftToks ++ splitTok hd ++ tl
 
 
 ---------------------------------------------------
@@ -3177,8 +3252,13 @@ subTreeAt (treeId, theNodeId) model =
 
 -- | Add the given shift to all positions in the leaves.
 addPOS : Int -> R.Tree Node -> R.Tree Node
-addPOS shift =
-    let update = Lens.update leafPos (\k->k+shift)
+addPOS shift = updatePOS <| \k -> k + shift
+
+
+-- | Apply the given function to all positions in the leaves.
+updatePOS : (Int -> Int) -> R.Tree Node -> R.Tree Node
+updatePOS f =
+    let update = Lens.update leafPos f
     in  R.map update
 
 

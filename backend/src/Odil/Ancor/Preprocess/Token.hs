@@ -9,6 +9,7 @@ module Odil.Ancor.Preprocess.Token
 (
 -- * Top-level
   prepare
+, prepareDummy
 
 -- * External
 , ExtConfig
@@ -55,7 +56,7 @@ prepare ext toks =
     remove = compile ext
     backup xs =
       if all ((==Nothing) . snd) xs
-      then map (\x -> (x, Just $ Odil.orth x)) toks
+      then prepareDummy toks
       else xs
 
 
@@ -77,6 +78,11 @@ prepareBase
       . rmInaudible
       . rmPronounce
       . joinAcronyms
+
+
+-- | A dummy preparation function which does nothing, really.
+prepareDummy :: [Odil.Token] -> [(Odil.Token, Maybe T.Text)]
+prepareDummy = map $ \x -> (x, Just $ Odil.orth x)
 
 
 ---------------------------------------------------
