@@ -377,11 +377,9 @@ run cmd =
               -- let sent = Show.showElem elem
               let sent0 = Show.elem2sent elem
                   prepSent = prepare sent0
-              (sent, odil) <- liftIO $ parseWith Stanford.parseFR prepSent >>= \case
+              (sent, odil) <- liftIO (Server.parseRetokFR prepSent) >>= \case
+                Nothing -> error "Didn't manage to tokenize with Stanford"
                 Just x -> return x
-                Nothing -> try "Didn't manage to tokenize with Stanford" $
-                  parseWith (fmap (fmap dummyTree) . Stanford.posTagFR) prepSent
-              -- let odil = Penn.toOdilTree penn
               k <- State.gets $ (+1) . M.size
               State.modify' $ M.insert k (sent, odil)
               return (k, fmap Ancor.unWho mayWho)
@@ -571,37 +569,3 @@ numberOfLeavesT
     isLeaf x = case x of
       Odil.Leaf{} -> True
       _ -> False
-
-
--- | Create a dummy tree from a list of words and their POS tags.
-dummyTree :: [(Stanford.Orth, Stanford.Pos)] -> Penn.Tree
-dummyTree =
-  R.Node "ROOT" . map mkLeaf
-  where
-    mkLeaf (orth, pos) = R.Node pos [R.Node orth []]
-
-
--- | Try a Maybe computation and raise error on `Nothing`.
-try :: String -> IO (Maybe a) -> IO a
-try err cmd = cmd >>= \case
-  Nothing -> error err
-  Just x  -> return x
-
-
--------------------------------------------------------
--- Parsing utils
--------------------------------------------------------
-
-
--- | TODO: move to a higher-level module.
-parseWith
-  :: (T.Text -> IO (Maybe Penn.Tree))
-     -- ^ The parsing function
-  -> [(Odil.Token, Maybe T.Text)]
-     -- ^ The sentence to parse, together with the pre-processing result
-  -> IO (Maybe (Odil.Sent, Odil.Tree))
-parseWith parseFun sentPrep = do
-  runMaybeT $ do
-    let txt = T.intercalate " " . catMaybes . map snd $ sentPrep
-    penn <- MaybeT (parseFun txt)
-    return $ Penn.toOdilTree' penn sentPrep

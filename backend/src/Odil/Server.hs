@@ -21,6 +21,9 @@ module Odil.Server
 , runServer
 , loadDB
 , application
+
+-- * Utils
+, parseRetokFR
 ) where
 
 
@@ -263,7 +266,6 @@ talk conn state snapCfg = forever $ do
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
       Right (ParseRaw fileId treeId txt0 prep) -> do
-
         prepare <-
           if not prep
           then do
@@ -274,16 +276,7 @@ talk conn state snapCfg = forever $ do
            Just rmPath <- liftIO $ Cfg.lookup snapCfg "remove"
            extCfg <- liftIO $ Pre.readConfig rmPath
            return $ Pre.prepare extCfg
-
-        let sent0 = sentFromText txt0
-            prepSent = prepare sent0
-
-        resultMay <- liftIO $ parseWith Stanford.parseFR prepSent >>= \case
-          Just x -> return (Just x)
-          Nothing -> parseWith (fmap (fmap dummyTree) . Stanford.posTagFR) prepSent >>= \case
-            Just x -> return (Just x)
-            Nothing -> return Nothing
-
+        resultMay <- parseRetokFR . prepare . sentFromText $ txt0
         case resultMay of
           Nothing -> do
             let msg = T.concat ["Could not parse: ", txt0]
@@ -445,13 +438,45 @@ allJust (x : xs) = do
   return $ x' : xs'
 
 
--- | Create a dummy tree from a list of words and their POS tags.
+-- | Create a trivial tree from a list of words and their POS tags.
+-- | TODO: move to a higher-level module (there is a copy in `Server.hs`).
+dummyTree :: Penn.Tree
+dummyTree =
+  R.Node "ROOT" [R.Node "" []]
+
+
+-- | Create a trivial tree from a list of words and their POS tags.
 -- | TODO: move to a higher-level module (there is a copy in `app/Main.hs`).
-dummyTree :: [(Stanford.Orth, Stanford.Pos)] -> Penn.Tree
-dummyTree sent =
+simpleTree :: [(Stanford.Orth, Stanford.Pos)] -> Penn.Tree
+simpleTree sent =
   R.Node "ROOT" [R.Node "SENT" $ map mkLeaf sent]
   where
     mkLeaf (orth, pos) = R.Node pos [R.Node orth []]
+
+
+----------------
+-- Parsing utils
+----------------
+
+
+-- | Parse the given list of tokens. The `snd` elements of the input lists are
+-- `Nothing` if the corresponding tokens should be ignored. Note that the
+-- function can change the input tokenization (although if it is supposed to
+-- guarantee that the resulting tokenization amounts to the same sentence).
+parseRetokFR
+  :: [(Token, Maybe T.Text)]
+  -> IO (Maybe (Sent, Tree))
+parseRetokFR prepSent =
+  if all ((==Nothing) . snd) prepSent then do
+    let sent = [mconcat (map fst prepSent)]
+        odil = Penn.toOdilTree dummyTree
+    return $ Just (sent, odil)
+  else do
+    liftIO $ parseWith Stanford.parseFR prepSent >>= \case
+      Just x -> return (Just x)
+      Nothing -> parseWith (fmap (fmap simpleTree) . Stanford.posTagFR) prepSent >>= \case
+        Just x -> return (Just x)
+        Nothing -> return Nothing
 
 
 -- | TODO: move to a higher-level module (there is a copy in `app/Main.hs`).

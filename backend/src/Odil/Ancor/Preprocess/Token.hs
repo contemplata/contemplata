@@ -51,13 +51,14 @@ prepare
   -> [Odil.Token]
   -> [(Odil.Token, Maybe T.Text)]
 prepare ext toks =
-  backup . remove . prepareBase $ toks
+  -- backup . remove . prepareBase $ toks
+  remove . prepareBase $ toks
   where
     remove = compile ext
-    backup xs =
-      if all ((==Nothing) . snd) xs
-      then prepareDummy toks
-      else xs
+--     backup xs =
+--       if all ((==Nothing) . snd) xs
+--       then prepareDummy toks
+--       else xs
 
 
 -- | Prepare a given sentence for parsing.
