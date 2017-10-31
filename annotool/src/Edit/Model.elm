@@ -26,7 +26,8 @@ module Edit.Model exposing
   -- TODO (think of the name):
   , concatWords, dumify, isDummyTree
   , splitTree, join, getPart
-  , restoreToken
+  , restoreToken, visiblePositions
+  , syncForestWithSent, syncForestWithSentPos
   -- Labels:
   , getLabel, setLabel
   -- Comments:
@@ -70,7 +71,7 @@ module Edit.Model exposing
   -- JSON decoding:
   , treeMapDecoder, fileDecoder, treeDecoder, sentDecoder, nodeDecoder
   -- JSON encoding:
-  , encodeFile
+  , encodeFile, encodeToken
   )
 
 
@@ -935,7 +936,7 @@ updateLinkSelection model =
 
     newLink = case model.selLink of
       Nothing -> Nothing
-      Just x -> Util.guard inView x
+      Just x -> Util.check inView x
 
   in
 
@@ -1935,21 +1936,46 @@ leafPosSet tree idSet =
         S.fromList
 
 
+type alias Orth = String
+type alias Pos = String
+
+
 -- | Syncronize the tree with the corresponding sentence.
-syncTreeWithSent : Sent -> R.Tree Node -> List (Token, Maybe String)
+syncTreeWithSent : Sent -> R.Tree Node -> List (Token, Maybe Orth)
 syncTreeWithSent sent tree =
+    let onSecond f (x, y) = (x, f y)
+        simplify = onSecond <| Maybe.map Tuple.first
+    in  L.map simplify <| syncTreeWithSentPos sent tree
+--     let
+--         go pos toks leaves =
+--             case (toks, leaves) of
+--                 (tok :: toksRest, leaf :: leavesRest) ->
+--                     if leaf.leafPos == pos
+--                     then (tok, Just leaf.nodeVal) :: go (pos+1) toksRest leavesRest
+--                     else (tok, Nothing) :: go (pos+1) toksRest leaves
+--                 (tok :: toksRest, []) ->
+--                     (tok, Nothing) :: go (pos+1) toksRest []
+--                 ([], _) -> []
+--     in
+--         go 0 sent (getWords tree)
+
+
+-- | Syncronize the tree with the corresponding sentence.
+-- The result contains information about the POS tags.
+syncTreeWithSentPos : Sent -> R.Tree Node -> List (Token, Maybe (Orth, Pos))
+syncTreeWithSentPos sent tree =
     let
         go pos toks leaves =
             case (toks, leaves) of
-                (tok :: toksRest, leaf :: leavesRest) ->
+                (tok :: toksRest, (leaf, posTag) :: leavesRest) ->
                     if leaf.leafPos == pos
-                    then (tok, Just leaf.nodeVal) :: go (pos+1) toksRest leavesRest
+                    then (tok, Just (leaf.nodeVal, posTag)) :: go (pos+1) toksRest leavesRest
                     else (tok, Nothing) :: go (pos+1) toksRest leaves
                 (tok :: toksRest, []) ->
                     (tok, Nothing) :: go (pos+1) toksRest []
                 ([], _) -> []
     in
-        go 0 sent (getWords tree)
+        go 0 sent (getWordsPos tree)
 
 
 -- | Make a (completely flat) tree from the given list of strings.
@@ -1986,6 +2012,65 @@ determinePositions =
                 Just str -> (pos + 1, Just (str, pos))
     in
         Util.catMaybes << Tuple.second << Util.mapAccumL upd 0
+
+
+---------------------------------------------------
+-- Generalized `synTreeWithSent`
+---------------------------------------------------
+
+
+-- | Syncronize the forest with the corresponding sentence.
+syncForestWithSent : Sent -> R.Forest Node -> List (List (Token, Maybe Orth))
+syncForestWithSent sent forest =
+    let onSecond f (x, y) = (x, f y)
+        simplify = onSecond <| Maybe.map Tuple.first
+    in  L.map (L.map simplify) <| syncForestWithSentPos sent forest
+--     let
+--         tail xs =
+--             case L.tail xs of
+--                 Nothing -> []
+--                 Just ys -> ys
+--         minList = tail <| L.map minimalPosition forest
+--         sentList = segmentSentence minList sent
+--         sync (subSent, subTree) = syncTreeWithSent subSent subTree
+--     in
+--         L.map sync (L.map2 (,) sentList forest)
+
+
+-- | Syncronize the forest with the corresponding sentence.
+syncForestWithSentPos : Sent -> R.Forest Node -> List (List (Token, Maybe (Orth, Pos)))
+syncForestWithSentPos sent forest =
+    let
+        tail xs =
+            case L.tail xs of
+                Nothing -> []
+                Just ys -> ys
+        minList = tail <| L.map minimalPosition forest
+        sentList = segmentSentence minList sent
+        sync (subSent, subTree) = syncTreeWithSentPos subSent subTree
+    in
+        L.map sync (L.map2 (,) sentList forest)
+
+
+-- | The smallest leaf position (token ID) in the given tree.
+minimalPosition : R.Tree Node -> Int
+minimalPosition =
+    let takeMin xs =
+            case L.minimum xs of
+                Nothing -> Debug.crash "minimalPosition: empty tree"
+                Just x -> x
+    in  takeMin << L.map .leafPos << getWords
+
+
+-- | Segment the given sentence on the given positions.  The input list should be ascending.
+-- TODO: make sure it works in corner cases. (e.g. when splitList == []).
+segmentSentence : List Int -> Sent -> List Sent
+segmentSentence splitList sent =
+    case splitList of
+        [] -> [sent]
+        split :: splitRest ->
+            let (sentLeft, sentRight) = Util.splitAt split sent
+            in  sentLeft :: segmentSentence splitRest sentRight
 
 
 ---------------------------------------------------
@@ -2141,9 +2226,9 @@ attach from to tree =
     else getSubTree from tree
       |> Maybe.andThen (\sub -> delSubTree from tree
       |> Maybe.map (\tree1 -> putSubTree sub to tree1)
-      |> Maybe.andThen (Util.guard wellFormed)
+      |> Maybe.andThen (Util.check wellFormed)
       |> Maybe.map (sortTree to))
-      -- |> Maybe.andThen (Util.guard wellFormed))
+      -- |> Maybe.andThen (Util.check wellFormed))
 
 
 sortTree : NodeId -> R.Tree Node -> R.Tree Node
@@ -2219,7 +2304,7 @@ swap left id tree =
     p x = Lens.get nodeId x == id
   in
     R.swapSubTree left p tree
-      |> Util.guard wellFormed
+      |> Util.check wellFormed
 
 
 ---------------------------------------------------
@@ -2342,17 +2427,115 @@ splitToken tokID splitPlace toks =
 
 
 -- | Restore the given token (provided that it can even be restored).
+-- TODO: consider the dummy case!
 restoreToken
     : PartId
-    -> Int -- ^ Token ID
+    -> Int     -- ^ Token ID of the token to restore
     -> Model
     -> Model
-restoreToken =
-    Debug.crash "restoreToken: not implemented"
-    -- The idea is as follows:
-    -- * Consider the dummy case first!
-    -- * Find in the tree the closest token on the left from the token being restored
-    -- * Add the restored token there (a bit like in split)
+restoreToken partID tokID model =
+    let
+        tree = getTree partID model
+        tok = getToken tokID partID model
+        visible = visiblePositions tree
+        isVisible i = S.member i visible
+        onRight =
+            findLeftClosestToken tokID tree
+                |> Maybe.andThen
+                   (\sisterTokID -> addSister True sisterTokID (tokID, tok.orth) tree)
+        onLeft =
+            findRightClosestToken tokID tree
+                |> Maybe.andThen
+                   (\sisterTokID -> addSister False sisterTokID (tokID, tok.orth) tree)
+        newModel =
+            Util.guard (not <| isVisible tokID)
+                |> Maybe.andThen (\_ -> Util.mappend onRight onLeft)
+                |> Maybe.map (\newTree -> updateTree partID (\_ -> newTree) model)
+                |> Maybe.withDefault model
+    in
+        newModel
+
+
+-- | Find in the tree the closest token on the left from the given position. If
+-- a leaf with the given position exists in the tree, its position is retrieved.
+findLeftClosestToken
+    :  Int           -- ^ Token ID
+    -> R.Tree Node   -- ^ Tree
+    -> Maybe Int     -- ^ The resulting token ID
+findLeftClosestToken tokID =
+    let
+        f leaf =
+            if leaf.leafPos <= tokID
+            then Just leaf.leafPos
+            else Nothing
+    in
+        L.foldl Util.mappend Nothing << L.map f << getWords
+
+
+-- | Find in the tree the closest token on the right from the given position. If
+-- a leaf with the given position exists in the tree, its position is retrieved.
+findRightClosestToken
+    :  Int           -- ^ Token ID
+    -> R.Tree Node   -- ^ Tree
+    -> Maybe Int     -- ^ The resulting token ID
+findRightClosestToken tokID =
+   let
+       f leaf =
+           if leaf.leafPos >= tokID
+           then Just leaf.leafPos
+           else Nothing
+   in
+       L.foldr Util.mappend Nothing << L.map f << getWords
+
+
+-- | Add new terminal node just on the right of the terminal with the given token ID.
+addSister
+    :  Bool          -- ^ True if on the right, otherwise on the left
+    -> Int           -- ^ Token ID of the token which should be blessed with the sister
+    -> (Int, String) -- ^ Token ID of the new terminal node and its label
+    -> R.Tree Node   -- ^ Tree
+    -> Maybe (R.Tree Node)  -- ^ The resulting tree
+addSister onRight tokID (newTokID, label) tree =
+    let
+        newId =
+            case findMaxID (R.map Just tree) of
+                Nothing -> 1
+                Just ix -> ix + 1
+        addIt old =
+            let
+                new =
+                    { nodeVal = label
+                    , nodeId = newId
+                    , leafPos = newTokID
+                    , nodeComment = "" }
+                process =
+                    if onRight
+                    then identity
+                    else L.reverse
+            in
+                process
+                [ R.Node (Leaf old) []
+                , R.Node (Leaf new) [] ]
+        go (R.Node x ts) =
+            case x of
+                Node r -> [R.Node x (L.concatMap go ts)]
+                Leaf r ->
+                    if r.leafPos == tokID
+                    then addIt r
+                    else [R.Node (Leaf r) []]
+    in
+        case go tree of
+            [t] -> Just t
+            _ -> Nothing
+
+
+-- | Calculate the set of visible positions in the sentence.
+-- Takes into account the dummy case.
+visiblePositions : R.Tree Node -> S.Set Int
+visiblePositions tree =
+    if isDummyTree tree
+    then S.empty
+    else S.fromList << L.map .leafPos << getWords <| tree
 
 
 ---------------------------------------------------
@@ -3274,14 +3457,31 @@ mapKeys f d =
 -- positions in the sentence.
 getWords : R.Tree Node -> List LeafNode
 getWords tree =
-    let
-        leaf node = case node of
-                        Leaf x -> Just x
-                        Node _ -> Nothing
-    in
-        List.sortBy (\x -> x.leafPos)
-            <| List.filterMap leaf
-            <| R.flatten tree
+    L.map Tuple.first <| getWordsPos tree
+--     let
+--         leaf node = case node of
+--                         Leaf x -> Just x
+--                         Node _ -> Nothing
+--     in
+--         List.sortBy (\x -> x.leafPos)
+--             <| List.filterMap leaf
+--             <| R.flatten tree
+
+
+-- | Retrieve the words (leaves) from a given tree and sort them by their
+-- positions in the sentence.  The result contains information about the
+-- POS tags.
+getWordsPos : R.Tree Node -> List (LeafNode, Pos)
+getWordsPos =
+  let
+    go pos xs = case xs of
+      [] -> []
+      node :: nodes -> case node of
+        Leaf r -> (r, pos) :: go "" nodes
+        Node r -> go r.nodeVal nodes
+    getList = go "" << L.reverse << R.flatten
+  in
+    getList
 
 
 -- | Get the subtree indicated by the given address.

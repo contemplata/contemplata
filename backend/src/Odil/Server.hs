@@ -39,7 +39,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Tree as R
 
-import           Data.Maybe (maybeToList, catMaybes)
+import           Data.Maybe (maybeToList, catMaybes, mapMaybe)
 import qualified Data.Fixed as Fixed
 import qualified Data.Time as Time
 import qualified Data.Text as T
@@ -92,15 +92,18 @@ data Request
   = GetFiles AnnoName
   | GetFile AnnoName FileId
   | SaveFile AnnoName FileId File
-  | ParseSent FileId TreeId ParserTyp (ParseReq [Stanford.Orth])
+--   | ParseSent FileId TreeId ParserTyp (ParseReq [Stanford.Orth])
+  | ParseSent FileId TreeId ParserTyp (ParseReq [(Token, Maybe Stanford.Orth)])
     -- ^ FileId and TreeId are sent there and back so that it
     -- can be checked that the user did not move elsewhere before
-    -- he/she got the answer for this request
-  | ParseSentPos FileId TreeId ParserTyp (ParseReq [(Stanford.Orth, Stanford.Pos)])
+    -- he/she got the answer for this request.
+    -- The sentence underlying the request is also sent, which allows to
+    -- correctly handle tokenization.
+  | ParseSentPos FileId TreeId ParserTyp (ParseReq [(Token, Maybe (Stanford.Orth, Stanford.Pos))])
     -- ^ Similar to `ParseSent`, but with POS information
-  | ParseSentCons FileId TreeId ParserTyp [(Int, Int)] [(Stanford.Orth, Stanford.Pos)]
-    -- ^ Similar to `ParseSent`, but with an additional constraint (constituent
-    -- with the given pair of positions must exist in the tree)
+--   | ParseSentCons FileId TreeId ParserTyp [(Int, Int)] [(Stanford.Orth, Stanford.Pos)]
+--     -- ^ Similar to `ParseSent`, but with an additional constraint (constituent
+--     -- with the given pair of positions must exist in the tree)
   | ParseRaw FileId
     TreeId -- ^ Partition ID
     T.Text -- ^ The sentence
@@ -337,8 +340,11 @@ talk conn state snapCfg = forever $ do
       Right (ParseSent fileId treeId parTyp parseReq) -> do
         putStrLn "Parsing tokenized sentence..."
         let parser = case parTyp of
-              Stanford -> Stanford.parseTokenizedFR
-              DiscoDOP -> DiscoDOP.tagParseDOP Nothing
+              Stanford -> Stanford.parseTokenizedFR . mapMaybe snd
+              DiscoDOP -> DiscoDOP.tagParseDOP Nothing . mapMaybe snd
+            sent = case parseReq of
+              Single ws -> ws
+              Batch wss -> concat wss
         treeMay <- case parseReq of
           Single ws -> parser ws
           Batch wss ->
@@ -348,25 +354,27 @@ talk conn state snapCfg = forever $ do
             in  process <$> mapM parser wss
         case treeMay of
           Nothing -> do
-            let ws = case parseReq of
-                       Single x -> x
-                       Batch xs -> concat xs
-            let msg = T.concat ["Could not parse: ", T.unwords ws]
+            let ws = mapMaybe snd sent
+                msg = T.concat ["Could not parse: ", T.unwords ws]
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
           Just t -> do
-            let ret = ParseResult fileId treeId Nothing (Penn.toOdilTree t)
+            -- TODO: should we sent the sentence back, perhaps for additional safety?
+            let (_, tree) = Penn.toOdilTree' t sent
+                ret = ParseResult fileId treeId Nothing tree
             WS.sendTextData conn (JSON.encode ret)
             let msg = T.concat ["Parsed successfully"]
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
-      -- Right (ParseSentPos fileId treeId parTyp ws) -> do
       Right (ParseSentPos fileId treeId parTyp parseReq) -> do
         putStrLn "Parsing tokenized+POSed sentence..."
         let parser = case parTyp of
-              Stanford -> Stanford.parsePosFR
-              DiscoDOP -> DiscoDOP.parseDOP Nothing
+              Stanford -> Stanford.parsePosFR . mapMaybe snd
+              DiscoDOP -> DiscoDOP.parseDOP Nothing . mapMaybe snd
+            sent = case parseReq of
+              Single ws -> ws
+              Batch wss -> concat wss
         treeMay <- case parseReq of
           Single ws -> parser ws
           Batch wss ->
@@ -376,38 +384,38 @@ talk conn state snapCfg = forever $ do
             in  process <$> mapM parser wss
         case treeMay of
           Nothing -> do
-            let ws = case parseReq of
-                       Single x -> x
-                       Batch xs -> concat xs
+            let ws = mapMaybe snd sent
                 ws' = flip map ws $ \(orth, pos) -> T.concat [orth, ":", pos]
                 msg = T.concat ["Could not parse: ", T.unwords ws']
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
           Just t -> do
-            let ret = ParseResult fileId treeId Nothing (Penn.toOdilTree t)
+            let simplify = map $ second (fmap fst)
+                (_, tree) = Penn.toOdilTree' t (simplify sent)
+                ret = ParseResult fileId treeId Nothing tree
             WS.sendTextData conn (JSON.encode ret)
             let msg = T.concat ["Parsed successfully"]
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
-      Right (ParseSentCons fileId treeId parTyp cons ws) -> do
-        putStrLn $ "Parsing tokenized+POSed sentence with constraints: " ++ show cons
-        -- putStrLn $ show cons
-        treeMay <- case parTyp of
-          Stanford -> Stanford.parseConsFR ws (map (second (+1)) cons)
-          DiscoDOP -> DiscoDOP.parseDOP' cons ws
-        case treeMay of
-          Nothing -> do
-            let ws' = flip map ws $ \(orth, pos) -> T.concat [orth, ":", pos]
-                msg = T.concat ["Could not parse: ", T.unwords ws']
-            T.putStrLn msg
-            WS.sendTextData conn . JSON.encode =<< mkNotif msg
-          Just t -> do
-            let ret = ParseResult fileId treeId Nothing (Penn.toOdilTree t)
-            WS.sendTextData conn (JSON.encode ret)
-            let msg = T.concat ["Parsed successfully"]
-            T.putStrLn msg
-            WS.sendTextData conn . JSON.encode =<< mkNotif msg
+--       Right (ParseSentCons fileId treeId parTyp cons ws) -> do
+--         putStrLn $ "Parsing tokenized+POSed sentence with constraints: " ++ show cons
+--         -- putStrLn $ show cons
+--         treeMay <- case parTyp of
+--           Stanford -> Stanford.parseConsFR ws (map (second (+1)) cons)
+--           DiscoDOP -> DiscoDOP.parseDOP' cons ws
+--         case treeMay of
+--           Nothing -> do
+--             let ws' = flip map ws $ \(orth, pos) -> T.concat [orth, ":", pos]
+--                 msg = T.concat ["Could not parse: ", T.unwords ws']
+--             T.putStrLn msg
+--             WS.sendTextData conn . JSON.encode =<< mkNotif msg
+--           Just t -> do
+--             let ret = ParseResult fileId treeId Nothing (Penn.toOdilTree t)
+--             WS.sendTextData conn (JSON.encode ret)
+--             let msg = T.concat ["Parsed successfully"]
+--             T.putStrLn msg
+--             WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
 
 -----------
@@ -472,21 +480,20 @@ parseRetokFR prepSent =
         odil = Penn.toOdilTree dummyTree
     return $ Just (sent, odil)
   else do
-    liftIO $ parseWith Stanford.parseFR prepSent >>= \case
+    liftIO $ parseTextWith Stanford.parseFR prepSent >>= \case
       Just x -> return (Just x)
-      Nothing -> parseWith (fmap (fmap simpleTree) . Stanford.posTagFR) prepSent >>= \case
+      Nothing -> parseTextWith (fmap (fmap simpleTree) . Stanford.posTagFR) prepSent >>= \case
         Just x -> return (Just x)
         Nothing -> return Nothing
 
 
--- | TODO: move to a higher-level module (there is a copy in `app/Main.hs`).
-parseWith
+parseTextWith
   :: (T.Text -> IO (Maybe Penn.Tree))
      -- ^ The parsing function
   -> [(Token, Maybe T.Text)]
      -- ^ The sentence to parse, together with the pre-processing result
   -> IO (Maybe (Sent, Tree))
-parseWith parseFun sentPrep = do
+parseTextWith parseFun sentPrep = do
   runMaybeT $ do
     let txt = T.intercalate " " . catMaybes . map snd $ sentPrep
     penn <- MaybeT (parseFun txt)

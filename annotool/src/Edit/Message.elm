@@ -307,8 +307,7 @@ update msg model =
     ParseSentPos parTyp ->
       let
         treeId = M.getReprId (M.selectWin model.focus model).tree model
-        -- wordsPos = getWordPos (M.getSent treeId model) (M.getTree treeId model)
-        wordsPos = getWordPos (M.getTree treeId model)
+        wordsPos = getWordPos (M.getSent treeId model) (M.getTree treeId model)
         req = Server.ParseSentPos model.fileId treeId parTyp wordsPos
         send = Server.sendWS model.config req
       in
@@ -577,7 +576,7 @@ cmdList =
   , ("parse", ParseSent Server.Stanford)
   , ("parsepos", ParseSentPos Server.Stanford)
   , ("dopparse", ParseSent Server.DiscoDOP)
-  , ("dopparsepos", ParseSentPos Server.DiscoDOP)
+  -- , ("dopparsepos", ParseSentPos Server.DiscoDOP)
   -- , ("parsecons", ParseSentCons Server.Stanford)
   -- , ("dopparsecons", ParseSentCons Server.DiscoDOP)
   , ("deepen", ApplyRules)
@@ -666,58 +665,24 @@ type alias Pos = String
 
 
 -- | Retrieve the words and POS tags from a given tree.
-getWordPos : R.Tree M.Node -> Server.ParseReq (List (Orth, Pos))
-getWordPos tree0 =
-  let
-    go pos xs = case xs of
-      [] -> []
-      node :: nodes -> case node of
-        M.Leaf r -> (r.nodeVal, pos) :: go "" nodes
-        M.Node r -> go r.nodeVal nodes
-    getList = go "" << List.reverse << R.flatten
-    forest = R.subTrees tree0
-  in
-    case forest of
-        [tree] -> Server.Single (getList tree)
-        _ -> Server.Batch (List.map getList forest)
+getWordPos : M.Sent -> R.Tree M.Node -> Server.ParseReq (List (M.Token, Maybe (Orth, Pos)))
+getWordPos sent tree =
+    let
+        reqList = M.syncForestWithSentPos sent (R.subTrees tree)
+    in
+        case reqList of
+            [x] -> Server.Single x
+            _ -> Server.Batch reqList
 
 
--- | Like `getWordPos` but just retrieves words.
-getWords : R.Tree M.Node -> Server.ParseReq (List Orth)
-getWords tree0 =
-  let
-    word node = case node of
-      M.Node _ -> Nothing
-      M.Leaf {nodeVal} -> Just nodeVal
-    getList = List.reverse << Util.catMaybes << List.map word << R.flatten
-    forest = R.subTrees tree0
-  in
-    case forest of
-        [tree] -> Server.Single (getList tree)
-        _ -> Server.Batch (List.map getList forest)
-
-
--- NOTE: Below are versions which retrieve the orth values from the underlying
--- sentence (the list of tokens).
---
 -- -- | Retrieve the words and POS tags from a given tree.
--- getWordPos
---     : M.Sent
---        -- ^ The sentence
---     -> R.Tree M.Node
---       -- ^ The corresponding tree
---     -> Server.ParseReq (List (Orth, Pos))
--- getWordPos sent tree0 =
+-- getWordPos : R.Tree M.Node -> Server.ParseReq (List (Orth, Pos))
+-- getWordPos tree0 =
 --   let
---     orth i =
---         case Util.at i sent of
---             Nothing -> ""
---             Just tok -> tok.orth
 --     go pos xs = case xs of
 --       [] -> []
 --       node :: nodes -> case node of
---         -- M.Leaf r -> (r.nodeVal, pos) :: go "" nodes
---         M.Leaf r -> (orth r.leafPos, pos) :: go "" nodes
+--         M.Leaf r -> (r.nodeVal, pos) :: go "" nodes
 --         M.Node r -> go r.nodeVal nodes
 --     getList = go "" << List.reverse << R.flatten
 --     forest = R.subTrees tree0
@@ -725,19 +690,26 @@ getWords tree0 =
 --     case forest of
 --         [tree] -> Server.Single (getList tree)
 --         _ -> Server.Batch (List.map getList forest)
---
---
+
+
+-- | Like `getWordPos` but just retrieves the words.
+getWords : M.Sent -> R.Tree M.Node -> Server.ParseReq (List (M.Token, Maybe Orth))
+getWords sent tree =
+    let
+        reqList = M.syncForestWithSent sent (R.subTrees tree)
+    in
+        case reqList of
+            [x] -> Server.Single x
+            _ -> Server.Batch reqList
+
+
 -- -- | Like `getWordPos` but just retrieves words.
--- getWords : M.Sent -> R.Tree M.Node -> Server.ParseReq (List Orth)
--- getWords sent tree0 =
+-- getWords : R.Tree M.Node -> Server.ParseReq (List Orth)
+-- getWords tree0 =
 --   let
---     orth i =
---         case Util.at i sent of
---             Nothing -> ""
---             Just tok -> tok.orth
 --     word node = case node of
 --       M.Node _ -> Nothing
---       M.Leaf {leafPos} -> Just (orth leafPos)
+--       M.Leaf {nodeVal} -> Just nodeVal
 --     getList = List.reverse << Util.catMaybes << List.map word << R.flatten
 --     forest = R.subTrees tree0
 --   in
@@ -755,8 +727,7 @@ parseSent : Server.ParserTyp -> M.Model -> (M.Model, Cmd Msg)
 parseSent parTyp model =
     let
         treeId = M.getReprId (M.selectWin model.focus model).tree model
-        -- words = getWords (M.getSent treeId model) (M.getTree treeId model)
-        words = getWords (M.getTree treeId model)
+        words = getWords (M.getSent treeId model) (M.getTree treeId model)
         req = Server.ParseSent model.fileId treeId parTyp words
         send = Server.sendWS model.config req
     in

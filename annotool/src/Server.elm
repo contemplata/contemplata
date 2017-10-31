@@ -14,6 +14,7 @@ import WebSocket
 import Edit.Model as M
 import Edit.Core as C
 import Config as Cfg
+import Util as Util
 
 
 ---------------------------------------------------
@@ -64,13 +65,14 @@ type Request
     -- QUESTION: do we really need to pass the string? After all, it should be
     -- on the server side as well...
     -- ANSWER: yes, we cannot be sure that the partition on the server is the same!
-  | ParseSent C.FileId C.PartId ParserTyp (ParseReq (List Orth))
+--   | ParseSent C.FileId C.PartId ParserTyp (ParseReq (List Orth))
+  | ParseSent C.FileId C.PartId ParserTyp (ParseReq (List (M.Token, Maybe Orth)))
     -- ^ Parse the given list of words (the IDs are sent so that it can be
     -- checked on return if the user did not switch the file...)
-  | ParseSentPos C.FileId C.PartId ParserTyp (ParseReq (List (Orth, Pos)))
+  | ParseSentPos C.FileId C.PartId ParserTyp (ParseReq (List (M.Token, Maybe (Orth, Pos))))
     -- ^ Like `ParseSent`, but with POS tags
-  | ParseSentCons C.FileId C.PartId ParserTyp (List (Int, Int)) (List (Orth, Pos))
-    -- ^ Like `ParseSent`, but with constraints
+--   | ParseSentCons C.FileId C.PartId ParserTyp (List (Int, Int)) (List (Orth, Pos))
+--     -- ^ Like `ParseSent`, but with constraints
 
 
 encodeReq : Request -> String
@@ -118,37 +120,55 @@ encodeReqToVal req = case req of
       )
     ]
   ParseSent fileId treeId parTyp parseReq ->
-    let encList ws = Encode.list (List.map Encode.string ws) in
-    Encode.object
-      [ ("tag", Encode.string "ParseSent")
-      , ("contents", Encode.list
-           [ Encode.string fileId
-           , Encode.int treeId
-           , Encode.string (toString parTyp)
-           , encodeParseReq encList parseReq ]
-        )
-      ]
+    let
+        encPair (tok, mayOrth) =
+            Encode.list
+                [ M.encodeToken tok
+                , Util.encodeMaybe Encode.string mayOrth ]
+        encList ws = Encode.list (List.map encPair ws)
+    in
+        Encode.object
+          [ ("tag", Encode.string "ParseSent")
+          , ("contents", Encode.list
+               [ Encode.string fileId
+               , Encode.int treeId
+               , Encode.string (toString parTyp)
+               , encodeParseReq encList parseReq ]
+            )
+          ]
+
   ParseSentPos fileId treeId parTyp parseReq ->
-    let encList ws = Encode.list (List.map (encodePair Encode.string) ws) in
-    Encode.object
-      [ ("tag", Encode.string "ParseSentPos")
-      , ("contents", Encode.list
-           [ Encode.string fileId
-           , Encode.int treeId
-           , Encode.string (toString parTyp)
-           , encodeParseReq encList parseReq ]
-        )
-      ]
-  ParseSentCons fileId treeId parTyp cons ws -> Encode.object
-    [ ("tag", Encode.string "ParseSentCons")
-    , ("contents", Encode.list
-         [ Encode.string fileId
-         , Encode.int treeId
-         , Encode.string (toString parTyp)
-         , Encode.list (List.map (encodePair Encode.int) cons)
-         , Encode.list (List.map (encodePair Encode.string) ws) ]
-      )
-    ]
+    let
+        encOrthPos (orth, pos) =
+            Encode.list
+                [ Encode.string orth
+                , Encode.string pos ]
+        encPair (tok, mayOrthPos) =
+            Encode.list
+                [ M.encodeToken tok
+                , Util.encodeMaybe encOrthPos mayOrthPos ]
+        encList ws = Encode.list (List.map encPair ws)
+    in
+        Encode.object
+          [ ("tag", Encode.string "ParseSentPos")
+          , ("contents", Encode.list
+               [ Encode.string fileId
+               , Encode.int treeId
+               , Encode.string (toString parTyp)
+               , encodeParseReq encList parseReq ]
+            )
+          ]
+
+--   ParseSentCons fileId treeId parTyp cons ws -> Encode.object
+--     [ ("tag", Encode.string "ParseSentCons")
+--     , ("contents", Encode.list
+--          [ Encode.string fileId
+--          , Encode.int treeId
+--          , Encode.string (toString parTyp)
+--          , Encode.list (List.map (encodePair Encode.int) cons)
+--          , Encode.list (List.map (encodePair Encode.string) ws) ]
+--       )
+--     ]
 
 
 type Answer

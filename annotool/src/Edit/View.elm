@@ -1266,7 +1266,7 @@ viewSentAlt foc isSelected treeId tree sent spk =
                      M.Top -> True
                      M.Bot -> False ]
       else []
-    visible = visiblePositions tree
+    visible = M.visiblePositions tree
     isVisible tokID = S.member tokID visible
     para =
         Html.span paraAtts <|
@@ -1312,15 +1312,6 @@ viewToken focus partId isVisible tokID tok =
         Html.span
             atts
             [ Html.text orth ]
-
-
--- | Calculate the set of visible positions in the sentence.
--- Takes into account the dummy case.
-visiblePositions : R.Tree M.Node -> S.Set Int
-visiblePositions tree =
-    if M.isDummyTree tree
-    then S.empty
-    else S.fromList << L.map .leafPos << M.getWords <| tree
 
 
 -- viewSent

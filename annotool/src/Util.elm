@@ -1,5 +1,5 @@
 module Util exposing
-    ( split, catMaybes, find, at, unless, mappend, guard, and
+    ( split, splitAt, catMaybes, find, at, unless, mappend, guard, check, and
     , mapAccumL, average, single, px, isJust, unions
     -- * JSON
     , encodeMaybe
@@ -29,6 +29,11 @@ split p xs =
   in
     -- revFst ys
     ys
+
+
+-- | Split the list on the given position k.  Equivalent to (take k xs, drop k xs).
+splitAt : Int -> List a -> (List a, List a)
+splitAt k xs = (L.take k xs, L.drop k xs)
 
 
 catMaybes : List (Maybe a) -> List a
@@ -92,8 +97,14 @@ mappend x y = case (x, y) of
   (Nothing, v) -> v
 
 
-guard : (a -> Bool) -> a -> Maybe a
-guard p x = case p x of
+guard : Bool -> Maybe ()
+guard x = case x of
+  False -> Nothing
+  True  -> Just ()
+
+
+check : (a -> Bool) -> a -> Maybe a
+check p x = case p x of
   False -> Nothing
   True  -> Just x
 
