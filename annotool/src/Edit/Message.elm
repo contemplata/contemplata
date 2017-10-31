@@ -38,7 +38,10 @@ type Msg
   | DragAt Position
   | DragEnd Position
   | Select M.Focus C.NodeId
-  | SelectTree M.Focus C.PartId -- ^ Select tree (or join if with CTRL)
+  | SelectTree M.Focus C.PartId
+    -- ^ Select tree (or join if with CTRL);
+  | SelectToken M.Focus C.PartId Int
+    -- ^ Select token; the last argument represents the token ID.
   | SelectLink M.Link
   | Focus M.Focus
   | Resize Window.Size -- ^ The height and width of the entire window
@@ -172,13 +175,19 @@ update msg model =
         then M.selectNodeAux win i model
         else M.selectNode win i model
 
-    -- SelectTree win treeId -> idle <| model
     SelectTree win treeId -> idle <|
       if not model.ctrl
       then M.moveCursorTo win treeId model
       else
           let withId = M.getReprId (M.selectWin win model).tree model
           in  M.join treeId withId model
+
+    SelectToken win treeId tokID -> idle <|
+      if not model.ctrl
+      then model
+      else M.restoreToken treeId tokID model
+--           let withId = M.getReprId (M.selectWin win model).tree model
+--           in  M.join treeId withId model
 
     SelectLink link ->
       let

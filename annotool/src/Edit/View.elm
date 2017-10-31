@@ -1191,9 +1191,10 @@ viewSideContext visible foc model =
                                        Nothing -> []
                                        Just x -> x
                             treeIdRepr = M.getReprId treeId model
+                            tree = M.getTree treeIdRepr model
                             isSelected = treeIdRepr == treeSelected
                         in
-                            Html.td [] [viewSentAlt foc isSelected treeIdRepr sent spk]
+                            Html.td [] [viewSentAlt foc isSelected treeIdRepr tree sent spk]
         in
             Html.tr []
             <| List.map viewSpk
@@ -1250,10 +1251,11 @@ viewSentAlt
   : M.Focus   -- ^ Where is the focus on
   -> Bool     -- ^ Is the tree currently viewed?
   -> C.PartId -- ^ The tree ID (the representative) ...
+  -> R.Tree M.Node -- ^ The tree itself (to know which tokens are visible)
   -> M.Sent   -- ^ ... and the sentence corresponding to the tree
   -> String   -- ^ The speaker
   -> Html.Html Msg
-viewSentAlt foc isSelected treeId sent spk =
+viewSentAlt foc isSelected treeId tree sent spk =
   let
     paraAtts = if isSelected
       then [ Atts.style ["font-weight" => "bold"] ]
@@ -1264,10 +1266,14 @@ viewSentAlt foc isSelected treeId sent spk =
                      M.Top -> True
                      M.Bot -> False ]
       else []
-    para = Html.span -- Html.p
-      paraAtts
-      -- [Html.text <| spk ++ ": " ++ sent]
-      [Html.text <| M.sentToString sent]
+    visible = visiblePositions tree
+    isVisible tokID = S.member tokID visible
+    para =
+        Html.span paraAtts <|
+            L.map (\(tokID, tok) -> viewToken foc treeId (isVisible tokID) tokID tok) <|
+                   L.map2 (,)
+                       (L.range 0 (L.length sent - 1))
+                       sent
     div =
       Html.div (
         [ Atts.class "noselect"
@@ -1283,6 +1289,38 @@ viewSentAlt foc isSelected treeId sent spk =
         [para]
   in
     div
+
+
+-- | View token.
+viewToken
+    : M.Focus     -- ^ Model focus
+    -> C.PartId   -- ^ Partition ID
+    -> Bool       -- ^ Is it visible?
+    -> Int        -- ^ Token ID
+    -> M.Token
+    -> Html.Html Msg
+viewToken focus partId isVisible tokID tok =
+    let
+        orth = (if tok.afterSpace then " " else "") ++ tok.orth
+        color = if isVisible then "black" else "grey"
+        styleAtts = [Atts.style ["cursor" => "pointer", "color" => color]]
+        eventAtts =
+            [ Events.onClick (SelectToken focus partId tokID)
+            ]
+        atts = styleAtts ++ eventAtts
+    in
+        Html.span
+            atts
+            [ Html.text orth ]
+
+
+-- | Calculate the set of visible positions in the sentence.
+-- Takes into account the dummy case.
+visiblePositions : R.Tree M.Node -> S.Set Int
+visiblePositions tree =
+    if M.isDummyTree tree
+    then S.empty
+    else S.fromList << L.map .leafPos << M.getWords <| tree
 
 
 -- viewSent

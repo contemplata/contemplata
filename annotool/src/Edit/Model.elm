@@ -24,8 +24,9 @@ module Edit.Model exposing
   -- Nodes:
   , getNode, setNode, updateNode
   -- TODO (think of the name):
-  , concatWords, dumify
+  , concatWords, dumify, isDummyTree
   , splitTree, join, getPart
+  , restoreToken
   -- Labels:
   , getLabel, setLabel
   -- Comments:
@@ -2336,6 +2337,25 @@ splitToken tokID splitPlace toks =
 
 
 ---------------------------------------------------
+-- Restore token
+---------------------------------------------------
+
+
+-- | Restore the given token (provided that it can even be restored).
+restoreToken
+    : PartId
+    -> Int -- ^ Token ID
+    -> Model
+    -> Model
+restoreToken =
+    Debug.crash "restoreToken: not implemented"
+    -- The idea is as follows:
+    -- * Consider the dummy case first!
+    -- * Find in the tree the closest token on the left from the token being restored
+    -- * Add the restored token there (a bit like in split)
+
+
+---------------------------------------------------
 -- Dummy
 ---------------------------------------------------
 
@@ -2360,6 +2380,14 @@ dummyTree =
         leaf = Leaf {nodeId=1, nodeVal="", leafPos=0, nodeComment=""}
     in
         R.Node root [R.Node leaf []]
+
+
+-- | Check whether the given tree is the dummy tree.
+isDummyTree : R.Tree Node -> Bool
+isDummyTree tree =
+    case getWords tree of
+        [leaf] -> leaf.nodeVal == ""
+        _ -> False
 
 
 ---------------------------------------------------
