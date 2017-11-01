@@ -14,7 +14,7 @@ module Edit.Model exposing
   , getPosition, nextTree, prevTree, moveCursor, moveCursorTo
   , treeNum, treePos
   -- Sentence:
-  , getToken, getTokenMay, getSent
+  , getToken, getTokenMay, getSent, getSubSent
   -- History:
   , freezeHist, undo, redo
   -- Selection:
@@ -1028,6 +1028,23 @@ getSent : PartId -> Model -> Sent
 getSent partId = L.concat << D.values << getSentMap partId
 
 
+-- | Get the sub-sentence corresponding to the given ID and the token ID
+-- corresponding to its first token.
+getSubSent : TreeId -> Model -> (Sent, Int)
+getSubSent treeId model =
+    let
+        partId = getReprId treeId model
+        go tokID sentList =
+            case sentList of
+                [] -> Debug.crash "Model.getSubSent: impossible happened"
+                (bareId, sent) :: rest ->
+                    if bareId == unTreeId treeId
+                    then (sent, tokID)
+                    else go (tokID + L.length sent) rest
+    in
+        go 0 <| D.toList <| getSentMap partId model
+
+
 -- | Retrieve the sentences corresponding to the given partition.
 getSentMap : PartId -> Model -> D.Dict TreeIdBare Sent
 getSentMap partId model =
@@ -1886,7 +1903,7 @@ concatWords model =
         process idSet sent tree =
             (\toks -> (L.map Tuple.first toks, treeFromSent toks)) <|
             concatSelectedToks (leafPosSet tree idSet) <|
-            syncTreeWithSent sent tree
+            syncTreeWithSent 0 sent tree
     in
         procSelWithSent process model.focus model
 
@@ -1940,12 +1957,15 @@ type alias Orth = String
 type alias Pos = String
 
 
--- | Syncronize the tree with the corresponding sentence.
-syncTreeWithSent : Sent -> R.Tree Node -> List (Token, Maybe Orth)
-syncTreeWithSent sent tree =
+-- | Synchronize the tree with the corresponding sentence.
+syncTreeWithSent
+    : Int   -- ^ Token ID corresponding to the sentence's first token.
+    -> Sent
+    -> R.Tree Node -> List (Token, Maybe Orth)
+syncTreeWithSent firstTokId sent tree =
     let onSecond f (x, y) = (x, f y)
         simplify = onSecond <| Maybe.map Tuple.first
-    in  L.map simplify <| syncTreeWithSentPos sent tree
+    in  L.map simplify <| syncTreeWithSentPos firstTokId sent tree
 --     let
 --         go pos toks leaves =
 --             case (toks, leaves) of
@@ -1960,10 +1980,13 @@ syncTreeWithSent sent tree =
 --         go 0 sent (getWords tree)
 
 
--- | Syncronize the tree with the corresponding sentence.
+-- | Synchronize the tree with the corresponding sentence.
 -- The result contains information about the POS tags.
-syncTreeWithSentPos : Sent -> R.Tree Node -> List (Token, Maybe (Orth, Pos))
-syncTreeWithSentPos sent tree =
+syncTreeWithSentPos
+    : Int   -- ^ Token ID corresponding to the sentence's first token.
+    -> Sent
+    -> R.Tree Node -> List (Token, Maybe (Orth, Pos))
+syncTreeWithSentPos firstTokId sent tree =
     let
         go pos toks leaves =
             case (toks, leaves) of
@@ -1975,7 +1998,7 @@ syncTreeWithSentPos sent tree =
                     (tok, Nothing) :: go (pos+1) toksRest []
                 ([], _) -> []
     in
-        go 0 sent (getWordsPos tree)
+        go firstTokId sent (getWordsPos tree)
 
 
 -- | Make a (completely flat) tree from the given list of strings.
@@ -2047,9 +2070,14 @@ syncForestWithSentPos sent forest =
                 Just ys -> ys
         minList = tail <| L.map minimalPosition forest
         sentList = segmentSentence minList sent
-        sync (subSent, subTree) = syncTreeWithSentPos subSent subTree
+        sync (firstTokId, subSent, subTree) = syncTreeWithSentPos firstTokId subSent subTree
+        zip i xs ys =
+            case (xs, ys) of
+                (xs1 :: xsRest, ys1 :: ysRest) ->
+                    (i, xs1, ys1) :: zip (i + L.length xs1) xsRest ysRest
+                _ -> []
     in
-        L.map sync (L.map2 (,) sentList forest)
+        L.map sync (zip 0 sentList forest)
 
 
 -- | The smallest leaf position (token ID) in the given tree.
@@ -2070,7 +2098,8 @@ segmentSentence splitList sent =
         [] -> [sent]
         split :: splitRest ->
             let (sentLeft, sentRight) = Util.splitAt split sent
-            in  sentLeft :: segmentSentence splitRest sentRight
+                newSplitRest = L.map (\i -> i - split) splitRest
+            in  sentLeft :: segmentSentence newSplitRest sentRight
 
 
 ---------------------------------------------------
@@ -2108,7 +2137,11 @@ splitTree model =
             in
                 R.Node root subTrees
 
-        process idSet tree = reID <| mkTree <| go idSet [] (getWords tree)
+        process idSet tree =
+            reID
+            <| mkTree
+            <| L.filter (not << L.isEmpty)
+            <| go idSet [] (getWords tree)
 
     in
 

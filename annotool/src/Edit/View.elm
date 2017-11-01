@@ -1140,7 +1140,6 @@ viewSideContext visible foc model =
 
   let
 
-    treeSelected = M.getReprId (M.selectWin foc model).tree model
 --     viewTree spks (treeId, mayWho) =
 --       let sent = case D.get treeId model.file.sentMap of
 --                    Nothing -> ""
@@ -1186,15 +1185,9 @@ viewSideContext visible foc model =
                 case D.get spk turnDict of
                     Nothing -> Html.td [] []
                     Just treeId ->
-                        let
-                            sent = case D.get (C.unTreeId treeId) model.file.sentMap of
-                                       Nothing -> []
-                                       Just x -> x
-                            treeIdRepr = M.getReprId treeId model
-                            tree = M.getTree treeIdRepr model
-                            isSelected = treeIdRepr == treeSelected
-                        in
-                            Html.td [] [viewSentAlt foc isSelected treeIdRepr tree sent spk]
+                        Html.td []
+                            -- [viewSentAlt foc isSelected treeIdRepr tree sent spk]
+                            [viewSentAlt foc treeId spk model]
         in
             Html.tr []
             <| List.map viewSpk
@@ -1247,16 +1240,63 @@ getSpeakers : M.Turn -> S.Set String
 getSpeakers = S.fromList << D.keys << inverseTurn
 
 
+-- viewSentAlt
+--   : M.Focus   -- ^ Where is the focus on
+--   -> Bool     -- ^ Is the tree currently viewed?
+--   -> C.PartId -- ^ The tree ID (the representative) ...
+--   -> R.Tree M.Node -- ^ The tree itself (to know which tokens are visible)
+--   -> M.Sent   -- ^ ... and one of the sentences corresponding to the tree
+--   -> String   -- ^ The speaker
+--   -> Html.Html Msg
+-- viewSentAlt foc isSelected treeId tree sent spk =
+--   let
+--     paraAtts = if isSelected
+--       then [ Atts.style ["font-weight" => "bold"] ]
+--       else []
+--     divAtts = if isSelected
+--       then [ Atts.id <| Cfg.selectSentName <|
+--                  case foc of
+--                      M.Top -> True
+--                      M.Bot -> False ]
+--       else []
+--     visible = M.visiblePositions tree
+--     isVisible tokID = S.member tokID visible
+--     para =
+--         Html.span paraAtts <|
+--             L.map (\(tokID, tok) -> viewToken foc treeId (isVisible tokID) tokID tok) <|
+--                    L.map2 (,)
+--                        (L.range 0 (L.length sent - 1))
+--                        sent
+--     div =
+--       Html.div (
+--         [ Atts.class "noselect"
+--         , Events.onClick (SelectTree foc treeId)
+--         , Atts.style
+--             [ "cursor" => "pointer"
+--             -- make the (focus-related) outline invisible
+--             , "outline" => "0" ]
+--         -- @tabindex required to make the div propagate the keyboard events
+--         -- (see the `view` function)
+--         , Atts.attribute "tabindex" "1"
+--         ] ++ divAtts )
+--         [para]
+--   in
+--     div
+
+
 viewSentAlt
   : M.Focus   -- ^ Where is the focus on
-  -> Bool     -- ^ Is the tree currently viewed?
-  -> C.PartId -- ^ The tree ID (the representative) ...
-  -> R.Tree M.Node -- ^ The tree itself (to know which tokens are visible)
-  -> M.Sent   -- ^ ... and the sentence corresponding to the tree
+  -> C.TreeId -- ^ The tree ID (the representative) ...
   -> String   -- ^ The speaker
+  -> M.Model
   -> Html.Html Msg
-viewSentAlt foc isSelected treeId tree sent spk =
+viewSentAlt foc treeId spk model =
   let
+    (sent, firstTokId) = M.getSubSent treeId model
+    partId = M.getReprId treeId model
+    tree = M.getTree partId model
+    partSelected = M.getReprId (M.selectWin foc model).tree model
+    isSelected = partId == partSelected
     paraAtts = if isSelected
       then [ Atts.style ["font-weight" => "bold"] ]
       else []
@@ -1270,14 +1310,14 @@ viewSentAlt foc isSelected treeId tree sent spk =
     isVisible tokID = S.member tokID visible
     para =
         Html.span paraAtts <|
-            L.map (\(tokID, tok) -> viewToken foc treeId (isVisible tokID) tokID tok) <|
+            L.map (\(tokID, tok) -> viewToken foc partId (isVisible tokID) tokID tok) <|
                    L.map2 (,)
-                       (L.range 0 (L.length sent - 1))
+                       (L.map (\x -> x + firstTokId) <| L.range 0 (L.length sent - 1))
                        sent
     div =
       Html.div (
         [ Atts.class "noselect"
-        , Events.onClick (SelectTree foc treeId)
+        , Events.onClick (SelectTree foc partId)
         , Atts.style
             [ "cursor" => "pointer"
             -- make the (focus-related) outline invisible

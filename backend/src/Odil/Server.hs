@@ -360,6 +360,15 @@ talk conn state snapCfg = forever $ do
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
           Just t -> do
             -- TODO: should we sent the sentence back, perhaps for additional safety?
+            -- TODO: even more importantly, do we really need to know what are
+            -- the frontiers between the individual sub-sentences? Firstly, we
+            -- seem not to rely on this information. Secondly, at the moment, it
+            -- does not necessarily correspond 100% to the division at the
+            -- front-end side (see the `syncForestWithSent` function in the
+            -- Edit.Model.elm file).
+            --
+            -- Note also that, in general, the frontiers in the tree can differ
+            -- from those stemming from the division into speech turns.
             let (_, tree) = Penn.toOdilTree' t sent
                 ret = ParseResult fileId treeId Nothing tree
             WS.sendTextData conn (JSON.encode ret)
