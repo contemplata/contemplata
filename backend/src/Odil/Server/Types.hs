@@ -161,7 +161,12 @@ data File = File
 
   , partMap :: M.Map TreeId (S.Set TreeId)
     -- ^ Tree partitions, which groups the trees in sets of trees (NEW
-    -- 23/10/2017)
+    -- 23/10/2017).
+    --
+    -- UPDATE 01/11/2017: trees are assigned only to partition representatives.
+
+  , reprMap :: M.Map TreeId TreeId
+    -- ^ Each ID points to its direct representative.
 
   , turns :: [Turn]
     -- ^ The list of turns in the file (we don't preserve the division on
@@ -179,13 +184,18 @@ mkNewFile treeMap0 turns =
   File
     { treeMap = fmap snd treeMap0
     , sentMap = fmap fst treeMap0
-    , partMap = singMap
+    , partMap = singPartMap
+    , reprMap = singReprMap
     , turns = turns
     , linkSet = M.empty
     }
   where
-    singMap = M.fromList
+    singPartMap = M.fromList
       . map (\(i, _) -> (i, S.singleton i))
+      . M.toList
+      $ treeMap0
+    singReprMap = M.fromList
+      . map (\(i, _) -> (i, i))
       . M.toList
       $ treeMap0
 

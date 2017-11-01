@@ -63,7 +63,7 @@ module Edit.Model exposing
   -- -- , changeTypeSel
   -- Lenses:
   , top, bot, dim, winLens, drag, side, pos, height, widthProp, heightProp
-  , nodeId, nodeVal, treeMap, sentMap, partMap, trees
+  , nodeId, nodeVal, treeMap, sentMap, partMap, reprMap, trees
   -- Pseudo-lenses:
   -- , setTrees
   -- Various:
@@ -106,7 +106,10 @@ import Edit.Popup as Popup
 type alias File =
   { treeMap : TreeMap
   , sentMap : D.Dict TreeIdBare Sent
-  , partMap : D.Dict TreeIdBare (S.Set TreeIdBare)
+  -- , partMap : D.Dict TreeIdBare (S.Set TreeIdBare)
+  , partMap : D.Dict PartId (S.Set TreeIdBare)
+  , reprMap : D.Dict TreeIdBare TreeIdBare
+    -- ^ Direct representatives
   , turns : List Turn
   , linkSet : D.Dict Link LinkData }
 
@@ -398,8 +401,14 @@ type HistAtom
   | PartModif -- ^ Modified a partition
     { treeId : PartId
       -- ^ To which partition ID does it refer
-    , restorePart : S.Set TreeIdBare
-      -- ^ The partition to restore
+    , restorePart : Maybe (S.Set TreeIdBare)
+      -- ^ The partition to restore (or remove, if `Nothing`)
+    }
+  | ReprModif -- ^ Modified a partition
+    { treeId : TreeIdBare
+      -- ^ To which tree ID does it refer
+    , restoreRepr : TreeIdBare
+      -- ^ The representative to restore
     }
   | SentModif -- ^ Modified a sentence
     { treeId : TreeIdBare
@@ -457,11 +466,20 @@ applyAtom histAtom model =
     PartModif r ->
       let
         oldPart = getPart r.treeId model
-        tmpModel = Lens.update
-                   (file => partMap)
-                   (D.insert r.treeId r.restorePart) model
+        -- NOTE: we could simply use `setPart`, but we need to return a `newAtom`...
+        tmpModel = setPart_ r.treeId r.restorePart model
         newModel = focusOnTree r.treeId tmpModel
         newAtom = PartModif {r | restorePart = oldPart}
+      in
+        (newModel, newAtom)
+    ReprModif r ->
+      let
+        oldRepr = getRepr r.treeId model
+        tmpModel = Lens.update
+                   (file => reprMap)
+                   (D.insert r.treeId r.restoreRepr) model
+        newModel = focusOnTree r.treeId tmpModel
+        newAtom = ReprModif {r | restoreRepr = oldRepr}
       in
         (newModel, newAtom)
     SentModif r ->
@@ -973,24 +991,34 @@ dragOn model =
 --     _ -> Nothing
 
 
+-- -- | Get a partition representative for a given treeID.
+-- getReprId : TreeId -> Model -> PartId
+-- getReprId (TreeId treeId) model =
+--   case D.get treeId model.file.partMap of
+--     Nothing -> Debug.crash "Model.getReprId: no partition for the given ID"
+--     Just st ->
+--         case S.toList st of
+--             xMin :: _ -> xMin
+--             [] -> Debug.crash "Model.getReprId: empty partition"
+
+
 -- | Get a partition representative for a given treeID.
 getReprId : TreeId -> Model -> PartId
 getReprId (TreeId treeId) model =
-  case D.get treeId model.file.partMap of
-    Nothing -> Debug.crash "Model.getReprId: no partition for the given ID"
-    Just st ->
-        case S.toList st of
-            xMin :: _ -> xMin
-            [] -> Debug.crash "Model.getReprId: empty partition"
+  case D.get treeId model.file.reprMap of
+    Nothing -> Debug.crash "Model.getReprId: no representative for the given ID"
+    Just bareId ->
+        if bareId == treeId
+        then bareId
+        else getReprId (TreeId bareId) model
 
 
 -- | Get a tree under a given ID.
 getTree : PartId -> Model -> R.Tree Node
 getTree treeId model =
-  case getTreeMay treeId model of
-    Nothing -> Debug.crash "Model.getTree: no tree with the given ID"
-    -- Just (_, t) -> t
-    Just t -> t
+    case getTreeMay treeId model of
+      Nothing -> Debug.crash <| "Model.getTree: no tree with the ID " ++ toString treeId
+      Just t -> t
 
 
 -- | Get a tree under a given ID.  A version of `getTree` which does not
@@ -1049,7 +1077,7 @@ getSubSent treeId model =
 getSentMap : PartId -> Model -> D.Dict TreeIdBare Sent
 getSentMap partId model =
     let
-        part = getPart partId model
+        part = Maybe.withDefault S.empty <| getPart partId model
         sents = L.map
                 (\treeId -> (treeId, getSent_ treeId model))
                 (S.toList part)
@@ -2171,8 +2199,8 @@ joinIndeed tid1 tid2 model =
         newRepr = if tid1 < tid2 then tid1 else tid2
         oldRepr = if tid1 < tid2 then tid2 else tid1
         newPart = S.union
-                  (getPart newRepr model)
-                  (getPart oldRepr model)
+                  (Maybe.withDefault S.empty <| getPart newRepr model)
+                  (Maybe.withDefault S.empty <| getPart oldRepr model)
         newTree = joinTrees
                   (getTree newRepr model)
                   (getTree oldRepr model)
@@ -2184,8 +2212,9 @@ joinIndeed tid1 tid2 model =
             -- in  reID <| rePOS <| R.Node root (R.subTrees t1 ++ R.subTrees t2)
             in  reID <| R.Node root (R.subTrees t1 ++ R.subTrees t2)
     in
-        setPart newRepr newPart <|
-        setPart oldRepr newPart <|
+        setPart newRepr (Just newPart) <| setRepr oldRepr newRepr <|
+        -- setPart oldRepr newPart <|
+        removePart oldRepr <|
         -- NOTE: the only reason to first remove the `newRepr` tree and then to
         -- update it is to get the corresponding links deleted.
         setTree newRepr (Just newTree) <| removeTree newRepr <|
@@ -2194,22 +2223,59 @@ joinIndeed tid1 tid2 model =
         model
 
 
+-- | Remove partition under the given partition ID.
+removePart : PartId -> Model -> Model
+removePart treeId = setPart treeId Nothing
+
+
 -- | Set partition for the given tree ID.
-setPart : PartId -> S.Set TreeIdBare -> Model -> Model
-setPart treeId newPart model =
+setPart : PartId -> Maybe (S.Set TreeIdBare) -> Model -> Model
+setPart treeId newPartMay model =
     let
         oldPart = getPart treeId model
-        newModel = Lens.update (file => partMap) (D.insert treeId newPart) model
     in
-        newModel
+        setPart_ treeId newPartMay model
             |> saveModif (PartModif {treeId = treeId, restorePart = oldPart})
 
 
-getPart : PartId -> Model -> S.Set TreeIdBare
-getPart treeId model =
-    case D.get treeId model.file.partMap of
-        -- Nothing -> S.empty
-        Nothing -> Debug.crash "getPart: no partition for a given ID"
+-- | Set partition for the given tree ID.
+setPart_ : PartId -> Maybe (S.Set TreeIdBare) -> Model -> Model
+setPart_ treeId newPartMay model =
+    let
+        newPartMap =
+            case newPartMay of
+                Nothing ->
+                    D.remove treeId model.file.partMap
+                Just newPart ->
+                    D.insert treeId newPart model.file.partMap
+        newModel = Lens.set (file => partMap) newPartMap model
+    in
+        newModel
+
+
+getPart : PartId -> Model -> Maybe (S.Set TreeIdBare)
+getPart treeId model = D.get treeId model.file.partMap
+--     case D.get treeId model.file.partMap of
+--         -- Nothing -> S.empty
+--         Nothing -> Debug.crash "getPart: no partition for a given ID"
+--         Just st -> st
+
+
+-- | Set representative for the given tree ID.
+setRepr : TreeIdBare -> TreeIdBare -> Model -> Model
+setRepr treeId newRepr model =
+    let
+        oldRepr = getRepr treeId model
+        newModel = Lens.update (file => reprMap) (D.insert treeId newRepr) model
+    in
+        newModel
+            |> saveModif (ReprModif {treeId = treeId, restoreRepr = oldRepr})
+
+
+getRepr : TreeIdBare -> Model -> TreeIdBare
+getRepr treeId model =
+    case D.get treeId model.file.reprMap of
+        Nothing -> Debug.crash "getRepr: no representative for a given ID"
         Just st -> st
 
 
@@ -2694,6 +2760,12 @@ partMap : Lens.Focus { record | partMap : a } a
 partMap = Lens.create
   .partMap
   (\fn model -> {model | partMap = fn model.partMap})
+
+
+reprMap : Lens.Focus { record | reprMap : a } a
+reprMap = Lens.create
+  .reprMap
+  (\fn model -> {model | reprMap = fn model.reprMap})
 
 
 linkSet : Lens.Focus { record | linkSet : a } a
@@ -3185,12 +3257,13 @@ maybeLens =
 
 fileDecoder : Decode.Decoder File
 fileDecoder =
-  Decode.map5 File
+  Decode.map6 File
     (Decode.field "treeMap" treeMapDecoder)
     (Decode.field "sentMap" sentMapDecoder)
     (Decode.field "partMap" partMapDecoder)
+    (Decode.field "reprMap" reprMapDecoder)
     (Decode.field "turns" (Decode.list turnDecoder))
-    (Decode.field "linkSet" linkSetDecoder )
+    (Decode.field "linkSet" linkSetDecoder)
 
 
 turnDecoder : Decode.Decoder Turn
@@ -3271,6 +3344,12 @@ partMapDecoder =
         <| Decode.list Decode.int
 
 
+reprMapDecoder : Decode.Decoder (D.Dict TreeIdBare TreeIdBare)
+reprMapDecoder =
+    Decode.map (mapKeys toInt)
+        <| Decode.dict Decode.int
+
+
 treeDecoder : Decode.Decoder (R.Tree Node)
 treeDecoder = R.treeDecoder nodeDecoder
 
@@ -3338,6 +3417,7 @@ encodeFile file =
     , ("treeMap", encodeTreeMap file.treeMap)
     , ("sentMap", encodeSentMap file.sentMap)
     , ("partMap", encodePartMap file.partMap)
+    , ("reprMap", encodeReprMap file.reprMap)
     , ("turns", Encode.list (L.map encodeTurn file.turns))
     , ("linkSet", encodeLinkSet file.linkSet)
     ]
@@ -3444,6 +3524,15 @@ encodePartMap =
     encodeIdSet = Encode.list << L.map Encode.int << S.toList
     encodePair (treeId, idSet) =
       (toString treeId, encodeIdSet idSet)
+  in
+    Encode.object << L.map encodePair << D.toList
+
+
+encodeReprMap : D.Dict TreeIdBare TreeIdBare -> Encode.Value
+encodeReprMap =
+  let
+    encodePair (treeId, reprId) =
+      (toString treeId, Encode.int reprId)
   in
     Encode.object << L.map encodePair << D.toList
 
