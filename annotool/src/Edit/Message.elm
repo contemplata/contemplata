@@ -182,12 +182,19 @@ update msg model =
           let withId = M.getReprId (M.selectWin win model).tree model
           in  M.join treeId withId model
 
-    SelectToken win treeId tokID -> idle <|
-      if not model.ctrl
-      then model
-      else M.restoreToken treeId tokID model
---           let withId = M.getReprId (M.selectWin win model).tree model
---           in  M.join treeId withId model
+    SelectToken win treeId tokID ->
+      let winId = M.getReprId (M.selectWin win model).tree model in
+      if not model.ctrl || winId /= treeId
+      then idle model
+      else if not <| M.isDummyTree <| M.getTree treeId model
+           then idle <| M.restoreToken treeId tokID model
+           else
+               let
+                   txt = M.sentToString <| M.getSent treeId model
+                   req = Server.ParseRaw model.fileId treeId txt False
+                   send = Server.sendWS model.config req
+               in
+                   (model, send)
 
     SelectLink link ->
       let

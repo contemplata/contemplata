@@ -2459,8 +2459,23 @@ splitToken tokID splitPlace toks =
 ---------------------------------------------------
 
 
+-- -- | Restore the given token (provided that it can even be restored).
+-- restoreToken
+--     : PartId
+--     -> Int     -- ^ Token ID of the token to restore
+--     -> Model
+--     -> Model
+-- restoreToken partID tokID model =
+--     if not <| M.isDummyTree <| getTree treeId model
+--     then doRestoreToken treeId tokID model
+--     else
+--         let
+--             tok = getToken 0 partID model
+--         in
+
+
 -- | Restore the given token (provided that it can even be restored).
--- TODO: consider the dummy case!
+-- Does not handle the dummy case.
 restoreToken
     : PartId
     -> Int     -- ^ Token ID of the token to restore
