@@ -8,7 +8,7 @@ module Edit.Model exposing
   , isNode, isLeaf
   , sentToString, emptyToken
   -- Model types:
-  , Model, Dim, Window, SideWindow(..), Drag, Focus(..)
+  , Model, Dim, Window, SideWindow(..), Drag, Focus(..), AnnoLevel(..)
   -- Other:
   , selectWin, dragOn, getTree, getTreeMay, getReprId, selAll
   , getPosition, nextTree, prevTree, moveCursor, moveCursorTo
@@ -312,7 +312,17 @@ type alias Model =
 
   -- the external configuration
   , config : Cfg.Config
+
+  -- which annotation level is in focus
+  , annoLevel : AnnoLevel
   }
+
+
+-- | Annotation level
+type AnnoLevel
+    = Segmentation
+    | Syntax
+    | Temporal
 
 
 -- | The command being written by the user.

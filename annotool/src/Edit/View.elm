@@ -207,6 +207,7 @@ viewCommand pref win model =
     cmdStr = String.trim
              <| String.concat
              <| List.map (\cmd -> String.cons ' ' cmd)
+             <| List.sort
              <| cmdLst
     txt = ":" ++ pref ++ " (" ++ cmdStr ++ ")"
   in
@@ -467,6 +468,46 @@ viewPopupMostGen cmdSize popupHtml commandList defaultCommand =
 ---------------------------------------------------
 
 
+-- viewMenu
+--     : M.Model
+--     -- : String -- File name
+--     -> Html.Html Msg
+-- viewMenu model = -- fileName =
+--   let
+--
+--     menuElem onClick pos txt = Html.div
+--       [ Atts.class "noselect"
+--       , Events.onClick onClick
+--       , Atts.style
+--         [ "position" => "absolute"
+--         , "top" => px 10
+--         , "left" => px pos
+--         , "cursor" => "pointer"
+--         ]
+--       ]
+--       -- [ Html.text txt ]
+--       [ txt ]
+--
+--     -- initPos = (String.length fileName * 6) + 20
+--
+--   in
+--
+-- --     Html.div []
+-- --       [ menuElem Msg.dummy 10 ("[" ++ fileName ++ "]")
+-- --       , menuElem Files (initPos + 60) "Menu"
+-- --       , menuElem SaveFile (initPos + 120) "Save" ]
+--
+--     Html.div []
+--       [ menuElem (Popup Popup.Files Nothing) 10 (plainText "Menu")
+--       , menuElem SaveFile 70 (plainText "Save")
+--       -- , menuElem EditLabel 120 (plain "Edit")
+--       , menuElem MkEvent 120 (emphasize 1 "Event")
+--       , menuElem MkSignal 180 (emphasize 0 "Signal")
+--       , menuElem MkTimex 240 (emphasize 0 "Timex")
+--       , menuElem (Many []) 320 (plainText <| toString model.ctrl)
+--       ]
+
+
 viewMenu
     : M.Model
     -- : String -- File name
@@ -474,37 +515,72 @@ viewMenu
 viewMenu model = -- fileName =
   let
 
-    menuElem onClick pos txt = Html.div
-      [ Atts.class "noselect"
-      , Events.onClick onClick
-      , Atts.style
-        [ "position" => "absolute"
-        , "top" => px 10
-        , "left" => px pos
-        , "cursor" => "pointer"
-        ]
-      ]
-      -- [ Html.text txt ]
-      [ txt ]
+    menuElem onClick txt hint =
+        Html.div
+          ( [ Events.onClick onClick
+            , Atts.style
+                [ "cursor" => "pointer"
+                , "margin-left" => px 10
+                , "margin-right" => px 10
+                -- | To make the list of commands wrap
+                , "display" => "inline-block"
+                ]
+            ] ++ case hint of
+                     Nothing -> []
+                     Just x  -> [Atts.title x]
+          )
+        [ txt ]
 
-    -- initPos = (String.length fileName * 6) + 20
+    isCtrl = if model.ctrl then "CTRL" else ""
+    annoLevel = toString model.annoLevel
+    mkMenuItem = mkMenuCommand model.ctrl
+
+    segmentationCommands =
+      [ ( plainText "Split tree", SplitTree
+        , Just "Split the current tree into several sentences at the selected terminal nodes" )
+      , ( plainText "Split word", SplitBegin
+        , Just "Split the current word in two" )
+      , ( plainText "Concatenate words", ConcatWords
+        , Just "Concatenate the tokens corresponding to selected terminals" )
+      ]
+
+    syntaxCommands =
+      [ ( plainText "POS tag and parse", ParseSent Server.Stanford
+        , Just "POS tag and parse the current sentence with the Stanford parser" )
+      , ( plainText "Parse", ParseSentPos Server.Stanford
+        , Just "Parse the current sentence with the Stanford parser, without changing the selected part-of-speech tags" )
+      , mkMenuItem "Delete" Delete <|
+          Just "Delete the selected nodes and, with CTRL, their subtrees"
+      , mkMenuItem "Add node" Add <|
+          Just "Add (a) new node(s) over the selected node(s)"
+      ]
+
+    temporalCommands =
+      [ (emphasize 1 "Event", MkEvent, Just "Mark (or unmark) the selected node as event")
+      , (emphasize 0 "Signal", MkSignal, Just "Mark (or unmark) the selected node as signal")
+      , (emphasize 0 "Timex", MkTimex, Just "Mark (or unmark) the selected node as timex") ]
+
+    mkCommands = List.map <| \(html, event, hint) -> menuElem event html hint
 
   in
 
---     Html.div []
---       [ menuElem Msg.dummy 10 ("[" ++ fileName ++ "]")
---       , menuElem Files (initPos + 60) "Menu"
---       , menuElem SaveFile (initPos + 120) "Save" ]
-
-    Html.div []
-      [ menuElem (Popup Popup.Files Nothing) 10 (plainText "Menu")
-      , menuElem SaveFile 70 (plainText "Save")
-      -- , menuElem EditLabel 120 (plain "Edit")
-      , menuElem MkEvent 120 (emphasize 1 "Event")
-      , menuElem MkSignal 180 (emphasize 0 "Signal")
-      , menuElem MkTimex 240 (emphasize 0 "Timex")
-      , menuElem (Many []) 320 (plainText <| toString model.ctrl)
-      ]
+    Html.div
+      [ Atts.class "noselect"
+      , Atts.style
+        [ "position" => "absolute"
+        , "top" => px 10
+        , "left" => px 5
+        ]
+      ] <| mkCommands <|
+        [ (plainText "Menu", Popup Popup.Files Nothing, Just "Go to the main menu")
+        , (plainText "Save", SaveFile, Just "Save the entire current file")
+        , (plainText annoLevel, ChangeAnnoLevel, Just "Change the annotation level commands") ] ++
+        ( if model.annoLevel == M.Temporal
+          then temporalCommands
+          else if model.annoLevel == M.Segmentation
+               then segmentationCommands
+               else syntaxCommands ) ++
+        [ (plainText isCtrl, Dummy, Just "Is CTRL down") ]
 
 
 ---------------------------------------------------
@@ -1786,6 +1862,104 @@ winOnFocus win =
 offsetHeight : Decode.Decoder Int
 offsetHeight =
   Decode.at ["target", "offsetHeight"] Decode.int
+
+
+---------------------------------------------------
+-- Menu Commands
+---------------------------------------------------
+
+
+-- | A specification of a menu command.
+type MenuCmd
+    = SimpleCmd
+      { msg : Msg
+      , key : Int
+      , char : Char }
+    | DoubleCmd
+      { msg : Msg
+      , msgCtrl : Msg
+      , key : Int
+      , char : Char }
+
+
+msg : Lens.Focus MenuCmd Msg
+msg =
+  let
+    get cmd = case cmd of
+      SimpleCmd r -> r.msg
+      DoubleCmd r -> r.msg
+    update f cmd = case cmd of
+      SimpleCmd r -> SimpleCmd {r | msg = f r.msg}
+      DoubleCmd r -> DoubleCmd {r | msg = f r.msg}
+  in
+    Lens.create get update
+
+
+char : Lens.Focus MenuCmd Char
+char =
+  let
+    get cmd = case cmd of
+      SimpleCmd r -> r.char
+      DoubleCmd r -> r.char
+    update f cmd = case cmd of
+      SimpleCmd r -> SimpleCmd {r | char = f r.char}
+      DoubleCmd r -> DoubleCmd {r | char = f r.char}
+  in
+    Lens.create get update
+
+
+-- | A list of triples `(msg, withCtrl, char, key)`, where:
+-- * `msg` is the message to send when the character `char` is pressed,
+-- * `key` is the code of the `char`.
+-- * `withCtrl` is a `Maybe Bool`, whose value is `Nothing` if the command
+--    should be fired regardeless of whether CTRL is presssed or not, `Just
+--    True` if CTRL has to be pressed, and `Just False` if it should not be
+--    pressed.
+--
+-- All the commands in this list are supposed to correspond to some menu items.
+--
+-- TODO: Should be moved to a configuration module?
+menuKeyConfig : List MenuCmd
+menuKeyConfig =
+    let
+        mkSimple msg key char =
+            SimpleCmd {msg=msg, key=key, char=char}
+        mkDouble msg msgCtrl key char =
+            DoubleCmd {msg=msg, msgCtrl=msgCtrl, key=key, char=char}
+    in
+        [ mkDouble Delete DeleteTree 68 'd'
+        , mkSimple Add 65 'a'
+        ]
+
+
+mkMenuCommand
+    : Bool
+      -- ^ Is CTRL pressed?
+    -> String
+    -> Msg
+    -> a
+       -- ^ TODO: A bit stupit, this...
+    -> (Html.Html Msg, Msg, a)
+mkMenuCommand isCtrl cmdName cmdMsg hint =
+    case L.filter (\cmd -> Lens.get msg cmd == cmdMsg) menuKeyConfig of
+        cmd :: _ ->
+            let
+                msg =
+                    case cmd of
+                        DoubleCmd x ->
+                            if isCtrl
+                            then x.msgCtrl
+                            else x.msg
+                        SimpleCmd x ->
+                            x.msg
+                name =
+                    let charStr = String.fromChar <| Lens.get char cmd in
+                    case String.indexes (String.toLower charStr) (String.toLower cmdName) of
+                        i :: _ -> emphasize i cmdName
+                        _ -> plainText cmdName
+            in
+                (name, msg, hint)
+        [] -> (plainText cmdName, cmdMsg, hint)
 
 
 ---------------------------------------------------

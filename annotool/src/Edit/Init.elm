@@ -12,7 +12,7 @@ import Set as S
 
 import Config as Cfg
 import Edit.Core exposing (FileId, TreeId(..))
-import Edit.Model exposing (Model, Focus(..), File)
+import Edit.Model exposing (Model, Focus(..), File, AnnoLevel(..))
 import Edit.Message exposing (Msg(..), dummy)
 import Edit.Popup as Popup
 
@@ -70,6 +70,7 @@ mkEdit config fileId file =
       , command = Nothing
       , popup = Nothing -- Just Popup.Files
       , config = config
+      , annoLevel = Temporal
       }
     initHeight = Task.perform Resize Window.size
     focusOnTop = Task.attempt

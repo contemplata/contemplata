@@ -106,6 +106,7 @@ type Msg
   | SplitBegin
   | SplitChange Int
   | SplitFinish Int
+  | ChangeAnnoLevel
   | Dummy
   -- -- | Goto C.Addr -- ^ Move to a given node in the focused window
   | Many (List Msg)
@@ -522,6 +523,26 @@ update msg model =
         in
             ( {model | popup = Nothing}
             , Task.attempt (\_ -> dummy) (Dom.focus target) )
+
+    ChangeAnnoLevel -> idle <|
+        let
+            newLevel =
+                case model.annoLevel of
+                    M.Segmentation -> M.Syntax
+                    M.Syntax -> M.Temporal
+                    _ -> M.Segmentation
+            newLevelCtrl =
+                case model.annoLevel of
+                    M.Syntax -> M.Segmentation
+                    M.Temporal -> M.Syntax
+                    _ -> M.Temporal
+        in
+            { model
+                | annoLevel =
+                  if model.ctrl
+                  then newLevelCtrl
+                  else newLevel
+            }
 
     Dummy -> idle <|
         let partId = M.getReprId (M.selectWin model.focus model).tree model
