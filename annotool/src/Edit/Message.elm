@@ -28,6 +28,7 @@ import Edit.Message.Core exposing (..)
 import Edit.Command as Command
 import Menu
 import Server
+import Server exposing (ParseReq(..))
 import Util
 
 
@@ -232,6 +233,18 @@ update msg model =
         treeId = M.getReprId (M.selectWin model.focus model).tree model
         wordsPos = getWordPos (M.getSent treeId model) (M.getTree treeId model)
         req = Server.ParseSentPos model.fileId treeId parTyp wordsPos
+        send = Server.sendWS model.config req
+      in
+        (model, send)
+
+    ParseSentCons parTyp ->
+      let
+        win = M.selectWin model.focus model
+        treeId = M.getReprId win.tree model
+        selection = M.selAll win
+        wordsPos = getWordPos (M.getSent treeId model) (M.getTree treeId model)
+        cons = getConstraints selection (M.getTree treeId model)
+        req = Server.ParseSentCons model.fileId treeId parTyp (mergeReqs cons wordsPos)
         send = Server.sendWS model.config req
       in
         (model, send)
@@ -618,6 +631,34 @@ getWordPos sent tree =
             _ -> Server.Batch reqList
 
 
+-- | Retrieve the constraints.
+getConstraints
+    : S.Set C.NodeId
+    -> R.Tree M.Node
+    -> Server.ParseReq (List (String, Int, Int))
+getConstraints idSet tree =
+    let
+        reqList = List.map (getSpan idSet) (R.subTrees tree)
+    in
+        case reqList of
+            [x] -> Server.Single x
+            _ -> Server.Batch reqList
+
+
+-- | Combine together two requests, which should correspond to the same
+-- tree/forest.
+mergeReqs
+    : Server.ParseReq a
+    -> Server.ParseReq b
+    -> Server.ParseReq (a, b)
+mergeReqs req1 req2 =
+    case (req1, req2) of
+        (Single x, Single y) -> Single (x, y)
+        (Batch xs, Batch ys) -> Batch (List.map2 (,) xs ys)
+        (Single x, Batch ys) -> mergeReqs (Batch [x]) (Batch ys)
+        (Batch xs, Single y) -> mergeReqs (Batch xs) (Batch [y])
+
+
 -- -- | Retrieve the words and POS tags from a given tree.
 -- getWordPos : R.Tree M.Node -> Server.ParseReq (List (Orth, Pos))
 -- getWordPos tree0 =
@@ -677,27 +718,28 @@ parseSent parTyp model =
         (model, send)
 
 
--- | Retrieve the span of a given node in a given tree.
-getSpan1 : C.NodeId -> R.Tree M.Node -> Maybe (Int, Int)
-getSpan1 nodeId tree =
-    case getSpan (S.singleton nodeId) tree of
-        x :: _ -> Just x
-        [] -> Nothing
+-- -- | Retrieve the span of a given node in a given tree.
+-- getSpan1 : C.NodeId -> R.Tree M.Node -> Maybe (Int, Int)
+-- getSpan1 nodeId tree =
+--     case getSpan (S.singleton nodeId) tree of
+--         x :: _ -> Just x
+--         [] -> Nothing
 
 
 -- | Retrieve the span of a given node in a given tree.
-getSpan : S.Set C.NodeId -> R.Tree M.Node -> List (Int, Int)
+getSpan : S.Set C.NodeId -> R.Tree M.Node -> List (String, Int, Int)
 getSpan idSet =
      let
          span (val, (x, y)) =
              if S.member (Lens.get M.nodeId val) idSet
-             then [(x, y)]
+             then [(Lens.get M.nodeVal val, x, y)]
              else []
      in
-         L.concatMap span << R.flatten << spanTree
+         L.concatMap span << R.flatten << spanTree << positionTree
 
 
--- | Add information about the span of the subtree for each node.
+-- | Add information about the span of the subtree for each node, based on the
+-- position (`leafPos`) stored in the leaves.
 spanTree : R.Tree M.Node -> R.Tree (M.Node, (Int, Int))
 spanTree (R.Node val ts) =
     case val of
@@ -709,6 +751,23 @@ spanTree (R.Node val ts) =
                 x = get L.minimum <| L.map (Tuple.first << span) <| ts1
                 y = get L.maximum <| L.map (Tuple.second << span) <| ts1
              in R.Node (val, (x, y)) ts1
+
+
+-- | An internal function. Replace the token IDs with leaf positions in the
+-- leaves of the tree.
+positionTree : R.Tree M.Node -> R.Tree M.Node
+positionTree =
+    let
+        update acc node =
+            let
+                (newAcc, newNode) =
+                    case node of
+                        M.Node _ -> (acc, node)
+                        M.Leaf r -> (acc+1, M.Leaf {r | leafPos=acc})
+            in
+                (newAcc, newNode)
+    in
+        Tuple.second << R.mapAccum update 0
 
 
 -- | Focus on the given main window.

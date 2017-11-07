@@ -138,6 +138,8 @@ globalCommands =
     , { void
           | lineCmd = Just "dopparse" } => ParseSent Server.DiscoDOP
     , { void
+          | lineCmd = Just "parsecons" } => ParseSentCons Server.DiscoDOP
+    , { void
           | lineCmd = Just "deepen" } => ApplyRules
     , { void
           | lineCmd = Just "splittree"

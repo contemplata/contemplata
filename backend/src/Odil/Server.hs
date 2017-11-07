@@ -39,7 +39,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Tree as R
 
-import           Data.Maybe (maybeToList, catMaybes, mapMaybe)
+import           Data.Maybe (listToMaybe, maybeToList, catMaybes, mapMaybe)
 import qualified Data.Fixed as Fixed
 import qualified Data.Time as Time
 import qualified Data.Text as T
@@ -101,9 +101,11 @@ data Request
     -- correctly handle tokenization.
   | ParseSentPos FileId TreeId ParserTyp (ParseReq [(Token, Maybe (Stanford.Orth, Stanford.Pos))])
     -- ^ Similar to `ParseSent`, but with POS information
---   | ParseSentCons FileId TreeId ParserTyp [(Int, Int)] [(Stanford.Orth, Stanford.Pos)]
---     -- ^ Similar to `ParseSent`, but with an additional constraint (constituent
---     -- with the given pair of positions must exist in the tree)
+  -- | ParseSentCons FileId TreeId ParserTyp [(Int, Int)] [(Stanford.Orth, Stanford.Pos)]
+  | ParseSentCons FileId TreeId ParserTyp
+    (ParseReq ([(T.Text, Int, Int)], [(Token, Maybe (Stanford.Orth, Stanford.Pos))]))
+    -- ^ Similar to `ParseSentPos`, but with an additional constraint (constituent
+    -- with the given pair of positions must exist in the tree)
   | ParseRaw FileId
     TreeId -- ^ Partition ID
     T.Text -- ^ The sentence
@@ -406,6 +408,44 @@ talk conn state snapCfg = forever $ do
             let msg = T.concat ["Parsed successfully"]
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
+
+      -- Right (ParseSentCons fileId treeId parTyp cons ws) -> do
+      Right (ParseSentCons fileId treeId parTyp parseReq) -> do
+        putStrLn $ "Parsing tokenized+POSed sentence with constraints..."
+        let parser (cons, ws) = case parTyp of
+              Stanford -> Stanford.parseConsFR
+                (mapMaybe snd ws)
+                (map (second (+1) . rmLabel) cons)
+                where
+                  rmLabel (_, p, q) = (p, q)
+              DiscoDOP -> listToMaybe <$> DiscoDOP.newParseDOP cons
+                (mapMaybe snd ws)
+            sent = case parseReq of
+              Single (cons, ws) -> ws
+              Batch wss -> concatMap snd wss
+        treeMay <- case parseReq of
+          Single (cons, ws) -> parser (cons, ws)
+          Batch wss ->
+            -- make sure that each sentence in the batch was sucessfully parsed
+            -- and join the resulting forest into one tree
+            let process = Stanford.joinSentences <=< allJust
+            in  process <$> mapM parser wss
+        case treeMay of
+          Nothing -> do
+            let ws = mapMaybe snd sent
+                ws' = flip map ws $ \(orth, pos) -> T.concat [orth, ":", pos]
+                msg = T.concat ["Could not parse: ", T.unwords ws']
+            T.putStrLn msg
+            WS.sendTextData conn . JSON.encode =<< mkNotif msg
+          Just t -> do
+            let simplify = map $ second (fmap fst)
+                (_, tree) = Penn.toOdilTree' t (simplify sent)
+                ret = ParseResult fileId treeId Nothing tree
+            WS.sendTextData conn (JSON.encode ret)
+            let msg = T.concat ["Parsed successfully"]
+            T.putStrLn msg
+            WS.sendTextData conn . JSON.encode =<< mkNotif msg
+
 
 --       Right (ParseSentCons fileId treeId parTyp cons ws) -> do
 --         putStrLn $ "Parsing tokenized+POSed sentence with constraints: " ++ show cons

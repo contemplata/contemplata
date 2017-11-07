@@ -71,6 +71,9 @@ type Request
     -- checked on return if the user did not switch the file...)
   | ParseSentPos C.FileId C.PartId ParserTyp (ParseReq (List (M.Token, Maybe (Orth, Pos))))
     -- ^ Like `ParseSent`, but with POS tags
+  | ParseSentCons C.FileId C.PartId ParserTyp
+    (ParseReq (List (String, Int, Int), List (M.Token, Maybe (Orth, Pos))))
+    -- ^ Like `ParseSent`, but with POS tags and constraints
 --   | ParseSentCons C.FileId C.PartId ParserTyp (List (Int, Int)) (List (Orth, Pos))
 --     -- ^ Like `ParseSent`, but with constraints
 
@@ -156,6 +159,36 @@ encodeReqToVal req = case req of
                , Encode.int treeId
                , Encode.string (toString parTyp)
                , encodeParseReq encList parseReq ]
+            )
+          ]
+
+  ParseSentCons fileId treeId parTyp parseReq ->
+    let
+        encOrthPos (orth, pos) =
+            Encode.list
+                [ Encode.string orth
+                , Encode.string pos ]
+        encPair (tok, mayOrthPos) =
+            Encode.list
+                [ M.encodeToken tok
+                , Util.encodeMaybe encOrthPos mayOrthPos ]
+        encodeCons (label, p, q) =
+            Encode.list
+                [ Encode.string label
+                , Encode.int p
+                , Encode.int q ]
+        encReq (cons, rest) =
+            Encode.list
+                [ Encode.list (List.map encodeCons cons)
+                , Encode.list (List.map encPair rest) ]
+    in
+        Encode.object
+          [ ("tag", Encode.string "ParseSentCons")
+          , ("contents", Encode.list
+               [ Encode.string fileId
+               , Encode.int treeId
+               , Encode.string (toString parTyp)
+               , encodeParseReq encReq parseReq ]
             )
           ]
 

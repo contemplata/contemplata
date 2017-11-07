@@ -33,9 +33,6 @@ APP = Flask(__name__)
 PARSERS = {}
 SHOWFUNC = True  # show function tags in results
 SHOWMORPH = True  # show morphological features in results
-# POS tagged input is tokenized, and every token is of the form "word/POS"
-# POS may be empty.
-POSTAGS = re.compile('^\s*(?:\S+/\S*)(?:\s+\S+/\S*)*\s*$')
 
 @APP.route('/')
 def main():
@@ -60,7 +57,7 @@ def parse():
     est = request.args.get('est', 'rfe')
     marg = request.args.get('marg', 'nbest')
     coarse = request.args.get('coarse', 'pcfg')
-    # DONE: postag = 'postag' in request.args
+    postag = 'postag' in request.args
     # DONE: constraint = request.args.get('constraint', None)
     allderivs = 'allderivs' in request.args
     lang = request.args.get('lang', 'detect')
@@ -68,12 +65,11 @@ def parse():
     block = request.args.get('block', None)
     if not sent:
         return ''
-    nbest = None
-    if POSTAGS.match(sent):
-        senttok, tags = zip(*(a.rsplit('/', 1) for a in sent.split()))
+    sent = sent.split(' ')
+    if postag:
+        senttok, tags = sent, None
     else:
-        # senttok, tags = tokenize(sent), None
-        senttok, tags = sent.split(' '), None
+        senttok, tags = zip(*(a.rsplit('/', 1) for a in sent))
     if not senttok or not 1 <= len(senttok) <= LIMIT:
         return 'Sentence too long: %d words, max %d' % (len(senttok), LIMIT)
     if lang == 'detect':

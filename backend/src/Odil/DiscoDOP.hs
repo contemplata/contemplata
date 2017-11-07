@@ -12,6 +12,10 @@ module Odil.DiscoDOP
 , tagParseDOP
 , parseDOP'
 
+-- * New
+, newParseDOP
+, newMkRequest
+
 -- * Temp
 , parseDOP''
 , tagParseDOP'
@@ -23,6 +27,10 @@ import Control.Arrow (second)
 -- import Control.Monad.IO.Class (liftIO)
 -- import Control.Monad.Trans.Maybe (MaybeT(..))
 import qualified Control.Monad.Trans.State.Strict as ST
+
+import qualified Data.Char as Char
+import Text.Printf
+
 
 import qualified Control.Exception as Exc
 
@@ -231,6 +239,70 @@ satisfy (x, y) tree0
 
 
 ----------------------------------------------
+-- Calling DiscoDOP, the new version!
+----------------------------------------------
+
+
+-- | The address to make the GET request, based on the sentence to parse.
+newMkRequest
+  :: [(T.Text, Int, Int)]
+            -- ^ Span constraints
+  -> Bool   -- ^ Perform POS tagging?
+  -> Bool   -- ^ Retrieve all parsed trees?
+  -> T.Text -- ^ Sentence argument
+  -> String
+newMkRequest spanConstraints postag getAll sentArg =
+  base ++ T.unpack sentArg ++ otherArgs
+  where
+    base = "http://0.0.0.0:5000/parser/parse?sent="
+    otherArgs = "&est=rfe&marg=nbest&objfun=mpp&coarse=pcfg" ++
+      (if postag then "&postag=True" else "") ++
+      (if getAll then "&allderivs=True" else "") ++
+      case spanConstraints of
+        [] -> ""
+        _ -> "&require=" ++
+          (urlEncode . mkList)
+          (map mkCons spanConstraints)
+    mkCons (label, p, q) = mkList $
+      [ quote (T.unpack label)
+      , mkList $ map show [p..q] ]
+    mkList = bracket "[" "]" . L.intercalate ","
+    bracket p q x = p ++ x ++ q
+    quote x = "\"" ++ x ++ "\""
+
+
+-- | Temporary solution.
+newParseDOP
+  :: [(T.Text, Int, Int)] -- ^ Span constraints and labels
+  -> [(Orth, Pos)]
+  -> IO [Penn.Tree]
+newParseDOP cons xs0 = Exc.handle ignoreException' $ do
+  let xs = map (second unStanfordPOS) xs0
+      req = newMkRequest cons False True (sentArg xs)
+  putStrLn req
+  putStrLn "A"
+  r <- Wreq.get req
+  putStrLn "B"
+  print r
+  let strParses = fmap
+        (T.strip . T.decodeUtf8 . BL.toStrict)
+        (r ^? Wreq.responseBody)
+  print strParses
+  return . maybe [] id $ do
+    parses <- May.mapMaybe Penn.parseTree' . T.lines <$> strParses
+    return parses
+    -- return $ filter (satisfyAll $ map simplify cons) parses
+  where
+    sentArg =
+      let mkArg (orth, pos) = T.concat [orth, "/", pos]
+      in  T.intercalate "+" . map mkArg
+    simplify (_, i, j) = (i, j)
+
+
+-- [("Jean", "N"), ("et", "C"), ("Marie", "N"), ("aime", "V"),  ("la", "CL"), ("fille", "N"), ("PUNC", ".")]
+
+
+----------------------------------------------
 -- Utils
 ----------------------------------------------
 
@@ -252,6 +324,7 @@ unStanfordPOS xpos = case xpos of
   "CLO" -> "CL"
   "DET" -> "D"
   "NC" -> "N"
+  "NPP" -> "N"
   "ADJ" -> "A"
   "VINF" -> "V"
   "VPP" -> "V"
@@ -263,3 +336,15 @@ headMay :: [a] -> Maybe a
 headMay xs = case xs of
   x : _ -> Just x
   _ -> Nothing
+
+
+-- | Encode a URL component.
+urlEncode :: String -> String
+urlEncode = concatMap encode
+  where
+    encode :: Char -> String
+    encode c
+      | c == ' ' = "+"
+      | c == '"' = "%22"
+      | Char.isAlphaNum c || c `elem` ("-._~" :: String) = [c]
+      | otherwise = printf "%%%02X" c
