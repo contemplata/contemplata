@@ -2,8 +2,8 @@
 
 # Params
 
-# PARAMS=-r
-PARAMS=
+PARAMS=-r
+# PARAMS=
 
 # Args
 

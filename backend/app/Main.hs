@@ -89,7 +89,7 @@ data Command
     | StatsDB FilePath
       -- ^ Print statistics related to the DB
 
-    | FTB2Penn FilePath Bool (Maybe FilePath)
+    | FTB2Penn FilePath Bool Bool (Maybe FilePath)
       -- ^ Convert a FTB XML file to the Penn format
 
     | GetLabels FilePath
@@ -255,6 +255,10 @@ ftb2pennOptions = FTB2Penn
         ( long "remove-punctuation"
        <> short 'r'
        <> help "Remove punctuation (with the expcetion of question marks)" )
+  <*> switch
+        ( long "enrich-pos"
+       <> short 'p'
+       <> help "Enrich POS tags with selected subcategories, as in the default tagset of the Stanford parser" )
   <*> (optional . strOption)
         ( long "outdir"
        <> short 'o'
@@ -467,12 +471,12 @@ run cmd =
         Right _  -> return ()
 
     -- Misc
-    FTB2Penn filePath rmPunc outPathMay -> do
+    FTB2Penn filePath rmPunc enrichPOS outPathMay -> do
       let process =
             if rmPunc
             then mapMaybe (\(i, t) -> (,) <$> pure i <*> FTB.rmPunc t)
             else id
-      pennPairs <- map (Arr.second FTB.toPenn)
+      pennPairs <- map (Arr.second $ FTB.toPenn enrichPOS)
                 . process
                 . FTB.parseFTB
               <$> T.readFile filePath

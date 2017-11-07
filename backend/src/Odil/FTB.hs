@@ -57,12 +57,20 @@ data Node
 
 
 -- | Convert a given local tree to the Penn tree.
-toPenn :: Tree -> P.Tree
-toPenn =
+toPenn
+  :: Bool
+     -- ^ Enrich POS tags with selected subcategories, as used by the
+     -- Stanford parser
+  -> Tree
+  -> P.Tree
+toPenn enrichPOS =
   fmap label
   where
     label (Node x) = x
-    label (POS {..}) = posToStanford cat subcat mph
+    label (POS {..}) =
+      if enrichPOS
+      then posToStanford cat subcat mph
+      else cat
     label (MWE {..}) = "MW" `T.append` cat
     label (MWEPOS {..}) = baseConvert catint
     label (Orth x) = T.concatMap escape x
