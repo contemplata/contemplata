@@ -1,7 +1,15 @@
 module Edit.Command exposing
     ( Command
+
+    -- * View
     , mkMenuItem
     , mkMenuElem
+
+    -- * Command-line
+    , cmdLineList
+
+    -- * Keybord shortcuts
+    , msgFromKeyCode
 
     -- * Obsolete
     -- , MenuCmd(..)
@@ -16,9 +24,10 @@ import Html as Html
 import Html.Attributes as Atts
 import Html.Events as Events
 
-import Util as Util
-import Edit.Message as Msg
-import Edit.Message exposing (Msg(..))
+import Edit.Model as M
+import Edit.Message.Core exposing (Msg(..))
+import Util
+import Server
 
 
 ---------------------------------------------------
@@ -60,12 +69,19 @@ type alias Command =
     { keyCmd : Maybe KeyboardShortcut
     , lineCmd : Maybe LineCommand
     , menuCmd : Maybe MenuCommand
+    , help : Maybe String
+      -- ^ Just a help string
     }
 
 
 -- | The void command
 void : Command
-void = {keyCmd=Nothing, lineCmd=Nothing, menuCmd=Nothing}
+void =
+    { keyCmd=Nothing
+    , lineCmd=Nothing
+    , menuCmd=Nothing
+    , help=Nothing
+    }
 
 
 -- | Does the command have the given menu name?
@@ -87,38 +103,142 @@ globalCommands : List (Command, Msg)
 globalCommands =
     [ { void
           | keyCmd = Just {keyCode=68, char='d', withCtrl=Just False}
-          , menuCmd = Just "Delete" } => Delete
+          , lineCmd = Just "delete"
+          , menuCmd = Just "Delete"
+          , help = Just "Delete the selected nodes"
+      } => Delete
     , { void
           | keyCmd = Just {keyCode=68, char='d', withCtrl=Just True}
-          , menuCmd = Just "Delete" } => DeleteTree
+          , lineCmd = Just "deltree"
+          , menuCmd = Just "Delete"
+          , help = Just "Deleted the subtrees of the selected nodes"
+      } => DeleteTree
     , { void
-          | keyCmd = Just {keyCode=68, char='a', withCtrl=Nothing}
-          , menuCmd = Just "Add" } => Add
+          | keyCmd = Just {keyCode=65, char='a', withCtrl=Nothing}
+          , menuCmd = Just "Add"
+          , help = Just "Add (a) new node(s) over the selected node(s)"
+      } => Add
+    , { void
+          | keyCmd = Just {keyCode=83, char='s', withCtrl=Just True}
+          , lineCmd = Just "save"
+          , menuCmd = Just "Save" } => SaveFile
+    , { void
+          | lineCmd = Just "restart" } => ParseRaw False
+    , { void
+          | lineCmd = Just "preprocess"
+          , menuCmd = Just "Preprocess" } => ParseRaw True
+    , { void
+          | keyCmd = Just {keyCode=80, char='p', withCtrl=Just False}
+          , lineCmd = Just "parse"
+          , menuCmd = Just "Parse" } => ParseSent Server.Stanford
+    , { void
+          | keyCmd = Just {keyCode=80, char='p', withCtrl=Just True}
+          , lineCmd = Just "parsepos"
+          , menuCmd = Just "Parse" } => ParseSentPos Server.Stanford
+    , { void
+          | lineCmd = Just "dopparse" } => ParseSent Server.DiscoDOP
+    , { void
+          | lineCmd = Just "deepen" } => ApplyRules
+    , { void
+          | lineCmd = Just "splittree"
+          , menuCmd = Just "Split tree"
+          , help = Just "Split the current tree into several sentences at the selected terminal nodes"
+      } => SplitTree
+    , { void
+          | lineCmd = Just "splitword"
+          , menuCmd = Just "Split word"
+          , help = Just "Split in two the token corresponding to the selected terminal"
+      } => SplitBegin
+    , { void
+          | lineCmd = Just "connect" } => Connect
+    , { void
+          | lineCmd = Just "join" } => Join
+    , { void
+          | lineCmd = Just "concat"
+          , menuCmd = Just "Concatenate"
+          , help = Just "Concatenate the tokens corresponding to the selected terminals"
+      } => ConcatWords
+    , { void
+          | lineCmd = Just "dummify"
+          , menuCmd = Just "Dummify"
+          , help = Just "Destroy the entire tree"
+      } => Dummy
     ]
+
+
+---------------------------------------------------
+-- Keyboard shortcut-related utilities
+---------------------------------------------------
+
+
+-- | What is the message for the given key?
+msgFromKeyCode
+    : Bool -- ^ Is CTLR down?
+    -> Int -- ^ The code
+    -> Maybe Msg
+msgFromKeyCode isCtrl code =
+    let
+        -- NOTE: we assume that at most one relevant element should be retrieved
+        isRelevant cmd =
+            case cmd.keyCmd of
+                Nothing -> False
+                Just key ->
+                    key.keyCode == code &&
+                        (
+                         key.withCtrl == Nothing ||
+                         key.withCtrl == Just isCtrl
+                        )
+        relevant = List.filter (isRelevant << Tuple.first) globalCommands
+    in
+        case relevant  of
+            (cmd, msg) :: _ -> Just msg
+            _ -> Nothing
+
+
+---------------------------------------------------
+-- Command-line-related utilities
+---------------------------------------------------
+
+
+-- | The list of command-line commands and the corresponding messages.
+cmdLineList : List (M.Command, Msg)
+cmdLineList =
+    let
+        process (cmd, msg) =
+            case cmd.lineCmd of
+                Nothing -> Nothing
+                Just ln -> Just (ln, msg)
+    in
+        Util.catMaybes
+            << List.map process
+            <| globalCommands
+
+
+---------------------------------------------------
+-- View-related utilities
+---------------------------------------------------
 
 
 -- | Create a menu element for a given `Msg`.
 mkMenuElem
     : Bool
       -- ^ Is CTRL pressed?
-    -> String
-      -- ^ The name of the command
-    -> Maybe String
-      -- ^ The corresponding hint
+    -> Msg
+      -- ^ The message
     -> Maybe (Html.Html Msg)
       -- ^ Doesn't succeed if there is no menu command for the given message
-mkMenuElem isCtrl menuName hint =
+mkMenuElem isCtrl menuMsg =
     let
         -- NOTE: we assume that at most one relevant element should be retrieved
-        isRelevant cmd =
-            hasMenuName menuName cmd &&
+        isRelevant (cmd, msg) =
+            msg == menuMsg &&
             case cmd.keyCmd of
                 Nothing -> True
                 Just key -> key.withCtrl == Nothing || key.withCtrl == Just isCtrl
-        relevant = List.filter (isRelevant << Tuple.first) globalCommands
+        relevant = List.filter isRelevant globalCommands
     in
         case relevant  of
-            [(cmd, msg)] -> Maybe.map (mkMenuItem msg hint) <|
+            [(cmd, msg)] -> Maybe.map (mkMenuItem msg cmd.help) <|
                 case cmd.menuCmd of
                     Nothing -> Nothing
                     Just rawName -> Just <|

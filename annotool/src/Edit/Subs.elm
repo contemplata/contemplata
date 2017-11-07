@@ -6,7 +6,7 @@ import Mouse exposing (Position)
 -- import WebSocket
 
 -- import Config as Cfg
-import Edit.Message exposing (Msg(..))
+import Edit.Message.Core exposing (Msg(..))
 import Edit.Model
 
 

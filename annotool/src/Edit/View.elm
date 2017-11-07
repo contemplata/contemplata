@@ -25,7 +25,7 @@ import Edit.Model as M
 import Edit.Core as C
 import Edit.Command as Cmd
 import Edit.Message as Msg
-import Edit.Message exposing (Msg(..))
+import Edit.Message.Core exposing (Msg(..))
 import Edit.Popup as Popup
 import Server
 
@@ -193,7 +193,12 @@ viewTreeId win model =
     txt0 = toString (M.treePos win model)
       ++ "/"
       ++ toString (M.treeNum model)
-    txt = txt0 ++ " (" ++ model.fileId ++ ")"
+    txt1 = txt0 ++ " (" ++ model.fileId ++ ")"
+    txt  = txt1 ++
+        if model.ctrl
+        then " CTRL"
+        else ""
+
 --     txt = txt0 ++ case win of
 --       M.Top -> " (" ++ toString model.dim.height ++ ")"
 --       M.Bot -> " (" ++ toString model.dim.width ++ ")"
@@ -317,7 +322,7 @@ viewPopupSplitGen msgSize cmdSize spl commandList defaultCommand =
             [ Html.text (toString val) ]
         setMsg str =
             let x = String.toInt str |> Result.toMaybe |> Maybe.withDefault 0
-            in  Msg.SplitChange x
+            in  SplitChange x
         splitButton val beg end =
             Html.select
                 [ Events.on "change" (Decode.map setMsg Events.targetValue)
@@ -607,7 +612,7 @@ viewMenu model = -- fileName =
 --           )
 --         [ txt ]
 
-    isCtrl = if model.ctrl then "CTRL" else ""
+    -- isCtrl = if model.ctrl then "CTRL" else ""
     annoLevel = toString model.annoLevel
 
 --     mkMenuItem = Cmd.mkMenuCommand model.ctrl
@@ -638,11 +643,20 @@ viewMenu model = -- fileName =
 --       , (emphasize 0 "Timex", MkTimex, Just "Mark (or unmark) the selected node as timex") ]
 
     mkMenuElem = Cmd.mkMenuElem model.ctrl
+    segmentationCommands = Util.catMaybes
+        [ mkMenuElem SplitTree
+        , mkMenuElem SplitBegin
+        , mkMenuElem ConcatWords
+        ]
     syntaxCommands = Util.catMaybes
-        [ mkMenuElem "Delete"
-              <| Just "Delete the selected nodes and, with CTRL, their subtrees"
-        , mkMenuElem "Add"
-              <| Just "Add (a) new node(s) over the selected node(s)"
+        [ mkMenuElem Delete
+        , mkMenuElem DeleteTree
+        , mkMenuElem Add
+        ]
+    temporalCommands = Util.catMaybes
+        [ mkMenuElem MkEvent
+        , mkMenuElem MkSignal
+        , mkMenuElem MkTimex
         ]
 
   in
@@ -668,15 +682,12 @@ viewMenu model = -- fileName =
               (Just "Change the annotation level commands")
               (plainText annoLevel)
         ] ++
-        ( if model.annoLevel == M.Syntax
-          then syntaxCommands
-          else [] ) ++
---         ( if model.annoLevel == M.Temporal
---           then temporalCommands
---           else if model.annoLevel == M.Segmentation
---                then segmentationCommands
---                else syntaxCommands ) ++
-        [ Cmd.mkMenuItem Dummy (Just "Is CTRL down") (plainText isCtrl) ]
+        ( if model.annoLevel == M.Temporal
+          then temporalCommands
+          else if model.annoLevel == M.Segmentation
+               then segmentationCommands
+               else syntaxCommands )
+        -- [ Cmd.mkMenuItem Dummy (Just "Is CTRL down") (plainText isCtrl) ]
 
 
 ---------------------------------------------------
@@ -1997,16 +2008,16 @@ mainKeyDown ctrl =
       33 -> Previous
       34 -> Next
 
-      -- "d"
-      68 ->
-        if ctrl
-        then DeleteTree
-        else Delete
-      -- -- "Del"
-      -- 46 -> Delete
+--       -- "d"
+--       68 ->
+--         if ctrl
+--         then DeleteTree
+--         else Delete
+--       -- -- "Del"
+--       -- 46 -> Delete
 
-      -- "a"
-      65 -> Add
+--       -- "a"
+--       65 -> Add
 
       -- "c"
       67 -> ShowContext
@@ -2046,8 +2057,8 @@ mainKeyDown ctrl =
       -- "c"
       -- 67 -> Connect
 
-      -- "p"
-      80 -> ParseSent Server.Stanford
+--       -- "p"
+--       80 -> ParseSent Server.Stanford
 
       -- "r"
       82 -> Attach
@@ -2058,7 +2069,7 @@ mainKeyDown ctrl =
         then Undo
         else Redo
 
-      -- ";" ":"
+      -- "space"
       32 -> CommandStart
 
 --       -- "enter"
@@ -2067,7 +2078,10 @@ mainKeyDown ctrl =
       -- "escape"
       27 -> Popup Popup.Files Nothing
 
-      _  -> Msg.dummy
+      _  ->
+          case Cmd.msgFromKeyCode ctrl code of
+              Nothing -> Msg.dummy
+              Just msg -> msg
   in
     onKeyDown tag
 
