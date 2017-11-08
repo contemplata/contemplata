@@ -2,7 +2,7 @@
 
 # Params
 
-PARAMS=-r
+PARAMS="-r -p --root=ROOT"
 # PARAMS=
 
 # Args
