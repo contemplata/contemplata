@@ -130,7 +130,7 @@ nodeLabelSet = S.fromList
   , "N"
   , "NC"
   , "NP"
-  , "NP"
+  , "NPP"
   , "P"
   , "PP"
   , "PREF"
@@ -154,7 +154,7 @@ nodeLabelSet = S.fromList
   , "VPpart"
   , "VS"
   -- below, custom additional labels
-  , "PARA_COORD" ]
+  , "PARA" ]
 
 
 type NodeAttr
