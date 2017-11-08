@@ -427,3 +427,4 @@ joinSentences
       R.Node
         { R.rootLabel="ROOT"
         , R.subForest=ts } -> ts
+      t -> [t]

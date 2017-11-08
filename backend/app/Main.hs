@@ -89,7 +89,7 @@ data Command
     | StatsDB FilePath
       -- ^ Print statistics related to the DB
 
-    | FTB2Penn FilePath Bool Bool (Maybe FilePath)
+    | FTB2Penn FilePath Bool Bool (Maybe String) (Maybe FilePath)
       -- ^ Convert a FTB XML file to the Penn format
 
     | GetLabels FilePath
@@ -259,6 +259,9 @@ ftb2pennOptions = FTB2Penn
         ( long "enrich-pos"
        <> short 'p'
        <> help "Enrich POS tags with selected subcategories, as in the default tagset of the Stanford parser" )
+  <*> (optional . strOption)
+        ( long "root"
+       <> help "Root label" )
   <*> (optional . strOption)
         ( long "outdir"
        <> short 'o'
@@ -471,13 +474,17 @@ run cmd =
         Right _  -> return ()
 
     -- Misc
-    FTB2Penn filePath rmPunc enrichPOS outPathMay -> do
-      let process =
+    FTB2Penn filePath rmPunc enrichPOS rootLabel outPathMay -> do
+      let prepare =
             if rmPunc
             then mapMaybe (\(i, t) -> (,) <$> pure i <*> FTB.rmPunc t)
             else id
-      pennPairs <- map (Arr.second $ FTB.toPenn enrichPOS)
-                . process
+          addRoot = case rootLabel of
+            Nothing -> id
+            Just x  -> R.Node (T.pack x) . pure
+          toPenn = addRoot . FTB.toPenn enrichPOS
+      pennPairs <- map (Arr.second toPenn)
+                . prepare
                 . FTB.parseFTB
               <$> T.readFile filePath
       case outPathMay of

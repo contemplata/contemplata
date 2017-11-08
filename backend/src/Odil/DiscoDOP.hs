@@ -319,16 +319,17 @@ ignoreException' _ = return []
 
 -- | Simplify the POS tag from the current Stanford tagset to the standard one.
 unStanfordPOS :: Pos -> Pos
-unStanfordPOS xpos = case xpos of
-  "CLS" -> "CL"
-  "CLO" -> "CL"
-  "DET" -> "D"
-  "NC" -> "N"
-  "NPP" -> "N"
-  "ADJ" -> "A"
-  "VINF" -> "V"
-  "VPP" -> "V"
-  _ -> xpos
+unStanfordPOS = id
+-- unStanfordPOS xpos = case xpos of
+--   "CLS" -> "CL"
+--   "CLO" -> "CL"
+--   "DET" -> "D"
+--   "NC" -> "N"
+--   "NPP" -> "N"
+--   "ADJ" -> "A"
+--   "VINF" -> "V"
+--   "VPP" -> "V"
+--   _ -> xpos
 
 
 -- | Return head if exists, or Nothing.
