@@ -248,10 +248,11 @@ eventClassStr =
   , ("Occurrence", Occurrence)
   , ("Perception", Perception)
   , ("Reporting", Reporting)
-  , ("State", State) ]
-  -- , ("Cause", Cause)
-  -- , ("EventContainer", EventContainer)
+  , ("State", State)
+  , ("Cause", Cause)
+  , ("EventContainer", EventContainer)
   -- , ("Modal", Modal)
+  ]
 
 
 valueFromStr : List (String, a) -> String -> a
