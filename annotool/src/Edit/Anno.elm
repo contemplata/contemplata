@@ -154,7 +154,8 @@ nodeLabelSet = S.fromList
   , "VPpart"
   , "VS"
   -- below, custom additional labels
-  , "PARA" ]
+  , "PARA"
+  , "$" ]
 
 
 type NodeAttr
