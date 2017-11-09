@@ -518,7 +518,7 @@ simpleTree sent =
 
 -- | Parse the given list of tokens. The `snd` elements of the input lists are
 -- `Nothing` if the corresponding tokens should be ignored. Note that the
--- function can change the input tokenization (although if it is supposed to
+-- function can change the input tokenization (although it is supposed to
 -- guarantee that the resulting tokenization amounts to the same sentence).
 parseRetokFR
   :: [(Token, Maybe T.Text)]

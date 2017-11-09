@@ -313,20 +313,24 @@ splitTok
   -> Odil.Token
      -- ^ The token to split and the corresponding text
   -> (Odil.Token, Odil.Token)
-splitTok =
+splitTok pref0 tok0 =
 
-  \x -> finalize . go x
+  finalize $ go pref0 tok0
 
   where
 
     finalize (left, right) =
       let left' = stripTok left
+            {Odil.afterSpace = Odil.afterSpace tok0}
           right' = stripTok right
+            {Odil.afterSpace = " " `T.isPrefixOf` Odil.orth right}
       in  (left', right')
 
     go pref tok
       | T.null pref =
-          let emptyTok = Odil.Token "" False
+          let emptyTok = Odil.Token "" True
+              -- JW (9/11): afterSpace = False or True,
+              -- it should make no difference
           in  (emptyTok, tok)
       | T.head pref == tokHead =
           let (left, right) = go (T.tail pref) (orthTail tok)
@@ -353,10 +357,11 @@ orthCons c tok = tok { Odil.orth = T.cons c (Odil.orth tok) }
 stripTok :: Odil.Token -> Odil.Token
 stripTok tok = tok
   { Odil.orth = T.strip (Odil.orth tok)
-  , Odil.afterSpace =
-      if " " `T.isSuffixOf` Odil.orth tok
-      then True
-      else False
+--   , Odil.afterSpace =
+--       -- JW (9/11): isSuffixOf -> isPrefixOf
+--       if " " `T.isPrefixOf` Odil.orth tok
+--       then True
+--       else False
   }
 
 
