@@ -37,7 +37,7 @@ apply : Rule -> R.Tree M.Node -> (R.Tree M.Node, S.Set C.NodeId)
 apply rule (R.Node x subTrees) =
     let
         (newSubTrees, newIdList) =
-             List.unzip <| List.map (applyOnce rule) subTrees
+             List.unzip <| List.map (apply rule) subTrees
         newIds1 = Util.unions newIdList
         (newTree, newIds2) = applyOnce rule (R.Node x newSubTrees)
     in
@@ -59,7 +59,7 @@ merge rules ctx = case rules of
 
 
 type Pattern
-    = Zero
+    = Epsilon
       -- ^ Or `True`
     | Pred (R.Tree M.Node -> Bool)
       -- ^ Tree predicate
@@ -77,12 +77,17 @@ seq x y = Seq x <| Lazy.lazy <| always y
 -- | One or more patterns.  Greedy.
 plus : Pattern -> Pattern
 plus pat =
-    Seq pat <| Lazy.lazy (\() -> Or (star pat) Zero)
+    Seq pat <| Lazy.lazy (\() -> Or (star pat) Epsilon)
 
 
 -- | Zero or more patterns.  Greedy.
 star : Pattern -> Pattern
-star pat = Or (plus pat) Zero
+star pat = Or (plus pat) Epsilon
+
+
+-- | Optional pattern
+optional : Pattern -> Pattern
+optional pat = Or pat Epsilon
 
 
 -- | Verify the root label.
@@ -98,6 +103,11 @@ rootSat pred =
             pred <| Lens.get M.nodeVal (R.label tree)
 
 
+-- | Match any given single tree.
+any : Pattern
+any = rootSat <| always True
+
+
 -- | Match the given list of labels against the prefix of the given list of
 -- trees.
 match
@@ -106,7 +116,7 @@ match
     -> Maybe (R.Forest M.Node, R.Forest M.Node)
 match pat trees =
     case (pat, trees) of
-        (Zero, _) -> Just ([], trees)
+        (Epsilon, _) -> Just ([], trees)
         (Pred p, t :: ts) ->
             if p t
             then Just ([t], ts)
@@ -152,15 +162,15 @@ compile cxt tree =
         Util.guard (cxt.parent <| Lens.get M.nodeVal <| R.label tree)
            |> Maybe.andThen (\_ -> match cxt.left <| R.subTrees tree)
            |> Maybe.andThen (\(left, leftRest) ->
---                                  let
---                                      x = Debug.log "left" left
---                                      y = Debug.log "leftRest" leftRest
---                                  in
+                                 let
+                                     x = Debug.log "left" left
+                                     y = Debug.log "leftRest" leftRest
+                                 in
                                      match cxt.middle leftRest
            |> Maybe.andThen (\(middle, middleRest) ->
---                                  let
---                                      x = Debug.log "middle" middle
---                                  in
+                                 let
+                                     x = Debug.log "middle" middle
+                                 in
                                      match cxt.right middleRest
            |> Maybe.andThen (\(_, _) ->
                 let
@@ -185,33 +195,31 @@ compile cxt tree =
 -- | The list of flattening rules.
 allRules : List Rule
 allRules =
-      [ compile
-            { parent = \x ->
-                  List.member x ["SENT", "VPinf", "Srel"]
-            , left = star <| rootSat <| \label -> label /= "VN"
-            -- , left = star <| rootSat <| always True
-            , middle = seq (root "VN") (root "VPinf")
-            , right = star <| rootSat <| always True
-            , result = "VP" }
-      ]
-
---     [ mkRule "VP" (\x ->
---         List.member x.parent ["SENT", "VPinf", "Srel"] &&
---         x.left == "VN" &&
---         x.right == "VPinf")
---     , mkRule "VP" (\x ->
---         List.member x.parent ["SENT", "Ssub", "COORD", "Sint"] &&
---         x.left == "VN" &&
---         x.right == "NP")
---     , mkRule "VP" (\x ->
---         List.member x.parent ["VPinf", "Ssub"] &&
---         x.left == "VN" &&
---         x.right == "PP")
---     , mkRule "VP" (\x ->
---         List.member x.parent ["SENT"] &&
---         x.left == "VN" &&
---         x.right == "ADV")
---     ]
+    [ compile
+          { parent = \x ->
+                List.member x ["Ssub"]
+          , left = seq
+              -- (star <| rootSat <| \label -> label /= "CS")
+              (optional <| root "PUNC")
+              (root "CS")
+          , middle = star any
+          , right = Epsilon
+          , result = "Sint" }
+--     , compile
+--           { parent = \x ->
+--                 List.member x ["SENT", "VPinf", "Srel"]
+--           , left = star <| rootSat <| \label -> label /= "VN"
+--           , middle = seq (root "VN") (root "VPinf")
+--           , right = Epsilon -- star <| rootSat <| always True
+--           , result = "VP" }
+--     , compile
+--           { parent = \x ->
+--                 List.member x ["VPinf", "Ssub"]
+--           , left = Epsilon
+--           , middle = seq (root "VN") (root "NP")
+--           , right = Epsilon
+--           , result = "VP" }
+    ]
 
 
 -- | "The" rule is the list of all rules compiled into one.
