@@ -2,7 +2,7 @@ module Edit.Model exposing
   (
   -- Data types:
     TreeMap, Sent, Token, File, Turn
-  , Node(..), NodeTyp(..), Link, Command
+  , Node(..), NodeAnnoTyp(..), Link, Command
   , InternalNode, LeafNode
   , LinkData
   , isNode, isLeaf
@@ -23,6 +23,7 @@ module Edit.Model exposing
   , log
   -- Nodes:
   , getNode, setNode, updateNode
+  , getNodeTyp, NodeTyp(..)
   -- TODO (think of the name):
   , concatWords, dumify, isDummyTree
   , splitTree, join, getPart
@@ -178,7 +179,7 @@ type alias Link = (Addr, Addr)
 type alias InternalNode =
     { nodeId : NodeId
     , nodeVal : String
-    , nodeTyp : Maybe NodeTyp
+    , nodeTyp : Maybe NodeAnnoTyp
     , nodeComment : String }
 
 
@@ -200,7 +201,7 @@ type Node
   | Leaf LeafNode
 
 
-type NodeTyp
+type NodeAnnoTyp
     = NodeEvent Anno.Event
     | NodeSignal Anno.Signal
     | NodeTimex Anno.Timex
@@ -1308,10 +1309,12 @@ selectNodeAux focus i model =
 
 
 ---------------------------------------------------
--- Node modification
+-- Nodes
 ---------------------------------------------------
 
 
+-- | TODO: this function is too high level, it should be probably discarded
+-- (while the actual `getNode_` should take its place).
 getNode : NodeId -> Focus -> Model -> Node
 getNode id focus model =
   let
@@ -1334,6 +1337,69 @@ getNode_ id tree =
       hd :: tl -> Util.mappend (search hd) (searchF tl)
   in
     search tree
+
+
+---------------------------------------------------
+-- Node Type
+---------------------------------------------------
+
+
+-- | A type of a node
+type NodeTyp
+    = Terminal
+    | Phrasal
+    | PosNode
+      -- ^ Part-of-speech level node
+    | Internal
+      -- ^ An internal node for which the program is not able to tell whether
+      -- it's POS or phrasal
+
+
+-- | Determine the type of the node, return `Nothing` if the argument node ID is
+-- invalid.
+getNodeTyp : NodeId -> R.Tree Node -> Maybe NodeTyp
+getNodeTyp id tree =
+  let
+    search (R.Node x ts) = if id == Lens.get nodeId x
+      then Just (getRootTyp <| R.Node x ts)
+      else searchF ts
+    searchF ts = case ts of
+      [] -> Nothing
+      hd :: tl -> Util.mappend (search hd) (searchF tl)
+  in
+    search tree
+
+
+-- | Get the type of the root of the given subtrees.
+getRootTyp : R.Tree Node -> NodeTyp
+getRootTyp tree =
+    case tree of
+        R.Node (Leaf _) _ -> Terminal
+        R.Node _ ts ->
+            let
+                minD = forestDepth L.minimum ts
+                maxD = forestDepth L.maximum ts
+            in
+                if minD == 1 && maxD == 1
+                then PosNode
+                else if minD == 1
+                     then Internal
+                     else Phrasal
+
+
+-- | (Minimum / maximum, depending on the argument function) depth of the given tree.
+treeDepth : (List Int -> Maybe Int) -> R.Tree a -> Int
+treeDepth minMax = (\x -> x+1) << forestDepth minMax << R.subTrees
+
+
+-- | (Minimum / maximum) depth of the given forest.
+forestDepth : (List Int -> Maybe Int) -> R.Forest a -> Int
+forestDepth minMax = Maybe.withDefault 0 << minMax << L.map (treeDepth minMax)
+
+
+---------------------------------------------------
+-- Node modification
+---------------------------------------------------
 
 
 updateNode : NodeId -> Focus -> (Node -> Node) -> Model -> Model
@@ -2903,7 +2969,7 @@ leafPos =
     Lens.create get update
 
 
-nodeTyp : Lens.Focus Node (Maybe NodeTyp)
+nodeTyp : Lens.Focus Node (Maybe NodeAnnoTyp)
 nodeTyp =
   let
     getErr = "nodeTyp.lens: cannot get the nodeTyp"
@@ -2930,7 +2996,7 @@ nodeComment =
     Lens.create get update
 
 
-nodeEvent : Lens.Focus NodeTyp Anno.Event
+nodeEvent : Lens.Focus NodeAnnoTyp Anno.Event
 nodeEvent =
   let
     getErr = "nodeEvent.lens: cannot get"
@@ -2944,7 +3010,7 @@ nodeEvent =
     Lens.create get update
 
 
-nodeSignal : Lens.Focus NodeTyp Anno.Signal
+nodeSignal : Lens.Focus NodeAnnoTyp Anno.Signal
 nodeSignal =
   let
     getErr = "nodeSignal.lens: cannot get"
@@ -2958,7 +3024,7 @@ nodeSignal =
     Lens.create get update
 
 
-nodeTimex : Lens.Focus NodeTyp Anno.Timex
+nodeTimex : Lens.Focus NodeAnnoTyp Anno.Timex
 nodeTimex =
   let
     getErr = "nodeTimex.lens: cannot get"
@@ -3387,23 +3453,23 @@ leafDecoder =
     (Decode.field "leafComment" Decode.string)
 
 
-nodeTypDecoder : Decode.Decoder NodeTyp
+nodeTypDecoder : Decode.Decoder NodeAnnoTyp
 nodeTypDecoder = Decode.oneOf [nodeEventDecoder, nodeSignalDecoder, nodeTimexDecoder]
 
 
-nodeEventDecoder : Decode.Decoder NodeTyp
+nodeEventDecoder : Decode.Decoder NodeAnnoTyp
 nodeEventDecoder =
   Decode.map (\ev -> NodeEvent ev)
     (Decode.field "contents" Anno.eventDecoder)
 
 
-nodeSignalDecoder : Decode.Decoder NodeTyp
+nodeSignalDecoder : Decode.Decoder NodeAnnoTyp
 nodeSignalDecoder =
   Decode.map (\si -> NodeSignal si)
     (Decode.field "contents" Anno.signalDecoder)
 
 
-nodeTimexDecoder : Decode.Decoder NodeTyp
+nodeTimexDecoder : Decode.Decoder NodeAnnoTyp
 nodeTimexDecoder =
   Decode.map (\ti -> NodeTimex ti)
     (Decode.field "contents" Anno.timexDecoder)
@@ -3564,13 +3630,13 @@ encodeNode node = case node of
     [ ("tag", Encode.string "Node")
     , ("nodeId", Encode.int r.nodeId)
     , ("nodeVal", Encode.string r.nodeVal)
-    , ("nodeTyp", Util.encodeMaybe encodeNodeTyp r.nodeTyp)
+    , ("nodeTyp", Util.encodeMaybe encodeNodeAnnoTyp r.nodeTyp)
     , ("nodeComment", Encode.string r.nodeComment)
     ]
 
 
-encodeNodeTyp : NodeTyp -> Encode.Value
-encodeNodeTyp nodeTyp = case nodeTyp of
+encodeNodeAnnoTyp : NodeAnnoTyp -> Encode.Value
+encodeNodeAnnoTyp nodeTyp = case nodeTyp of
   NodeEvent ev -> Encode.object
     [ ("tag", Encode.string "NodeEvent")
     , ("contents", Anno.encodeEvent ev) ]

@@ -5,6 +5,8 @@ module Edit.Anno exposing
   (
   -- * Nodes (in general)
     nodeLabelSet
+  , phrasalLabelSet
+  , preTerminalLabelSet
   , NodeAttr (..)
 
   -- * Events
@@ -99,25 +101,14 @@ import Util
 
 
 nodeLabelSet : S.Set String
-nodeLabelSet = S.fromList
-  [ "ADJ"
-  , "ADJWH"
-  , "ADV"
-  , "ADVWH"
-  , "AP"
+nodeLabelSet = S.union phrasalLabelSet preTerminalLabelSet
+
+
+phrasalLabelSet : S.Set String
+phrasalLabelSet = S.fromList
+  [ "AP"
   , "AdP"
-  , "C"
-  , "CC"
-  , "CL"
-  , "CLO"
-  , "CLR"
-  , "CLS"
   , "COORD"
-  , "CS"
-  , "DET"
-  , "DETWH"
-  , "ET"
-  , "I"
   , "MWA"
   , "MWADV"
   , "MWC"
@@ -127,35 +118,66 @@ nodeLabelSet = S.fromList
   , "MWP"
   , "MWPRO"
   , "MWV"
-  , "N"
-  , "NC"
   , "NP"
-  , "NPP"
-  , "P"
   , "PP"
-  , "PREF"
-  , "PRO"
-  , "PROREL"
-  , "PROWH"
-  , "PUNC"
   , "ROOT"
   , "SENT"
   , "Sint"
   , "Srel"
   , "Ssub"
-  , "V"
-  , "VIMP"
-  , "VINF"
   , "VN"
   , "VP"
-  , "VPP"
-  , "VPR"
   , "VPinf"
   , "VPpart"
-  , "VS"
   -- below, custom additional labels
   , "PARA"
   , "$" ]
+
+
+preTerminalLabelSet : S.Set String
+preTerminalLabelSet = S.fromList
+  [ "ADJ"
+  , "ADJWH"
+  , "ADV"
+  , "ADVWH"
+  , "C"
+  , "CC"
+  , "CL"
+  , "CLO"
+  , "CLR"
+  , "CLS"
+  , "CS"
+  , "DET"
+  , "DETWH"
+  , "ET"
+  , "I"
+--   , "MWA"
+--   , "MWADV"
+--   , "MWC"
+--   , "MWCL"
+--   , "MWD"
+--   , "MWN"
+--   , "MWP"
+--   , "MWPRO"
+--   , "MWV"
+  , "N"
+  , "NC"
+  , "NPP"
+  , "P"
+  , "PREF"
+  , "PRO"
+  , "PROREL"
+  , "PROWH"
+  , "PUNC"
+  , "V"
+  , "VIMP"
+  , "VINF"
+  , "VPP"
+  , "VPR"
+  , "VS" ]
+  -- below, custom additional labels
+  -- , "PARA"
+  -- , "$" ]
 
 
 type NodeAttr

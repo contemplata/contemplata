@@ -1039,15 +1039,25 @@ viewSideEditLeaf model focus nodeId node =
 
 -- | The view of the side edit window -- the label.
 viewSideEditInternal
-    : M.Model -> M.Focus -> C.NodeId -> M.InternalNode -> List (Html.Html Msg)
-viewSideEditInternal model focus nodeId node =
+    : M.Model
+    -> M.Focus
+    -> C.NodeId
+    -> M.NodeTyp
+    -> M.InternalNode
+    -> List (Html.Html Msg)
+viewSideEditInternal model focus nodeId nodeTyp node =
   let
 
+    labelSet = if nodeTyp == M.PosNode
+               then Anno.preTerminalLabelSet
+               else if nodeTyp == M.Phrasal
+                    then Anno.phrasalLabelSet
+                    else Anno.nodeLabelSet
     inpLabel = inputGenericConstrainedGen
                (SetNodeAttr nodeId focus)
                "Label"
                node.nodeVal
-               Anno.nodeLabelSet
+               labelSet
                Anno.NodeLabelAttr
                (Just <| case focus of
                             M.Top -> Cfg.editLabelName True
@@ -1193,7 +1203,13 @@ viewSideEdit visible win model =
       Nothing -> []
       Just nodeId -> case M.getNode nodeId win model of
         M.Leaf r -> [viewSideEditLabel win model]
-        M.Node r -> viewSideEditInternal model win nodeId r
+        M.Node r ->
+            let
+                partId = M.getReprId (M.selectWin win model).tree model
+                tree = M.getTree partId model
+                nodeTyp = Maybe.withDefault M.Internal <| M.getNodeTyp nodeId tree
+            in
+                viewSideEditInternal model win nodeId nodeTyp r
 
     divChildren = case selected of
       Nothing -> []
