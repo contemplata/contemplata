@@ -22,7 +22,7 @@ import Control.Monad (guard)
 import Control.Applicative ((<|>))
 import qualified Control.Arrow as Arr
 
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, isNothing)
 import qualified Data.Text as T
 import qualified Data.List as L
 import qualified Data.Char as C
@@ -157,6 +157,18 @@ data Expr = Expr
 -- type Expr = String
 
 
+-- -- | Remove the expression from the list of tokens.
+-- -- (`_removeExpr` as long as the result differs from the input).
+-- removeExpr
+--   :: Expr
+--   -> [(Odil.Token, Maybe T.Text)]
+--   -> [(Odil.Token, Maybe T.Text)]
+-- removeExpr expr toks =
+--   let toks' = _removeExpr expr toks
+--   in  if toks == toks'
+--       then toks
+--       else removeExpr expr toks'
+
 
 -- | Remove the expression from the list of tokens.
 removeExpr
@@ -165,7 +177,9 @@ removeExpr
   -> [(Odil.Token, Maybe T.Text)]
 removeExpr Expr{..} =
   if onBeg
-  then removeOne exprStr
+  then uncurry (++)
+    . Arr.second (removeOne exprStr)
+    . L.span (isNothing . snd)
   else removeAll exprStr
 
 
@@ -176,9 +190,10 @@ removeOne
   -> [(Odil.Token, Maybe T.Text)]
 removeOne str0 lst =
 
-  let (xs, ys) = spanAcc exprElem str0 lst
+  let (strRest, (xs, ys)) = spanAcc exprElem str0 lst
   in  case xs of
         [] -> ys
+        _ | not (T.null strRest) -> xs ++ ys
         _  -> remExpr xs ++ ys
 
   where
@@ -197,6 +212,8 @@ removeOne str0 lst =
 
 
 -- | Remove the expression starting from all positions in the list of tokens.
+-- TODO: It seems to work incorrectly when to expressions to remove are
+-- adjacent!
 removeAll
   :: T.Text
   -> [(Odil.Token, Maybe T.Text)]
@@ -234,13 +251,31 @@ readConfig path = do
     comment _ = False
 
 
--- | Compile the configuration into a removal function (one-step).
+-- | Compile the configuration into a removal function (`step` as long as the
+-- result differs from the input).
 compile
   :: ExtConfig
   -> [(Odil.Token, Maybe T.Text)]
   -> [(Odil.Token, Maybe T.Text)]
-compile [] = id
-compile (x:xs) = compile xs . removeExpr x
+compile cfg =
+  let
+    once = step cfg
+    go toks =
+      let toks' = once toks
+      in  if toks == toks'
+          then toks
+          else go toks'
+  in
+    go
+
+
+-- | Compile the configuration into a removal function (one-step).
+step
+  :: ExtConfig
+  -> [(Odil.Token, Maybe T.Text)]
+  -> [(Odil.Token, Maybe T.Text)]
+step [] = id
+step (x:xs) = step xs . removeExpr x
 
 
 ---------------------------------------------------
@@ -294,18 +329,18 @@ remove p =
 
 
 -- | A bit list `List.span` but with accumulator.
-spanAcc :: (acc -> a -> (acc, Bool)) -> acc -> [a] -> ([a], [a])
+spanAcc :: (acc -> a -> (acc, Bool)) -> acc -> [a] -> (acc, ([a], [a]))
 spanAcc f =
   go
   where
     go acc xs = case xs of
-      [] -> ([], [])
+      [] -> (acc, ([], []))
       hd : tl ->
         let (newAcc, sat) = f acc hd
         in
           if sat
-          then Arr.first (hd:) (go newAcc tl)
-          else ([], xs)
+          then Arr.second (Arr.first (hd:)) (go newAcc tl)
+          else (acc, ([], xs))
 
 
 -- | Apply the function on tail.

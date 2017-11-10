@@ -40,4 +40,5 @@ ah pardon
 # ^ -- debut de la phrase
 ^pardon
 ^et
+# ^puis
 ^donc
