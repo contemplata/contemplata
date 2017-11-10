@@ -1,0 +1,44 @@
+# Nouveautés
+
+## Syntax
+
+* Fusion / segmentation des tours des paroles
+* Tokenization explicite
+* Authorization / authentification
+* Analyse guidé par contraintes
+* Affichage temporel avec chevauchements (2+ colonnes)
+
+## Temporalité
+
+* Commande "deepen" mis à jour
+
+### À faire
+
+* L'adjudication surtout!
+
+### À ne pas faire
+
+* Problèmes de connections...
+
+
+# CRS
+
+## Denys
+
+Outil d'annotation?  Affichage d'annotation au plusiers niveaux?
+
+Author: Brigitte Bigi
+Logiciel: SPPAS (http://www.sppas.org/)
+
+Flora: bon pour des monologes, mais pas pour des problèmes de cheveauchement par exemple
+
+## Anaïs
+
+Fichier 022_..._jya, phrase ~4:
+
+  VPinf[P[de] VN] est un peu bizzare (P argument de VPinf), verifie!
+
+## Anaïs, Emanuel, ...
+
+On laisse les arbres plats -- on laisse un peu d'ambiguité, on est moins
+précis, mais la tâche sera moins complexes et on pourra raffiner plus tard.
