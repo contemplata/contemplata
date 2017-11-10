@@ -612,8 +612,12 @@ viewMenu model = -- fileName =
 --           )
 --         [ txt ]
 
-    -- isCtrl = if model.ctrl then "CTRL" else ""
     annoLevel = toString model.annoLevel
+--     annoLevelPadded =
+--         let
+--             len = String.length (toString M.Segmentation) + 2
+--         in
+--             String.pad len '-' annoLevel
 
 --     mkMenuItem = Cmd.mkMenuCommand model.ctrl
 --
@@ -680,7 +684,7 @@ viewMenu model = -- fileName =
         , Cmd.mkMenuItem
               ChangeAnnoLevel
               (Just "Change the annotation level commands")
-              (plainText annoLevel)
+              (plainText <| "| " ++ annoLevel ++ " |")
         ] ++
         ( if model.annoLevel == M.Temporal
           then temporalCommands
