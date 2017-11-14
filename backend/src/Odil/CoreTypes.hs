@@ -7,9 +7,9 @@ module Odil.CoreTypes
 (
 
 -- * File ID
-  FileId
+  FileId(..)
 , FileName
-, AnnoLevel
+, AnnoLevel(..)
 , encodeFileId
 , decodeFileId
 

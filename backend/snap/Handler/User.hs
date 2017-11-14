@@ -9,6 +9,7 @@ module Handler.User
 
 
 import           Control.Monad.IO.Class (liftIO)
+import           Control.Monad.Trans.Class (lift)
 import qualified Control.Concurrent as C
 import qualified Control.Monad.State.Strict as State
 
@@ -24,7 +25,7 @@ import qualified Snap.Snaplet.Heist as Heist
 import           Heist.Interpreted (bindSplices, Splice)
 import qualified Text.XmlHtml as X
 
-import           Odil.Server.Types
+import qualified Odil.Server.Types as Odil
 import qualified Odil.Server.DB as DB
 -- import qualified Odil.Server.Users as Users
 
@@ -43,26 +44,52 @@ filesHandler = do
     (bindSplices $ localSplices fileList)
     (Heist.render "user/files")
   where
-    localSplices xs = do
-      let withStatus val = fileList . map fst . filter (hasStatus val)
-      "newList" ## withStatus New xs
-      "touchedList" ## withStatus Touched xs
-      "doneList" ## withStatus Done xs
-    hasStatus val (_, FileMeta{..}) = fileStatus == val
+    localSplices fileList = do
+      let withStatus val = mkFileTable . map fst . filter (hasStatus val)
+      "newList" ## withStatus Odil.New fileList
+      "touchedList" ## withStatus Odil.Touched fileList
+      "doneList" ## withStatus Odil.Done fileList
+    hasStatus val (_, Odil.FileMeta{..}) = fileStatus == val
 
 
 -- | A list of members.
-fileList :: [FileId] -> Splice AppHandler
-fileList =
-  return . map mkElem
+mkFileTable :: [Odil.FileId] -> Splice AppHandler
+mkFileTable =
+  mapM mkElem
   where
-    mkElem fileId = X.Element "li"
-      [("class", "list-group-item")]
-      [mkLink fileId]
-    mkLink fileId = X.TextNode $ encodeFileId fileId
---     mkLink fileId = X.Element "a"
---       [("href", "admin/file/" `T.append` encodeFileId fileId)]
---       [X.TextNode $ encodeFileId fileId]
+
+    mkElem fileId = do
+      file <- lift . liftDB $ DB.loadFile fileId
+      return $ X.Element "tr" []
+        [ mkLink (Odil.fileName fileId) "annotate" $
+          T.intercalate "/" ["annotate", Odil.encodeFileId fileId]
+        , mkText (T.pack . show $ Odil.annoLevel fileId)
+        , mkText (T.pack . show $ Odil.numberOfTokens file)
+--         , mkLink "remove" "Click to remove" $
+--           T.intercalate "/" ["admin", "file", fileName, "remanno", annoName]
+--         , mkLink (T.pack $ show access) "Click to change" $
+--           T.intercalate "/" ["admin", "file", fileName, "changeaccess", annoName]
+        ]
+
+    mkText x = X.Element "td" [] [X.TextNode x]
+    mkLink x tip href = X.Element "td" [] [X.Element "a"
+        [ ("href", href)
+        , ("title", tip) ]
+        [X.TextNode x] ]
+
+
+-- -- | A list of members.
+-- fileList :: [FileId] -> Splice AppHandler
+-- fileList =
+--   return . map mkElem
+--   where
+--     mkElem fileId = X.Element "li"
+--       [("class", "list-group-item")]
+--       [mkLink fileId]
+--     mkLink fileId = X.TextNode $ encodeFileId fileId
+-- --     mkLink fileId = X.Element "a"
+-- --       [("href", "admin/file/" `T.append` encodeFileId fileId)]
+-- --       [X.TextNode $ encodeFileId fileId]
 
 
 ---------------------------------------
@@ -71,7 +98,7 @@ fileList =
 
 
 -- | Verify that the admin is logged in.
-userName :: AppHandler AnnoName
+userName :: AppHandler Odil.AnnoName
 userName = do
   Just current <- Snap.with auth Auth.currentUser
   return $ Auth.userLogin current

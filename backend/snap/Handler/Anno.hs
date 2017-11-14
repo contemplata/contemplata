@@ -12,6 +12,7 @@ import           Control.Monad.Trans.Class (lift)
 
 import           Data.Map.Syntax ((##))
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import qualified Data.Configurator as Cfg
 
 import qualified Snap.Snaplet.Heist as Heist
@@ -20,8 +21,11 @@ import qualified Snap.Snaplet.Auth as Auth
 import           Heist.Interpreted (bindSplices, Splice)
 import qualified Text.XmlHtml as X
 
+import qualified Odil.Server.Types as Odil
+import qualified Odil.Server.DB as DB
 -- import qualified Config as Cfg
 import           Application
+import           Handler.Utils (liftDB)
 
 
 annoHandler :: AppHandler ()
@@ -34,6 +38,8 @@ annoHandler = do
 
 bodySplice :: Splice AppHandler
 bodySplice = do
+  Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
+  Just fileId <- return $ Odil.decodeFileId fileIdTxt
   mbUser <- lift $ Snap.with auth Auth.currentUser
   case mbUser of
     Nothing -> return [X.TextNode "access not authorized"]
@@ -43,6 +49,8 @@ bodySplice = do
       -- Just serverPathAlt <- liftIO $ Cfg.fromCfg cfg "websocket-server-alt"
       Just serverPath <- liftIO $ Cfg.lookup cfg "websocket-server"
       Just serverPathAlt <- liftIO $ Cfg.lookup cfg "websocket-server-alt"
+      -- Mark the file as being annotated
+      lift . liftDB $ DB.startAnnotating fileId
       let html = X.Element "body" [] [script]
           script = X.Element "script" [("type", "text/javascript")] [text]
           mkArg key val = T.concat [key, ": \"", val, "\""]
@@ -51,6 +59,7 @@ bodySplice = do
             [ "Elm.Main.fullscreen({"
             , mkArgs
               [ ("userName", Auth.userLogin user)
+              , ("fileId", Odil.encodeFileId fileId)
               , ("websocketServer", serverPath)
               , ("websocketServerAlt", serverPathAlt)
               ]

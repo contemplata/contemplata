@@ -21,8 +21,6 @@ module Handler.Admin
 import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Trans.Class (lift)
 import           Control.Monad (guard, (<=<))
-import qualified Control.Concurrent as C
-import qualified Control.Monad.State.Strict as State
 
 import qualified Data.Set as S
 import qualified Data.Map.Strict as M
@@ -54,6 +52,7 @@ import qualified Odil.Server.Users as Users
 import qualified Auth as MyAuth
 import qualified Config as MyCfg
 import           Application
+import           Handler.Utils (liftDB)
 
 
 ---------------------------------------
@@ -212,16 +211,6 @@ fileChangeAccessAnnoHandler = ifAdmin $ do
 ---------------------------------------
 -- DB utils
 ---------------------------------------
-
-
--- | Lift the DB-related computation to a handler.
-liftDB :: DB.DBT a -> AppHandler a
-liftDB dbComp = do
-  dbMVar <- State.gets _db
-  liftIO . C.withMVar dbMVar $ \odilDB ->
-    DB.runDBT odilDB dbComp >>= \case
-      Left err -> fail (T.unpack err)
-      Right x  -> return x
 
 
 ---------------------------------------

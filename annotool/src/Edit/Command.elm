@@ -3,6 +3,7 @@ module Edit.Command exposing
 
     -- * View
     , mkMenuItem
+    , menuItemStyle
     , mkMenuElem
 
     -- * Command-line
@@ -267,18 +268,22 @@ mkMenuItem
 mkMenuItem msg hint  name =
     Html.div
         ( [ Events.onClick msg
-          , Atts.style
-              [ "cursor" => "pointer"
-              , "margin-left" => px 10
-              , "margin-right" => px 10
-              -- | To make the list of commands wrap
-              , "display" => "inline-block"
-              ]
+          , Atts.style menuItemStyle
           ] ++ case hint of
                    Nothing -> []
                    Just x  -> [Atts.title x]
         )
     [ name ]
+
+
+menuItemStyle : List (String, String)
+menuItemStyle =
+    [ "cursor" => "pointer"
+    , "margin-left" => px 10
+    , "margin-right" => px 10
+    -- | To make the list of commands wrap
+    , "display" => "inline-block"
+    ]
 
 
 ---------------------------------------------------

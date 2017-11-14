@@ -35,11 +35,8 @@ import Server
 
 
 type alias Model =
-  { fileIds : List C.FileId
-  , config : Cfg.Config
---   , user : String
---   , wsUseProxy : Bool
---   -- ^ Use proxy adress for the websocket server
+  { config : Cfg.Config
+  , message : String
   }
 
 
@@ -48,38 +45,32 @@ type alias Model =
 ---------------------------------------------------
 
 
-type Msg
-  = Choice C.FileId -- ^ Edit a specific file
-  | ShowFiles (List C.FileId)
-  | SetProxy Bool
-  | Many (List Msg)
---   | ServerMsg Answer -- ^ Get message from the websocket
---   | Error String  -- ^ An error message
+type Msg = Msg
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
-update msg model =
-  let idle x = (x, Cmd.none) in
-  case msg of
-    Choice fileId ->
-      let cmd = Server.sendWS model.config (Server.GetFile model.config.user fileId)
-      in  (model, cmd)
-    ShowFiles ids -> idle <| {model | fileIds = ids}
-    SetProxy newProxy ->
-        let
-            oldConfig = model.config
-            newConfig = {oldConfig | wsUseProxy = newProxy}
-            newModel = {model | config = newConfig}
-            getFiles = Server.sendWS newConfig (Server.GetFiles newConfig.user)
-        in
-            (newModel, getFiles)
-    Many msgs ->
-      let f msg (mdl0, cmds) =
-        let (mdl, cmd) = update msg mdl0
-        in  (mdl, cmd :: cmds)
-      in
-        let (mdl, cmds) = List.foldl f (model, []) msgs
-        in  (mdl, Cmd.batch cmds)
+update msg model = (model, Cmd.none)
+--   let idle x = (x, Cmd.none) in
+--   case msg of
+--     Choice fileId ->
+--       let cmd = Server.sendWS model.config (Server.GetFile model.config.user fileId)
+--       in  (model, cmd)
+--     ShowFiles ids -> idle <| {model | fileIds = ids}
+--     SetProxy newProxy ->
+--         let
+--             oldConfig = model.config
+--             newConfig = {oldConfig | wsUseProxy = newProxy}
+--             newModel = {model | config = newConfig}
+--             getFiles = Server.sendWS newConfig (Server.GetFiles newConfig.user)
+--         in
+--             (newModel, getFiles)
+--     Many msgs ->
+--       let f msg (mdl0, cmds) =
+--         let (mdl, cmd) = update msg mdl0
+--         in  (mdl, cmd :: cmds)
+--       in
+--         let (mdl, cmds) = List.foldl f (model, []) msgs
+--         in  (mdl, Cmd.batch cmds)
 
 
 ---------------------------------------------------
@@ -98,144 +89,8 @@ view model =
         , "max-width" => Util.px Cfg.menuMaxWidth
         ]
     ]
-    [ viewUser model
-    , viewFiles model
-    , viewHelp
+    [ Html.text model.message
     ]
-
-
-viewUser : Model -> Html.Html Msg
-viewUser model =
-    let
-        userSpan =
-            Html.span []
-                [ Html.text "You are logged as "
-                , Html.b [] [Html.text model.config.user]
-                , Html.text " "
-                , Html.a [Atts.href "logout"] [Html.text "(logout)"] ]
-                -- , Html.button [] [Html.text "logout"] ]
-        proxyBox =
-            Html.input
-                [ Atts.type_ "checkbox"
-                , Atts.checked model.config.wsUseProxy
-                , Events.onInput (\_ -> Many [ShowFiles [], SetProxy (not model.config.wsUseProxy)]) ]
-                []
---         socketServer =
---             if model.config.wsUseProxy
---             then Cfg.socketServer
---             else Cfg.socketServerAlt
-    in
-        Html.div []
-            [ Html.h3 [] [Html.text "User"]
-            , Html.ul []
-                [ Html.li [] [userSpan]
-                , Html.li [] [Html.text "Use websocket proxy: ", proxyBox] ]
-                -- , Html.li [] [Html.text <| "Websocket server: " ++ socketServer] ]
-            ]
-
-
-viewFiles : Model -> Html.Html Msg
-viewFiles model =
-  let
-    realList = Html.ul []
-      (List.map viewFileId model.fileIds)
-    list =
-      if List.isEmpty model.fileIds
-      then Html.text "Connecting..."
-      else realList
-  in
-    Html.div
-      [ Atts.style
-          [ "float" => "left"
-          , "max-width" => Util.px Cfg.menuFilesMaxWidth
-          , "margin-right" => Util.px Cfg.menuHelpMargin
-          -- , "width" => "50%"
-          -- , "left" => Util.px 0
-          -- , "height" => "100%"
-          ]
-      ]
-      [ Html.h3 [] [Html.text "Files"]
-      , list
-      ]
-
-
-viewFileId : C.FileId -> Html.Html Msg
--- viewFileId x = Html.li [] <| Util.single <|
---   Html.div
---     [ Atts.class "noselect"
---     , Events.onClick (Choice x)
---     , Atts.style ["cursor" => "pointer"]
---     ]
---     [Html.text x]
-viewFileId x = Html.li
-  [ Events.onClick (Choice x)
-  -- , Atts.class "noselect"
-  , Atts.style ["cursor" => "pointer"]
-  ]
-  [Html.text <| C.encodeFileId x]
-
-
-type TextType a = Plain a | Bold a
-
-
-viewHelp : Html.Html Msg
-viewHelp =
-  let
-    cmdListTxt =
-      [ [Plain "Menu commands: click ", Bold "Save", Plain " to save the current file and ", Bold "Menu", Plain " to return here."]
-      , [ Plain "Tree selection: use ", Bold "page down", Plain " or ", Bold "page up", Plain " to go to the next or the previous tree, respectively. "
-        , Plain "You can also click on the sentence identifiers in the side window on the right." ]
-      , [ Plain "Tree navigation: press the ", Bold "left mouse button", Plain " anywhere in the tree-editing window and move the mouse while holding the button." ]
-      , [Plain "Node selection: use the", Bold " left mouse button", Plain " to select the main node, and the ", Bold "left mouse button + CTRL", Plain " to select auxiliary nodes.  Selection works in a window-specific manner."]
-      , [Plain "Add node: select node(s) and press ", Bold "a", Plain "."]
-      , [Plain "Delete node: select node(s) and press ", Bold "d", Plain "."]
-      , [Plain "Edit node: select the main node and press ", Bold "e", Plain ", which should bring you to the editing window."]
-      , [Plain "Re-attach tree: select the root of the tree to move, then select (with ", Bold "CTRL", Plain ") the node where the tree should be re-attached, and press ", Bold "r", Plain "."]
-      , [Plain "Swap tree: select the root of the tree to swap with its left or right sister tree and press ", Bold "CTRL + left", Plain " or ", Bold "CTRL + right", Plain " respectively."]
-      , [Plain "Connect: to connect two nodes, select the main node in the top window and in the bottom-window, respectively, and press ", Bold "c", Plain ". The relation will lead to the node in the currently focused window."]
-      , [Plain "Resize: you can use the regular browser's functionality to zoom in and out."]
-      , [Plain "Screen size: use arrows (", Bold "left, right, top, bottom", Plain ") to change the size of the screens."]
-      , [Plain "Redo/undo: use ", Bold "CTRL+z", Plain " and ", Bold "z", Plain "to undo and redo, respectively"]
-      ]
-    -- mkElem x = Html.li [] [Html.text x]
-    mkCmd x = case x of
-      Plain txt -> Html.text txt
-      Bold txt -> Html.b [] [Html.text txt]
-    mkElem x = Html.li [] [Html.span [] (List.map mkCmd x)]
-    cmdList = Html.ul [] (List.map mkElem cmdListTxt)
-
-    sideListTxt =
-      [ [Plain "Edit: editing window (not much functionality for the moment)."]
-      , [Plain "Context: shows the sentences in the current file."]
-      , [Plain "Messages: messages received from the server (with e.g. information that the file has been successfully saved)."]
-      ]
-    sideList = Html.ul [] (List.map mkElem sideListTxt)
-
-    writeCmdListTxt =
-      [ [Plain "Parsing: use ", Bold "parse", Plain " to reparse the entire sentence. Wait until the message ", Bold "parsed successfully ", Plain "appears in the side window (tab Messages). Note that the procedure does not change the tokenization."]
-      , [Plain "Parsing with POS tags: use ", Bold "parsepos", Plain " to reparse the entire sentence without changing the POS tags (nor the tokenization) assigned to the individual words."]
-      , [Plain "Flatten: use ", Bold "flatten", Plain " to apply the flattening rules."]
-      ]
-    writeCmdList = Html.ul [] (List.map mkElem writeCmdListTxt)
-  in
-    Html.div
-      [ Atts.style
-          [ "float" => "left"
-          , "max-width" => Util.px Cfg.menuHelpMaxWidth
-          -- , "width" => "50%"
-          -- , "right" => Util.px 0
-          -- , "height" => "100%"
-          ]
-      ]
-      [ Html.h3 [] [Html.text "Help"]
-      , Html.p [] [Html.text "Once you select one of the files on the left, you will be able to use the following commands: "]
-      , cmdList
-      , Html.p [] [Html.text "The following commands can be used while editing a tree.  Just press <SPACE>, write the command, and press <ENTER>."]
-      , writeCmdList
-      , Html.p [] [Html.text "Note that in each of the two side windows you can choose between:"]
-      , sideList
-      ]
-
 
 ---------------------------------------------------
 -- Subscriptions
@@ -253,11 +108,19 @@ subscriptions _ = Sub.none
 
 mkMenu
     : Cfg.Config
+    -> Maybe C.FileId
     -> (Model, Cmd Msg)
-mkMenu config =
+mkMenu config fileIdMay =
   let
-    model = {fileIds = [], config=config}
-    init = Server.sendWS config (Server.GetFiles config.user)
+    msg = case fileIdMay of
+              Nothing -> "Incorrent file ID"
+              Just id -> "Downloading " ++ C.encodeFileId id
+    model = {config=config, message=msg}
+    init =
+        case fileIdMay of
+            Nothing -> Cmd.none
+            Just fileId ->
+                Server.sendWS config (Server.GetFile config.user fileId)
   in
     (model, init)
 

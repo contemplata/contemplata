@@ -36,6 +36,7 @@ module Odil.Server.DB
 , addAnnotator
 , remAnnotator
 , changeAccessAnnotator
+, startAnnotating
 -- , annoMap
 
 -- * Low-level
@@ -360,6 +361,16 @@ changeAccessAnnotator fileName annoName =
       Just x ->
         let newAnno = M.insert annoName (turnLevel x) (annoMap meta)
         in  meta {annoMap = newAnno}
+
+
+-- | Add annotator to a given file.
+startAnnotating :: FileId -> DBT ()
+startAnnotating fileId =
+  changeMeta fileId $ \meta -> do
+    let newStatus = if fileStatus meta == New
+                    then Touched
+                    else fileStatus meta
+    return $ meta {fileStatus = newStatus}
 
 
 -- | Add annotator to a given file.

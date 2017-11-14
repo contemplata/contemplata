@@ -11,6 +11,7 @@ import String as String
 -- import Focus as Lens
 
 import WebSocket
+import Navigation
 import Json.Decode as Decode
 
 import Rose as R
@@ -19,6 +20,7 @@ import Config as Cfg
 
 import Server
 import Menu
+import Edit.Core
 import Edit.Model
 import Edit.Init
 import Edit.Message
@@ -80,6 +82,7 @@ menuLens = (getMenu, setMenu)
 
 type alias Flags =
     { userName : String
+    , fileId : String
     , websocketServer : String
     , websocketServerAlt : String }
 
@@ -176,11 +179,7 @@ topUpdate : TopMsg -> TopModel -> ( TopModel, Cmd TopMsg )
 topUpdate topMsg =
   case topMsg of
     Left (Edit msg) -> case msg of
-      Edit.Message.Core.Files -> \model_ ->
-        let (model, cmd) = Menu.mkMenu (topCfg model_)
-        in  (Menu model, Cmd.map menuMsg cmd)
-      -- Unfortunately, we have to handle `Many` here too, since
-      -- `Files` can be embedded inside.
+      Edit.Message.Core.Files -> \model -> (model, Navigation.load ".")
       Edit.Message.Core.Many msgs -> \model ->
         let f msg (mdl0, cmds) =
           let (mdl, cmd) = topUpdate (Left <| Edit msg) mdl0
@@ -192,8 +191,7 @@ topUpdate topMsg =
     Left (Menu msg) ->
       updateOn menuLens menuMsg (Menu.update msg)
     Right (ServerMsg ans) -> case ans of
-      Server.Files xs -> updateOn menuLens menuMsg
-        (Menu.update <| Menu.ShowFiles xs)
+      Server.Files xs -> Debug.crash "Server.Files not implemented"
       Server.NewFile fileId file -> \model_ ->
         let (edit, cmd) =
                 Edit.Init.mkEdit (topCfg model_) fileId file
@@ -251,7 +249,7 @@ topInit r =
           , wsUseProxy=True
           , socketServer=r.websocketServer
           , socketServerAlt=r.websocketServerAlt }
-      (model, cmd) = Menu.mkMenu cfg
+      (model, cmd) = Menu.mkMenu cfg (Edit.Core.decodeFileId r.fileId)
   in  (Menu model, Cmd.map menuMsg cmd)
 
 

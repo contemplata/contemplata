@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE RecordWildCards #-}
 
 
 -- | Types of the annotation server.
@@ -8,9 +9,9 @@
 module Odil.Server.Types
 (
 -- * Core Types
-  FileId
+  FileId(..)
 , FileName
-, AnnoLevel
+, AnnoLevel(..)
 , encodeFileId
 , decodeFileId
 
@@ -39,6 +40,7 @@ module Odil.Server.Types
 -- * Utils
 , mkNewFile
 , sentFromText
+, numberOfTokens
 -- , emptyTok
 -- , mergeToks
 -- , concatToks
@@ -232,6 +234,14 @@ data LinkData = LinkData
 -----------
 -- Various
 -----------
+
+
+-- | Retrieve the number of tokens in the given file.
+numberOfTokens :: File -> Int
+numberOfTokens File{..} = sum
+  [ length sent
+  | (_, sent) <- M.toList sentMap
+  ]
 
 
 -----------

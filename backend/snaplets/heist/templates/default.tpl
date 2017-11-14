@@ -45,7 +45,8 @@
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
     <script src="https://code.jquery.com/jquery-1.10.2.min.js"></script>
-    <!--script absHref="/bootstrap/js/bootstrap.min.js"/-->
-    <script href="public/bootstrap/js/bootstrap.min.js"/>
+    <!-- FOR SOME REASONE, THE JS SCRIPT BELOW DID NOT WORK! WE REPLACED IT WITH MAXCDN... -->
+    <!--script href="public/bootstrap/js/bootstrap.min.js"/-->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
   </body>
 </html>

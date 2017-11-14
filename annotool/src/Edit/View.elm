@@ -677,6 +677,13 @@ viewMenu model = -- fileName =
               (Popup Popup.Files Nothing)
               (Just "Go to the main menu")
               (plainText "Menu")
+--         , Html.div
+--               [ Atts.style Cmd.menuItemStyle
+--               , Atts.title "Go to the main menu" ]
+--               [ Html.a
+--                     [Atts.attribute "href" "."]
+--                     [plainText "Menu"]
+--               ]
         , Cmd.mkMenuItem
               SaveFile
               (Just "Save the entire current file")
