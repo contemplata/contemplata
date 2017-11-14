@@ -19,6 +19,7 @@ module Odil.Server.DB
 -- * DB top-level
 , createDB
 , fileNum
+, fileMap
 , fileSet
 , fileSetFor
 , accessLevel
@@ -452,7 +453,7 @@ storeCopyFile from to = do
 storeFilePath :: FileId -> DBT FilePath
 storeFilePath fid = do
   DB{..} <- dbConf
-  return $ dbPath </> storePath </> T.unpack fid <.> "json"
+  return $ dbPath </> storePath </> T.unpack (encodeFileId fid) <.> "json"
 
 
 ---------------------------------------

@@ -434,7 +434,10 @@ run cmd =
     AddFileDB force jsonPath dbPath -> do
       let dbConf = DB.defaultConf dbPath
       res <- DB.runDBT dbConf $ do
-        let fileId = T.pack (FilePath.takeBaseName jsonPath)
+        let fileIdTxt = T.pack (FilePath.takeBaseName jsonPath)
+        fileId <- case Odil.decodeFileId fileIdTxt of
+          Nothing -> Err.throwE $ "cannote decode fileId: " `T.append` fileIdTxt
+          Just x  -> return x
         when (not force) $ DB.hasFile fileId >>= \case
           True -> Err.throwE "file ID already present in DB"
           _ -> return ()
@@ -448,14 +451,18 @@ run cmd =
     RenameFileDB from to dbPath -> do
       let dbConf = DB.defaultConf dbPath
       res <- DB.runDBT dbConf $ do
-        DB.renameFile (T.pack from) (T.pack to)
+        fromId <- decodeFileId $ T.pack from
+        toId <- decodeFileId $ T.pack to
+        DB.renameFile fromId toId
       case res of
         Left err -> T.putStrLn $ "Operation failed: " `T.append` err
         Right _  -> return ()
     CopyFileDB from to dbPath -> do
       let dbConf = DB.defaultConf dbPath
       res <- DB.runDBT dbConf $ do
-        DB.copyFile (T.pack from) (T.pack to)
+        fromId <- decodeFileId $ T.pack from
+        toId <- decodeFileId $ T.pack to
+        DB.copyFile fromId toId
       case res of
         Left err -> T.putStrLn $ "Operation failed: " `T.append` err
         Right _  -> return ()
@@ -466,7 +473,7 @@ run cmd =
         forM_ ids $ \fileId -> do
           file <- DB.loadFile fileId
           liftIO . T.putStrLn . T.concat $
-            [ fileId
+            [ Odil.encodeFileId fileId
             , " => "
             , T.pack (show $ numberOfLeavesF file) ]
       case res of
@@ -580,3 +587,10 @@ numberOfLeavesT
     isLeaf x = case x of
       Odil.Leaf{} -> True
       _ -> False
+
+
+-- | Decode the file ID in the DBT monad.
+decodeFileId :: T.Text -> DB.DBT Odil.FileId
+decodeFileId x =
+  let err = Err.throwE $ "cannote decode fileId: " `T.append` x
+  in  maybe err return $ Odil.decodeFileId x

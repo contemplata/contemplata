@@ -228,6 +228,8 @@ talk conn state snapCfg = forever $ do
         T.putStrLn msg
         WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
+      -- TODO: What's the point of sending the annotator name? This should be
+      -- immediately accessible at the server side!
       Right (GetFiles anno) -> do
         DB.runDBT db (DB.fileSetFor anno $ const True) >>= \case
         -- DB.runDBT db DB.fileSet >>= \case
@@ -267,7 +269,7 @@ talk conn state snapCfg = forever $ do
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
           Right () -> do
             putStrLn "Saved"
-            let msg = T.concat ["File ", fileId, " saved"]
+            let msg = T.concat ["File ", encodeFileId fileId, " saved"]
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
       Right (ParseRaw fileId treeId txt0 prep) -> do

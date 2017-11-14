@@ -51,6 +51,7 @@ import qualified Network.WebSockets.Snap as SnapWS
 import qualified Handler.Login as Login
 import qualified Handler.Anno as Anno
 import qualified Handler.Admin as Admin
+import qualified Handler.User as User
 import qualified Config as Cfg
 import           Application
 
@@ -62,13 +63,18 @@ import           Application
 
 routes :: [(BS.ByteString, AppHandler ())]
 routes =
+  -- Generic handlers first
   [ ("/ws", wsHandler)
   -- , ("/style.css", FileServe.serveFileAs "text/css" "html/style.css")
   , ("/annotation", Anno.annoHandler)
   , ("/public", publicHandler)
   , ("/login", Login.loginHandler)
   , ("/logout", Login.logoutHandler)
-  -- , ("/public", publicHandler)
+
+  -- User-related handlers
+  , ("/user/files", User.filesHandler)
+
+  -- User-related handlers
   , ("/admin/createuser", Admin.createUserHandler)
   , ("/admin/password", Admin.passwordHandler)
   , ("/admin/files", Admin.filesHandler)
@@ -95,7 +101,8 @@ rootHandler =
     adminHandler = do
       guard =<< Admin.isAdmin
       Snap.redirect "admin/files"
-    annoHandler = Snap.redirect "annotation"
+    -- annoHandler = Snap.redirect "annotation"
+    annoHandler = Snap.redirect "user/files"
 
 
 publicHandler :: AppHandler ()

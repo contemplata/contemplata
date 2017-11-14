@@ -9,6 +9,11 @@ module Odil.Server.Types
 (
 -- * Core Types
   FileId
+, FileName
+, AnnoLevel
+, encodeFileId
+, decodeFileId
+
 , TreeId
 , NodeId
 , LeafId
@@ -17,6 +22,7 @@ module Odil.Server.Types
 , AnnoName
 , FileMeta(..)
 , AccessLevel (..)
+, FileStatus (..)
 , defaultMeta
 
 -- * Types

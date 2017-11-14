@@ -110,8 +110,8 @@ fileList =
       [("class", "list-group-item")]
       [mkLink fileId]
     mkLink fileId = X.Element "a"
-      [("href", "admin/file/" `T.append` fileId)]
-      [X.TextNode fileId]
+      [("href", "admin/file/" `T.append` encodeFileId fileId)]
+      [X.TextNode $ encodeFileId fileId]
 
 
 ---------------------------------------
@@ -122,7 +122,8 @@ fileList =
 fileHandler :: AppHandler ()
 fileHandler = ifAdmin $ do
 
-  Just fileName <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
+  Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
+  Just fileId <- return $ decodeFileId fileIdTxt
 
   allAnnotators <- do
     cfg <- Snap.getSnapletUserConfig
@@ -135,14 +136,14 @@ fileHandler = ifAdmin $ do
   case annoName of
     Nothing -> return ()
     -- Just an -> modifyAppl fileName an
-    Just an -> liftDB $ DB.addAnnotator fileName an Read
+    Just an -> liftDB $ DB.addAnnotator fileId an Read
 
-  annotations <- liftDB $ M.toList . annoMap <$> DB.loadMeta fileName
+  annotations <- liftDB $ M.toList . annoMap <$> DB.loadMeta fileId
   let localSplices = do
         "fileName" ## return
-          [X.TextNode fileName]
+          [X.TextNode fileIdTxt]
         "currentAnnotators" ## return
-          (map (mkElem fileName) annotations)
+          (map (mkElem fileIdTxt) annotations)
 
   Heist.heistLocal
     ( bindSplices localSplices .
@@ -182,9 +183,8 @@ addAnnoForm anns =
 fileAddAnnoHandler :: AppHandler ()
 fileAddAnnoHandler = ifAdmin $ do
   Just fileNameBS <- Snap.getParam "filename"
-  let fileName = T.decodeUtf8 fileNameBS
+  Just fileName <- (return . decodeFileId) (T.decodeUtf8 fileNameBS)
   Just annoName <- fmap T.decodeUtf8 <$> Snap.getParam "annoname"
-  -- Snap.writeText $ T.concat [fileName, ": ", annoName]
   liftDB $ DB.addAnnotator fileName annoName Read
   Snap.redirect $ "/admin/file/" `BS.append` fileNameBS
 
@@ -193,7 +193,7 @@ fileAddAnnoHandler = ifAdmin $ do
 fileRemoveAnnoHandler :: AppHandler ()
 fileRemoveAnnoHandler = ifAdmin $ do
   Just fileNameBS <- Snap.getParam "filename"
-  let fileName = T.decodeUtf8 fileNameBS
+  Just fileName <- (return . decodeFileId) (T.decodeUtf8 fileNameBS)
   Just annoName <- fmap T.decodeUtf8 <$> Snap.getParam "annoname"
   liftDB $ DB.remAnnotator fileName annoName
   Snap.redirect $ "/admin/file/" `BS.append` fileNameBS
@@ -203,7 +203,7 @@ fileRemoveAnnoHandler = ifAdmin $ do
 fileChangeAccessAnnoHandler :: AppHandler ()
 fileChangeAccessAnnoHandler = ifAdmin $ do
   Just fileNameBS <- Snap.getParam "filename"
-  let fileName = T.decodeUtf8 fileNameBS
+  Just fileName <- (return . decodeFileId) (T.decodeUtf8 fileNameBS)
   Just annoName <- fmap T.decodeUtf8 <$> Snap.getParam "annoname"
   liftDB $ DB.changeAccessAnnotator fileName annoName
   Snap.redirect $ "/admin/file/" `BS.append` fileNameBS
