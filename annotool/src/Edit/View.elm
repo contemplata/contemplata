@@ -193,7 +193,7 @@ viewTreeId win model =
     txt0 = toString (M.treePos win model)
       ++ "/"
       ++ toString (M.treeNum model)
-    txt1 = txt0 ++ " (" ++ model.fileId ++ ")"
+    txt1 = txt0 ++ " (" ++ C.encodeFileId model.fileId ++ ")"
     txt  = txt1 ++
         if model.ctrl
         then " CTRL"

@@ -172,7 +172,7 @@ viewFileId x = Html.li
   -- , Atts.class "noselect"
   , Atts.style ["cursor" => "pointer"]
   ]
-  [Html.text x]
+  [Html.text <| C.encodeFileId x]
 
 
 type TextType a = Plain a | Bold a

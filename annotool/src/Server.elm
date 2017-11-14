@@ -94,21 +94,21 @@ encodeReqToVal req = case req of
     -- , ("contents", Encode.string id)
     , ("contents", Encode.list
          [ Encode.string annoName
-         , Encode.string id ]
+         , C.encodeFileIdJSON id ]
       )
     ]
   SaveFile annoName fileId file -> Encode.object
     [ ("tag", Encode.string "SaveFile")
     , ("contents", Encode.list
          [ Encode.string annoName
-         , Encode.string fileId
+         , C.encodeFileIdJSON fileId
          , M.encodeFile file ]
       )
     ]
   Break fileId partId txts -> Encode.object
     [ ("tag", Encode.string "Break")
     , ("contents", Encode.list
-         [ Encode.string fileId
+         [ C.encodeFileIdJSON fileId
          , Encode.int partId
          , Encode.list (List.map Encode.string txts) ]
       )
@@ -116,7 +116,7 @@ encodeReqToVal req = case req of
   ParseRaw fileId treeId txt prep -> Encode.object
     [ ("tag", Encode.string "ParseRaw")
     , ("contents", Encode.list
-         [ Encode.string fileId
+         [ C.encodeFileIdJSON fileId
          , Encode.int treeId
          , Encode.string txt
          , Encode.bool prep ]
@@ -133,7 +133,7 @@ encodeReqToVal req = case req of
         Encode.object
           [ ("tag", Encode.string "ParseSent")
           , ("contents", Encode.list
-               [ Encode.string fileId
+               [ C.encodeFileIdJSON fileId
                , Encode.int treeId
                , Encode.string (toString parTyp)
                , encodeParseReq encList parseReq ]
@@ -155,7 +155,7 @@ encodeReqToVal req = case req of
         Encode.object
           [ ("tag", Encode.string "ParseSentPos")
           , ("contents", Encode.list
-               [ Encode.string fileId
+               [ C.encodeFileIdJSON fileId
                , Encode.int treeId
                , Encode.string (toString parTyp)
                , encodeParseReq encList parseReq ]
@@ -185,7 +185,7 @@ encodeReqToVal req = case req of
         Encode.object
           [ ("tag", Encode.string "ParseSentCons")
           , ("contents", Encode.list
-               [ Encode.string fileId
+               [ C.encodeFileIdJSON fileId
                , Encode.int treeId
                , Encode.string (toString parTyp)
                , encodeParseReq encReq parseReq ]
@@ -222,20 +222,20 @@ answerDecoder = Decode.oneOf [filesDecoder, newFileDecoder, parseResultDecoder, 
 filesDecoder : Decode.Decoder Answer
 filesDecoder =
   Decode.map Files
-    (Decode.field "files" <| Decode.list Decode.string)
+    (Decode.field "files" <| Decode.list C.fileIdDecoder)
 
 
 newFileDecoder : Decode.Decoder Answer
 newFileDecoder =
   Decode.map2 NewFile
-    (Decode.field "fileId" Decode.string)
+    (Decode.field "fileId" C.fileIdDecoder)
     (Decode.field "file" M.fileDecoder)
 
 
 parseResultDecoder : Decode.Decoder Answer
 parseResultDecoder =
   Decode.map4 ParseResult
-    (Decode.field "fileId" Decode.string)
+    (Decode.field "fileId" C.fileIdDecoder)
     (Decode.field "treeId" Decode.int)
     (Decode.field "sent" (Decode.nullable M.sentDecoder))
     (Decode.field "tree" M.treeDecoder)
