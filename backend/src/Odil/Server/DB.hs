@@ -36,7 +36,11 @@ module Odil.Server.DB
 , addAnnotator
 , remAnnotator
 , changeAccessAnnotator
+-- *** Annotation status
+, changeStatus
 , startAnnotating
+, postponeAnnotating
+, finishAnnotating
 -- , annoMap
 
 -- * Low-level
@@ -365,11 +369,29 @@ changeAccessAnnotator fileName annoName =
 
 -- | Add annotator to a given file.
 startAnnotating :: FileId -> DBT ()
-startAnnotating fileId =
+startAnnotating fileId = changeStatus fileId $ \status ->
+  if status == New
+  then Touched
+  else status
+
+
+-- | Add annotator to a given file.
+postponeAnnotating :: FileId -> DBT ()
+postponeAnnotating fileId = changeStatus fileId $ \status ->
+  if status == Touched
+  then New
+  else status
+
+
+-- | Add annotator to a given file.
+finishAnnotating :: FileId -> DBT ()
+finishAnnotating fileId = changeStatus fileId $ const Done
+
+
+changeStatus :: FileId -> (FileStatus -> FileStatus) -> DBT ()
+changeStatus fileId update =
   changeMeta fileId $ \meta -> do
-    let newStatus = if fileStatus meta == New
-                    then Touched
-                    else fileStatus meta
+    let newStatus = update (fileStatus meta)
     return $ meta {fileStatus = newStatus}
 
 

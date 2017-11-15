@@ -10,6 +10,7 @@ module Handler.Admin
 , fileAddAnnoHandler
 , fileRemoveAnnoHandler
 , fileChangeAccessAnnoHandler
+, fileChangeStatusHandler
 
 -- * Utis
 , isAdmin
@@ -137,10 +138,18 @@ fileHandler = ifAdmin $ do
     -- Just an -> modifyAppl fileName an
     Just an -> liftDB $ DB.addAnnotator fileId an Read
 
-  annotations <- liftDB $ M.toList . annoMap <$> DB.loadMeta fileId
-  let localSplices = do
+  metaInfo <- liftDB $ DB.loadMeta fileId
+  let annotations = M.toList . annoMap $ metaInfo
+      localSplices = do
         "fileName" ## return
           [X.TextNode fileIdTxt]
+        "fileStatus" ## return
+          [ X.Element "a"
+            [ ("href",
+               T.intercalate "/" ["admin", "file", fileIdTxt, "changestatus"])
+            , ("title", "Click to change") ]
+            [X.TextNode (T.pack . show $ fileStatus metaInfo)]
+          ]
         "currentAnnotators" ## return
           (map (mkElem fileIdTxt) annotations)
 
@@ -205,6 +214,18 @@ fileChangeAccessAnnoHandler = ifAdmin $ do
   Just fileName <- (return . decodeFileId) (T.decodeUtf8 fileNameBS)
   Just annoName <- fmap T.decodeUtf8 <$> Snap.getParam "annoname"
   liftDB $ DB.changeAccessAnnotator fileName annoName
+  Snap.redirect $ "/admin/file/" `BS.append` fileNameBS
+
+
+-- | Remmove annotator from a file handler.
+fileChangeStatusHandler :: AppHandler ()
+fileChangeStatusHandler = ifAdmin $ do
+  Just fileNameBS <- Snap.getParam "filename"
+  Just fileName <- (return . decodeFileId) (T.decodeUtf8 fileNameBS)
+  liftDB . DB.changeStatus fileName $ \case
+    New -> Touched
+    Touched -> Done
+    Done -> New
   Snap.redirect $ "/admin/file/" `BS.append` fileNameBS
 
 

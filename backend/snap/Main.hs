@@ -73,6 +73,8 @@ routes =
 
   -- User-related handlers
   , ("/user/files", User.filesHandler)
+  , ("/user/file/:filename/postpone", User.postponeHandler)
+  , ("/user/file/:filename/finish", User.finishHandler)
 
   -- User-related handlers
   , ("/admin/createuser", Admin.createUserHandler)
@@ -82,6 +84,7 @@ routes =
   , ("/admin/file/:filename/addanno/:annoname", Admin.fileAddAnnoHandler)
   , ("/admin/file/:filename/remanno/:annoname", Admin.fileRemoveAnnoHandler)
   , ("/admin/file/:filename/changeaccess/:annoname", Admin.fileChangeAccessAnnoHandler)
+  , ("/admin/file/:filename/changestatus", Admin.fileChangeStatusHandler)
   , ("", Snap.ifTop rootHandler)
   ]
 

@@ -5,6 +5,8 @@
 
 module Handler.User
 ( filesHandler
+, postponeHandler
+, finishHandler
 ) where
 
 
@@ -14,7 +16,7 @@ import qualified Control.Concurrent as C
 import qualified Control.Monad.State.Strict as State
 
 import qualified Data.Text as T
--- import qualified Data.Text.Encoding as T
+import qualified Data.Text.Encoding as T
 -- import qualified Data.Set as S
 import qualified Data.Map.Strict as M
 import           Data.Map.Syntax ((##))
@@ -45,10 +47,10 @@ filesHandler = do
     (Heist.render "user/files")
   where
     localSplices fileList = do
-      let withStatus val = mkFileTable . map fst . filter (hasStatus val)
-      "newList" ## withStatus Odil.New fileList
-      "touchedList" ## withStatus Odil.Touched fileList
-      "doneList" ## withStatus Odil.Done fileList
+      let withStatus val = map fst . filter (hasStatus val)
+      "newList" ## mkFileTable (withStatus Odil.New fileList)
+      "touchedList" ## mkTouchedTable (withStatus Odil.Touched fileList)
+      "doneList" ## mkFileTable (withStatus Odil.Done fileList)
     hasStatus val (_, Odil.FileMeta{..}) = fileStatus == val
 
 
@@ -71,29 +73,50 @@ mkFileTable =
 --           T.intercalate "/" ["admin", "file", fileName, "changeaccess", annoName]
         ]
 
-    mkText x = X.Element "td" [] [X.TextNode x]
-    mkLink x tip href = X.Element "td" [] [X.Element "a"
-        [ ("href", href)
-        , ("title", tip) ]
-        [X.TextNode x] ]
 
+-- | A list of members.
+mkTouchedTable :: [Odil.FileId] -> Splice AppHandler
+mkTouchedTable =
+  mapM mkElem
+  where
 
--- -- | A list of members.
--- fileList :: [FileId] -> Splice AppHandler
--- fileList =
---   return . map mkElem
---   where
---     mkElem fileId = X.Element "li"
---       [("class", "list-group-item")]
---       [mkLink fileId]
---     mkLink fileId = X.TextNode $ encodeFileId fileId
--- --     mkLink fileId = X.Element "a"
--- --       [("href", "admin/file/" `T.append` encodeFileId fileId)]
--- --       [X.TextNode $ encodeFileId fileId]
+    mkElem fileId = do
+      file <- lift . liftDB $ DB.loadFile fileId
+      return $ X.Element "tr" []
+        [ mkLink (Odil.fileName fileId) "annotate" $
+          T.intercalate "/" ["annotate", Odil.encodeFileId fileId]
+        , mkText (T.pack . show $ Odil.annoLevel fileId)
+        , mkText (T.pack . show $ Odil.numberOfTokens file)
+        , mkLink "postpone" "Click to postpone the annotation of the file" $
+          T.intercalate "/" ["user", "file", Odil.encodeFileId fileId, "postpone"]
+        , mkLink "finish" "Click to finish the annotation of the file" $
+          T.intercalate "/" ["user", "file", Odil.encodeFileId fileId, "finish"]
+        ]
 
 
 ---------------------------------------
--- User name
+-- Postpone handler
+---------------------------------------
+
+
+postponeHandler :: AppHandler ()
+postponeHandler = do
+  Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
+  Just fileId <- return $ Odil.decodeFileId fileIdTxt
+  liftDB $ DB.postponeAnnotating fileId
+  Snap.redirect "/"
+
+
+finishHandler :: AppHandler ()
+finishHandler = do
+  Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
+  Just fileId <- return $ Odil.decodeFileId fileIdTxt
+  liftDB $ DB.finishAnnotating fileId
+  Snap.redirect "/"
+
+
+---------------------------------------
+-- Utils
 ---------------------------------------
 
 
@@ -102,6 +125,13 @@ userName :: AppHandler Odil.AnnoName
 userName = do
   Just current <- Snap.with auth Auth.currentUser
   return $ Auth.userLogin current
+
+
+mkText x = X.Element "td" [] [X.TextNode x]
+mkLink x tip href = X.Element "td" [] [X.Element "a"
+    [ ("href", href)
+    , ("title", tip) ]
+    [X.TextNode x] ]
 
 
 ---------------------------------------

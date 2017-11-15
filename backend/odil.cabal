@@ -92,6 +92,7 @@ executable odil-snap
                      , Handler.Anno
                      , Handler.Admin
                      , Handler.User
+                     , Handler.Utils
                      , Util.Form
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base

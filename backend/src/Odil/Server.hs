@@ -261,6 +261,10 @@ talk conn state snapCfg = forever $ do
               if accLevel < Write
                 then fail "you are not authorized to modify this file"
                 else return ()
+              status <- fileStatus <$> DB.loadMeta fileId
+              if status == Done
+                then fail "annotation of the file is already finished"
+                else return ()
               DB.reSaveFile fileId file
         DB.runDBT db saveFile >>= \case
           Left err -> do

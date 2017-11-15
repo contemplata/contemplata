@@ -1,9 +1,10 @@
 <apply template="default">
 
   <div class="panel panel-default">
-    <div class="panel-heading">Filename</div>
+    <div class="panel-heading">General information</div>
     <div class="panel-body">
-     <fileName/>
+       <p>File ID: <fileName/></p>
+       <p>Status: <fileStatus/></p>
     </div>
   </div>
 

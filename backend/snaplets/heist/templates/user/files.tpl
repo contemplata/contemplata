@@ -5,20 +5,15 @@
   </em></div-->
 
   <ul class="nav nav-tabs">
-    <li role="presentation" class="active"><a href="#touched" data-toggle="tab">In progress</a></li>
-    <li role="presentation"><a href="#new" data-toggle="tab">New</a></li>
-    <li role="presentation"><a href="#done" data-toggle="tab">Done</a></li>
+    <li role="presentation" class="active"><a href="#touched" data-toggle="tab"><b>In progress</b></a></li>
+    <li role="presentation"><a href="#new" data-toggle="tab"><b>Waiting</b></a></li>
+    <li role="presentation"><a href="#done" data-toggle="tab"><b>Done</b></a></li>
   </ul>
 
-  <bind tag="fileSection">
-    <!--h3><panelHeader/></h3-->
+  <bind tag="fileTable">
     <table class="table table-striped">
       <thead>
-        <tr>
-          <th>File name</th>
-          <th>Annotation level</th>
-          <th>Tokens</th>
-        </tr>
+        <tr><fileTableCols/></tr>
       </thead>
       <tbody>
         <panelBody/>
@@ -27,20 +22,30 @@
   </bind>
 
   <div class="tab-content">
+    <bind tag="fileTableCols">
+      <th>File name</th>
+      <th>Annotation level</th>
+      <th>Tokens</th>
+      <th>Postpone</th>
+      <th>Finish</th>
+    </bind>
     <div class="tab-pane active" id="touched">
-      <bind tag="panelHeader">Currently annotated files</bind>
       <bind tag="panelBody"><touchedList/></bind>
-      <fileSection/>
+      <fileTable/>
     </div>
+
+    <bind tag="fileTableCols">
+      <th>File name</th>
+      <th>Annotation level</th>
+      <th>Tokens</th>
+    </bind>
     <div class="tab-pane" id="new">
-      <bind tag="panelHeader">New files</bind>
       <bind tag="panelBody"><newList/></bind>
-      <fileSection/>
+      <fileTable/>
     </div>
     <div class="tab-pane" id="done">
-      <bind tag="panelHeader">Finished files</bind>
       <bind tag="panelBody"><doneList/></bind>
-      <fileSection/>
+      <fileTable/>
     </div>
   </div>
 
