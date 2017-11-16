@@ -647,20 +647,19 @@ viewMenu model = -- fileName =
 --       , (emphasize 0 "Timex", MkTimex, Just "Mark (or unmark) the selected node as timex") ]
 
     mkMenuElem = Cmd.mkMenuElem model.ctrl
-    segmentationCommands = Util.catMaybes
-        [ mkMenuElem SplitTree
-        , mkMenuElem SplitBegin
-        , mkMenuElem ConcatWords
+    segmentationCommands = Util.catMaybes <| List.map mkMenuElem
+        [ ParseRaw False, ParseRaw True
+        , SplitTree, SplitBegin
+        , ConcatWords
         ]
-    syntaxCommands = Util.catMaybes
-        [ mkMenuElem Delete
-        , mkMenuElem DeleteTree
-        , mkMenuElem Add
+    syntaxCommands = Util.catMaybes <| List.map mkMenuElem
+        [ Dummy
+        , ParseSent Server.Stanford
+        , ParseSentPos Server.Stanford
+        , Delete, DeleteTree, Add
         ]
-    temporalCommands = Util.catMaybes
-        [ mkMenuElem MkEvent
-        , mkMenuElem MkSignal
-        , mkMenuElem MkTimex
+    temporalCommands = Util.catMaybes <| List.map mkMenuElem
+        [ MkEvent, MkSignal, MkTimex
         ]
 
   in
@@ -690,7 +689,7 @@ viewMenu model = -- fileName =
               (plainText "Save")
         , Cmd.mkMenuItem
               ChangeAnnoLevel
-              (Just "Change the annotation level commands")
+              (Just "Click to change the annotation level")
               (plainText <| "| " ++ annoLevel ++ " |")
         ] ++
         ( if model.annoLevel == M.Temporal
@@ -2049,15 +2048,15 @@ mainKeyDown ctrl =
       -- "c"
       67 -> ShowContext
 
-      -- "s"
-      83 -> MkSignal
+--       -- "s"
+--       83 -> MkSignal
 
-      -- "t"
-      -- 84 -> ChangeType
-      84 -> MkTimex
+--       -- "t"
+--       -- 84 -> ChangeType
+--       84 -> MkTimex
 
-      -- "v"
-      86 -> MkEvent
+--       -- "v"
+--       86 -> MkEvent
 
       -- -- "+" and "-"
       -- 107 -> Increase True

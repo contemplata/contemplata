@@ -49,9 +49,6 @@ type alias KeyboardShortcut =
       -- ^ Key code corresponding to the `char`
     , char : Char
       -- ^ The character of the shortcut
-    , withCtrl : Maybe Bool
-      -- ^ If the command has to be invoked with CTRL pressed; if `Nothing`,
-      -- then it can be invoked whether CTRl is pressed or not
     }
 
 
@@ -70,6 +67,10 @@ type alias Command =
     { keyCmd : Maybe KeyboardShortcut
     , lineCmd : Maybe LineCommand
     , menuCmd : Maybe MenuCommand
+    , withCtrl : Maybe Bool
+      -- ^ If the command has to be invoked with CTRL pressed; if `Nothing`, it
+      -- can be invoked whether CTRl is pressed or not; applies to `keyCmd` and
+      -- `menuCmd`
     , help : Maybe String
       -- ^ Just a help string
     }
@@ -81,6 +82,7 @@ void =
     { keyCmd=Nothing
     , lineCmd=Nothing
     , menuCmd=Nothing
+    , withCtrl=Nothing
     , help=Nothing
     }
 
@@ -103,49 +105,68 @@ hasMenuName name cmd =
 globalCommands : List (Command, Msg)
 globalCommands =
     [ { void
-          | keyCmd = Just {keyCode=68, char='d', withCtrl=Just False}
-          , lineCmd = Just "delete"
+          | keyCmd = Just {keyCode=68, char='d'}
+          , lineCmd = Just "delnode"
           , menuCmd = Just "Delete"
+          , withCtrl=Just False
           , help = Just "Delete the selected nodes"
       } => Delete
     , { void
-          | keyCmd = Just {keyCode=68, char='d', withCtrl=Just True}
+          | keyCmd = Just {keyCode=68, char='d'}
           , lineCmd = Just "deltree"
           , menuCmd = Just "Delete"
+          , withCtrl=Just True
           , help = Just "Deleted the subtrees of the selected nodes"
       } => DeleteTree
     , { void
-          | keyCmd = Just {keyCode=65, char='a', withCtrl=Nothing}
+          | keyCmd = Just {keyCode=65, char='a'}
           , menuCmd = Just "Add"
           , help = Just "Add (a) new node(s) over the selected node(s)"
       } => Add
     , { void
-          | keyCmd = Just {keyCode=83, char='s', withCtrl=Just True}
+          | keyCmd = Just {keyCode=83, char='s'}
           , lineCmd = Just "save"
-          , menuCmd = Just "Save" } => SaveFile
+          , menuCmd = Just "Save"
+          , withCtrl=Just True
+      } => SaveFile
     , { void
-          | lineCmd = Just "restart" } => ParseRaw False
+          | lineCmd = Just "restart"
+          , menuCmd = Just "Restart"
+          , withCtrl = Just False
+          , help = Just "Restart annotation of the file"
+      } => ParseRaw False
     , { void
-          | lineCmd = Just "preprocess"
-          , menuCmd = Just "Preprocess" } => ParseRaw True
+          | lineCmd = Just "restartpreproc"
+          , menuCmd = Just "Restart"
+          , withCtrl = Just True
+          , help = Just "Restart annotation of the file and perform preprocessing"
+      } => ParseRaw True
     , { void
-          | keyCmd = Just {keyCode=80, char='p', withCtrl=Just False}
+          | keyCmd = Just {keyCode=80, char='p'}
           , lineCmd = Just "parse"
-          , menuCmd = Just "Parse" } => ParseSent Server.Stanford
+          , menuCmd = Just "Parse"
+          , withCtrl=Just False
+          , help = Just "Reparse the sentence"
+      } => ParseSent Server.Stanford
     , { void
-          | keyCmd = Just {keyCode=80, char='p', withCtrl=Just True}
+          | keyCmd = Just {keyCode=80, char='p'}
           , lineCmd = Just "parsepos"
-          , menuCmd = Just "Parse" } => ParseSentPos Server.Stanford
+          , menuCmd = Just "Parse"
+          , help = Just "Reparse the sentence without changing the POS tags"
+          , withCtrl=Just True
+      } => ParseSentPos Server.Stanford
     , { void
-          | lineCmd = Just "dopparse" } => ParseSent Server.DiscoDOP
+          | lineCmd = Just "dopparse"
+      } => ParseSent Server.DiscoDOP
     , { void
-          | lineCmd = Just "parsecons" } => ParseSentCons Server.DiscoDOP
+          | lineCmd = Just "parsecons"
+      } => ParseSentCons Server.DiscoDOP
     , { void
           | lineCmd = Just "deepen" } => ApplyRules
     , { void
-          | lineCmd = Just "splittree"
-          , menuCmd = Just "Split tree"
-          , help = Just "Split the current tree into several sentences at the selected terminal nodes"
+          | lineCmd = Just "splitsent"
+          , menuCmd = Just "Split sentence"
+          , help = Just "Split the current sentence into several sentences at the selected terminal nodes"
       } => SplitTree
     , { void
           | lineCmd = Just "splitword"
@@ -157,8 +178,8 @@ globalCommands =
     , { void
           | lineCmd = Just "join" } => Join
     , { void
-          | lineCmd = Just "concat"
-          , menuCmd = Just "Concatenate"
+          | lineCmd = Just "joinwords"
+          , menuCmd = Just "Join words"
           , help = Just "Concatenate the tokens corresponding to the selected terminals"
       } => ConcatWords
     , { void
@@ -166,6 +187,24 @@ globalCommands =
           , menuCmd = Just "Dummify"
           , help = Just "Destroy the entire tree"
       } => Dummy
+
+    -- Temporal section
+    , { void
+          | keyCmd = Just {keyCode=83, char='s'}
+          , menuCmd = Just "Signal"
+          , help = Just "Make the selected node as signal"
+      } => MkSignal
+    , { void
+          | keyCmd = Just {keyCode=84, char='t'}
+          , menuCmd = Just "Timex"
+          , help = Just "Make the selected node as timex"
+      } => MkTimex
+    , { void
+          | keyCmd = Just {keyCode=86, char='v'}
+          , menuCmd = Just "Event"
+          , help = Just "Make the selected node as event"
+      } => MkEvent
+
     ]
 
 
@@ -188,8 +227,8 @@ msgFromKeyCode isCtrl code =
                 Just key ->
                     key.keyCode == code &&
                         (
-                         key.withCtrl == Nothing ||
-                         key.withCtrl == Just isCtrl
+                         cmd.withCtrl == Nothing ||
+                         cmd.withCtrl == Just isCtrl
                         )
         relevant = List.filter (isRelevant << Tuple.first) globalCommands
     in
@@ -235,9 +274,7 @@ mkMenuElem isCtrl menuMsg =
         -- NOTE: we assume that at most one relevant element should be retrieved
         isRelevant (cmd, msg) =
             msg == menuMsg &&
-            case cmd.keyCmd of
-                Nothing -> True
-                Just key -> key.withCtrl == Nothing || key.withCtrl == Just isCtrl
+            (cmd.withCtrl == Nothing || cmd.withCtrl == Just isCtrl)
         relevant = List.filter isRelevant globalCommands
     in
         case relevant  of
@@ -245,13 +282,16 @@ mkMenuElem isCtrl menuMsg =
                 case cmd.menuCmd of
                     Nothing -> Nothing
                     Just rawName -> Just <|
-                        case cmd.keyCmd of
-                            Nothing -> plainText rawName
-                            Just key ->
-                                let charStr = String.fromChar key.char in
-                                case String.indexes charStr (String.toLower rawName) of
-                                    i :: _ -> emphasizeCtrl (key.withCtrl == Just True) i rawName
-                                    _ -> plainText rawName
+                        let
+                            ctrlFlag = cmd.withCtrl == Just True
+                        in
+                            case cmd.keyCmd of
+                                Nothing -> plainText ctrlFlag rawName
+                                Just key ->
+                                    let charStr = String.fromChar key.char in
+                                    case String.indexes charStr (String.toLower rawName) of
+                                        i :: _ -> emphasizeCtrl ctrlFlag i rawName
+                                        _ -> plainText ctrlFlag rawName
             _ -> Nothing
 
 
@@ -412,8 +452,12 @@ px number =
 ---------------------------------------------------
 
 
-plainText : String -> Html.Html Msg
-plainText x = Html.text x
+-- | The input flag tells if this is an CTRL-only command.
+plainText : Bool -> String -> Html.Html Msg
+plainText flag x =
+    if flag
+    then Html.i [] [Html.text x]
+    else Html.text x
 
 
 emphasize : Int -> String -> Html.Html Msg
@@ -425,17 +469,17 @@ emphasize i x =
         ]
 
 
--- | If the flag argument is `True`, then overline the selected character,
--- otherwise like `emphasize`.
+-- | The input flag tells if this is an CTRL-only command.
 emphasizeCtrl : Bool -> Int -> String -> Html.Html Msg
 emphasizeCtrl flag i x =
     let
-        style =
-            if flag
-            then [Atts.style ["text-decoration" => "overline"]]
-            else [Atts.style ["text-decoration" => "underline"]]
+        mkRoot = if flag then Html.i else Html.span
+        style = [Atts.style ["text-decoration" => "underline"]]
+--             if flag
+--             then [Atts.style ["text-decoration" => "overline"]]
+--             else [Atts.style ["text-decoration" => "underline"]]
     in
-        Html.span []
+        mkRoot []
             [ Html.text (String.slice 0 i x)
             , Html.span style [Html.text (String.slice i (i+1) x)]
             , Html.text (String.slice (i+1) (String.length x) x)
