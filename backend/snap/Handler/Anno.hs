@@ -40,6 +40,7 @@ bodySplice :: Splice AppHandler
 bodySplice = do
   Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
   Just fileId <- return $ Odil.decodeFileId fileIdTxt
+  liftIO $ putStrLn "DEBUG: " >> print fileId
   mbUser <- lift $ Snap.with auth Auth.currentUser
   case mbUser of
     Nothing -> return [X.TextNode "access not authorized"]

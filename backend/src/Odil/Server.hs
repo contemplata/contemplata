@@ -207,7 +207,7 @@ talk conn state snapCfg = forever $ do
   putStrLn $ "WS: init talking"
   msg <- WS.receiveData conn
   putStrLn "WS: obtained message:"
-  LBC.putStrLn $ LBC.take 100 msg
+  LBC.putStrLn $ LBC.take 1000 msg
 
   putStrLn "WS: taking DB MVar"
   db <- C.takeMVar state

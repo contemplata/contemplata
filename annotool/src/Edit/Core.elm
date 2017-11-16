@@ -7,10 +7,10 @@ module Edit.Core exposing
   , Addr
 
   -- * Encoding
-  , encodeAnnoLevel
-  , decodeAnnoLevel
   , encodeFileId
   , decodeFileId
+  , showAnnoLevel
+  , readAnnoLevel
 
   , TreeId (..)
   , TreeIdBare
@@ -22,9 +22,9 @@ module Edit.Core exposing
 --   , cmpPartId
 
   -- * JSON
-  , encodeAnnoLevelJSON
+  -- , encodeAnnoLevelJSONKey
+  -- , annoLevelKeyDecoder
   , encodeFileIdJSON
-  , annoLevelDecoder
   , fileIdDecoder
   )
 
@@ -54,8 +54,8 @@ type AnnoLevel
 
 
 -- | Decode AnnoLevel.
-encodeAnnoLevel : AnnoLevel -> String
-encodeAnnoLevel annoLev =
+showAnnoLevel : AnnoLevel -> String
+showAnnoLevel annoLev =
     case annoLev of
         Orig -> "orig"
         Syntax -> "syntax"
@@ -64,8 +64,8 @@ encodeAnnoLevel annoLev =
 
 
 -- | Decode AnnoLevel.
-decodeAnnoLevel : String -> Maybe AnnoLevel
-decodeAnnoLevel str =
+readAnnoLevel : String -> Maybe AnnoLevel
+readAnnoLevel str =
     case str of
         "orig" -> Just Orig
         "syntax" -> Just Syntax
@@ -93,7 +93,7 @@ type alias EncFileId = String
 encodeFileId : FileId -> EncFileId
 encodeFileId r = String.join ":"
   [ r.fileName
-  , encodeAnnoLevel r.annoLevel
+  , showAnnoLevel r.annoLevel
   , r.copyId
   ]
 
@@ -102,7 +102,7 @@ decodeFileId : EncFileId -> Maybe FileId
 decodeFileId enc =
     case String.split ":" enc of
         [name, levelEnc, cid] ->
-            case decodeAnnoLevel levelEnc of
+            case readAnnoLevel levelEnc of
                 Just level -> Just
                     { fileName = name
                     , annoLevel = level
@@ -167,6 +167,10 @@ encodeAnnoLevelJSON : AnnoLevel -> Encode.Value
 encodeAnnoLevelJSON = Encode.string << toString
 
 
+-- encodeAnnoLevelJSONKey : AnnoLevel -> Encode.Value
+-- encodeAnnoLevelJSONKey = Encode.string << showAnnoLevel
+
+
 encodeFileIdJSON : FileId -> Encode.Value
 encodeFileIdJSON r =
     Encode.object
@@ -179,7 +183,21 @@ encodeFileIdJSON r =
 
 annoLevelDecoder : Decode.Decoder AnnoLevel
 annoLevelDecoder =
-    Decode.map (Maybe.withDefault Orig << decodeAnnoLevel) Decode.string
+    let
+        readIt x =
+            case x of
+                "Orig" -> Just Orig
+                "Syntax" -> Just Syntax
+                "Temporal" -> Just Temporal
+                "Relations" -> Just Relations
+                _ -> Nothing
+    in
+        Decode.map (Maybe.withDefault Orig << readIt) Decode.string
+
+
+-- annoLevelKeyDecoder : Decode.Decoder AnnoLevel
+-- annoLevelKeyDecoder =
+--     Decode.map (Maybe.withDefault Orig << readAnnoLevel) Decode.string
 
 
 fileIdDecoder : Decode.Decoder FileId

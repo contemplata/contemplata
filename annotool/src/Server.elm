@@ -94,7 +94,7 @@ encodeReqToVal req = case req of
     -- , ("contents", Encode.string id)
     , ("contents", Encode.list
          [ Encode.string annoName
-         , C.encodeFileIdJSON id ]
+         , Debug.log "encodeFileIdJSON result: " <| C.encodeFileIdJSON id ]
       )
     ]
   SaveFile annoName fileId file -> Encode.object
