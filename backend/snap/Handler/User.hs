@@ -12,9 +12,11 @@ module Handler.User
 
 import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Trans.Class (lift)
-import qualified Control.Concurrent as C
 import qualified Control.Monad.State.Strict as State
+import           Control.Monad (guard, filterM)
+import qualified Control.Concurrent as C
 
+import           Data.Maybe (isJust)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 -- import qualified Data.Set as S
@@ -41,11 +43,15 @@ import           Application
 
 filesHandler :: AppHandler ()
 filesHandler = do
-  fileList <- M.toList <$> liftDB DB.fileMap
+  login <- userName
+  fileList <- filterM (hasAccess login) . M.toList
+    =<< liftDB DB.fileMap
   Heist.heistLocal
     (bindSplices $ localSplices fileList)
     (Heist.render "user/files")
   where
+    hasAccess login (fileId, fileMeta) =
+      isJust <$> liftDB (DB.accessLevel fileId login)
     localSplices fileList = do
       let withStatus val = map fst . filter (hasStatus val)
       "newList" ## mkFileTable (withStatus Odil.New fileList)
@@ -120,7 +126,7 @@ finishHandler = do
 ---------------------------------------
 
 
--- | Verify that the admin is logged in.
+-- | Get the current user name.
 userName :: AppHandler Odil.AnnoName
 userName = do
   Just current <- Snap.with auth Auth.currentUser
