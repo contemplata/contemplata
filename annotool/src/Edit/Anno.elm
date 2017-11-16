@@ -105,33 +105,36 @@ nodeLabelSet = S.union phrasalLabelSet preTerminalLabelSet
 
 
 phrasalLabelSet : S.Set String
-phrasalLabelSet = S.fromList
-  [ "AP"
-  , "AdP"
-  , "COORD"
-  , "MWA"
-  , "MWADV"
-  , "MWC"
-  , "MWCL"
-  , "MWD"
-  , "MWN"
-  , "MWP"
-  , "MWPRO"
-  , "MWV"
-  , "NP"
-  , "PP"
-  , "ROOT"
-  , "SENT"
-  , "Sint"
-  , "Srel"
-  , "Ssub"
-  , "VN"
-  , "VP"
-  , "VPinf"
-  , "VPpart"
-  -- below, custom additional labels
-  , "PARA"
-  , "$" ]
+phrasalLabelSet =
+    let
+        addDolar x = [x, "$" ++ x]
+    in
+        (S.fromList << List.concatMap addDolar)
+            [ "AP"
+            , "AdP"
+            , "COORD"
+            , "MWA"
+            , "MWADV"
+            , "MWC"
+            , "MWCL"
+            , "MWD"
+            , "MWN"
+            , "MWP"
+            , "MWPRO"
+            , "MWV"
+            , "NP"
+            , "PP"
+            , "ROOT"
+            , "SENT"
+            , "Sint"
+            , "Srel"
+            , "Ssub"
+            , "VN"
+            , "VP"
+            , "VPinf"
+            , "VPpart"
+            -- below, custom additional labels
+            , "PARA" ]
 
 
 preTerminalLabelSet : S.Set String

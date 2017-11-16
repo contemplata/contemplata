@@ -49,6 +49,8 @@ type AnnoLevel
     -- ^ Syntactic level
   | Temporal
     -- ^ Temporal level
+  | Relations
+    -- ^ Temporal relations level
 
 
 -- | Decode AnnoLevel.
@@ -58,6 +60,7 @@ encodeAnnoLevel annoLev =
         Orig -> "orig"
         Syntax -> "syntax"
         Temporal -> "temporal"
+        Relations -> "relations"
 
 
 -- | Decode AnnoLevel.
@@ -67,6 +70,7 @@ decodeAnnoLevel str =
         "orig" -> Just Orig
         "syntax" -> Just Syntax
         "temporal" -> Just Temporal
+        "relations" -> Just Relations
         _ -> Nothing
 
 

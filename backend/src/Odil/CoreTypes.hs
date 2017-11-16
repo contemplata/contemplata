@@ -54,6 +54,8 @@ data AnnoLevel
     -- ^ Syntactic level
   | Temporal
     -- ^ Temporal level
+  | Relations
+    -- ^ Temporal relations level
   deriving (Eq, Ord, Generic)
 
 
@@ -62,6 +64,7 @@ instance Show AnnoLevel where
     Orig -> "orig"
     Syntax -> "syntax"
     Temporal -> "temporal"
+    Relations -> "relations"
 
 
 readAnnoLevel :: T.Text -> Maybe AnnoLevel
@@ -69,6 +72,7 @@ readAnnoLevel annoStr = case annoStr of
   "orig" -> Just Orig
   "syntax" -> Just Syntax
   "temporal" -> Just Temporal
+  "relations" -> Just Relations
   _ -> Nothing
 
 
