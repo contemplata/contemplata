@@ -138,7 +138,7 @@ postponeHandler = do
   Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
   Just fileId <- return $ Odil.decodeFileId fileIdTxt
   liftDB $ DB.postponeAnnotating fileId
-  Snap.redirect "/"
+  redirectToTop
 
 
 finishHandler :: AppHandler ()
@@ -149,7 +149,15 @@ finishHandler = do
   Just access <- liftDB (DB.accessLevel fileId login)
   guard $ access >= Odil.Write
   liftDB $ DB.finishAnnotating fileId
-  Snap.redirect "/"
+  redirectToTop
+
+
+redirectToTop :: AppHandler ()
+redirectToTop = do
+  hrefBase <- do
+    cfg <- Snap.getSnapletUserConfig
+    liftIO $ MyCfg.fromCfg' cfg "href-base"
+  Snap.redirect hrefBase
 
 
 ---------------------------------------
