@@ -11,6 +11,7 @@ module Handler.User
 
 , ifNotGuest
 , ifNotGuestSplice
+, currentLoginSplice
 ) where
 
 
@@ -193,6 +194,19 @@ addChangePasswordForm currPass
 
 
 ---------------------------------------
+-- Current login
+---------------------------------------
+
+
+-- | Run the contents of the node if the logged user has
+-- administrative rights.
+currentLoginSplice :: Splice AppHandler
+currentLoginSplice = do
+  login <- lift userName
+  return [X.TextNode login]
+
+
+---------------------------------------
 -- Guest
 ---------------------------------------
 
@@ -213,8 +227,8 @@ ifNotGuest :: AppHandler () -> AppHandler ()
 ifNotGuest after = do
   cfg <- Snap.getSnapletUserConfig
   guestLogin <- liftIO $ MyCfg.fromCfg' cfg "guest"
-  Just current <- Snap.with auth Auth.currentUser
-  if guestLogin /= Auth.userLogin current
+  currentLogin <- userName
+  if guestLogin /= currentLogin
     then after
     else Snap.writeText "Not authorized"
 

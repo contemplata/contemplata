@@ -155,6 +155,7 @@ globalSplices = do
   "ifAdmin" ## Admin.ifAdminSplice
   "ifNotAdmin" ## Admin.ifAdminSplice
   "ifNotGuest" ## User.ifNotGuestSplice
+  "currentLogin" ## User.currentLoginSplice
   "hrefBase" ## hrefBase
   where
     hrefBase = lift $ do
