@@ -154,6 +154,7 @@ globalSplices :: Splices (Splice AppHandler)
 globalSplices = do
   "ifAdmin" ## Admin.ifAdminSplice
   "ifNotAdmin" ## Admin.ifAdminSplice
+  "ifNotGuest" ## User.ifNotGuestSplice
   "hrefBase" ## hrefBase
   where
     hrefBase = lift $ do

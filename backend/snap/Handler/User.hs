@@ -8,6 +8,9 @@ module Handler.User
 , postponeHandler
 , finishHandler
 , passwordHandler
+
+, ifNotGuest
+, ifNotGuestSplice
 ) where
 
 
@@ -29,6 +32,7 @@ import qualified Snap as Snap
 import qualified Snap.Snaplet.Auth as Auth
 import qualified Snap.Snaplet.Heist as Heist
 import           Heist.Interpreted (bindSplices, Splice)
+import           Heist (getParamNode)
 import qualified Text.XmlHtml as X
 
 import           Text.Digestive.Form (Form, (.:))
@@ -42,6 +46,7 @@ import qualified Odil.Server.DB as DB
 -- import qualified Odil.Server.Users as Users
 
 import qualified Auth as MyAuth
+import qualified Config as MyCfg
 import           Application
 
 
@@ -136,7 +141,7 @@ finishHandler = do
 
 
 passwordHandler :: AppHandler ()
-passwordHandler = do
+passwordHandler = ifNotGuest $ do
 
   --  User's login
   login <- userName
@@ -185,6 +190,41 @@ addChangePasswordForm currPass
       Auth.checkPassword (Auth.ClearText $ T.encodeUtf8 oldPass) currPass
     checkNew (oldPass, newPass1, newPass2) =
       newPass1 == newPass2
+
+
+---------------------------------------
+-- Guest
+---------------------------------------
+
+
+-- | Verify that the admin is logged in.
+isGuest :: AppHandler Bool
+isGuest = do
+  cfg <- Snap.getSnapletUserConfig
+  guestLogin <- liftIO $ MyCfg.fromCfg' cfg "guest"
+  currentMay <- Snap.with auth Auth.currentUser
+  return $ case currentMay of
+    Nothing -> False
+    Just current -> guestLogin == Auth.userLogin current
+
+
+-- | Verify that someone is logged in but not the guest.
+ifNotGuest :: AppHandler () -> AppHandler ()
+ifNotGuest after = do
+  cfg <- Snap.getSnapletUserConfig
+  guestLogin <- liftIO $ MyCfg.fromCfg' cfg "guest"
+  Just current <- Snap.with auth Auth.currentUser
+  if guestLogin /= Auth.userLogin current
+    then after
+    else Snap.writeText "Not authorized"
+
+
+-- | Run the contents of the node if the logged user has
+-- administrative rights.
+ifNotGuestSplice :: Splice AppHandler
+ifNotGuestSplice = lift isGuest >>= \case
+  True -> return []
+  False -> X.childNodes <$> getParamNode
 
 
 ---------------------------------------
