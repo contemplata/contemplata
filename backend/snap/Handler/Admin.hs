@@ -234,9 +234,13 @@ redirectToFile fileNameBS = do
   hrefBase <- do
     cfg <- Snap.getSnapletUserConfig
     liftIO $ MyCfg.fromCfg' cfg "href-base"
+  let middlePath =
+        ( if "/" `BS.isSuffixOf` hrefBase
+          then "" else "/" )
+        `BS.append` "admin/file/"
   Snap.redirect $ BS.concat
     [ hrefBase
-    , "/admin/file/"
+    , middlePath
     , fileNameBS ]
 
 
