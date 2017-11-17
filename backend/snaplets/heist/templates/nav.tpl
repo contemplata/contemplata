@@ -34,7 +34,7 @@
           <a href="logout">Sign Out</a>
         </li>
         <li>
-          (</currentLogin>)
+          (<currentLogin/>)
         </li>
       </ifLoggedIn>
       <ifLoggedOut>
