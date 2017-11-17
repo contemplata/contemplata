@@ -80,6 +80,7 @@ routes =
   , ("/admin/createuser", Admin.createUserHandler)
   , ("/admin/password", Admin.passwordHandler)
   , ("/admin/files", Admin.filesHandler)
+  , ("/admin/users", Admin.usersHandler)
   , ("/admin/file/:filename", Admin.fileHandler)
   , ("/admin/file/:filename/addanno/:annoname", Admin.fileAddAnnoHandler)
   , ("/admin/file/:filename/remanno/:annoname", Admin.fileRemoveAnnoHandler)

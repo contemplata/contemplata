@@ -5,12 +5,17 @@
 module Handler.Admin
 ( createUserHandler
 , passwordHandler
+
+-- * Files
 , filesHandler
 , fileHandler
 , fileAddAnnoHandler
 , fileRemoveAnnoHandler
 , fileChangeAccessAnnoHandler
 , fileChangeStatusHandler
+
+-- * Users
+, usersHandler
 
 -- * Utis
 , isAdmin
@@ -24,6 +29,7 @@ import           Control.Monad.Trans.Class (lift)
 import           Control.Monad (guard, (<=<))
 
 import qualified Data.Set as S
+import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
@@ -242,6 +248,62 @@ redirectToFile fileNameBS = do
     [ hrefBase
     , middlePath
     , fileNameBS ]
+
+
+---------------------------------------
+-- Users handler
+---------------------------------------
+
+
+usersHandler :: AppHandler ()
+usersHandler = ifAdmin $ do
+
+  (userView, userData) <-
+    D.runForm "add-user-form" . addUserForm . S.fromList =<< getAnnoList
+
+  case userData of
+    Nothing -> return ()
+    Just (login, pass) -> do
+      res <- Snap.with auth $ Auth.createUser login (T.encodeUtf8 pass)
+      case res of
+        Left err -> Snap.writeText . T.pack $ show res
+        Right _  -> return () -- Snap.writeText "Success"
+
+  annoList <- getAnnoList
+  Heist.heistLocal
+    ( bindSplices (localSplices annoList)
+    . bindDigestiveSplices userView )
+    (Heist.render "admin/users")
+
+  where
+
+    localSplices annoList = do
+      "userList" ## userList annoList
+
+    getAnnoList = do
+      cfg <- Snap.getSnapletUserConfig
+      passPath <- liftIO $ MyCfg.fromCfg' cfg "password"
+      liftIO $ Users.listUsers passPath
+
+
+-- | A list of members.
+userList :: [AnnoName] -> Splice AppHandler
+userList =
+  return . map mkElem
+  where
+    mkElem anno = X.Element "li"
+      [("class", "list-group-item")]
+      [X.TextNode anno]
+
+
+-- | Login form for a user.
+addUserForm :: S.Set AnnoName -> Form T.Text AppHandler (T.Text, T.Text)
+addUserForm annoSet = (,)
+  <$> "user-name" .:
+              D.check "Login already exists"
+              (not . (`S.member` annoSet))
+              (D.text Nothing)
+  <*> "user-pass" .: D.text Nothing
 
 
 ---------------------------------------

@@ -18,8 +18,11 @@
           <a href="admin/files">Files</a>
         </li>
         <li>
-          <a href="annotation">Annotation</a>
+          <a href="admin/users">Users</a>
         </li>
+        <!--li>
+          <a href="annotation">Annotation</a>
+        </li-->
       </ifAdmin>
       <ifLoggedIn>
         <li>
