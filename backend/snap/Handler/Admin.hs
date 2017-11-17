@@ -347,9 +347,16 @@ ifAdmin after = do
 
 
 -- | Run the contents of the node if the logged user has
--- administrative rights (currently, every logged-in user
--- has administrative rights).
+-- administrative rights.
 ifAdminSplice :: Splice AppHandler
 ifAdminSplice = lift isAdmin >>= \case
   False -> return []
   True -> X.childNodes <$> getParamNode
+
+
+-- | Run the contents of the node if the logged user has no
+-- administrative rights.
+ifNotAdminSplice :: Splice AppHandler
+ifNotAdminSplice = lift isAdmin >>= \case
+  True -> return []
+  False -> X.childNodes <$> getParamNode

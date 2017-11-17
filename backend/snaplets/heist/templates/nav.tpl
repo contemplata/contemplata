@@ -26,6 +26,9 @@
       </ifAdmin>
       <ifLoggedIn>
         <li>
+          <a href="user/password">Password</a>
+        </li>
+        <li>
           <a href="logout">Sign Out</a>
         </li>
       </ifLoggedIn>

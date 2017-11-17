@@ -7,13 +7,14 @@ module Handler.User
 ( filesHandler
 , postponeHandler
 , finishHandler
+, passwordHandler
 ) where
 
 
 import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.State.Strict as State
-import           Control.Monad (guard, filterM)
+import           Control.Monad (guard, filterM, void)
 import qualified Control.Concurrent as C
 
 import           Data.Maybe (isJust)
@@ -22,6 +23,7 @@ import qualified Data.Text.Encoding as T
 -- import qualified Data.Set as S
 import qualified Data.Map.Strict as M
 import           Data.Map.Syntax ((##))
+import qualified Data.ByteString as BS
 
 import qualified Snap as Snap
 import qualified Snap.Snaplet.Auth as Auth
@@ -29,10 +31,17 @@ import qualified Snap.Snaplet.Heist as Heist
 import           Heist.Interpreted (bindSplices, Splice)
 import qualified Text.XmlHtml as X
 
+import           Text.Digestive.Form (Form, (.:))
+import qualified Text.Digestive.Form as D
+import           Text.Digestive.Heist (bindDigestiveSplices)
+import qualified Text.Digestive.View as D
+import qualified Text.Digestive.Snap as D
+
 import qualified Odil.Server.Types as Odil
 import qualified Odil.Server.DB as DB
 -- import qualified Odil.Server.Users as Users
 
+import qualified Auth as MyAuth
 import           Application
 
 
@@ -119,6 +128,63 @@ finishHandler = do
   Just fileId <- return $ Odil.decodeFileId fileIdTxt
   liftDB $ DB.finishAnnotating fileId
   Snap.redirect "/"
+
+
+---------------------------------------
+-- Password handler
+---------------------------------------
+
+
+passwordHandler :: AppHandler ()
+passwordHandler = do
+
+  --  User's login
+  login <- userName
+  Just authUser <- MyAuth.authByLogin login
+
+  (passView, passData) <-
+    D.runForm "change-password-form"
+    ( addChangePasswordForm
+    . maybe (Auth.ClearText "") id
+    $ Auth.userPassword authUser )
+
+  successHtml <- case passData of
+    Nothing -> return []
+    Just newPass -> do
+      newAuthUser <- liftIO $ Auth.setPassword authUser newPass
+      Snap.with auth $ Auth.saveUser newAuthUser
+      return
+        [ X.Element "div"
+          [("class", "alert alert-success")]
+          [X.TextNode "Success"]
+        ]
+  let localSplices = do
+        "onSuccess" ## return successHtml
+
+  Heist.heistLocal
+    ( bindDigestiveSplices passView
+    . bindSplices localSplices )
+    (Heist.render "user/password")
+
+
+-- | Change password form.  Returns the new ClearText password.
+addChangePasswordForm
+  :: Auth.Password -- ^ The current password
+  -> Form T.Text AppHandler BS.ByteString
+addChangePasswordForm currPass
+  = fmap (\(_, new1, _) -> T.encodeUtf8 new1)
+  . D.check "Old password incorrect" checkOld
+  . D.check "New passwords differ" checkNew
+  $ tripleForm
+  where
+    tripleForm = (,,)
+      <$> "user-oldpass"  .: D.text Nothing
+      <*> "user-newpass1" .: D.text Nothing
+      <*> "user-newpass2" .: D.text Nothing
+    checkOld (oldPass, newPass1, newPass2) =
+      Auth.checkPassword (Auth.ClearText $ T.encodeUtf8 oldPass) currPass
+    checkNew (oldPass, newPass1, newPass2) =
+      newPass1 == newPass2
 
 
 ---------------------------------------

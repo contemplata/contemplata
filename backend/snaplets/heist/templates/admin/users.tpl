@@ -22,7 +22,7 @@
     
           <div class="form-group">
             <dfLabel for="user-name">Login</dfLabel>
-            <dfInputText class="form-control" id="user-name" ref="user-name" placeholder="Enter login"/>
+            <dfInputText class="form-control" id="user-name" ref="user-name" placeholder="Enter login" required autofocus/>
           </div>
     
           <div class="form-group">

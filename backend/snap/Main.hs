@@ -73,6 +73,7 @@ routes =
 
   -- User-related handlers
   , ("/user/files", User.filesHandler)
+  , ("/user/password", User.passwordHandler)
   , ("/user/file/:filename/postpone", User.postponeHandler)
   , ("/user/file/:filename/finish", User.finishHandler)
 
@@ -152,6 +153,7 @@ wsHandler = do
 globalSplices :: Splices (Splice AppHandler)
 globalSplices = do
   "ifAdmin" ## Admin.ifAdminSplice
+  "ifNotAdmin" ## Admin.ifAdminSplice
   "hrefBase" ## hrefBase
   where
     hrefBase = lift $ do
