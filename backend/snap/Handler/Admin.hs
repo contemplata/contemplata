@@ -194,7 +194,7 @@ fileAddAnnoHandler = ifAdmin $ do
   Just fileName <- (return . decodeFileId) (T.decodeUtf8 fileNameBS)
   Just annoName <- fmap T.decodeUtf8 <$> Snap.getParam "annoname"
   liftDB $ DB.addAnnotator fileName annoName Read
-  Snap.redirect $ "/admin/file/" `BS.append` fileNameBS
+  redirectToFile fileNameBS
 
 
 -- | Remmove annotator from a file handler.
@@ -204,7 +204,7 @@ fileRemoveAnnoHandler = ifAdmin $ do
   Just fileName <- (return . decodeFileId) (T.decodeUtf8 fileNameBS)
   Just annoName <- fmap T.decodeUtf8 <$> Snap.getParam "annoname"
   liftDB $ DB.remAnnotator fileName annoName
-  Snap.redirect $ "/admin/file/" `BS.append` fileNameBS
+  redirectToFile fileNameBS
 
 
 -- | Remmove annotator from a file handler.
@@ -214,7 +214,7 @@ fileChangeAccessAnnoHandler = ifAdmin $ do
   Just fileName <- (return . decodeFileId) (T.decodeUtf8 fileNameBS)
   Just annoName <- fmap T.decodeUtf8 <$> Snap.getParam "annoname"
   liftDB $ DB.changeAccessAnnotator fileName annoName
-  Snap.redirect $ "/admin/file/" `BS.append` fileNameBS
+  redirectToFile fileNameBS
 
 
 -- | Remmove annotator from a file handler.
@@ -226,7 +226,18 @@ fileChangeStatusHandler = ifAdmin $ do
     New -> Touched
     Touched -> Done
     Done -> New
-  Snap.redirect $ "/admin/file/" `BS.append` fileNameBS
+  redirectToFile fileNameBS
+
+
+redirectToFile :: BS.ByteString -> AppHandler ()
+redirectToFile fileNameBS = do
+  hrefBase <- do
+    cfg <- Snap.getSnapletUserConfig
+    liftIO $ MyCfg.fromCfg' cfg "href-base"
+  Snap.redirect $ BS.concat
+    [ hrefBase
+    , "/admin/file/"
+    , fileNameBS ]
 
 
 ---------------------------------------
