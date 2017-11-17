@@ -62,31 +62,36 @@ filesHandler = do
   fileList <- filterM (hasAccess login) . M.toList
     =<< liftDB DB.fileMap
   Heist.heistLocal
-    (bindSplices $ localSplices fileList)
+    (bindSplices $ localSplices login fileList)
     (Heist.render "user/files")
   where
     hasAccess login (fileId, fileMeta) =
       isJust <$> liftDB (DB.accessLevel fileId login)
-    localSplices fileList = do
+    localSplices login fileList = do
       let withStatus val = map fst . filter (hasStatus val)
-      "newList" ## mkFileTable (withStatus Odil.New fileList)
-      "touchedList" ## mkTouchedTable (withStatus Odil.Touched fileList)
-      "doneList" ## mkFileTable (withStatus Odil.Done fileList)
+      "newList" ## mkFileTable login (withStatus Odil.New fileList)
+      "touchedList" ## mkTouchedTable login (withStatus Odil.Touched fileList)
+      "doneList" ## mkFileTable login (withStatus Odil.Done fileList)
     hasStatus val (_, Odil.FileMeta{..}) = fileStatus == val
 
 
 -- | A list of members.
-mkFileTable :: [Odil.FileId] -> Splice AppHandler
-mkFileTable =
+mkFileTable
+  :: Odil.AnnoName
+  -> [Odil.FileId]
+  -> Splice AppHandler
+mkFileTable annoName =
   mapM mkElem
   where
 
     mkElem fileId = do
       file <- lift . liftDB $ DB.loadFile fileId
+      Just access <- lift . liftDB $ DB.accessLevel fileId annoName
       return $ X.Element "tr" []
         [ mkLink (Odil.fileName fileId) "annotate" $
           T.intercalate "/" ["annotate", Odil.encodeFileId fileId]
         , mkText (T.pack . show $ Odil.annoLevel fileId)
+        , mkText (T.toLower . T.pack . show $ access)
         , mkText (T.pack . show $ Odil.numberOfTokens file)
 --         , mkLink "remove" "Click to remove" $
 --           T.intercalate "/" ["admin", "file", fileName, "remanno", annoName]
@@ -96,22 +101,30 @@ mkFileTable =
 
 
 -- | A list of members.
-mkTouchedTable :: [Odil.FileId] -> Splice AppHandler
-mkTouchedTable =
+mkTouchedTable
+  :: Odil.AnnoName
+  -> [Odil.FileId]
+  -> Splice AppHandler
+mkTouchedTable annoName =
   mapM mkElem
   where
-
     mkElem fileId = do
       file <- lift . liftDB $ DB.loadFile fileId
+      Just access <- lift . liftDB $ DB.accessLevel fileId annoName
+      let withAccess html = if access >= Odil.Write then html else mkText ""
+          postponeLink = withAccess .
+            mkLink "postpone" "Click to postpone the annotation of the file" $
+            T.intercalate "/" ["user", "file", Odil.encodeFileId fileId, "postpone"]
+          finishLink = withAccess .
+            mkLink "finish" "Click to finish the annotation of the file" $
+            T.intercalate "/" ["user", "file", Odil.encodeFileId fileId, "finish"]
       return $ X.Element "tr" []
         [ mkLink (Odil.fileName fileId) "annotate" $
           T.intercalate "/" ["annotate", Odil.encodeFileId fileId]
         , mkText (T.pack . show $ Odil.annoLevel fileId)
+        , mkText (T.toLower . T.pack . show $ access)
         , mkText (T.pack . show $ Odil.numberOfTokens file)
-        , mkLink "postpone" "Click to postpone the annotation of the file" $
-          T.intercalate "/" ["user", "file", Odil.encodeFileId fileId, "postpone"]
-        , mkLink "finish" "Click to finish the annotation of the file" $
-          T.intercalate "/" ["user", "file", Odil.encodeFileId fileId, "finish"]
+        , postponeLink, finishLink
         ]
 
 
@@ -132,6 +145,9 @@ finishHandler :: AppHandler ()
 finishHandler = do
   Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
   Just fileId <- return $ Odil.decodeFileId fileIdTxt
+  login <- userName
+  Just access <- liftDB (DB.accessLevel fileId login)
+  guard $ access >= Odil.Write
   liftDB $ DB.finishAnnotating fileId
   Snap.redirect "/"
 

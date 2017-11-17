@@ -24,7 +24,8 @@
   <div class="tab-content">
     <bind tag="fileTableCols">
       <th>File name</th>
-      <th>Annotation level</th>
+      <th>Level</th>
+      <th>Access</th>
       <th>Tokens</th>
       <th>Postpone</th>
       <th>Finish</th>
@@ -36,7 +37,8 @@
 
     <bind tag="fileTableCols">
       <th>File name</th>
-      <th>Annotation level</th>
+      <th>Level</th>
+      <th>Access</th>
       <th>Tokens</th>
     </bind>
     <div class="tab-pane" id="new">
