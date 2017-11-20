@@ -25,6 +25,9 @@
         </li-->
       </ifAdmin>
       <ifLoggedIn>
+        <li>
+          <a href="user/files">Files</a>
+        </li>
         <ifNotGuest>
           <li>
             <a href="user/password">Password</a>
