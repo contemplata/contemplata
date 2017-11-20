@@ -68,7 +68,7 @@ module Edit.Model exposing
   -- Pseudo-lenses:
   -- , setTrees
   -- Various:
-  , setTreeCheck, setSentCheck, getWords, subTreeAt
+  , setTreeCheck, setForestCheck, setSentCheck, getWords, subTreeAt, nodesIn
   -- JSON decoding:
   , treeMapDecoder, fileDecoder, treeDecoder, sentDecoder, nodeDecoder
   -- JSON encoding:
@@ -1048,8 +1048,8 @@ selAll win =
       Just x  -> S.singleton x
 
 
--- | Change a tree in focus, provided that it has the appropriate
--- file and tree IDs.
+-- | Change the tree in focus, provided that it has the appropriate file and
+-- tree IDs.
 setTreeCheck : FileId -> PartId -> R.Tree Node -> Model -> Model
 setTreeCheck fileId treeId tree model =
   let
@@ -1059,6 +1059,34 @@ setTreeCheck fileId treeId tree model =
   in
     if fileId == fileIdSel && treeId == treeIdSel
     then updateTree treeIdSel (\_ -> tree) model
+    else model
+
+
+-- | Change the tree in focus, provided that it has the appropriate file and
+-- tree IDs.  In contrast to `setTreeCheck`, the function takes the list of
+-- (optional) trees.
+--
+-- NOTE: the function recomputes the IDs of the nodes.
+--
+-- TODO: We should probably check that the restul is sound.
+setForestCheck : FileId -> PartId -> List (Maybe (R.Tree Node)) -> Model -> Model
+setForestCheck fileId treeId newForest0 model =
+  let
+    win = selectWin model.focus model
+    treeIdSel = getReprId win.tree model
+    fileIdSel = model.fileId
+    oldForest = R.subTrees <| getTree treeIdSel model
+    newForest =
+        flip L.map (L.map2 (,) oldForest newForest0) <|
+            \(oldTree, mayNewTree) ->
+                case mayNewTree of
+                    Just newTree -> newTree
+                    _ -> oldTree
+    sentNode = Node {nodeId=0, nodeVal="ROOT", nodeTyp=Nothing, nodeComment=""}
+    newTree = reID <| R.Node sentNode newForest
+  in
+    if fileId == fileIdSel && treeId == treeIdSel
+    then updateTree treeIdSel (\_ -> newTree) model
     else model
 
 
@@ -2782,6 +2810,11 @@ isDummyTree tree =
 ---------------------------------------------------
 -- Utils
 ---------------------------------------------------
+
+
+-- | Flip the first two arguments.
+flip : (a -> b -> c) -> b -> a -> c
+flip f x y = f y x
 
 
 -- -- | Update the set of the selected nodes depending on the window in which the

@@ -31,7 +31,7 @@ import GHC.Generics
 
 import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Trans.Maybe (runMaybeT, MaybeT(..))
-import           Control.Monad (forM_, forever, (<=<))
+import           Control.Monad (forM_, forever, (<=<), when)
 import           Control.Arrow (second)
 import qualified Control.Exception as Exc
 import qualified Control.Concurrent as C
@@ -39,8 +39,9 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Tree as R
 
-import           Data.Maybe (listToMaybe, maybeToList, catMaybes, mapMaybe)
+import           Data.Maybe (listToMaybe, maybeToList, catMaybes, mapMaybe, isNothing)
 import qualified Data.Fixed as Fixed
+-- import qualified Data.Foldable as F
 import qualified Data.Time as Time
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -106,6 +107,11 @@ data Request
     (ParseReq ([(T.Text, Int, Int)], [(Token, Maybe (Stanford.Orth, Stanford.Pos))]))
     -- ^ Similar to `ParseSentPos`, but with an additional constraint (constituent
     -- with the given pair of positions must exist in the tree)
+  | ParseSentPosPrim FileId TreeId ParserTyp
+    [(Bool, [(Token, Maybe (Stanford.Orth, Stanford.Pos))])]
+    -- ^ A version of `ParseSentPos` in which some of the sub-sentences are
+    -- not required to be parsed.  We also don't use `ParseReq` anymore.
+  -- | ParseSentCons FileId TreeId ParserTyp [(Int, Int)] [(Stanford.Orth, Stanford.Pos)]
   | ParseRaw FileId
     TreeId -- ^ Partition ID
     T.Text -- ^ The sentence
@@ -134,6 +140,15 @@ data Answer
     (Maybe Sent) -- ^ The resulting tokenization, if changed
     Tree -- ^ The resulting tree
     -- ^ Parsing results
+  | ParseResultList
+    FileId
+    TreeId
+    [Maybe Tree] -- ^ The resulting maybe forest
+    -- ^ Parsing result (list)
+    --
+    -- WARNING: the trees in the result are not guaranteed to have different
+    -- node IDs. This is because some subtrees are unknown (`Nothing`) and there
+    -- is no way to take their node IDs into account anyway.
   | Notification T.Text
     -- ^ Notication message
   deriving (Show)
@@ -150,6 +165,10 @@ instance JSON.ToJSON Answer where
       , "treeId" .= treeId
       , "sent" .= sentMay
       , "tree" .= tree ]
+    ParseResultList fileId treeId forest -> JSON.object
+      [ "fileId" .= fileId
+      , "treeId" .= treeId
+      , "forest" .= forest ]
     Notification msg -> JSON.object
       [ "notification" .= msg ]
 
@@ -414,6 +433,45 @@ talk conn state snapCfg = forever $ do
             let msg = T.concat ["Parsed successfully"]
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
+
+      Right (ParseSentPosPrim fileId treeId parTyp wss) -> do
+        putStrLn "Parsing tokenized+POSed sentence (prime version)..."
+        let parseCore = case parTyp of
+              Stanford -> Stanford.parsePosFR . mapMaybe snd
+              DiscoDOP -> DiscoDOP.parseDOP Nothing . mapMaybe snd
+            parser (parseIt, ws) =
+              if parseIt
+              then parseCore ws
+              else return Nothing
+        forest <- mapM parser wss
+
+        -- Send what you were able to parse
+        let simplify = map . map $ second (fmap fst)
+            oldForest = zip forest . simplify $ map snd wss
+            oldTokens = map snd oldForest
+            oldTrees = map (fmap removeRoot . fst) oldForest
+              where removeRoot t = case R.subForest t of
+                      [subTree] -> subTree
+                      _ -> t
+            newForest = Penn.toOdilForest oldTrees oldTokens
+            ret = ParseResultList fileId treeId newForest
+        WS.sendTextData conn (JSON.encode ret)
+
+        -- Send a message if something went wrong or not
+        if ( length (filter isNothing forest) >
+               length (filter ((==False) . fst) wss) )
+          then do
+            let ws = mapMaybe snd $ concatMap snd wss
+                ws' = flip map ws $ \(orth, pos) -> T.concat [orth, ":", pos]
+                msg = T.concat ["Could not parse some parts of: ", T.unwords ws']
+            T.putStrLn msg
+            WS.sendTextData conn . JSON.encode =<< mkNotif msg
+          else do
+            let msg = T.concat ["Parsed successfully"]
+            T.putStrLn msg
+            WS.sendTextData conn . JSON.encode =<< mkNotif msg
+
+
 
       -- Right (ParseSentCons fileId treeId parTyp cons ws) -> do
       Right (ParseSentCons fileId treeId parTyp parseReq) -> do

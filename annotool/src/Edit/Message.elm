@@ -237,6 +237,19 @@ update msg model =
       in
         (model, send)
 
+    ParseSentPosPrim parTyp ->
+      let
+        win = M.selectWin model.focus model
+        treeId = M.getReprId win.tree model
+        wordsPos = getWordPosPrim
+                   (M.getSent treeId model)
+                   (M.getTree treeId model)
+                   (M.selAll win)
+        req = Server.ParseSentPosPrim model.fileId treeId parTyp wordsPos
+        send = Server.sendWS model.config req
+      in
+        (model, send)
+
     ParseSentCons parTyp ->
       let
         win = M.selectWin model.focus model
@@ -620,6 +633,35 @@ type alias Orth = String
 type alias Pos = String
 
 
+-- | Similar to `getWordPos`, but (i) returns the result as a simple list and
+-- (ii) tells which sentences are selected and which are not.
+getWordPosPrim
+    : M.Sent
+    -> R.Tree M.Node
+    -> S.Set C.NodeId
+       -- ^ The set of nodes selected in the given tree
+    -> List
+       ( Bool -- ^ If the subsentence is selected to be parsed
+       , List (M.Token, Maybe (Orth, Pos))
+       )
+getWordPosPrim sent tree select =
+    let
+        baseList = M.syncForestWithSentPos sent (R.subTrees tree)
+        computeToParse treeList =
+            case treeList of
+                tree :: treeRest ->
+                    if S.isEmpty <| S.intersect (M.nodesIn tree) select
+                    then False :: computeToParse treeRest
+                    else True :: computeToParse treeRest
+                _ -> []
+        toParse0 = computeToParse (R.subTrees tree)
+        toParse = if L.all (\x -> x == False) toParse0
+                  then L.map (always True) toParse0
+                  else toParse0
+    in
+        L.map2 (,) toParse baseList
+
+
 -- | Retrieve the words and POS tags from a given tree.
 getWordPos : M.Sent -> R.Tree M.Node -> Server.ParseReq (List (M.Token, Maybe (Orth, Pos)))
 getWordPos sent tree =
@@ -659,23 +701,6 @@ mergeReqs req1 req2 =
         (Batch xs, Single y) -> mergeReqs (Batch xs) (Batch [y])
 
 
--- -- | Retrieve the words and POS tags from a given tree.
--- getWordPos : R.Tree M.Node -> Server.ParseReq (List (Orth, Pos))
--- getWordPos tree0 =
---   let
---     go pos xs = case xs of
---       [] -> []
---       node :: nodes -> case node of
---         M.Leaf r -> (r.nodeVal, pos) :: go "" nodes
---         M.Node r -> go r.nodeVal nodes
---     getList = go "" << List.reverse << R.flatten
---     forest = R.subTrees tree0
---   in
---     case forest of
---         [tree] -> Server.Single (getList tree)
---         _ -> Server.Batch (List.map getList forest)
-
-
 -- | Like `getWordPos` but just retrieves the words.
 getWords : M.Sent -> R.Tree M.Node -> Server.ParseReq (List (M.Token, Maybe Orth))
 getWords sent tree =
@@ -685,21 +710,6 @@ getWords sent tree =
         case reqList of
             [x] -> Server.Single x
             _ -> Server.Batch reqList
-
-
--- -- | Like `getWordPos` but just retrieves words.
--- getWords : R.Tree M.Node -> Server.ParseReq (List Orth)
--- getWords tree0 =
---   let
---     word node = case node of
---       M.Node _ -> Nothing
---       M.Leaf {nodeVal} -> Just nodeVal
---     getList = List.reverse << Util.catMaybes << List.map word << R.flatten
---     forest = R.subTrees tree0
---   in
---     case forest of
---         [tree] -> Server.Single (getList tree)
---         _ -> Server.Batch (List.map getList forest)
 
 
 ----------------------------------------------

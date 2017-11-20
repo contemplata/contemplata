@@ -656,6 +656,7 @@ viewMenu model = -- fileName =
         [ Dummy
         , ParseSent Server.Stanford
         , ParseSentPos Server.Stanford
+        , ParseSentPosPrim Server.Stanford
         , Delete, DeleteTree, Add
         ]
     temporalCommands = Util.catMaybes <| List.map mkMenuElem

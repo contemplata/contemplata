@@ -204,6 +204,10 @@ topUpdate topMsg =
             -- upd model = (Edit.Model.setTreeCheck fileId treeId tree model, Cmd.none)
             upd model = (updSent <| updTree model, Cmd.none)
         in  updateOn editLens editMsg upd
+      Server.ParseResultList fileId treeId mayForest ->
+        let updTree = Edit.Model.setForestCheck fileId treeId mayForest
+            upd model = (updTree model, Cmd.none)
+        in  updateOn editLens editMsg upd
       Server.Notification msg ->
         let log model = (Edit.Model.log msg model, Cmd.none)
         in  updateOn editLens editMsg log

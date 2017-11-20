@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RecordWildCards #-}
 
 
 -- | Working with the Penn format.
@@ -19,6 +20,7 @@ module Odil.Penn
 -- * Conversion
 , toOdilTree
 , toOdilTree'
+, toOdilForest
 , convertPennFile
 ) where
 
@@ -214,7 +216,37 @@ data Sync = Sync
   }
 
 
--- | Conver a given Penn tree to an ODIL tree.
+
+-- | Convert a given Penn tree to an ODIL tree.
+--
+-- WARNING: the trees in the result are not guaranteed to have different node
+-- IDs.  This is because some subtrees are unknown (`Nothing`) and there is no
+-- way to take their node IDs into account anyway.
+toOdilForest
+  :: [Maybe Tree]
+     -- ^ The Penn (maybe) forest
+  -> [SyncStack]
+     -- ^ The list of original tokens and the corresponding, pre-processed
+     -- tokens. The latter align with the corresponding Penn tree.
+  -> [Maybe Odil.Tree]
+toOdilForest =
+  go 0
+  where
+    go acc forest tokList =
+      case (forest, tokList) of
+        (Nothing : forestRest, toks : tokRest) ->
+          Nothing : go (acc + length toks) forestRest tokRest
+        (Just tree : forestRest, toks : tokRest) ->
+          Just (shift acc newTree) :
+          go (acc + length newToks) forestRest tokRest
+          where (newToks, newTree) = toOdilTree' tree toks
+        _ -> []
+    shift k = fmap $ \node -> case node of
+      Odil.Node{} -> node
+      Odil.Leaf{..} -> node {Odil.leafPos = leafPos + k}
+
+
+-- | Convert a given Penn tree to an ODIL tree.
 toOdilTree'
   :: Tree
      -- ^ The Penn tree

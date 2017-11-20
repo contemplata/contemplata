@@ -76,6 +76,14 @@ type Request
     -- ^ Like `ParseSent`, but with POS tags and constraints
 --   | ParseSentCons C.FileId C.PartId ParserTyp (List (Int, Int)) (List (Orth, Pos))
 --     -- ^ Like `ParseSent`, but with constraints
+  | ParseSentPosPrim C.FileId C.PartId ParserTyp
+    (List (Bool, List (M.Token, Maybe (Orth, Pos))))
+    -- ^ A version of `ParseSentPos` which allows to *not* to reparse the entire
+    -- tree, but only some of the SENT subtrees. The `Bool` argument, provided
+    -- for each sub-sentence, tells whether it should be reparsed or not.
+    --
+    -- TODO: do we really need to know the tokens for the subsentences we
+    -- are not going to parse?
 
 
 encodeReq : Request -> String
@@ -162,6 +170,32 @@ encodeReqToVal req = case req of
             )
           ]
 
+  ParseSentPosPrim fileId treeId parTyp sents ->
+    let
+        encOrthPos (orth, pos) =
+            Encode.list
+                [ Encode.string orth
+                , Encode.string pos ]
+        encPair (tok, mayOrthPos) =
+            Encode.list
+                [ M.encodeToken tok
+                , Util.encodeMaybe encOrthPos mayOrthPos ]
+        encList ws = Encode.list (List.map encPair ws)
+        encTop (parseIt, ws) =
+            Encode.list
+                [ (Encode.bool parseIt)
+                , (encList ws) ]
+    in
+        Encode.object
+          [ ("tag", Encode.string "ParseSentPosPrim")
+          , ("contents", Encode.list
+               [ C.encodeFileIdJSON fileId
+               , Encode.int treeId
+               , Encode.string (toString parTyp)
+               , Encode.list (List.map encTop sents) ]
+            )
+          ]
+
   ParseSentCons fileId treeId parTyp parseReq ->
     let
         encOrthPos (orth, pos) =
@@ -210,13 +244,21 @@ type Answer
   | NewFile C.FileId M.File
     -- ^ New file to edit
   | ParseResult C.FileId C.PartId (Maybe M.Sent) (R.Tree M.Node)
-    -- ^ New file to edit
+    -- ^ Parsing result
+  | ParseResultList C.FileId C.PartId (List (Maybe (R.Tree M.Node)))
+    -- ^ Parsing result list
   | Notification String
     -- ^ Just a notification message from a server
 
 
 answerDecoder : Decode.Decoder Answer
-answerDecoder = Decode.oneOf [filesDecoder, newFileDecoder, parseResultDecoder, notificationDecoder]
+answerDecoder =
+    Decode.oneOf
+        [ filesDecoder
+        , newFileDecoder
+        , parseResultDecoder
+        , parseResultListDecoder
+        , notificationDecoder]
 
 
 filesDecoder : Decode.Decoder Answer
@@ -239,6 +281,14 @@ parseResultDecoder =
     (Decode.field "treeId" Decode.int)
     (Decode.field "sent" (Decode.nullable M.sentDecoder))
     (Decode.field "tree" M.treeDecoder)
+
+
+parseResultListDecoder : Decode.Decoder Answer
+parseResultListDecoder =
+  Decode.map3 ParseResultList
+    (Decode.field "fileId" C.fileIdDecoder)
+    (Decode.field "treeId" Decode.int)
+    (Decode.field "forest" (Decode.list <| Decode.nullable M.treeDecoder))
 
 
 notificationDecoder : Decode.Decoder Answer

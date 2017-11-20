@@ -156,6 +156,11 @@ globalCommands =
           , withCtrl=Just True
       } => ParseSentPos Server.Stanford
     , { void
+          | keyCmd = Just {keyCode=80, char='p'}
+          , lineCmd = Just "parsetmp"
+          , help = Just "Reparse the selected sub-sentence(s) without changing the POS tags"
+      } => ParseSentPosPrim Server.Stanford
+    , { void
           | lineCmd = Just "dopparse"
       } => ParseSent Server.DiscoDOP
     , { void
