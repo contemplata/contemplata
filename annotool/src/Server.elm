@@ -65,25 +65,21 @@ type Request
     -- QUESTION: do we really need to pass the string? After all, it should be
     -- on the server side as well...
     -- ANSWER: yes, we cannot be sure that the partition on the server is the same!
---   | ParseSent C.FileId C.PartId ParserTyp (ParseReq (List Orth))
-  | ParseSent C.FileId C.PartId ParserTyp (ParseReq (List (M.Token, Maybe Orth)))
+  | ParseSent C.FileId C.PartId ParserTyp
+    (List (Bool, List (M.Token, Maybe Orth)))
     -- ^ Parse the given list of words (the IDs are sent so that it can be
     -- checked on return if the user did not switch the file...)
-  | ParseSentCons C.FileId C.PartId ParserTyp
-    (ParseReq (List (String, Int, Int), List (M.Token, Maybe (Orth, Pos))))
-    -- ^ Like `ParseSent`, but with POS tags and constraints
---   | ParseSentCons C.FileId C.PartId ParserTyp (List (Int, Int)) (List (Orth, Pos))
---     -- ^ Like `ParseSent`, but with constraints
---   | ParseSentPos C.FileId C.PartId ParserTyp (ParseReq (List (M.Token, Maybe (Orth, Pos))))
---     -- ^ Like `ParseSent`, but with POS tags
   | ParseSentPos C.FileId C.PartId ParserTyp
     (List (Bool, List (M.Token, Maybe (Orth, Pos))))
     -- ^ A version of `ParseSentPos` which allows to *not* to reparse the entire
     -- tree, but only some of the SENT subtrees. The `Bool` argument, provided
     -- for each sub-sentence, tells whether it should be reparsed or not.
     --
-    -- TODO: do we really need to know the tokens for the subsentences we
-    -- are not going to parse?
+    -- TODO: do we really need to know the tokens for the subsentences we are
+    -- not going to parse?
+  | ParseSentCons C.FileId C.PartId ParserTyp
+    (ParseReq (List (String, Int, Int), List (M.Token, Maybe (Orth, Pos))))
+    -- ^ Like `ParseSent`, but with POS tags and constraints
 
 
 encodeReq : Request -> String
@@ -130,13 +126,20 @@ encodeReqToVal req = case req of
          , Encode.bool prep ]
       )
     ]
-  ParseSent fileId treeId parTyp parseReq ->
+
+  ParseSent fileId treeId parTyp sents ->
     let
+        encOrth orth =
+            Encode.string orth
         encPair (tok, mayOrth) =
             Encode.list
                 [ M.encodeToken tok
-                , Util.encodeMaybe Encode.string mayOrth ]
+                , Util.encodeMaybe encOrth mayOrth ]
         encList ws = Encode.list (List.map encPair ws)
+        encTop (parseIt, ws) =
+            Encode.list
+                [ (Encode.bool parseIt)
+                , (encList ws) ]
     in
         Encode.object
           [ ("tag", Encode.string "ParseSent")
@@ -144,31 +147,9 @@ encodeReqToVal req = case req of
                [ C.encodeFileIdJSON fileId
                , Encode.int treeId
                , Encode.string (toString parTyp)
-               , encodeParseReq encList parseReq ]
+               , Encode.list (List.map encTop sents) ]
             )
           ]
-
---   ParseSentPos fileId treeId parTyp parseReq ->
---     let
---         encOrthPos (orth, pos) =
---             Encode.list
---                 [ Encode.string orth
---                 , Encode.string pos ]
---         encPair (tok, mayOrthPos) =
---             Encode.list
---                 [ M.encodeToken tok
---                 , Util.encodeMaybe encOrthPos mayOrthPos ]
---         encList ws = Encode.list (List.map encPair ws)
---     in
---         Encode.object
---           [ ("tag", Encode.string "ParseSentPos")
---           , ("contents", Encode.list
---                [ C.encodeFileIdJSON fileId
---                , Encode.int treeId
---                , Encode.string (toString parTyp)
---                , encodeParseReq encList parseReq ]
---             )
---           ]
 
   ParseSentPos fileId treeId parTyp sents ->
     let

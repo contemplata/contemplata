@@ -717,11 +717,37 @@ getWords sent tree =
 ----------------------------------------------
 
 
+-- parseSent : Server.ParserTyp -> M.Model -> (M.Model, Cmd Msg)
+-- parseSent parTyp model =
+--     let
+--         treeId = M.getReprId (M.selectWin model.focus model).tree model
+--         words = getWords (M.getSent treeId model) (M.getTree treeId model)
+--         req = Server.ParseSent model.fileId treeId parTyp words
+--         send = Server.sendWS model.config req
+--     in
+--         (model, send)
+
+
 parseSent : Server.ParserTyp -> M.Model -> (M.Model, Cmd Msg)
 parseSent parTyp model =
     let
-        treeId = M.getReprId (M.selectWin model.focus model).tree model
-        words = getWords (M.getSent treeId model) (M.getTree treeId model)
+        win = M.selectWin model.focus model
+        treeId = M.getReprId win.tree model
+        wordsPos = getWordPosPrim
+                   (M.getSent treeId model)
+                   (M.getTree treeId model)
+                   (M.selAll win)
+        flip f x y = f y x
+        words = flip L.map wordsPos <|
+                \(fl, xs) ->
+                    ( fl
+                    , flip L.map xs <|
+                        (\(tok, mayOrthPos) ->
+                             ( tok
+                             , Maybe.map Tuple.first mayOrthPos
+                             )
+                        )
+                    )
         req = Server.ParseSent model.fileId treeId parTyp words
         send = Server.sendWS model.config req
     in
