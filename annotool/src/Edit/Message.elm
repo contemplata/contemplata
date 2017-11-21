@@ -228,16 +228,16 @@ update msg model =
 --       in
 --         (model, send)
 
-    ParseSentPos parTyp ->
-      let
-        treeId = M.getReprId (M.selectWin model.focus model).tree model
-        wordsPos = getWordPos (M.getSent treeId model) (M.getTree treeId model)
-        req = Server.ParseSentPos model.fileId treeId parTyp wordsPos
-        send = Server.sendWS model.config req
-      in
-        (model, send)
+--     ParseSentPos parTyp ->
+--       let
+--         treeId = M.getReprId (M.selectWin model.focus model).tree model
+--         wordsPos = getWordPos (M.getSent treeId model) (M.getTree treeId model)
+--         req = Server.ParseSentPos model.fileId treeId parTyp wordsPos
+--         send = Server.sendWS model.config req
+--       in
+--         (model, send)
 
-    ParseSentPosPrim parTyp ->
+    ParseSentPos parTyp ->
       let
         win = M.selectWin model.focus model
         treeId = M.getReprId win.tree model
@@ -245,7 +245,7 @@ update msg model =
                    (M.getSent treeId model)
                    (M.getTree treeId model)
                    (M.selAll win)
-        req = Server.ParseSentPosPrim model.fileId treeId parTyp wordsPos
+        req = Server.ParseSentPos model.fileId treeId parTyp wordsPos
         send = Server.sendWS model.config req
       in
         (model, send)

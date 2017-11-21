@@ -45,9 +45,9 @@ type Msg
   | ParseRaw Bool  -- ^ Reparse from scratch the sentence in focus; the argument determines
                    -- wheter pre-processing should be used or not
   | ParseSent Server.ParserTyp  -- ^ Reparse the sentence in focus
-  | ParseSentPos Server.ParserTyp -- ^ Reparse the sentence in focus, preserve POList (String, String)S tags
+--   | ParseSentPos Server.ParserTyp -- ^ Reparse the sentence in focus, preserve POList (String, String)S tags
+  | ParseSentPos Server.ParserTyp -- ^ Reparse the selected sub-sentence(s) in focus, preserve the POS tags
   | ParseSentCons Server.ParserTyp  -- ^ Reparse the sentence in focus with the selected nodes as constraints
-  | ParseSentPosPrim Server.ParserTyp -- ^ Reparse the selected sub-sentence(s) in focus, preserve the POS tags
   | ApplyRules -- ^ Apply the (flattening) rules
   | CtrlDown
   | CtrlUp

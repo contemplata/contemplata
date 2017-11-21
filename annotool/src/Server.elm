@@ -69,14 +69,14 @@ type Request
   | ParseSent C.FileId C.PartId ParserTyp (ParseReq (List (M.Token, Maybe Orth)))
     -- ^ Parse the given list of words (the IDs are sent so that it can be
     -- checked on return if the user did not switch the file...)
-  | ParseSentPos C.FileId C.PartId ParserTyp (ParseReq (List (M.Token, Maybe (Orth, Pos))))
-    -- ^ Like `ParseSent`, but with POS tags
   | ParseSentCons C.FileId C.PartId ParserTyp
     (ParseReq (List (String, Int, Int), List (M.Token, Maybe (Orth, Pos))))
     -- ^ Like `ParseSent`, but with POS tags and constraints
 --   | ParseSentCons C.FileId C.PartId ParserTyp (List (Int, Int)) (List (Orth, Pos))
 --     -- ^ Like `ParseSent`, but with constraints
-  | ParseSentPosPrim C.FileId C.PartId ParserTyp
+--   | ParseSentPos C.FileId C.PartId ParserTyp (ParseReq (List (M.Token, Maybe (Orth, Pos))))
+--     -- ^ Like `ParseSent`, but with POS tags
+  | ParseSentPos C.FileId C.PartId ParserTyp
     (List (Bool, List (M.Token, Maybe (Orth, Pos))))
     -- ^ A version of `ParseSentPos` which allows to *not* to reparse the entire
     -- tree, but only some of the SENT subtrees. The `Bool` argument, provided
@@ -148,29 +148,29 @@ encodeReqToVal req = case req of
             )
           ]
 
-  ParseSentPos fileId treeId parTyp parseReq ->
-    let
-        encOrthPos (orth, pos) =
-            Encode.list
-                [ Encode.string orth
-                , Encode.string pos ]
-        encPair (tok, mayOrthPos) =
-            Encode.list
-                [ M.encodeToken tok
-                , Util.encodeMaybe encOrthPos mayOrthPos ]
-        encList ws = Encode.list (List.map encPair ws)
-    in
-        Encode.object
-          [ ("tag", Encode.string "ParseSentPos")
-          , ("contents", Encode.list
-               [ C.encodeFileIdJSON fileId
-               , Encode.int treeId
-               , Encode.string (toString parTyp)
-               , encodeParseReq encList parseReq ]
-            )
-          ]
+--   ParseSentPos fileId treeId parTyp parseReq ->
+--     let
+--         encOrthPos (orth, pos) =
+--             Encode.list
+--                 [ Encode.string orth
+--                 , Encode.string pos ]
+--         encPair (tok, mayOrthPos) =
+--             Encode.list
+--                 [ M.encodeToken tok
+--                 , Util.encodeMaybe encOrthPos mayOrthPos ]
+--         encList ws = Encode.list (List.map encPair ws)
+--     in
+--         Encode.object
+--           [ ("tag", Encode.string "ParseSentPos")
+--           , ("contents", Encode.list
+--                [ C.encodeFileIdJSON fileId
+--                , Encode.int treeId
+--                , Encode.string (toString parTyp)
+--                , encodeParseReq encList parseReq ]
+--             )
+--           ]
 
-  ParseSentPosPrim fileId treeId parTyp sents ->
+  ParseSentPos fileId treeId parTyp sents ->
     let
         encOrthPos (orth, pos) =
             Encode.list
@@ -187,7 +187,7 @@ encodeReqToVal req = case req of
                 , (encList ws) ]
     in
         Encode.object
-          [ ("tag", Encode.string "ParseSentPosPrim")
+          [ ("tag", Encode.string "ParseSentPos")
           , ("contents", Encode.list
                [ C.encodeFileIdJSON fileId
                , Encode.int treeId
