@@ -55,16 +55,18 @@
 
   </bind>
 
-  <fileSection>
-    <bind tag="access">Write</bind>
-    <bind tag="touchedList"><touchedListWrite/></bind>
-    <bind tag="newList"><newListWrite/></bind>
-    <bind tag="doneList"><doneListWrite/></bind>
-    <bind tag="actions">
-      <th>Postpone</th>
-      <th>Finish</th>
-    </bind>
-  </fileSection>
+  <ifNotGuest>
+    <fileSection>
+      <bind tag="access">Write</bind>
+      <bind tag="touchedList"><touchedListWrite/></bind>
+      <bind tag="newList"><newListWrite/></bind>
+      <bind tag="doneList"><doneListWrite/></bind>
+      <bind tag="actions">
+        <th>Postpone</th>
+        <th>Finish</th>
+      </bind>
+    </fileSection>
+  </ifNotGuest>
 
   <fileSection>
     <bind tag="access">Read</bind>
