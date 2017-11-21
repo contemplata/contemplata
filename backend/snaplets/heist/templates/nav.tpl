@@ -13,21 +13,20 @@
       <!--li>
         <a href="contact">Contact</a>
       </li-->
-      <ifAdmin>
-        <li>
-          <a href="admin/files">Files</a>
-        </li>
-        <li>
-          <a href="admin/users">Users</a>
-        </li>
-        <!--li>
-          <a href="annotation">Annotation</a>
-        </li-->
-      </ifAdmin>
       <ifLoggedIn>
-        <li>
-          <a href="user/files">Files</a>
-        </li>
+        <ifAdmin>
+          <li>
+            <a href="admin/files">Files</a>
+          </li>
+          <li>
+            <a href="admin/users">Users</a>
+          </li>
+        </ifAdmin>
+        <ifNotAdmin>
+          <li>
+            <a href="user/files">Files</a>
+          </li>
+        </ifNotAdmin>
         <ifNotGuest>
           <li>
             <a href="user/password">Password</a>

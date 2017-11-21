@@ -153,7 +153,7 @@ wsHandler = do
 globalSplices :: Splices (Splice AppHandler)
 globalSplices = do
   "ifAdmin" ## Admin.ifAdminSplice
-  "ifNotAdmin" ## Admin.ifAdminSplice
+  "ifNotAdmin" ## Admin.ifNotAdminSplice
   "ifNotGuest" ## User.ifNotGuestSplice
   "currentLogin" ## User.currentLoginSplice
   "hrefBase" ## hrefBase

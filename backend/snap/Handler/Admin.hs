@@ -21,6 +21,7 @@ module Handler.Admin
 , isAdmin
 , ifAdmin
 , ifAdminSplice
+, ifNotAdminSplice
 ) where
 
 
