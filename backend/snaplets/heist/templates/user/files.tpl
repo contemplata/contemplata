@@ -26,7 +26,7 @@
         <div class="tab-content">
           <bind tag="fileTableCols">
             <th>File name</th>
-            <th>Level</th>
+            <th>Version</th>
             <th>Tokens</th>
             <actions/>
           </bind>
@@ -37,7 +37,7 @@
       
           <bind tag="fileTableCols">
             <th>File name</th>
-            <th>Level</th>
+            <th>Version</th>
             <th>Tokens</th>
           </bind>
           <div class="tab-pane" id="new${access}">

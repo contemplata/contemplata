@@ -96,10 +96,13 @@ mkFileTable annoName =
     mkElem fileId = do
       file <- lift . liftDB $ DB.loadFile fileId
 --       Just access <- lift . liftDB $ DB.accessLevel fileId annoName
+      let version = T.concat
+            [ T.pack . show $ Odil.annoLevel fileId
+            , " (", Odil.copyId fileId, ")" ]
       return $ X.Element "tr" []
         [ mkLink (Odil.fileName fileId) "annotate" $
           T.intercalate "/" ["annotate", Odil.encodeFileId fileId]
-        , mkText (T.pack . show $ Odil.annoLevel fileId)
+        , mkText version
 --         , mkText (T.toLower . T.pack . show $ access)
         , mkText (T.pack . show $ Odil.numberOfTokens file)
 --         , mkLink "remove" "Click to remove" $
@@ -129,10 +132,13 @@ mkTouchedTable access annoName =
               , mkLink "finish" "Click to finish the annotation of the file" $
                 T.intercalate "/" ["user", "file", Odil.encodeFileId fileId, "finish"]
               ]
+          version = T.concat
+            [ T.pack . show $ Odil.annoLevel fileId
+            , " (", Odil.copyId fileId, ")" ]
       return $ X.Element "tr" [] $
         [ mkLink (Odil.fileName fileId) "annotate" $
           T.intercalate "/" ["annotate", Odil.encodeFileId fileId]
-        , mkText (T.pack . show $ Odil.annoLevel fileId)
+        , mkText version
         , mkText (T.pack . show $ Odil.numberOfTokens file)
         ] ++ modifLinks
 
