@@ -5,6 +5,7 @@
 
     <p>
       Annotation is performed at different levels:
+      <a href="/user/guide#segmentation">segmentation</a>,
       <a href="/user/guide#syntax">syntax</a>,
       <a href="/user/guide#entities">termporal entities</a>, and
       <a href="/user/guide#relations">termporal relations</a>.
@@ -18,20 +19,20 @@
 
       <h4>Tableau de bord</h4>
       <p>
-        At your <a href="/user/files">Files</a> subpage, you will find the list of
-        files to which you have access. The files listed in the <b>Write</b>
-        section are for you to annotate. They are divided in three categories.
-        The <b>Waiting</b> and <b>In progress</b> files are the files waiting
-        for annotation and the files you started annotating, respectively.
-        When you finally finish annotating the file, click on <b>finish</b> to
-        move it to the <b>Done</b> section. Files gathered in this section can
-        be no loger modified. You can also click on <b>postpone</b> to revert
-        the file to the waiting list.
+        You can find the list of ODIL files at the <a
+        href="/user/files">files</a> subpage (see menu). The files listed in the
+        <b>Write</b> section are for you to annotate. They are divided in three
+        categories. The <b>Waiting</b> and <b>In progress</b> files are the
+        files waiting for annotation and the files you started annotating,
+        respectively. When you finish annotating a file, click on <b>finish</b>
+        to move it to the <b>Done</b> section. Files gathered there can no loger
+        be modified. You can also click on <b>postpone</b> to revert the file to
+        the waiting list.
       </p>
 
       <p>
         As for the files to which you only have the <b>Read</b> access, they are
-        either for others to annotate or left in the database for archival
+        either for others to annotate, or left in the database for archival
         purposes. Still, they can serve you as a reference for comparison with
         your own annotations.
       </p>
@@ -40,10 +41,10 @@
       <p>
         When you click on a particular file, you will be moved to the annotation
         mode. It consists of two annotation workspaces, top and bottom, each
-        showing a syntactic tree assigned to a particular speech turn(s) in the
-        file. The side window, placed on the right, can be switched between: (i)
-        the <b>Context</b>, showing the list of the speech turns in the file,
-        with the turn being annotated marked in bold, (ii) the <b>Edit</b>
+        showing a syntactic tree assigned to (a) particular speech turn(s) in
+        the file. The side window, placed on the right, can be switched between:
+        (i) the <b>Context</b>, showing the list of the speech turns in the
+        file, with the turn being annotated marked in bold, (ii) the <b>Edit</b>
         mode, showing the various attributes which can be annotated for the
         selected tree node, and (iii) the <b>Messages</b> received from the
         server.
@@ -52,7 +53,7 @@
       <p><center>
         <figure>
           <img src="/public/img/guide/workspace.png" alt="Workspace" style="width:75%">
-          <figcaption>Annotation mode example</figcaption>
+          <figcaption>Annotation mode</figcaption>
         </figure>
       </center></p>
 
@@ -63,18 +64,101 @@
          <em>Page Up</em> and <em>Page Down</em> to move up and down in the
          file, respectively.
       </p>
+
+      <h4>Node selection</h4>
+      <p>
+         Stub.
+      </p>
+
+      <h4>Undo/redo</h4>
+      <p>
+         Stub.
+      </p>
+
+      <h4>Command-line</h4>
+      <p>
+         Stub.
+      </p>
     </div>
   </div>
 
-  <!--div class="panel panel-default" id="segmentation">
+  <div class="panel panel-default" id="segmentation">
     <div class="panel-heading">Segmentation</div>
     <div class="panel-body">
-      
+
+      <p>
+        In many cases there is no need to modify the segmentation, already
+        performed correctly by the underlying syntactic parser. For the other
+        situation, several segmentation-related operations are available.
+      </p>
+
+      <h4>Merging turns</h4>
+
+      <p>
+        Sometimes a syntactically coherent portion of speech is devided between
+        several speech turns in the file, as in the following example:
+      </p>
+
+      <figure><center>
+        <img src="/public/img/guide/joining-turns.png" alt="Joining turns" style="width:75%">
+        <figcaption>An utterance divided between several speech turns</figcaption>
+      </center></figure>
+
+      <p>
+        You can merge the currently selected turn with another turn by
+        CTRL+clicking on the latter in the context side window. This process can
+        be iterated to join more than two turns together, as shown below.
+      </p>
+
+      <p>
+        <center>
+          <figure>
+            <img src="/public/img/guide/joining-turns-result.png" alt="Result of joining turns" style="width:75%">
+            <figcaption>A syntactic tree corresponding to several speech turns
+            after their merge</figcaption>
+          </figure>
+        </center>
+      </p>
+
+      <h4>Restart with preprocessing</h4>
+
+      <p>
+        To syntactically annotate the given sentence from scratch, use the
+        <b>CTRL+Restart</b> menu command (<b>:restartpreproc</b> from command
+        line). It restores all the tokens, performs pre-processing, and uses the
+        parser to analyse the sentence.
+
+        It may be useful, in particular, after the merging operation, which
+        results in several SENT-rooted syntactic trees. Restart, then,
+        re-analyses the entire sentence as one syntactic tree.
+      </p>
+
+      <h4>Restoring tokens</h4>
+
+      <p>
+        To restore a token wrongly removed during the pre-processing step (such
+        tokens are marked in grey), just CTRL+click on it in the context side
+        window. You can also use the <b>Restart</b> menu command (<b>:restart</b>
+        from command line) to restore or the tokens and re-parse the resulting
+        sentence.
+      </p>
+
+      <h4>Split sentence</h4>
+      Stub.
+
+      <h4>Join words</h4>
+      Stub.
+
+      <h4>Split words</h4>
+      Stub.
+
     </div>
-  </div-->
+
+    
+  </div>
 
   <div class="panel panel-default" id="syntax">
-    <div class="panel-heading">Syntax (and segmentation)</div>
+    <div class="panel-heading">Syntax</div>
     <div class="panel-body">
       This is a stub.
     </div>
