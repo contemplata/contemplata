@@ -8,6 +8,7 @@ module Handler.User
 , postponeHandler
 , finishHandler
 , passwordHandler
+, guideHandler
 
 , ifNotGuest
 , ifNotGuestSplice
@@ -278,6 +279,16 @@ ifNotGuestSplice :: Splice AppHandler
 ifNotGuestSplice = lift isGuest >>= \case
   True -> return []
   False -> X.childNodes <$> getParamNode
+
+
+---------------------------------------
+-- Guide handler
+---------------------------------------
+
+
+guideHandler :: AppHandler ()
+guideHandler = do
+  Heist.render "user/guide"
 
 
 ---------------------------------------

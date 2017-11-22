@@ -74,6 +74,7 @@ routes =
   -- User-related handlers
   , ("/user/files", User.filesHandler)
   , ("/user/password", User.passwordHandler)
+  , ("/user/guide", User.guideHandler)
   , ("/user/file/:filename/postpone", User.postponeHandler)
   , ("/user/file/:filename/finish", User.finishHandler)
 

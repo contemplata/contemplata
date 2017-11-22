@@ -27,6 +27,11 @@
             <a href="user/files">Files</a>
           </li>
         </ifNotAdmin>
+
+        <li>
+          <a href="user/guide">Guide</a>
+        </li>
+
         <ifNotGuest>
           <li>
             <a href="user/password">Password</a>
@@ -39,6 +44,7 @@
           <a href=".">(<currentLogin/>)</a>
         </li>
       </ifLoggedIn>
+
       <ifLoggedOut>
         <li>
           <a href="login">Sign In</a>
