@@ -121,7 +121,6 @@
       </p>
 
       <h4>Restart with preprocessing</h4>
-
       <p>
         To syntactically annotate the given sentence from scratch, use the
         <b>CTRL+Restart</b> menu command (<b>:restartpreproc</b> from command
@@ -134,18 +133,46 @@
       </p>
 
       <h4>Restoring tokens</h4>
-
       <p>
         To restore a token wrongly removed during the pre-processing step (such
         tokens are marked in grey), just CTRL+click on it in the context side
         window. You can also use the <b>Restart</b> menu command (<b>:restart</b>
-        from command line) to restore or the tokens and re-parse the resulting
+        from command line) to restore all the tokens and re-parse the resulting
         sentence.
       </p>
 
-      <h4>Split sentence</h4>
-      Stub.
+      <h4>Removing tokens</h4>
+      <p>
+        STUB.
+      </p>
 
+      <h4>Split sentence</h4>
+      <p>
+        Just as it is possible to merge several speech turns, it is possible to
+        split a given sentence in several sentences. In this case, however, the
+        currently annotated speech turn is not modified, it's just the syntactic
+        tree which is divided into several SENT-rooted sub-trees.
+
+        In order to perform the operation, first select the terminal nodes which
+        mark the first words of the individual sub-sentences, and then run the
+        <b>Split sentence</b> menu command (<b>:splitsent</b> from command
+        line), as shown below.
+      </p>
+
+      <p><center>
+        <figure>
+          <img src="/public/img/guide/split-sentence.png" alt="Split sentence" style="width:75%">
+          <figcaption>Marking the terminal nodes before sentence split</figcaption>
+        </figure>
+      </center></p>
+
+      <p><center>
+        <figure>
+          <img src="/public/img/guide/split-sentence-result.png" alt="Split sentence" style="width:75%">
+          <figcaption>The result of sentence split</figcaption>
+        </figure>
+      </center></p>
+        
       <h4>Join words</h4>
       Stub.
 
