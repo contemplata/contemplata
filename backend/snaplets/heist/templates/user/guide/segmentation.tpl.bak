@@ -11,7 +11,7 @@
     <h4>Merging turns</h4>
 
     <p>
-      Sometimes a syntactically coherent portion of speech is divided between
+      Sometimes a syntactically coherent portion of speech is devided between
       several speech turns in the file, as in the following example:
     </p>
 
@@ -41,7 +41,7 @@
       To syntactically annotate the given sentence from scratch, use the
       <b>CTRL+Restart</b> menu command (<b>:restartpreproc</b> from command
       line). It restores all the tokens, performs pre-processing, and uses the
-      parser to analyze the sentence.
+      parser to analyse the sentence.
 
       It may be useful, in particular, after the merging operation, which
       results in several SENT-rooted syntactic trees. Restart, then,
@@ -51,7 +51,7 @@
     <h4>Restoring tokens</h4>
     <p>
       To restore a token wrongly removed during the pre-processing step (such
-      tokens are marked in gray), just CTRL+click on it in the context side
+      tokens are marked in grey), just CTRL+click on it in the context side
       window of the current workspace. You can also use the <b>Restart</b>
       menu command (<b>:restart</b> from command line) to restore all the
       tokens and re-parse the resulting sentence.
@@ -68,7 +68,7 @@
 
       Note that a subtree can be only removed if the resulting syntactic tree
       is well structured. The following example shows a situation where
-      performing the command is not allowed, because it would lead to a tree
+      performing the command is not allowed, becuase it would lead to a tree
       with a non-terminal (VN) leaf. Removing the VN node itself with its
       subtree is, on the other hand, perfectly fine.
     </p>

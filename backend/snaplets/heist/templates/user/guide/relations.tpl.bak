@@ -6,7 +6,7 @@
       choose one node in each of the workspaces, top and bottom, and run the
       <b>connect</b> command line command. An untyped link between the two
       nodes (which can belong to two different trees) will be created. The
-      direction of the link is always from the top tree to the bottom one. It
+      direction of the link is alwas from the top tree to the bottom one. It
       can be deleted by selecting the circular node in the middle of the
       relation and pressing <b>d</b>.
     </p>

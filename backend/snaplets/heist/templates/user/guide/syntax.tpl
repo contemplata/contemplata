@@ -93,7 +93,7 @@
     <div class="row">
       <div class="col-sm-6">
         <figure><center>
-          <img src="/public/img/guide/syntax/parsepos.png" alt="Parse without chaing POS tags" style="width:100%">
+          <img src="/public/img/guide/syntax/parsepos.png" alt="Parse without changing POS tags" style="width:100%">
           <figcaption>Input for parsing: <em>numéro</em> and
           <em>théléphone</em> both marked as nouns without specific POS
           subcategories</figcaption>
@@ -114,6 +114,33 @@
     
     <h4>Non-projective trees</h4>
     <p>
+      The selected node, together with its subtree, can me moved left or right
+      w.r.t. its sister nodes by pressing <b>CTRL+left</b> or <b>CTRL+right</b>
+      keyboard shortcuts, respectively. This will lead to a non-projective tree.
+      Contemplata tries to identify the non-projective fragments and draw them
+      in rose, as shown in the example below.
+    </p>
+    <p>
+      <b>TODO:</b> we need a better example here, since this sentence should not
+      be analyzed with a non-projective tree.
+    </p>
+    <div class="row">
+      <div class="col-sm-2"/>
+      <div class="col-sm-8">
+        <figure><center>
+          <img src="/public/img/guide/syntax/non-projective.png" alt="Non projective tree" style="width:100%">
+          <figcaption>A non-projective tree, with the non-projective fragment marked in rose</figcaption>
+        </center></figure>
+      </div>
+      <div class="col-sm-2"/>
+    </div>
+    <p>
+      <b>WARNING</b>: The current limitation is that, once you create a
+      non-projective tree, the permuted sentence can be no loner re-parsed with
+      the underlying parser. Some other operations, after which parsing is
+      performed by default, will no loner work correctly either. You should
+      therefore create non-projective structures only at the end of the
+      syntactic annotation of a given sentence.
     </p>
 
   </div>

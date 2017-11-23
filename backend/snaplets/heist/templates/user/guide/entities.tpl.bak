@@ -31,7 +31,7 @@
       Most of the attributes have a prescribed, closed set of possible values.
       There are some which perform the function of relations between the
       selected node (of which the attributes are shown in the <b>Edit</b>
-      window) and another node. For instance, each Timex can be anchored at
+      window) and anothe node. For instance, each Timex can be anchored at
       another temporal entity, as shown below.
     </p>
     <p>

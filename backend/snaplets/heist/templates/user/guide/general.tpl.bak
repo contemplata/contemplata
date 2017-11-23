@@ -94,7 +94,7 @@
       The third type of commands can be run via command line. After pressing
       <b>Space</b>, you will see the list of available commands in this mode.
       To run a particular command, just type it and press <b>Enter</b>. You
-      can also use <b>Tab</b> for auto-completion. Besides, you don't have to
+      can also use <b>Tab</b> for autocompletion. Besides, you don't have to
       type the entire command, just a prefix which uniquely identifies it (for
       instance, <b>sa</b> for <b>save</b>).
     </p>
@@ -116,7 +116,7 @@
       that, press <b>CTRL+z</b>. Conversely, to perform redo, press <b>z</b>.
     </p>
 
-    <h4>Re-sizing</h4>
+    <h4>Resizing</h4>
     <p>
       The relative size of the workspaces and the side windows can be changed
       via the keyboard arrows: up, down, left, and right.
