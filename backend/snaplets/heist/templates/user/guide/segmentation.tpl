@@ -16,7 +16,7 @@
     </p>
 
     <figure><center>
-      <img src="/public/img/guide/syntax/joining-turns.png" alt="Join turns" style="width:75%">
+      <img src="public/img/guide/syntax/joining-turns.png" alt="Join turns" style="width:75%">
       <figcaption>An utterance divided between several speech turns</figcaption>
     </center></figure>
 
@@ -29,7 +29,7 @@
     <p>
       <center>
         <figure>
-          <img src="/public/img/guide/syntax/joining-turns-result.png" alt="Result of joining turns" style="width:75%">
+          <img src="public/img/guide/syntax/joining-turns-result.png" alt="Result of joining turns" style="width:75%">
           <figcaption>A tree corresponding to several speech turns after their
           merge</figcaption>
         </figure>
@@ -73,7 +73,7 @@
       subtree is, on the other hand, perfectly fine.
     </p>
     <figure><center>
-      <img src="/public/img/guide/syntax/remove-subtree.png" alt="Remove subtree" style="width:75%">
+      <img src="public/img/guide/syntax/remove-subtree.png" alt="Remove subtree" style="width:75%">
       <figcaption>A context in which removing the subtree of the selected node
       is not allowed</figcaption>
     </center></figure>
@@ -93,14 +93,14 @@
 
     <p><center>
       <figure>
-        <img src="/public/img/guide/syntax/split-sentence.png" alt="Split sentence" style="width:75%">
+        <img src="public/img/guide/syntax/split-sentence.png" alt="Split sentence" style="width:75%">
         <figcaption>Marking the terminal nodes before sentence split</figcaption>
       </figure>
     </center></p>
 
     <p><center>
       <figure>
-        <img src="/public/img/guide/syntax/split-sentence-result.png" alt="Split sentence" style="width:75%">
+        <img src="public/img/guide/syntax/split-sentence-result.png" alt="Split sentence" style="width:75%">
         <figcaption>The result of sentence split</figcaption>
       </figure>
     </center></p>
@@ -113,7 +113,7 @@
       (<b>joinwords</b> from command line).
     </p>
     <figure><center>
-      <img src="/public/img/guide/syntax/join-words.png" alt="Join words" style="width:75%">
+      <img src="public/img/guide/syntax/join-words.png" alt="Join words" style="width:75%">
       <figcaption>Joining words</figcaption>
     </center></figure>
 
@@ -124,7 +124,7 @@
       run after the terminal node to be split has been selected.
     </p>
     <figure><center>
-      <img src="/public/img/guide/syntax/split-word.png" alt="Split word" style="width:75%">
+      <img src="public/img/guide/syntax/split-word.png" alt="Split word" style="width:75%">
       <figcaption>A token which should be split into three separate tokens:
       <em>lui</em>, <em>-</em>, and <em>même</em>
       </figcaption>
@@ -141,7 +141,7 @@
       obtain it.
     </p>
     <figure><center>
-      <img src="/public/img/guide/syntax/dummify.png" alt="Dummify" style="width:75%">
+      <img src="public/img/guide/syntax/dummify.png" alt="Dummify" style="width:75%">
       <figcaption>A situation where the entire tree should be removed with
       <b>Dummify</b></figcaption>
     </center></figure>

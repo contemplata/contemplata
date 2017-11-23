@@ -19,7 +19,7 @@
       <div class="col-sm-3"/>
       <div class="col-sm-6">
         <figure><center>
-          <img src="/public/img/guide/temporal/attributes.png" alt="Attributes" style="width:100%">
+          <img src="public/img/guide/temporal/attributes.png" alt="Attributes" style="width:100%">
           <figcaption>Attributes available for annotation for the selected event</figcaption>
         </center></figure>
       </div>

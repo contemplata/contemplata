@@ -11,13 +11,13 @@
     <div class="row">
       <div class="col-sm-6">
         <figure><center>
-          <img src="/public/img/guide/syntax/addnode.png" alt="Add node input" style="width:100%">
+          <img src="public/img/guide/syntax/addnode.png" alt="Add node input" style="width:100%">
           <figcaption>Input for the <b>Add</b> command</figcaption>
         </center></figure>
       </div>
       <div class="col-sm-6">
         <figure><center>
-          <img src="/public/img/guide/syntax/addnode-result.png" alt="Add node result" style="width:100%">
+          <img src="public/img/guide/syntax/addnode-result.png" alt="Add node result" style="width:100%">
           <figcaption>The result of adding a new node</figcaption>
         </center></figure>
       </div>
@@ -33,7 +33,7 @@
       <div class="col-sm-3"/>
       <div class="col-sm-6">
         <figure><center>
-          <img src="/public/img/guide/syntax/edit.png" alt="Edit" style="width:100%">
+          <img src="public/img/guide/syntax/edit.png" alt="Edit" style="width:100%">
           <figcaption>Editing node labels</figcaption>
         </center></figure>
       </div>
@@ -61,13 +61,13 @@
     <div class="row">
       <div class="col-sm-6">
         <figure><center>
-          <img src="/public/img/guide/syntax/reattach.png" alt="Reattach" style="width:100%">
+          <img src="public/img/guide/syntax/reattach.png" alt="Reattach" style="width:100%">
           <figcaption>Selecting nodes for reattachment</figcaption>
         </center></figure>
       </div>
       <div class="col-sm-6">
         <figure><center>
-          <img src="/public/img/guide/syntax/reattach-result.png" alt="Reattach result" style="width:100%">
+          <img src="public/img/guide/syntax/reattach-result.png" alt="Reattach result" style="width:100%">
           <figcaption>The result of reattachment</figcaption>
         </center></figure>
       </div>
@@ -93,7 +93,7 @@
     <div class="row">
       <div class="col-sm-6">
         <figure><center>
-          <img src="/public/img/guide/syntax/parsepos.png" alt="Parse without changing POS tags" style="width:100%">
+          <img src="public/img/guide/syntax/parsepos.png" alt="Parse without changing POS tags" style="width:100%">
           <figcaption>Input for parsing: <em>numéro</em> and
           <em>théléphone</em> both marked as nouns without specific POS
           subcategories</figcaption>
@@ -101,7 +101,7 @@
       </div>
       <div class="col-sm-6">
         <figure><center>
-          <img src="/public/img/guide/syntax/parsepos-result.png" alt="Parse without chaing POS tags: the result" style="width:100%">
+          <img src="public/img/guide/syntax/parsepos-result.png" alt="Parse without chaing POS tags: the result" style="width:100%">
           <figcaption>The result: <em>numéro de théléphone</em> analyzed as a
           MWE</figcaption>
         </center></figure>
@@ -128,7 +128,7 @@
       <div class="col-sm-2"/>
       <div class="col-sm-8">
         <figure><center>
-          <img src="/public/img/guide/syntax/non-projective.png" alt="Non projective tree" style="width:100%">
+          <img src="public/img/guide/syntax/non-projective.png" alt="Non projective tree" style="width:100%">
           <figcaption>A non-projective tree, with the non-projective fragment marked in rose</figcaption>
         </center></figure>
       </div>

@@ -5,7 +5,7 @@
     <h4>Tableau de bord</h4>
     <p>
       You can find the list of ODIL files at the <a
-      href="/user/files">files</a> sub-page (see menu). The files listed in the
+      href="user/files">files</a> sub-page (see menu). The files listed in the
       <b>Write</b> section are for you to annotate. They are divided in three
       categories. The <b>Waiting</b> and <b>In progress</b> files are the
       files waiting for annotation and the files you started annotating,
@@ -37,7 +37,7 @@
 
     <p><center>
       <figure>
-        <img src="/public/img/guide/syntax/workspace.png" alt="Workspace" style="width:75%">
+        <img src="public/img/guide/syntax/workspace.png" alt="Workspace" style="width:75%">
         <figcaption>Annotation mode</figcaption>
       </figure>
     </center></p>
@@ -61,8 +61,8 @@
       There are two types of selection: the main selection and the additional
       selection. Some operations only take the main selection into account,
       while others will be applied over all selected nodes (e.g. the <a
-      href="/user/guide#addnode">Add</a> and <a
-      href="/user/guide#delnode">Delete</a> commands).
+      href="user/guide#addnode">Add</a> and <a
+      href="user/guide#delnode">Delete</a> commands).
     </p>
     <p>
       To (main) select a node, it is sufficient to click on it. Additional
@@ -102,7 +102,7 @@
       <div class="col-sm-2"/>
       <div class="col-sm-8">
         <figure><center>
-          <img src="/public/img/guide/general/command-line.png" alt="Command line" style="width:100%">
+          <img src="public/img/guide/general/command-line.png" alt="Command line" style="width:100%">
           <figcaption>Command line, placed on the bottom of the main
           workspace</figcaption>
         </center></figure>

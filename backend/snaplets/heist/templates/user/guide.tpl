@@ -5,10 +5,10 @@
 
     <p>
       Annotation is performed at different levels:
-      <a href="/user/guide#segmentation">segmentation</a>,
-      <a href="/user/guide#syntax">syntax</a>,
-      <a href="/user/guide#entities">termporal entities</a>, and
-      <a href="/user/guide#relations">termporal relations</a>.
+      <a href="user/guide#segmentation">segmentation</a>,
+      <a href="user/guide#syntax">syntax</a>,
+      <a href="user/guide#entities">termporal entities</a>, and
+      <a href="user/guide#relations">termporal relations</a>.
       A dedicated section to each of these levels can be found below.
     </p>
   </em></div>
