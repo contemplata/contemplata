@@ -52,39 +52,97 @@
 
       <p><center>
         <figure>
-          <img src="/public/img/guide/workspace.png" alt="Workspace" style="width:75%">
+          <img src="/public/img/guide/syntax/workspace.png" alt="Workspace" style="width:75%">
           <figcaption>Annotation mode</figcaption>
         </figure>
       </center></p>
 
       <h4>Navigation in the annotation mode</h4>
       <p>
-         To navigate between the turns in the annotation mode you can either
-         click on a particular turn in the <b>Context</b> side window, or press
-         <em>Page Up</em> and <em>Page Down</em> to move up and down in the
-         file, respectively.
+        To navigate between the turns in the annotation mode, you can either
+        click on a particular turn in the <b>Context</b> side window, or press
+        <em>Page Up</em> and <em>Page Down</em> to move up and down in the
+        file, respectively.
+      </p>
+      <p>
+        Once you find the sentence you wish to annotate, you can slide the
+        syntactic tree in different directions by left-clicking anywhere in the
+        main workspace and sliding the mouse, while keeping the left mouse
+        button pressed.
       </p>
 
       <h4>Node selection</h4>
       <p>
-         Stub.
+        There are two types of selection: the main selection and the additional
+        selection. Some operations only take the main selection into account,
+        while others will be applied over all selected nodes (e.g. the <a
+        href="/user/guide#addnode">Add</a> and <a
+        href="/user/guide#delnode">Delete</a> commands).
+      </p>
+      <p>
+        To (main) select a node, it is sufficient to click on it. Additional
+        selection is obtained by clicking on a node with CTRL pressed. Several
+        additional nodes can be selected at the same time.
       </p>
 
       <h4>Commands</h4>
       <p>
-         Stub.
+        Three types of commands are available. The menu commands are visible in
+        the top-left corner of the main annotation workspace. The first two
+        commands are generic -- <b>Menu</b> and <b>Save</b>, which allow to go
+        to the main menu and to save the currently annotated file, respectively.
+
+        The other menu commands are divided into three annotation levels:
+        <b>Segmentation</b>, <b>Syntax</b>, and <b>Temporal</b>. You can click
+        (or CTRL+click) on the name of the current level to change it. The
+        commands from the other levels still can be used via the command line or
+        keyboard shortcuts, though.
       </p>
+      <p>
+        Some commands are available via keyboard shortcuts, which are typically
+        indicated in the names of their corresponding menu commands as
+        underlined characters. For instance, the <b>Parse</b> command from the
+        syntactic annotation level can be run with the <b>p</b> keyboard
+        shortcut.
+      </p>
+      <p>
+        The third type of commands can be run via command line. After pressing
+        <b>Space</b>, you will see the list of available commands in this mode.
+        To run a particular command, just type it and press <b>Enter</b>. You
+        can also use <b>Tab</b> for autocompletion. Besides, you don't have to
+        type the entire command, just a prefix which uniquely identifies it (for
+        instance, <b>sa</b> for <b>save</b>).
+      </p>
+      <div class="row">
+        <div class="col-sm-2"/>
+        <div class="col-sm-8">
+          <figure><center>
+            <img src="/public/img/guide/general/command-line.png" alt="Command line" style="width:100%">
+            <figcaption>Command line, placed on the bottom of the main
+            workspace</figcaption>
+          </center></figure>
+        </div>
+        <div class="col-sm-2"/>
+      </div>
 
       <h4>Undo/redo</h4>
       <p>
-         Stub.
+        All the operations which modify the underlying file can be undone. To do
+        that, press <b>CTRL+z</b>. Conversely, to perform redo, press <b>z</b>.
       </p>
 
-      <h4>Resizing windows</h4>
+      <h4>Resizing</h4>
       <p>
-         Stub.
-
-         Add also info about the mouse scroll.
+        The relative size of the workspaces and the side windows can be changed
+        via the keyboard arrows: up, down, left, and right.
+      </p>
+      <p>
+        To change the size of the syntactic tree, sentences shown in the
+        <b>Context</b> window, etc., use <b>CTRL + mouse scroll</b> to zoom
+        either in or out (note that this is a built-in browser behavior; other
+        built-in ways of zooming -- CTRL + plus and CTRL + minus -- are not
+        available for the moment, these key combinations are intercepted by
+        Contemplata, but the tool does not propagate them up).
       </p>
 
     </div>
@@ -108,7 +166,7 @@
       </p>
 
       <figure><center>
-        <img src="/public/img/guide/joining-turns.png" alt="Join turns" style="width:75%">
+        <img src="/public/img/guide/syntax/joining-turns.png" alt="Join turns" style="width:75%">
         <figcaption>An utterance divided between several speech turns</figcaption>
       </center></figure>
 
@@ -121,7 +179,7 @@
       <p>
         <center>
           <figure>
-            <img src="/public/img/guide/joining-turns-result.png" alt="Result of joining turns" style="width:75%">
+            <img src="/public/img/guide/syntax/joining-turns-result.png" alt="Result of joining turns" style="width:75%">
             <figcaption>A tree corresponding to several speech turns after their
             merge</figcaption>
           </figure>
@@ -165,7 +223,7 @@
         subtree is, on the other hand, perfectly fine.
       </p>
       <figure><center>
-        <img src="/public/img/guide/remove-subtree.png" alt="Remove subtree" style="width:75%">
+        <img src="/public/img/guide/syntax/remove-subtree.png" alt="Remove subtree" style="width:75%">
         <figcaption>A context in which removing the subtree of the selected node
         is not allowed</figcaption>
       </center></figure>
@@ -185,14 +243,14 @@
 
       <p><center>
         <figure>
-          <img src="/public/img/guide/split-sentence.png" alt="Split sentence" style="width:75%">
+          <img src="/public/img/guide/syntax/split-sentence.png" alt="Split sentence" style="width:75%">
           <figcaption>Marking the terminal nodes before sentence split</figcaption>
         </figure>
       </center></p>
 
       <p><center>
         <figure>
-          <img src="/public/img/guide/split-sentence-result.png" alt="Split sentence" style="width:75%">
+          <img src="/public/img/guide/syntax/split-sentence-result.png" alt="Split sentence" style="width:75%">
           <figcaption>The result of sentence split</figcaption>
         </figure>
       </center></p>
@@ -205,7 +263,7 @@
         (<b>joinwords</b> from command line).
       </p>
       <figure><center>
-        <img src="/public/img/guide/join-words.png" alt="Join words" style="width:75%">
+        <img src="/public/img/guide/syntax/join-words.png" alt="Join words" style="width:75%">
         <figcaption>Joining words</figcaption>
       </center></figure>
 
@@ -216,7 +274,7 @@
         run after the terminal node to be split has been selected.
       </p>
       <figure><center>
-        <img src="/public/img/guide/split-word.png" alt="Split word" style="width:75%">
+        <img src="/public/img/guide/syntax/split-word.png" alt="Split word" style="width:75%">
         <figcaption>A token which should be split into three separate tokens:
         <em>lui</em>, <em>-</em>, and <em>même</em>
         </figcaption>
@@ -233,21 +291,19 @@
         obtain it.
       </p>
       <figure><center>
-        <img src="/public/img/guide/dummify.png" alt="Dummify" style="width:75%">
+        <img src="/public/img/guide/syntax/dummify.png" alt="Dummify" style="width:75%">
         <figcaption>A situation where the entire tree should be removed with
         <b>Dummify</b></figcaption>
       </center></figure>
-
     </div>
-
-    
   </div>
+
 
   <div class="panel panel-default" id="syntax">
     <div class="panel-heading">Syntax</div>
     <div class="panel-body">
 
-      <h4>Add node</h4>
+      <h4 id="addnode">Add node</h4>
       <p>
         The <b>Add</b> command (<b>addnode</b> from command line) serves to add
         a new node over the selected node(s). The label assigned to the new node
@@ -256,13 +312,13 @@
       <div class="row">
         <div class="col-sm-6">
           <figure><center>
-            <img src="/public/img/guide/addnode.png" alt="Add node input" style="width:100%">
+            <img src="/public/img/guide/syntax/addnode.png" alt="Add node input" style="width:100%">
             <figcaption>Input for the <b>Add</b> command</figcaption>
           </center></figure>
         </div>
         <div class="col-sm-6">
           <figure><center>
-            <img src="/public/img/guide/addnode-result.png" alt="Add node result" style="width:100%">
+            <img src="/public/img/guide/syntax/addnode-result.png" alt="Add node result" style="width:100%">
             <figcaption>The result of adding a new node</figcaption>
           </center></figure>
         </div>
@@ -274,10 +330,16 @@
         <b>Edit</b> side window, which can be quickly reached via the <b>e</b>
         keyboard shortcut.
       </p>
-      <figure><center>
-        <img src="/public/img/guide/edit.png" alt="Edit" style="width:50%">
-        <figcaption>Editing node labels</figcaption>
-      </center></figure>
+      <div class="row">
+        <div class="col-sm-3"/>
+        <div class="col-sm-6">
+          <figure><center>
+            <img src="/public/img/guide/syntax/edit.png" alt="Edit" style="width:100%">
+            <figcaption>Editing node labels</figcaption>
+          </center></figure>
+        </div>
+        <div class="col-sm-3"/>
+      </div>
       <p>
         Note that there is also a <em>Comment</em> field below the
         <em>Label</em> field in the <b>Edit</b> side window. You can use it,
@@ -285,7 +347,7 @@
         of the node or its subtree.
       </p>
 
-      <h4>Remove node</h4>
+      <h4 id="delnode">Remove node</h4>
       <p>
         To remove a particular node, select it and use the <b>Delete</b> command
         (<b>delnode</b> from command line).
@@ -300,13 +362,13 @@
       <div class="row">
         <div class="col-sm-6">
           <figure><center>
-            <img src="/public/img/guide/reattach.png" alt="Reattach" style="width:100%">
+            <img src="/public/img/guide/syntax/reattach.png" alt="Reattach" style="width:100%">
             <figcaption>Selecting nodes for reattachment</figcaption>
           </center></figure>
         </div>
         <div class="col-sm-6">
           <figure><center>
-            <img src="/public/img/guide/reattach-result.png" alt="Reattach result" style="width:100%">
+            <img src="/public/img/guide/syntax/reattach-result.png" alt="Reattach result" style="width:100%">
             <figcaption>The result of reattachment</figcaption>
           </center></figure>
         </div>
@@ -332,7 +394,7 @@
       <div class="row">
         <div class="col-sm-6">
           <figure><center>
-            <img src="/public/img/guide/parsepos.png" alt="Parse without chaing POS tags" style="width:100%">
+            <img src="/public/img/guide/syntax/parsepos.png" alt="Parse without chaing POS tags" style="width:100%">
             <figcaption>Input for parsing: <em>numéro</em> and
             <em>théléphone</em> both marked as nouns without specific POS
             subcategories</figcaption>
@@ -340,7 +402,7 @@
         </div>
         <div class="col-sm-6">
           <figure><center>
-            <img src="/public/img/guide/parsepos-result.png" alt="Parse without chaing POS tags: the result" style="width:100%">
+            <img src="/public/img/guide/syntax/parsepos-result.png" alt="Parse without chaing POS tags: the result" style="width:100%">
             <figcaption>The result: <em>numéro de théléphone</em> analyzed as a
             MWE</figcaption>
           </center></figure>
@@ -350,21 +412,71 @@
         <b>NOTE:</b> for this command to work correctly, each pre-terminal node
         has to have a proper POS tag and a <b>single terminal child</b>.
       </p>
+      
+      <h4>Non-projective trees</h4>
+      <p>
+      </p>
 
     </div>
   </div>
 
   <div class="panel panel-default" id="entities">
-    <div class="panel-heading">Termporal entities</div>
+    <div class="panel-heading">Temporal entities</div>
     <div class="panel-body">
-      This is a stub.
+
+      <h4>Marking events, signals, and temporal expressions</h4>
+      <p>
+        To annotate the selected node as an event, use the <b>Event</b> menu
+        command.
+
+        Similarly, the <b>Signal</b> menu command allows to annotate signals, and
+        the <b>Timex</B> menu command -- temporal expressions.
+      </p>
+      <p>
+        Note that, after you mark a particular node as a signal/event/timex, a
+        set of dedicated attributes becomes available in the <b>Edit</b> side
+        window, as shown in the example below.
+      </p>
+      <div class="row">
+        <div class="col-sm-3"/>
+        <div class="col-sm-6">
+          <figure><center>
+            <img src="/public/img/guide/temporal/attributes.png" alt="Attributes" style="width:100%">
+            <figcaption>Attributes available for annotation for the selected event</figcaption>
+          </center></figure>
+        </div>
+        <div class="col-sm-3"/>
+      </div>
+
+      <h4>Anchoring</h4>
+      <p>
+        Most of the attributes have a prescribed, closed set of possible values.
+        There are some which perform the function of relations between the
+        selected node (of which the attributes are shown in the <b>Edit</b>
+        window) and anothe node. For instance, each Timex can be anchored at
+        another temporal entity, as shown below.
+      </p>
+      <p>
+        TODO: need a good example!
+      </p>
+
     </div>
   </div>
 
   <div class="panel panel-default" id="relations">
-    <div class="panel-heading">Termporal relations</div>
+    <div class="panel-heading">Temporal relations</div>
     <div class="panel-body">
-      In preparation.
+      <p>
+        For the moment, there is only one way to create untyped relations:
+        choose one node in each of the workspaces, top and bottom, and run the
+        <b>connect</b> command line command. An untyped link between the two
+        nodes (which can belong to two different trees) will be created. The
+        direction of the link is alwas from the top tree to the bottom one. It
+        can be deleted by selecting the circular node in the middle of the
+        relation and pressing <b>d</b>.
+      </p>
+
+      <p>More to come...</p>
     </div>
   </div>
 
