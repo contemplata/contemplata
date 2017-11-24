@@ -27,12 +27,18 @@ ben
 
 voilà
 
+s'il vous plaît
 s'il vous plait
  
 merci beaucoup Madame
 merci beaucoup
+allez au revoir Madame
+au revoir
+ok
+oh
 
 hein alors
+bon alors
 hein
 
 ah pardon
@@ -40,5 +46,7 @@ ah pardon
 # ^ -- debut de la phrase
 ^pardon
 ^et
+^bon
+^d'accord
 # ^puis
 ^donc
