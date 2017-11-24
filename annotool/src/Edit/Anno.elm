@@ -100,16 +100,14 @@ import Util
 ---------------------------------------------------
 
 
-nodeLabelSet : S.Set String
-nodeLabelSet = S.union phrasalLabelSet preTerminalLabelSet
+nodeLabelSet : List String
+nodeLabelSet = phrasalLabelSet ++ preTerminalLabelSet
 
 
-phrasalLabelSet : S.Set String
+phrasalLabelSet : List String
 phrasalLabelSet =
     let
-        addDolar x = [x, "$" ++ x]
-    in
-        (S.fromList << List.concatMap addDolar)
+        baseList =
             [ "AP"
             , "AdP"
             , "COORD"
@@ -135,34 +133,28 @@ phrasalLabelSet =
             , "VPpart"
             -- below, custom additional labels
             , "PARA" ]
+        addDolar x = "$" ++ x
+    in
+        baseList ++ List.map addDolar baseList
 
 
-preTerminalLabelSet : S.Set String
-preTerminalLabelSet = S.fromList
+preTerminalLabelSet : List String
+preTerminalLabelSet =
   [ "ADJ"
   , "ADJWH"
   , "ADV"
   , "ADVWH"
   , "C"
   , "CC"
+  , "CS"
   , "CL"
   , "CLO"
   , "CLR"
   , "CLS"
-  , "CS"
   , "DET"
   , "DETWH"
   , "ET"
   , "I"
---   , "MWA"
---   , "MWADV"
---   , "MWC"
---   , "MWCL"
---   , "MWD"
---   , "MWN"
---   , "MWP"
---   , "MWPRO"
---   , "MWV"
   , "N"
   , "NC"
   , "NPP"

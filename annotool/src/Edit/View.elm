@@ -2483,7 +2483,7 @@ inputGenericGen setAttr label value valList attr =
 
 
 -- | Doubly generic list input field.
-inputGenericConstrainedGen setAttr label value valSet attr mayId =
+inputGenericConstrainedGen setAttr label value valList attr mayId =
   let
     setMsg str = setAttr (attr str)
     option evVal val = Html.option
@@ -2505,7 +2505,7 @@ inputGenericConstrainedGen setAttr label value valSet attr mayId =
                         Nothing -> []
                         Just x -> [Atts.id x]
              )
-               (List.map (option value) (S.toList valSet))
+               (List.map (option value) valList)
           ]
       ]
 
