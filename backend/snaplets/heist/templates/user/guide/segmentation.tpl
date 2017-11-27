@@ -57,7 +57,7 @@
       tokens and re-parse the resulting sentence.
     </p>
 
-    <h4>Removing tokens</h4>
+    <h4  id="delete-tokens">Removing tokens</h4>
     <p>
       Tokens can be manually removed in the main annotation workspace. Select
       the root of the tree to be removed and use the <b>CTRL+d</b> keyboard
@@ -78,7 +78,7 @@
       is not allowed</figcaption>
     </center></figure>
 
-    <h4>Split sentence</h4>
+    <h4 id="split-sentence">Split sentence</h4>
     <p>
       Just as it is possible to merge several speech turns, it is possible to
       split a given sentence in several sub-sentences. In this case, however,

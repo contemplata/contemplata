@@ -73,7 +73,7 @@
       </div>
     </div> 
 
-    <h4>Parse</h4>
+    <h4 id="parse">Parse</h4>
     <p>
       To reparse the currently sentence (e.g. after some changes in
       segmentation), use the <b>Parse</b> menu command (<b>parse</b> from
@@ -83,7 +83,7 @@
       re-parsed. If no node is selected, all sub-sentences will be re-parsed.
     </p>
 
-    <h4>Parse without changing POS tags</h4>
+    <h4 id="parsepos">Parse without changing POS tags</h4>
     <p>
       Similar to <b>Parse</b>, the <b>CTRL+Parse</b> menu command
       (<b>parsepos</b> from command line) allows to reparse the current
