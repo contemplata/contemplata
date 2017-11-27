@@ -23,33 +23,47 @@ import Edit.Core as C
 
 
 -- | A rule on the top-most level of the given tree.
-type alias Rule = R.Tree M.Node -> Maybe (R.Tree M.Node, S.Set C.NodeId)
+type alias Rule
+    = C.NodeId -- ^ The new, unused node ID
+    -> R.Tree M.Node
+    -> Maybe (R.Tree M.Node, S.Set C.NodeId)
 
 
+-- | Apply the given rule once, over the entire tree.
+applyOnce : Rule -> C.NodeId -> R.Tree M.Node -> (R.Tree M.Node, S.Set C.NodeId)
+applyOnce rule freeID tree =
+    Maybe.withDefault (tree, S.empty) (rule freeID tree)
 
--- | Apply once the given rule.
-applyOnce : Rule -> R.Tree M.Node -> (R.Tree M.Node, S.Set C.NodeId)
-applyOnce rule tree = Maybe.withDefault (tree, S.empty) (rule tree)
 
-
--- | Apply the rule over the entire tree.
-apply : Rule -> R.Tree M.Node -> (R.Tree M.Node, S.Set C.NodeId)
-apply rule (R.Node x subTrees) =
+-- | Apply the rule over the entire tree and all its subtrees.
+applyMany : Rule -> C.NodeId -> R.Tree M.Node -> (R.Tree M.Node, S.Set C.NodeId)
+applyMany rule freeID0 (R.Node x subTrees) =
     let
-        (newSubTrees, newIdList) =
-             List.unzip <| List.map (apply rule) subTrees
+        onChild freeID subTree =
+            let (newSubTree, select) = applyMany rule freeID subTree
+                newFreeID = max freeID (maxID newSubTree + 1)
+            in  (newFreeID, (newSubTree, select))
+        (freeID1, result) = Util.mapAccumL onChild freeID0 subTrees
+        (newSubTrees, newIdList) = List.unzip result
         newIds1 = Util.unions newIdList
-        (newTree, newIds2) = applyOnce rule (R.Node x newSubTrees)
+        (newTree, newIds2) = applyOnce rule freeID1 (R.Node x newSubTrees)
     in
         (newTree, S.union newIds1 newIds2)
 
 
+-- | Apply the rule over the entire tree and all its subtrees.
+apply : Rule -> R.Tree M.Node -> (R.Tree M.Node, S.Set C.NodeId)
+apply rule tree =
+    let freeID = maxID tree + 1
+    in  applyMany rule freeID tree
+
+
 -- | Merge the list of rules into a single rule.
 merge : List Rule -> Rule
-merge rules ctx = case rules of
+merge rules freeID tree = case rules of
   [] -> Nothing
-  (r :: rs) -> case r ctx of
-    Nothing -> merge rs ctx
+  (r :: rs) -> case r freeID tree of
+    Nothing -> merge rs freeID tree
     Just v  -> Just v
 
 
@@ -155,36 +169,33 @@ type alias ContextRule =
 compile
     : ContextRule
     -> Rule
-compile cxt tree =
-    let
-        newId = maxID tree + 1
-    in
-        Util.guard (cxt.parent <| Lens.get M.nodeVal <| R.label tree)
-           |> Maybe.andThen (\_ -> match cxt.left <| R.subTrees tree)
-           |> Maybe.andThen (\(left, leftRest) ->
-                                 let
-                                     x = Debug.log "left" left
-                                     y = Debug.log "leftRest" leftRest
-                                 in
-                                     match cxt.middle leftRest
-           |> Maybe.andThen (\(middle, middleRest) ->
-                                 let
-                                     x = Debug.log "middle" middle
-                                 in
-                                     match cxt.right middleRest
-           |> Maybe.andThen (\(_, _) ->
-                let
-                    newNode = M.Node
-                        { nodeId = newId
-                        , nodeVal = cxt.result
-                        , nodeTyp = Nothing
-                        , nodeComment = "" }
-                    newMiddle = R.Node newNode middle
-                    newSubTrees = left ++ [newMiddle] ++ middleRest
-                    newRoot = R.label tree
-                in
-                    Just (R.Node newRoot newSubTrees, S.singleton newId)
-           )))
+compile cxt freeID tree =
+    Util.guard (cxt.parent <| Lens.get M.nodeVal <| R.label tree)
+       |> Maybe.andThen (\_ -> match cxt.left <| R.subTrees tree)
+       |> Maybe.andThen (\(left, leftRest) ->
+--                              let
+--                                  x = Debug.log "left" left
+--                                  y = Debug.log "leftRest" leftRest
+--                              in
+                                 match cxt.middle leftRest
+       |> Maybe.andThen (\(middle, middleRest) ->
+--                              let
+--                                  x = Debug.log "middle" middle
+--                              in
+                                 match cxt.right middleRest
+       |> Maybe.andThen (\(_, _) ->
+            let
+                newNode = M.Node
+                    { nodeId = freeID
+                    , nodeVal = cxt.result
+                    , nodeTyp = Nothing
+                    , nodeComment = "" }
+                newMiddle = R.Node newNode middle
+                newSubTrees = left ++ [newMiddle] ++ middleRest
+                newRoot = R.label tree
+            in
+                Just (R.Node newRoot newSubTrees, S.singleton freeID)
+       )))
 
 
 ------------------------------------------------------------
