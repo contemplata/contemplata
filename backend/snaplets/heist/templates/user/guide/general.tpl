@@ -22,6 +22,23 @@
       your own annotations.
     </p>
 
+    <p>
+      To each file information abouts its <b>version</b> is assigned. An
+      original (<b>orig</b>) file is a file that has been originally put in the
+      database. A <b>syntax</b> file is meant for annotation on the syntactic
+      level. Similarly, a <b>temporal</b> or <b>relations</b> file is meant for
+      annotation on the level of temporal entities or relations, respectively.
+    </p>
+
+    <p>
+      Regardeless of the version of the file, you are allowed to modify it at
+      any level you wish. Note, however, that modifications of lower levels when
+      annotating higher levels are not propagated downwards. For instance,
+      modifications of syntactic nature made in the 022_00000017:temporal file
+      will not be copied to 022_00000017:syntax, the syntax version of the
+      022_00000017 file.
+    </p>
+
     <h4>Annotation mode</h4>
     <p>
       When you click on a particular file, you will be moved to the annotation
