@@ -3,8 +3,8 @@
 
 
 module Handler.Anno
-( bodySplice
-, annoHandler
+( annoHandler
+, adjuHandler
 ) where
 
 
@@ -30,19 +30,24 @@ import           Application
 import           Handler.Utils (liftDB)
 
 
+---------------------------------------
+-- Regular annotation
+---------------------------------------
+
+
 annoHandler :: AppHandler ()
 annoHandler = do
   Heist.heistLocal (bindSplices localSplices) (Heist.render "annotation")
   where
     localSplices = do
-      "annoBody" ## bodySplice
+      "annoBody" ## annoBodySplice
 
 
-bodySplice :: Splice AppHandler
-bodySplice = do
+annoBodySplice :: Splice AppHandler
+annoBodySplice = do
   Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
   Just fileId <- return $ Odil.decodeFileId fileIdTxt
-  liftIO $ putStrLn "DEBUG: " >> print fileId
+  -- liftIO $ putStrLn "DEBUG: " >> print fileId
   mbUser <- lift $ Snap.with auth Auth.currentUser
   case mbUser of
     Nothing -> return [X.TextNode "access not authorized"]
@@ -69,6 +74,7 @@ bodySplice = do
             , mkArgs
               [ ("userName", login)
               , ("fileId", Odil.encodeFileId fileId)
+              , ("compId", "")
               , ("websocketServer", serverPath)
               , ("websocketServerAlt", serverPathAlt)
               ]
@@ -78,4 +84,58 @@ bodySplice = do
 --             , Auth.userLogin user
 --             , "\"})"
 --             ]
+      return [html]
+
+
+---------------------------------------
+-- Adjudication
+---------------------------------------
+
+
+adjuHandler :: AppHandler ()
+adjuHandler = do
+  Heist.heistLocal (bindSplices localSplices) (Heist.render "annotation")
+  where
+    localSplices = do
+      "annoBody" ## adjuBodySplice
+
+
+adjuBodySplice :: Splice AppHandler
+adjuBodySplice = do
+  -- The main file
+  Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "main"
+  Just mainId <- return $ Odil.decodeFileId fileIdTxt
+  -- The other file, for comparison
+  Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "comp"
+  Just compId <- return $ Odil.decodeFileId fileIdTxt
+  mbUser <- lift $ Snap.with auth Auth.currentUser
+  case mbUser of
+    Nothing -> return [X.TextNode "access not authorized"]
+    Just user -> do
+      let login = Auth.userLogin user
+      cfg <- lift Snap.getSnapletUserConfig
+      Just serverPath <- liftIO $ Cfg.lookup cfg "websocket-server"
+      Just serverPathAlt <- liftIO $ Cfg.lookup cfg "websocket-server-alt"
+--       -- Mark the file as being annotated
+--       lift . liftDB $ do
+--         DB.accessLevel fileId login >>= \case
+--           Just acc -> when
+--             (acc >= Odil.Write)
+--             (DB.startAnnotating fileId)
+--           _ -> return ()
+      let html = X.Element "body" [] [script]
+          script = X.Element "script" [("type", "text/javascript")] [text]
+          mkArg key val = T.concat [key, ": \"", val, "\""]
+          mkArgs = T.intercalate ", " . map (uncurry mkArg)
+          text = X.TextNode $ T.concat
+            [ "Elm.Main.fullscreen({"
+            , mkArgs
+              [ ("userName", login)
+              , ("fileId", Odil.encodeFileId mainId)
+              , ("compId", Odil.encodeFileId compId)
+              , ("websocketServer", serverPath)
+              , ("websocketServerAlt", serverPathAlt)
+              ]
+            , "})"
+            ]
       return [html]

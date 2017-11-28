@@ -27,8 +27,9 @@ mkEdit
     : Cfg.Config
     -> FileId
     -> File
+    -> Maybe (FileId, File)
     -> (Model, Cmd Msg)
-mkEdit config fileId file =
+mkEdit config fileId file compPair =
   let
     treeId = case D.toList file.treeMap of
       (id, tree) :: _ -> id
@@ -52,13 +53,10 @@ mkEdit config fileId file =
       , heightProp = 50
       }
     model =
-      { fileId = fileId
-      , file = file
-      , cmpFileId = Nothing
-      , cmpFile = Nothing
-      -- , trees = file.treeMap
-      -- , turns = file.turns
-      -- , links = file.linkSet
+      { mainFileId = fileId
+      , mainFile = file
+      , cmpFileId = Maybe.map Tuple.first compPair
+      , cmpFile = Maybe.map Tuple.second compPair
       , top = top
       , bot = bot
       , focus = Top

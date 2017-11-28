@@ -96,19 +96,20 @@ update msg model =
       if not model.ctrl
       then M.moveCursorTo win treeId model
       else
-          let withId = M.getReprId (M.selectWin win model).tree model
-          in  M.join treeId withId model
+          let withId = M.getReprId win (M.selectWin win model).tree model
+          in  M.join win treeId withId model
 
     SelectToken win treeId tokID ->
-      let winId = M.getReprId (M.selectWin win model).tree model in
+      let winId = M.getReprId win (M.selectWin win model).tree model in
       if not model.ctrl || winId /= treeId
       then idle model
-      else if not <| M.isDummyTree <| M.getTree treeId model
-           then idle <| M.restoreToken treeId tokID model
+      else if not <| M.isDummyTree <| M.getTree win treeId model
+           then idle <| M.restoreToken win treeId tokID model
            else
                let
-                   txt = M.sentToString <| M.getSent treeId model
-                   req = Server.ParseRaw model.fileId treeId txt False
+                   txt = M.sentToString <| M.getSent win treeId model
+                   fileId = M.getFileId win model
+                   req = Server.ParseRaw fileId treeId txt False
                    send = Server.sendWS model.config req
                in
                    (model, send)
@@ -178,9 +179,13 @@ update msg model =
 
     Join ->
       let
-        treeTop = M.getReprId (M.selectWin M.Top model).tree model
-        treeBot = M.getReprId (M.selectWin M.Bot model).tree model
-        newModel = M.join treeTop treeBot model
+        treeTop = M.getReprId M.Top (M.selectWin M.Top model).tree model
+        treeBot = M.getReprId M.Bot (M.selectWin M.Bot model).tree model
+        newModel =
+            -- operation not allowed in adjudication mode
+            case model.cmpFile of
+                Nothing -> M.join M.Top treeTop treeBot model
+                _ -> model
       in
         idle newModel
         -- parseSent Server.Stanford newModel
@@ -201,91 +206,56 @@ update msg model =
 
     ParseRaw prep ->
       let
-        treeId = M.getReprId (M.selectWin model.focus model).tree model
---         txtFor id = case D.get id model.file.sentMap of
---                   Nothing -> ""
---                   Just x -> M.sentToString x
---         txt = String.join " "
---               <| L.map txtFor
---               <| S.toList
---               <| M.getPart treeId model
-        txt = M.sentToString <| M.getSent treeId model
-        req = Server.ParseRaw model.fileId treeId txt prep
+        focus = model.focus
+        fileId = M.getFileId focus model
+        treeId = M.getReprId focus (M.selectWin focus model).tree model
+        txt = M.sentToString <| M.getSent focus treeId model
+        req = Server.ParseRaw fileId treeId txt prep
         send = Server.sendWS model.config req
       in
         (model, send)
 
     ParseSent parTyp -> parseSent parTyp model
---       let
---         treeId = (M.selectWin model.focus model).tree
---         tree = M.getTree treeId model
---         word node = case node of
---           M.Node _ -> Nothing
---           M.Leaf {nodeVal} -> Just nodeVal
---         words = List.reverse <| Util.catMaybes <| List.map word <| R.flatten tree
---         req = Server.encodeReq (Server.ParseSent model.fileId treeId parTyp words)
---         send = WebSocket.send Cfg.socketServer req
---       in
---         (model, send)
-
---     ParseSentPos parTyp ->
---       let
---         treeId = M.getReprId (M.selectWin model.focus model).tree model
---         wordsPos = getWordPos (M.getSent treeId model) (M.getTree treeId model)
---         req = Server.ParseSentPos model.fileId treeId parTyp wordsPos
---         send = Server.sendWS model.config req
---       in
---         (model, send)
 
     ParseSentPos parTyp ->
       let
-        win = M.selectWin model.focus model
-        treeId = M.getReprId win.tree model
+        focus = model.focus
+        fileId = M.getFileId focus model
+        win = M.selectWin focus model
+        treeId = M.getReprId focus win.tree model
         wordsPos = getWordPosPrim
-                   (M.getSent treeId model)
-                   (M.getTree treeId model)
+                   (M.getSent focus treeId model)
+                   (M.getTree focus treeId model)
                    (M.selAll win)
-        req = Server.ParseSentPos model.fileId treeId parTyp wordsPos
+        req = Server.ParseSentPos fileId treeId parTyp wordsPos
         send = Server.sendWS model.config req
       in
         (model, send)
 
     ParseSentCons parTyp ->
       let
-        win = M.selectWin model.focus model
-        treeId = M.getReprId win.tree model
+        focus = model.focus
+        fileId = M.getFileId focus model
+        win = M.selectWin focus model
+        treeId = M.getReprId focus win.tree model
         selection = M.selAll win
-        wordsPos = getWordPos (M.getSent treeId model) (M.getTree treeId model)
-        cons = getConstraints selection (M.getTree treeId model)
-        req = Server.ParseSentCons model.fileId treeId parTyp (mergeReqs cons wordsPos)
+        wordsPos = getWordPos (M.getSent focus treeId model) (M.getTree focus treeId model)
+        cons = getConstraints selection (M.getTree focus treeId model)
+        req = Server.ParseSentCons fileId treeId parTyp (mergeReqs cons wordsPos)
         send = Server.sendWS model.config req
       in
         (model, send)
 
---     ParseSentCons parTyp ->
---       let
---         win = M.selectWin model.focus model
---         treeId = M.getReprId win.tree model
---         tree = M.getTree treeId model
---         -- wordsPos = getWordPos tree
---         wordsPos = case getWordPos tree of
---           Server.Single x -> x
---           Server.Batch xs -> List.concat xs
---         selection = M.selAll win
---         span = getSpan selection tree
---         req cns = Server.ParseSentCons model.fileId treeId parTyp cns wordsPos
---         send cns = Server.sendWS model.config (req cns)
---       in
---         (model, send span)
-
     ApplyRules -> idle <|
       let
-        wlen = M.winLens model.focus
-        treeId = M.getReprId (Lens.get wlen model).tree model
-        (newTree, newSel) = Rule.apply Rule.theRule (M.getTree treeId model)
+        focus = model.focus
+        fileId = M.getFileId focus model
+        wlen = M.winLens focus
+        treeId = M.getReprId focus (Lens.get wlen model).tree model
+        (newTree, newSel) = Rule.apply Rule.theRule (M.getTree focus treeId model)
         updateSel win = {win | selAux = newSel, selMain = Nothing}
       in
-        M.setTreeCheck model.fileId treeId newTree model
+        M.setTreeCheck fileId treeId newTree model
           |> Lens.update wlen updateSel
 
     -- Popup x -> idle <| {model | popup = Just x}
@@ -301,9 +271,10 @@ update msg model =
 
     SaveFile ->
       let
-        -- file = {treeMap = model.trees, turns = model.turns, linkSet = model.links}
-        -- req = Server.SaveFile model.config.user model.fileId file
-        req = Server.SaveFile model.config.user model.fileId model.file
+        focus = model.focus
+        fileId = M.getFileId focus model
+        file = Lens.get (M.fileLens focus) model
+        req = Server.SaveFile model.config.user fileId file
         send = Server.sendWS model.config req
       in
         (model, send)
@@ -405,20 +376,21 @@ update msg model =
 
     SplitBegin ->
         let
+            focus = model.focus
             pop x = (model, firePopup x Nothing)
-            win = M.selectWin model.focus model
-            partId = M.getReprId win.tree model
+            win = M.selectWin focus model
+            partId = M.getReprId focus win.tree model
         in
             case win.selMain of
                 Nothing -> pop (Popup.Info "You have to select a leaf")
                 Just nodeId ->
-                    case M.getNode nodeId model.focus model of
+                    case M.getNode nodeId focus model of
                         M.Node _ -> pop (Popup.Info "You have to select a leaf")
                         M.Leaf r ->
-                            let nodeVal = (M.getToken r.leafPos partId model).orth
+                            let nodeVal = (M.getToken r.leafPos focus partId model).orth
                                 popup = Popup.Split {word=nodeVal, split=0}
-                                focus = Just Cfg.splitSelectName
-                            in (model, firePopup popup focus)
+                                newFocus = Just Cfg.splitSelectName
+                            in (model, firePopup popup newFocus)
     SplitChange k -> idle <| M.changeSplit k model
     SplitFinish k -> idle <| M.performSplit k model
 
@@ -486,8 +458,9 @@ update msg model =
             }
 
     Dummy -> idle <|
-        let partId = M.getReprId (M.selectWin model.focus model).tree model
-        in  M.dumify partId model
+        let focus = model.focus
+            partId = M.getReprId focus (M.selectWin focus model).tree model
+        in  M.dumify focus partId model
 
     -- Goto addr -> idle <| M.goto addr model
 
@@ -731,11 +704,12 @@ getWords sent tree =
 parseSent : Server.ParserTyp -> M.Model -> (M.Model, Cmd Msg)
 parseSent parTyp model =
     let
-        win = M.selectWin model.focus model
-        treeId = M.getReprId win.tree model
+        focus = model.focus
+        win = M.selectWin focus model
+        treeId = M.getReprId focus win.tree model
         wordsPos = getWordPosPrim
-                   (M.getSent treeId model)
-                   (M.getTree treeId model)
+                   (M.getSent focus treeId model)
+                   (M.getTree focus treeId model)
                    (M.selAll win)
         flip f x y = f y x
         words = flip L.map wordsPos <|
@@ -748,7 +722,9 @@ parseSent parTyp model =
                              )
                         )
                     )
-        req = Server.ParseSent model.fileId treeId parTyp words
+        -- req = Server.ParseSent model.fileId treeId parTyp words
+        fileId = M.getFileId focus model
+        req = Server.ParseSent fileId treeId parTyp words
         send = Server.sendWS model.config req
     in
         (model, send)

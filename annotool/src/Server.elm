@@ -56,6 +56,8 @@ type Request
     -- ^ Obtain the list of files for a given annotator
   | GetFile C.AnnoName C.FileId
     -- ^ Request the contents of the given file
+  | GetFile2 C.AnnoName C.FileId C.FileId
+    -- ^ Request two files for adjudication
   | SaveFile C.AnnoName C.FileId M.File
     -- ^ Request the contents of the given file
   | Break C.FileId C.PartId (List String)
@@ -98,7 +100,15 @@ encodeReqToVal req = case req of
     -- , ("contents", Encode.string id)
     , ("contents", Encode.list
          [ Encode.string annoName
-         , Debug.log "encodeFileIdJSON result: " <| C.encodeFileIdJSON id ]
+         , C.encodeFileIdJSON id ]
+      )
+    ]
+  GetFile2 annoName id1 id2 -> Encode.object
+    [ ("tag", Encode.string "GetFile2")
+    , ("contents", Encode.list
+         [ Encode.string annoName
+         , C.encodeFileIdJSON id1
+         , C.encodeFileIdJSON id2 ]
       )
     ]
   SaveFile annoName fileId file -> Encode.object
@@ -224,6 +234,8 @@ type Answer
     -- ^ The list of files
   | NewFile C.FileId M.File
     -- ^ New file to edit
+  | NewFile2 C.FileId M.File C.FileId M.File
+    -- ^ New pair of files to edit
   | ParseResult C.FileId C.PartId (Maybe M.Sent) (R.Tree M.Node)
     -- ^ Parsing result
   | ParseResultList C.FileId C.PartId (List (Maybe (R.Tree M.Node)))
@@ -237,6 +249,7 @@ answerDecoder =
     Decode.oneOf
         [ filesDecoder
         , newFileDecoder
+        , newFileDecoder2
         , parseResultDecoder
         , parseResultListDecoder
         , notificationDecoder]
@@ -250,9 +263,30 @@ filesDecoder =
 
 newFileDecoder : Decode.Decoder Answer
 newFileDecoder =
-  Decode.map2 NewFile
+  Decode.map3 (\tag_ -> NewFile)
+    (Decode.field "tag" <| tagDecoder "NewFile")
     (Decode.field "fileId" C.fileIdDecoder)
     (Decode.field "file" M.fileDecoder)
+
+
+newFileDecoder2 : Decode.Decoder Answer
+newFileDecoder2 =
+  Decode.map5 (\tag_ -> NewFile2)
+    (Decode.field "tag" <| tagDecoder "NewFile2")
+    (Decode.field "fileId" C.fileIdDecoder)
+    (Decode.field "file" M.fileDecoder)
+    (Decode.field "compId" C.fileIdDecoder)
+    (Decode.field "comp" M.fileDecoder)
+
+
+tagDecoder : String -> Decode.Decoder ()
+tagDecoder tag =
+    Decode.string |> Decode.andThen
+        ( \str ->
+              if str == tag
+              then Decode.succeed ()
+              else Decode.fail "Incorrect tag"
+        )
 
 
 parseResultDecoder : Decode.Decoder Answer

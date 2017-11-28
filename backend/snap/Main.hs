@@ -67,6 +67,7 @@ routes =
   [ ("/ws", wsHandler)
   -- , ("/style.css", FileServe.serveFileAs "text/css" "html/style.css")
   , ("/annotate/:filename", Anno.annoHandler)
+  , ("/adjudicate/:main/:comp", Anno.adjuHandler)
   , ("/public", publicHandler)
   , ("/login", Login.loginHandler)
   , ("/logout", Login.logoutHandler)
@@ -78,7 +79,7 @@ routes =
   , ("/user/file/:filename/postpone", User.postponeHandler)
   , ("/user/file/:filename/finish", User.finishHandler)
 
-  -- User-related handlers
+  -- Admin-related handlers
   , ("/admin/createuser", Admin.createUserHandler)
   , ("/admin/password", Admin.passwordHandler)
   , ("/admin/files", Admin.filesHandler)

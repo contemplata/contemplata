@@ -92,6 +92,7 @@ instance JSON.ToJSON a => JSON.ToJSON (ParseReq a) where
 data Request
   = GetFiles AnnoName
   | GetFile AnnoName FileId
+  | GetFile2 AnnoName FileId FileId
   | SaveFile AnnoName FileId File
   | ParseSent FileId TreeId ParserTyp
     [(Bool, [(Token, Maybe Stanford.Orth)])]
@@ -130,6 +131,8 @@ data Answer
     -- ^ The list of files
   | NewFile FileId File
     -- ^ New file to edit
+  | NewFile2 FileId File FileId File
+    -- ^ New files to adjudicate
   | ParseResult
     FileId
     TreeId
@@ -154,8 +157,15 @@ instance JSON.ToJSON Answer where
     Files xs -> JSON.object
       [ "files" .= xs ]
     NewFile fileId file -> JSON.object
-      [ "fileId" .= fileId
+      [ "tag" .= ("NewFile" :: T.Text)
+      , "fileId" .= fileId
       , "file" .= file ]
+    NewFile2 fileId file compId comp -> JSON.object
+      [ "tag" .= ("NewFile2" :: T.Text)
+      , "fileId" .= fileId
+      , "file" .= file
+      , "compId" .= compId
+      , "comp" .= comp ]
     ParseResult fileId treeId sentMay tree -> JSON.object
       [ "fileId" .= fileId
       , "treeId" .= treeId
@@ -267,6 +277,21 @@ talk conn state snapCfg = forever $ do
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
           Right file -> do
             let ret = NewFile fileId file
+            WS.sendTextData conn (JSON.encode ret)
+
+      Right (GetFile2 anno fileId compId) -> do
+        -- putStrLn $ "Running GetFile2 for " ++ show (fileId, compId)
+        let getFile fid = do
+              Just _ <- DB.accessLevel fid anno
+              DB.loadFile fid
+            getBoth = (,) <$> getFile fileId <*> getFile compId
+        DB.runDBT db getBoth >>= \case
+          Left err -> do
+            let msg = T.concat ["GetFile2 error: ", err]
+            T.putStrLn msg
+            WS.sendTextData conn . JSON.encode =<< mkNotif msg
+          Right (file1, file2) -> do
+            let ret = NewFile2 fileId file1 compId file2
             WS.sendTextData conn (JSON.encode ret)
 
       Right (SaveFile anno fileId file) -> do

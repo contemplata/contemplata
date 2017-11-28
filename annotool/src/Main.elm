@@ -83,6 +83,7 @@ menuLens = (getMenu, setMenu)
 type alias Flags =
     { userName : String
     , fileId : String
+    , compId : String
     , websocketServer : String
     , websocketServerAlt : String }
 
@@ -194,7 +195,11 @@ topUpdate topMsg =
       Server.Files xs -> Debug.crash "Server.Files not implemented"
       Server.NewFile fileId file -> \model_ ->
         let (edit, cmd) =
-                Edit.Init.mkEdit (topCfg model_) fileId file
+                Edit.Init.mkEdit (topCfg model_) fileId file Nothing
+        in  (Edit edit, Cmd.map editMsg cmd)
+      Server.NewFile2 fileId file compId comp -> \model_ ->
+        let (edit, cmd) =
+                Edit.Init.mkEdit (topCfg model_) fileId file (Just (compId, comp))
         in  (Edit edit, Cmd.map editMsg cmd)
       Server.ParseResult fileId treeId sentMay tree ->
         let updTree = Edit.Model.setTreeCheck fileId treeId tree
@@ -253,7 +258,13 @@ topInit r =
           , wsUseProxy=True
           , socketServer=r.websocketServer
           , socketServerAlt=r.websocketServerAlt }
-      (model, cmd) = Menu.mkMenu cfg (Edit.Core.decodeFileId r.fileId)
+      (model, cmd) =
+          case r.compId of
+              "" -> Menu.mkMenu cfg
+                    (Edit.Core.decodeFileId r.fileId)
+              _  -> Menu.mkMenu2 cfg
+                    (Edit.Core.decodeFileId r.fileId)
+                    (Edit.Core.decodeFileId r.compId)
   in  (Menu model, Cmd.map menuMsg cmd)
 
 

@@ -64,9 +64,10 @@ module Edit.Model exposing
   -- -- , changeTypeSel
   -- Lenses:
   , top, bot, dim, winLens, drag, side, pos, height, widthProp, heightProp
-  , nodeId, nodeVal, treeMap, sentMap, partMap, reprMap, trees
+  , nodeId, nodeVal, treeMap, sentMap, partMap, reprMap, trees, fileLens
   -- Pseudo-lenses:
   -- , setTrees
+  , getFileId
   -- Various:
   , setTreeCheck, setForestCheck, setSentCheck, getWords, subTreeAt, nodesIn
   -- JSON decoding:
@@ -262,10 +263,10 @@ switchSignal signal r =
 
 
 type alias Model =
-  { fileId : FileId
+  { mainFileId : FileId
 
   -- the underlying file
-  , file : File
+  , mainFile : File
 
   -- Optionally, another file can be specified, which will be shown in the
   -- bottom window. TODO: document to what extend does it change the behavior of
@@ -730,7 +731,8 @@ setTree win treeId newTree model =
     isToDelete ((from, to), linkData_) =
       let toDel (trId, ndId_) = trId == treeId
       in  toDel from || toDel to
-    delLinks = L.filter isToDelete <| D.toList model.file.linkSet
+    -- delLinks = L.filter isToDelete <| D.toList model.file.linkSet
+    delLinks = L.filter isToDelete <| D.toList (Lens.get (fileLens win) model).linkSet
     linkModif = deleteLinks win (S.fromList <| L.map Tuple.first delLinks)
 
   in
@@ -766,7 +768,8 @@ updateTree win treeId update model =
     isToDelete ((from, to), linkData_) =
       let toDel (trId, ndId) = trId == treeId && S.member ndId delNodes
       in  toDel from || toDel to
-    delLinks = L.filter isToDelete <| D.toList model.file.linkSet
+    -- delLinks = L.filter isToDelete <| D.toList model.file.linkSet
+    delLinks = L.filter isToDelete <| D.toList (Lens.get (fileLens win) model).linkSet
     linkModif = deleteLinks win (S.fromList <| L.map Tuple.first delLinks)
 
   in
@@ -889,6 +892,7 @@ type alias LinkInfo =
   , focusTo : Focus }
 
 
+-- | The operation works only in single annotation mode.
 connectHelp : LinkInfo -> Model -> Model
 connectHelp {nodeFrom, nodeTo, focusTo} model =
   let
@@ -898,7 +902,7 @@ connectHelp {nodeFrom, nodeTo, focusTo} model =
     treeFrom = getReprId Top (selectWin focusFrom model).tree model
     treeTo = getReprId Top (selectWin focusTo model).tree model
     link = ((treeFrom, nodeFrom), (treeTo, nodeTo))
-    (alter, modif) = case D.get link model.file.linkSet of
+    (alter, modif) = case D.get link model.mainFile.linkSet of
       Nothing ->
         ( D.insert link linkDataDefault
         , LinkModif
@@ -914,9 +918,8 @@ connectHelp {nodeFrom, nodeTo, focusTo} model =
               , window = Top }
         )
   in
-    -- the operation works only in single annotation mode
     case model.cmpFile of
-        Nothing -> Lens.update (file => linkSet) alter model |> saveModif modif
+        Nothing -> Lens.update (mainFile => linkSet) alter model |> saveModif modif
         Just _ -> model
 
 
@@ -933,7 +936,7 @@ connectSignal link focus model =
   in
     case win.selMain of
       Nothing -> model
-      Just nodeId -> addSignal focus link (treeId, nodeId) model
+      Just nodeId -> addSignal link focus (treeId, nodeId) model
 
 
 -- | Connect a link to a signal.
@@ -945,7 +948,7 @@ addSignal
   -> Model
 addSignal link focus signal model =
   let
-    (alter, modif) = case D.get link model.file.linkSet of
+    (alter, modif) = case D.get link model.mainFile.linkSet of
       Nothing ->
         Debug.crash "addSignal: should never happen!"
       Just oldData ->
@@ -961,7 +964,7 @@ addSignal link focus signal model =
   in
     -- the operation works only in single annotation mode
     case model.cmpFile of
-        Nothing -> Lens.update (file => linkSet) alter model |> saveModif modif
+        Nothing -> Lens.update (mainFile => linkSet) alter model |> saveModif modif
         Just _ -> model
 
 
@@ -1010,8 +1013,8 @@ updateLinkSelection model =
     inWin focus (partId, nodeId) =
       let
         win = selectWin focus model
-        winPartId = getReprId win.tree model
-        tree = getTree winPartId model
+        winPartId = getReprId focus win.tree model
+        tree = getTree focus winPartId model
       in
         winPartId == partId && Util.isJust (getNode_ nodeId tree)
 
@@ -1075,12 +1078,9 @@ dragOn model =
 getReprId : Focus -> TreeId -> Model -> PartId
 getReprId win (TreeId treeId) model =
     let
-      reprMap =
-          case (win, model.cmpFile) of
-              Nothing -> model.file.reprMap
-              Just fi -> fi.reprMap
+      rmap = Lens.get (fileLens win => reprMap) model
     in
-      case D.get treeId reprMap of
+      case D.get treeId rmap of
         Nothing -> Debug.crash "Model.getReprId: no representative for the given ID"
         Just bareId ->
             if bareId == treeId
@@ -1101,9 +1101,7 @@ getTree win treeId model =
 -- a previous removal).
 getTreeMay : Focus -> PartId -> Model -> Maybe (R.Tree Node)
 getTreeMay win treeId model =
-    case (win, model.cmpFile) of
-        (Bot, Just file) -> D.get treeId file.treeMap
-        _ -> D.get treeId model.file.treeMap
+    D.get treeId <| Lens.get (fileLens win => treeMap) model
 
 
 -- | Retrieve all selected nodes.
@@ -1187,7 +1185,7 @@ getSentMap win partId model =
     let
         part = Maybe.withDefault S.empty <| getPart win partId model
         sents = L.map
-                (\treeId -> (treeId, getSent_ treeId model))
+                (\treeId -> (treeId, getSent_ win treeId model))
                 (S.toList part)
     in
         D.fromList sents
@@ -1241,20 +1239,21 @@ treePos win model =
     treeId = case win of
       Top -> model.top.tree
       Bot -> model.bot.tree
-    partId = getReprId treeId model
+    partId = getReprId win treeId model
     go i keys = case keys of
       [] -> 0
       hd :: tl -> if partId == hd
         then i
         else go (i + 1) tl
   in
-    go 1 (D.keys model.file.treeMap)
+    go 1 <| D.keys <| Lens.get (fileLens win => treeMap) model
 
 
 -- | Number of trees in the model. Note that it does not necessarily correspond
 -- to the number of turns or turn elements.
-treeNum : Model -> Int
-treeNum model = D.size model.file.treeMap
+treeNum : Focus -> Model -> Int
+-- treeNum model = D.size model.file.treeMap
+treeNum win model = D.size (Lens.get (fileLens win) model).treeMap
 
 
 -- getPosition : Focus -> Model -> Position
@@ -1289,10 +1288,10 @@ getPosition win =
 
 -- | Retrieve the next tree in the underlying model.
 -- Return the argument tree ID if not possible.
-nextTree : TreeId -> Model -> PartId
-nextTree x0 model =
+nextTree : Focus -> TreeId -> Model -> PartId
+nextTree focus x0 model =
   let
-    x = getReprId x0 model
+    x = getReprId focus x0 model
     go keys = case keys of
       [] -> x
       hd1 :: []  -> x
@@ -1300,15 +1299,15 @@ nextTree x0 model =
         then hd2
         else go (hd2 :: tl)
   in
-    go (D.keys model.file.treeMap)
+    go <| D.keys <| Lens.get (fileLens focus => treeMap) model
 
 
 -- | Retrieve the next tree in the underlying model.
 -- Return the argument tree ID if not possible.
-prevTree : TreeId -> Model -> PartId
-prevTree x0 model =
+prevTree : Focus -> TreeId -> Model -> PartId
+prevTree focus x0 model =
   let
-    x = getReprId x0 model
+    x = getReprId focus x0 model
     go keys = case keys of
       [] -> x
       hd1 :: []  -> x
@@ -1316,7 +1315,7 @@ prevTree x0 model =
         then hd1
         else go (hd2 :: tl)
   in
-    go (D.keys model.file.treeMap)
+    go <| D.keys <| Lens.get (fileLens focus => treeMap) model
 
 
 -- | Wrapper for prevTree and nextTree.
@@ -1325,24 +1324,9 @@ moveCursor next model =
   let
     win = selectWin model.focus model
     switch = if next then nextTree else prevTree
-    treeId = switch win.tree model
+    treeId = switch model.focus win.tree model
   in
     moveCursorTo model.focus treeId model
--- moveCursor next model =
---   let
---     switch = if next then nextTree else prevTree
---     alter win =
---       { win
---           | tree = switch win.tree model
---           -- , select = S.empty
---           , selMain = Nothing
---           , selAux = S.empty
---       }
---     update foc = Lens.update foc alter model
---   in
---     case model.focus of
---       Top -> update top
---       Bot -> update bot
 
 
 -- | Similar to `moveCursor`, but the tree ID as well as the focus are directly
@@ -2356,7 +2340,7 @@ splitTree model =
 ---------------------------------------------------
 
 
--- | Internal join function which does not check that the two given ids can really be joined.
+-- | Join two partitions.
 --
 -- NOTE: as an effect of this operation, one of its arguments becomes invalid
 -- (is no longer a partition representative).
@@ -2436,7 +2420,7 @@ getPart : Focus -> PartId -> Model -> Maybe (S.Set TreeIdBare)
 getPart win treeId model =
     case (win, model.cmpFile) of
         (Bot, Just file) -> D.get treeId file.partMap
-        _ -> D.get treeId model.file.partMap
+        _ -> D.get treeId model.mainFile.partMap
 
 
 -- | Set representative for the given tree ID.
@@ -2444,7 +2428,7 @@ setRepr : Focus -> TreeIdBare -> TreeIdBare -> Model -> Model
 setRepr win treeId newRepr model =
     let
         oldRepr = getRepr win treeId model
-        newModel = Lens.update (file => reprMap) (D.insert treeId newRepr) model
+        newModel = Lens.update (fileLens win => reprMap) (D.insert treeId newRepr) model
     in
         newModel
             |> saveModif
@@ -2932,32 +2916,32 @@ bot = Lens.create
   (\fn model -> {model | bot = fn model.bot})
 
 
-file : Lens.Focus { record | file : a } a
-file = Lens.create
-  .file
-  (\fn model -> {model | file = fn model.file})
+mainFile : Lens.Focus { record | mainFile : a } a
+mainFile = Lens.create
+  .mainFile
+  (\fn model -> {model | mainFile = fn model.mainFile})
 
 
-cmpFile : Lens.Focus { record | cmpFile : Maybe a, file : a } a
+cmpFile : Lens.Focus { record | cmpFile : Maybe a, mainFile : a } a
 cmpFile =
     let
         set model =
             case model.cmpFile of
-                Nothing -> model.file
+                Nothing -> model.mainFile
                 Just fi -> fi
         update fn model =
             case model.cmpFile of
-                Nothing -> {model | file = fn model.file}
+                Nothing -> {model | mainFile = fn model.mainFile}
                 Just fi -> {model | cmpFile = Just (fn fi)}
     in
         Lens.create set update
 
 
 -- | Generic file lens whose behavior depends on the window in focus.
-fileLens : Focus -> Lens.Focus { record | cmpFile : Maybe a, file : a } a
+fileLens : Focus -> Lens.Focus { record | cmpFile : Maybe a, mainFile : a } a
 fileLens win =
     case win of
-        Top -> file
+        Top -> mainFile
         Bot -> cmpFile
 
 
@@ -2965,10 +2949,10 @@ fileLens win =
 getFileId : Focus -> Model -> FileId
 getFileId win model =
     case win of
-        Top -> model.fileId
+        Top -> model.mainFileId
         Bot ->
             case model.cmpFileId of
-                Nothing -> model.fileId
+                Nothing -> model.mainFileId
                 Just id -> id
 
 

@@ -12,6 +12,7 @@ module Menu exposing
   -- , Request(..) , Answer (..), answerDecoder, encodeReq
   -- Initialization
   , mkMenu
+  , mkMenu2
   )
 
 
@@ -121,6 +122,31 @@ mkMenu config fileIdMay =
             Nothing -> Cmd.none
             Just fileId ->
                 Server.sendWS config (Server.GetFile config.user fileId)
+  in
+    (model, init)
+
+
+-- | For adjudication.
+mkMenu2
+    : Cfg.Config
+    -> Maybe C.FileId
+    -> Maybe C.FileId
+    -> (Model, Cmd Msg)
+mkMenu2 config fileIdMay compIdMay =
+  let
+    msg =
+        case (fileIdMay, compIdMay) of
+            (Just fileId, Just compId) ->
+                "Fetching " ++ C.encodeFileId fileId ++
+                " and " ++ C.encodeFileId compId
+            _ -> "Incorrent file ID(s)"
+    model = {config=config, message=msg}
+    init =
+        case (fileIdMay, compIdMay) of
+            (Just fileId, Just compId) ->
+                Server.sendWS config
+                    (Server.GetFile2 config.user fileId compId)
+            _ -> Cmd.none
   in
     (model, init)
 

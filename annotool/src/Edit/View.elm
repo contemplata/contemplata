@@ -144,11 +144,13 @@ backColor win model =
 viewTree : M.Focus -> M.Model -> Html.Html Msg
 viewTree focus model =
 
+  -- TEMP 28/11: seems OK
+
   let
 
     win = M.selectWin focus model
-    treeId = M.getReprId win.tree model
-    tree = M.getTree treeId model
+    treeId = M.getReprId focus win.tree model
+    tree = M.getTree focus treeId model
 
   in
 
@@ -159,19 +161,19 @@ viewTree focus model =
       <| R.withWidth stdWidth Cfg.stdMargin tree
 
 
--- | Retrieve the token map (position -> token) for a given partition.
-tokenMap : C.PartId -> M.Model -> Int -> M.Token
-tokenMap treeId model =
-    let
-        mkDict pos xs =
-            case xs of
-                [] -> D.empty
-                hd :: tl -> D.insert pos hd <| mkDict (pos + 1) tl
-        sentDict = mkDict 0 <| M.getSent treeId model
-    in
-        \i -> case D.get i sentDict of
-                  Nothing -> M.emptyToken
-                  Just x  -> x
+-- -- | Retrieve the token map (position -> token) for a given partition.
+-- tokenMap : C.PartId -> M.Model -> Int -> M.Token
+-- tokenMap treeId model =
+--     let
+--         mkDict pos xs =
+--             case xs of
+--                 [] -> D.empty
+--                 hd :: tl -> D.insert pos hd <| mkDict (pos + 1) tl
+--         sentDict = mkDict 0 <| M.getSent treeId model
+--     in
+--         \i -> case D.get i sentDict of
+--                   Nothing -> M.emptyToken
+--                   Just x  -> x
 
 
 ---------------------------------------------------
@@ -192,8 +194,9 @@ viewTreeId win model =
   let
     txt0 = toString (M.treePos win model)
       ++ "/"
-      ++ toString (M.treeNum model)
-    txt1 = txt0 ++ " (" ++ C.encodeFileId model.fileId ++ ")"
+      ++ toString (M.treeNum win model)
+    -- txt1 = txt0 ++ " (" ++ C.encodeFileId model.fileId ++ ")"
+    txt1 = txt0 ++ " (" ++ C.encodeFileId (M.getFileId win model) ++ ")"
     txt  = txt1 ++
         if model.ctrl
         then " CTRL"
@@ -1165,7 +1168,7 @@ viewSideTimex model focus nodeId node (Anno.Timex ti) =
             (Anno.nullable Anno.timexModStr)
             Anno.TiModAttr
 
-    inputTimex = inputTimexGen model (SetTimexAttr nodeId focus)
+    inputTimex = inputTimexGen model focus (SetTimexAttr nodeId focus)
     inpAnchor = inputTimex "Anchor" ti.tiAnchor Anno.TiAnchorAttr
     inpBeginPoint = inputTimex "Begin" ti.tiBeginPoint Anno.TiBeginPointAttr
     inpEndPoint = inputTimex "End" ti.tiEndPoint Anno.TiEndPointAttr
@@ -1211,8 +1214,9 @@ viewSideEdit visible win model =
         M.Leaf r -> [viewSideEditLabel win model]
         M.Node r ->
             let
-                partId = M.getReprId (M.selectWin win model).tree model
-                tree = M.getTree partId model
+                -- TEMP 28/11: seems OK
+                partId = M.getReprId win (M.selectWin win model).tree model
+                tree = M.getTree win partId model
                 nodeTyp = Maybe.withDefault M.Internal <| M.getNodeTyp nodeId tree
             in
                 viewSideEditInternal model win nodeId nodeTyp r
@@ -1349,32 +1353,12 @@ viewSideContext visible foc model =
 
   let
 
---     viewTree spks (treeId, mayWho) =
---       let sent = case D.get treeId model.file.sentMap of
---                    Nothing -> ""
---                    Just x -> x
---           treeIdRepr = M.getReprId treeId model
---           isSelected = treeIdRepr == treeSelected
---       in  viewSent foc isSelected treeIdRepr sent spks mayWho
---
---     viewTurn turn =
---         List.map
---             (viewTree turn.speaker)
---             (D.toList turn.trees)
---
---     div = viewSideDiv visible foc model
---       [ Html.ul
---           [Atts.style
---              [ "position" => "absolute"
---              , "top" => px Cfg.sideMenuHeight
---              ]
---           ]
---           (List.concat <| List.map viewTurn model.file.turns)
---       ]
-
     -- | The set of all speakers in the file.
     spkAll : S.Set String
-    spkAll = Util.unions <| List.map getSpeakers <| model.file.turns
+    -- spkAll = Util.unions <| List.map getSpeakers <| model.file.turns
+    spkAll = Util.unions
+             <| List.map getSpeakers
+             <| (Lens.get (M.fileLens foc) model).turns
 
     spkHeader =
         Html.thead []
@@ -1395,7 +1379,6 @@ viewSideContext visible foc model =
                     Nothing -> Html.td [] []
                     Just treeId ->
                         Html.td []
-                            -- [viewSentAlt foc isSelected treeIdRepr tree sent spk]
                             [viewSentAlt foc treeId spk model]
         in
             Html.tr []
@@ -1414,7 +1397,11 @@ viewSideContext visible foc model =
              ]
           ] <|
           spkHeader ::
-          (List.map viewTurnAlt <| List.map inverseTurn <| model.file.turns)
+          -- (List.map viewTurnAlt <| List.map inverseTurn <| model.file.turns)
+          ( List.map viewTurnAlt
+                <| List.map inverseTurn
+                <| (Lens.get (M.fileLens foc) model).turns
+          )
       ]
 
   in
@@ -1449,50 +1436,6 @@ getSpeakers : M.Turn -> S.Set String
 getSpeakers = S.fromList << D.keys << inverseTurn
 
 
--- viewSentAlt
---   : M.Focus   -- ^ Where is the focus on
---   -> Bool     -- ^ Is the tree currently viewed?
---   -> C.PartId -- ^ The tree ID (the representative) ...
---   -> R.Tree M.Node -- ^ The tree itself (to know which tokens are visible)
---   -> M.Sent   -- ^ ... and one of the sentences corresponding to the tree
---   -> String   -- ^ The speaker
---   -> Html.Html Msg
--- viewSentAlt foc isSelected treeId tree sent spk =
---   let
---     paraAtts = if isSelected
---       then [ Atts.style ["font-weight" => "bold"] ]
---       else []
---     divAtts = if isSelected
---       then [ Atts.id <| Cfg.selectSentName <|
---                  case foc of
---                      M.Top -> True
---                      M.Bot -> False ]
---       else []
---     visible = M.visiblePositions tree
---     isVisible tokID = S.member tokID visible
---     para =
---         Html.span paraAtts <|
---             L.map (\(tokID, tok) -> viewToken foc treeId (isVisible tokID) tokID tok) <|
---                    L.map2 (,)
---                        (L.range 0 (L.length sent - 1))
---                        sent
---     div =
---       Html.div (
---         [ Atts.class "noselect"
---         , Events.onClick (SelectTree foc treeId)
---         , Atts.style
---             [ "cursor" => "pointer"
---             -- make the (focus-related) outline invisible
---             , "outline" => "0" ]
---         -- @tabindex required to make the div propagate the keyboard events
---         -- (see the `view` function)
---         , Atts.attribute "tabindex" "1"
---         ] ++ divAtts )
---         [para]
---   in
---     div
-
-
 viewSentAlt
   : M.Focus   -- ^ Where is the focus on
   -> C.TreeId -- ^ The tree ID (the representative) ...
@@ -1501,10 +1444,10 @@ viewSentAlt
   -> Html.Html Msg
 viewSentAlt foc treeId spk model =
   let
-    (sent, firstTokId) = M.getSubSent treeId model
-    partId = M.getReprId treeId model
-    tree = M.getTree partId model
-    partSelected = M.getReprId (M.selectWin foc model).tree model
+    (sent, firstTokId) = M.getSubSent foc treeId model
+    partId = M.getReprId foc treeId model
+    tree = M.getTree foc partId model
+    partSelected = M.getReprId foc (M.selectWin foc model).tree model
     isSelected = partId == partSelected
     paraAtts = if isSelected
       then [ Atts.style ["font-weight" => "bold"] ]
@@ -1650,25 +1593,38 @@ viewMessage foc msg =
 ---------------------------------------------------
 
 
+-- | Only if not in the adjudication mode.
 viewLinks
     : M.Model
     -> List (Html.Html Msg)
 viewLinks model =
-  let
-      getPart focus = M.getReprId (M.selectWin focus model).tree model
-  in
-      L.concatMap
-          (viewLink model)
-          (D.toList model.file.linkSet)
+    case model.cmpFile of
+        Just _  -> []
+        Nothing ->
+            L.concatMap
+                (viewLink model)
+                (D.toList model.mainFile.linkSet)
 
 
-
+-- | View the link only if not in the adjudication mode.
 viewLink
+   : M.Model
+  -> (M.Link, M.LinkData)
+  -> List (Html.Html Msg)
+viewLink model link =
+    case model.cmpFile of
+        Nothing -> viewLink_ model link
+        Just _ -> []
+
+
+-- | Internal view link, which does not check that we are not in the
+-- adjudication mode.
+viewLink_
    : M.Model
   -- -> (C.Addr, C.Addr)
   -> (M.Link, M.LinkData)
   -> List (Html.Html Msg)
-viewLink model ((from, to), linkData) =
+viewLink_ model ((from, to), linkData) =
   let
     top = model.top
     bot = model.bot
@@ -1695,17 +1651,20 @@ viewLink model ((from, to), linkData) =
       then Just {pos | y = pos.y + topHeight}
       else Nothing
 
+    -- Safe because we know we are not in the adjudication mode.
+    getReprId = M.getReprId M.Top
+
   in
 
     if
-      M.getReprId top.tree model == first from &&
-      M.getReprId bot.tree model == first to
+      getReprId top.tree model == first from &&
+      getReprId bot.tree model == first to
     then
       viewLinkDir model (top, bot) (trimTop, trimBot) (from, to, linkData.signalAddr)
     else if
-      M.getReprId bot.tree model == first from &&
-      M.getReprId top.tree model == first to &&
-      M.getReprId top.tree model /= M.getReprId bot.tree model
+      getReprId bot.tree model == first from &&
+      getReprId top.tree model == first to &&
+      getReprId top.tree model /= getReprId bot.tree model
     then
       -- viewLinkDir model (top, bot) (trimTop, trimBot) (from, to, linkData.signalAddr)
       viewLinkDir model (bot, top) (trimBot, trimTop) (from, to, linkData.signalAddr)
@@ -1732,20 +1691,20 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
     posIn addr win shift = Maybe.andThen shift <| nodePos1
       (second addr)
       (M.getPosition win)
-      (M.getTree (M.getReprId win.tree model) model)
+      (M.getTree M.Top (M.getReprId M.Top win.tree model) model)
 
     fromPos =
-      if first from == M.getReprId top.tree model
+      if first from == M.getReprId M.Top top.tree model
       then posIn from top shiftTop
       else posIn from bot shiftBot
     toPos = -- posIn to bot shiftBot
-      if first to == M.getReprId bot.tree model
+      if first to == M.getReprId M.Top bot.tree model
       then posIn to bot shiftBot
       else posIn to top shiftTop
     signPos = case signalMay of
       Nothing -> Nothing
       Just addr ->
-        if first addr == M.getReprId bot.tree model
+        if first addr == M.getReprId M.Top bot.tree model
         then posIn addr bot shiftBot
         else posIn addr top shiftTop
 
@@ -1781,55 +1740,6 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
                Nothing -> []
                Just lin3 -> [viewLine lineCfg lin3.beg lin3.end]
       _ -> []
-
-
--- viewLinkDir
---    : M.Model
---   -> (M.Window, M.Window)
---      -- ^ The (top, bottom) windows
---   -> (Position -> Maybe Position, Position -> Maybe Position)
---      -- ^ Shifting functions, which calculate the absolute positions for the
---      -- corresponding (top/bottom) workspaces (return `Nothing` when they go
---      -- beyond their workspaces)
---   -> (C.Addr, C.Addr)
---      -- ^ (from, to) addresses
---   -> List (Html.Html Msg)
--- viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to) =
---   let
---     nodePos1 nodeId pos tree = nodePos nodeId
---       <| positionTree pos
---       <| R.withWidth stdWidth Cfg.stdMargin tree
---     begPos = Maybe.andThen shiftTop <| nodePos1
---       (second from)
---       (M.getPosition top)
---       (M.getTree top.tree model)
---     endPos = Maybe.andThen shiftBot <| nodePos1
---       (second to)
---       (M.getPosition bot)
---       (M.getTree bot.tree model)
---     lineCfg = { defLineCfg
---       | strokeDasharray = Just Cfg.linkDasharray
---       , strokeWidth = Cfg.linkWidth
---       , opacity = Cfg.linkOpacity }
---     circleCfg = { defCircleCfg
---       | opacity = Cfg.linkOpacity
---       , width = Cfg.linkHeadSize
---       , height = Cfg.linkHeadSize }
---   in
---     case (begPos, endPos) of
---       (Just p, Just q) ->
---         let
---           trimLine = trimBeg Cfg.linkTailDist << trimEnd Cfg.linkHeadDist
---           midCirc = {x = (p.x + q.x) // 2, y = (p.y + q.y) // 2}
---           endCirc = (trimEnd Cfg.linkHeadDist2 {beg=p, end=q}).end
---           lin1 = trimLine <| {beg=p, end=midCirc}
---           lin2 = trimLine <| {beg=midCirc, end=endCirc}
---         in
---           [ viewLine lineCfg lin1.beg lin1.end
---           , viewLine lineCfg lin2.beg lin2.end
---           , drawCircle circleCfg endCirc
---           , drawLinkCircle model (from, to) midCirc ]
---       _ -> []
 
 
 -- | Draw the circle which represents the relation.
@@ -2513,12 +2423,13 @@ inputGenericConstrainedGen setAttr label value valList attr mayId =
 -- | Generic TIMEX input field.
 inputTimexGen
     : M.Model
+    -> M.Focus
     -> (Anno.TimexAttr -> Msg)
     -> String
     -> Maybe C.Addr
     -> (Bool -> Anno.TimexAttr)
     -> Html.Html Msg
-inputTimexGen model setAttr label value attr =
+inputTimexGen model focus setAttr label value attr =
   let
     setMsg = setAttr (attr True)
     remMsg = setAttr (attr False)
@@ -2532,7 +2443,7 @@ inputTimexGen model setAttr label value attr =
                 ]
             Just addr ->
                 let
-                    subTree = M.subTreeAt addr model
+                    subTree = M.subTreeAt addr focus model
                     rootLabel = Lens.get M.nodeVal <| R.label subTree
                     words = String.join " " <| L.map (\r -> r.nodeVal) <| M.getWords subTree
                     string = rootLabel ++ " (\"" ++ words ++ "\")"
