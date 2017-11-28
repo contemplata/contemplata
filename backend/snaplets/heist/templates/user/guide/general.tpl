@@ -75,16 +75,18 @@
 
     <h4>Node selection</h4>
     <p>
-      There are two types of selection: the main selection and the additional
-      selection. Some operations only take the main selection into account,
-      while others will be applied over all selected nodes (e.g. the <a
+      There are two types of selection: main selection and additional selection.
+      Additional selection allows to select several nodes at the same time. Some
+      operations only take the main selection into account, while others will be
+      applied over all the selected nodes (e.g. the <a
       href="user/guide#addnode">Add</a> and <a
       href="user/guide#delnode">Delete</a> commands).
     </p>
     <p>
       To (main) select a node, it is sufficient to click on it. Additional
-      selection is obtained by clicking on a node with CTRL pressed. Several
-      additional nodes can be selected at the same time.
+      selection is obtained by clicking on a node with CTRL pressed. Conversely,
+      a node can be removed from additional selection by CTRL+clicking on it
+      again.
     </p>
 
     <h4>Commands</h4>

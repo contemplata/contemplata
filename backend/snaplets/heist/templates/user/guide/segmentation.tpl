@@ -36,12 +36,18 @@
       </center>
     </p>
 
+    <p>
+      The merged turns are all highlighted in bold in the context side window
+      when the corresponding tree is in focus.
+    </p>
+
     <h4>Restart with preprocessing</h4>
     <p>
       To syntactically annotate the given sentence from scratch, use the
-      <b>CTRL+Restart</b> menu command (<b>:restartpreproc</b> from command
-      line). It restores all the tokens, performs pre-processing, and uses the
-      parser to analyze the sentence.
+      <b>CTRL+Restart</b> menu command (i.e., click on the <b>Restart</b> menu
+      command with CTRL pressed, also available via <b>:restartpreproc</b> from
+      command line). It restores all the tokens, performs pre-processing, and
+      uses the parser to analyze the sentence.
 
       It may be useful, in particular, after the merging operation, which
       results in several SENT-rooted syntactic trees. Restart, then,
@@ -50,11 +56,18 @@
 
     <h4>Restoring tokens</h4>
     <p>
-      To restore a token wrongly removed during the pre-processing step (such
-      tokens are marked in gray), just CTRL+click on it in the context side
-      window of the current workspace. You can also use the <b>Restart</b>
-      menu command (<b>:restart</b> from command line) to restore all the
-      tokens and re-parse the resulting sentence.
+      Sometimes, it should be usefull to discard tokens which are meaningless
+      for a specific annotation. By default, Contemplata pre-processes the
+      sentence to automatically remove social obligations-related expressions
+      such as "bonjour Monsieur", "s'il vous plaît", etc. Such removed tokens
+      appeare in grey in the context sub-window. The annotator should remove
+      additional tokens and, conversely, restore the erroneously removed tokens.
+    </p>
+    <p>
+      To restore a token wrongly removed during the pre-processing step, just
+      CTRL+click on it in the context side window of the current workspace. You
+      can also use the <b>Restart</b> menu command (<b>:restart</b> from command
+      line) to restore all the tokens and re-parse the resulting sentence.
     </p>
 
     <h4  id="delete-tokens">Removing tokens</h4>
@@ -87,8 +100,9 @@
 
       In order to perform the operation, first select the terminal nodes which
       mark the first words of the individual sub-sentences, and then run the
-      <b>Split sentence</b> menu command (<b>:splitsent</b> from command
-      line), as shown below.
+      <b>Split sentence</b> menu command (<b>:splitsent</b> from command line),
+      as shown below. After splitting, the individual subtrees are reparsed
+      automatically.
     </p>
 
     <p><center>
