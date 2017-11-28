@@ -267,6 +267,13 @@ type alias Model =
   -- the underlying file
   , file : File
 
+  -- Optionally, another file can be specified, which will be shown in the
+  -- bottom window. TODO: document to what extend does it change the behavior of
+  -- the model, messages, etc. For sure, specifying relations between the top
+  -- and bottom windows should not be allowed!
+  , cmpFileId : Maybe FileId
+  , cmpFile : Maybe File
+
 --   -- the underlying map of trees
 --   , trees : TreeMap
 --   -- the list of turns (TODO: trees, turns, and links, could be grouped in a
@@ -333,6 +340,9 @@ type alias Command = String
 type alias Window =
   { tree : TreeId
   -- ^ NOTE: it is not guaranteed to be a tree representative (cf. file partitions)
+  -- ^ NOTE: to which file does this ID refer depends on whether a comparison
+  -- file is present. If so, the ID of the bottom window refers to this
+  -- alternative file.
 
   -- | Main selected node (if any)
   , selMain : Maybe NodeId
@@ -400,6 +410,8 @@ type HistAtom
   = TreeModif -- ^ Modified a tree
     { treeId : PartId
       -- ^ To which tree ID does it refer
+    , window : Focus
+      -- ^ In which window (important if comparison mode is on)
     , restoreTree : Maybe (R.Tree Node)
       -- ^ The tree to restore (or remove, if `Nothing`)
     }
@@ -408,22 +420,30 @@ type HistAtom
       -- ^ The links to add
     , delLinkSet : D.Dict Link LinkData
       -- ^ The links to remove
+    , window : Focus
+      -- ^ In which window (important if comparison mode is on)
     }
   | PartModif -- ^ Modified a partition
     { treeId : PartId
       -- ^ To which partition ID does it refer
+    , window : Focus
+      -- ^ In which window (important if comparison mode is on)
     , restorePart : Maybe (S.Set TreeIdBare)
       -- ^ The partition to restore (or remove, if `Nothing`)
     }
   | ReprModif -- ^ Modified a partition
     { treeId : TreeIdBare
       -- ^ To which tree ID does it refer
+    , window : Focus
+      -- ^ In which window (important if comparison mode is on)
     , restoreRepr : TreeIdBare
       -- ^ The representative to restore
     }
   | SentModif -- ^ Modified a sentence
     { treeId : TreeIdBare
       -- ^ To which tree ID does it refer
+    , window : Focus
+      -- ^ In which window (important if comparison mode is on)
     , restoreSent : Sent
       -- ^ The sentel to restore
     }
@@ -460,44 +480,47 @@ applyAtom histAtom model =
   case histAtom of
     TreeModif r ->
       let
-        oldTree = getTreeMay r.treeId model
-        tmpModel = setTree_ r.treeId r.restoreTree model
-        newModel = focusOnTree r.treeId tmpModel
+        oldTree = getTreeMay r.window r.treeId model
+        tmpModel = setTree_ r.window r.treeId r.restoreTree model
+        newModel = focusOnTree r.window r.treeId tmpModel
         newAtom = TreeModif {r | restoreTree = oldTree}
       in
         (newModel, newAtom)
     LinkModif r ->
       let
-        newLinks = D.union r.addLinkSet <| D.diff model.file.linkSet r.delLinkSet
-        -- newModel = {model | links = newLinks}
-        newModel = Lens.set (file => linkSet) newLinks model
-        newAtom = LinkModif {addLinkSet = r.delLinkSet, delLinkSet = r.addLinkSet}
+        lens = fileLens r.window => linkSet
+        newLinks = D.union r.addLinkSet <| D.diff (Lens.get lens model) r.delLinkSet
+        newModel = Lens.set lens newLinks model
+        newAtom = LinkModif
+                  { addLinkSet = r.delLinkSet
+                  , delLinkSet = r.addLinkSet
+                  , window = r.window }
       in
         (newModel, newAtom)
     PartModif r ->
       let
-        oldPart = getPart r.treeId model
+        oldPart = getPart r.window r.treeId model
         -- NOTE: we could simply use `setPart`, but we need to return a `newAtom`...
-        tmpModel = setPart_ r.treeId r.restorePart model
-        newModel = focusOnTree r.treeId tmpModel
+        tmpModel = setPart_ r.window r.treeId r.restorePart model
+        newModel = focusOnTree r.window r.treeId tmpModel
         newAtom = PartModif {r | restorePart = oldPart}
       in
         (newModel, newAtom)
     ReprModif r ->
       let
-        oldRepr = getRepr r.treeId model
+        oldRepr = getRepr r.window r.treeId model
         tmpModel = Lens.update
-                   (file => reprMap)
+                   (fileLens r.window => reprMap)
                    (D.insert r.treeId r.restoreRepr) model
-        newModel = focusOnTree r.treeId tmpModel
+        newModel = focusOnTree r.window r.treeId tmpModel
         newAtom = ReprModif {r | restoreRepr = oldRepr}
       in
         (newModel, newAtom)
     SentModif r ->
       let
-        oldSent = getSent_ r.treeId model
+        oldSent = getSent_ r.window r.treeId model
         newModel = Lens.update
-                   (file => sentMap)
+                   (fileLens r.window => sentMap)
                    (D.insert r.treeId r.restoreSent) model
         newAtom = SentModif {r | restoreSent = oldSent}
       in
@@ -505,12 +528,17 @@ applyAtom histAtom model =
 
 
 -- | Focus on the given tree if needed.
-focusOnTree : PartId -> Model -> Model
-focusOnTree treeId model =
-    if getReprId model.top.tree model == treeId ||
-       getReprId model.bot.tree model == treeId
-    then model
-    else moveCursorTo model.focus treeId model
+focusOnTree : Focus -> PartId -> Model -> Model
+focusOnTree focus treeId model =
+    case focus of
+        Top ->
+            if getReprId focus model.top.tree model == treeId
+            then model
+            else moveCursorTo focus treeId model
+        Bot ->
+            if getReprId focus model.bot.tree model == treeId
+            then model
+            else moveCursorTo focus treeId model
 
 
 -- | Apply a given history element.
@@ -580,28 +608,34 @@ log msg model =
 
 -- | Set the sentence under a given ID.  A tricky function which seems trivial...
 -- Returns `Nothing` if it fails for some reasons.
-setSent : PartId -> Sent -> Model -> Maybe Model
-setSent partId newSent model =
+setSent : Focus -> PartId -> Sent -> Model -> Maybe Model
+setSent focus partId newSent model =
     let
-        sentMap = getSentMap partId model
+        sentMap = getSentMap focus partId model
     in
         case reAlignSent (D.values sentMap) newSent of
             Nothing -> Nothing
             Just newSentList ->
-                let update (treeId, new) = setSent_ treeId new
+                let update (treeId, new) = setSent_ focus treeId new
                 in  Just <|
                     L.foldl update model <|
                     L.map2 (,) (D.keys sentMap) newSentList
 
 
 -- | Set a single sentence under a given ID.
-setSent_ : TreeIdBare -> Sent -> Model -> Model
-setSent_ treeId sent model =
+setSent_ : Focus -> TreeIdBare -> Sent -> Model -> Model
+setSent_ focus treeId sent model =
     let
-        oldSent = getSent_ treeId model
-        newModel = Lens.update (file => sentMap) (D.insert treeId sent) model
+        oldSent = getSent_ focus treeId model
+        newModel = Lens.update (fileLens focus => sentMap) (D.insert treeId sent) model
     in
-        newModel |> saveModif (SentModif {treeId = treeId, restoreSent = oldSent})
+        newModel
+            |> saveModif
+               ( SentModif
+                 { treeId = treeId
+                 , restoreSent = oldSent
+                 , window = focus }
+               )
 
 
 -- | Take (a) a list of sentences and (b) a sentence, such that concatenated (a)
@@ -681,14 +715,14 @@ stripPrefix pref x =
 -- NOTE: this is not really a high-level function, from the high-level point of
 -- view it should be not possible to remove a tree. Put differently, this
 -- function leaves the model in an invalid state!
-setTree : PartId -> Maybe (R.Tree Node) -> Model -> Model
-setTree treeId newTree model =
+setTree : Focus -> PartId -> Maybe (R.Tree Node) -> Model -> Model
+setTree win treeId newTree model =
 
   let
 
     -- Calculate the new tree and update the model
-    oldTree = getTreeMay treeId model
-    newModel = setTree_ treeId newTree model
+    oldTree = getTreeMay win treeId model
+    newModel = setTree_ win treeId newTree model
 
     -- Delete the corresponding links, if needed. We assume that the new tree
     -- has nothing in common with the previous one, therefore, all previous
@@ -697,29 +731,33 @@ setTree treeId newTree model =
       let toDel (trId, ndId_) = trId == treeId
       in  toDel from || toDel to
     delLinks = L.filter isToDelete <| D.toList model.file.linkSet
-    linkModif = deleteLinks (S.fromList <| L.map Tuple.first delLinks)
+    linkModif = deleteLinks win (S.fromList <| L.map Tuple.first delLinks)
 
   in
 
      newModel
        |> linkModif
-       |> saveModif (TreeModif {treeId = treeId, restoreTree = oldTree})
+       |> saveModif
+          ( TreeModif
+            { treeId = treeId
+            , restoreTree = oldTree
+            , window = win }
+          )
 
 
 -- | Update the tree under a given ID.
 updateTree
-    : PartId
-    -- -> (R.Tree Node -> Maybe (R.Tree Node))
+    : Focus -> PartId
     -> (R.Tree Node -> R.Tree Node)
     -> Model -> Model
-updateTree treeId update model =
+updateTree win treeId update model =
 
   let
 
     -- calculate the new tree and update the model
-    oldTree = getTree treeId model
-    newModel = updateTree_ treeId (Just << update) model
-    newTree = getTree treeId newModel
+    oldTree = getTree win treeId model
+    newModel = updateTree_ win treeId (Just << update) model
+    newTree = getTree win treeId newModel
 
     -- we also calculate the set of deleted nodes
     delNodes = S.diff (nodesIn oldTree) (nodesIn newTree)
@@ -728,48 +766,49 @@ updateTree treeId update model =
     isToDelete ((from, to), linkData_) =
       let toDel (trId, ndId) = trId == treeId && S.member ndId delNodes
       in  toDel from || toDel to
-    -- delLinks = L.filter isToDelete <| D.toList model.links
     delLinks = L.filter isToDelete <| D.toList model.file.linkSet
-    linkModif = deleteLinks (S.fromList <| L.map Tuple.first delLinks)
+    linkModif = deleteLinks win (S.fromList <| L.map Tuple.first delLinks)
 
   in
 
      newModel
        |> linkModif
-       |> saveModif (TreeModif {treeId = treeId, restoreTree = Just oldTree})
---        |> updateSelection Top <- performed always after the update
---        |> updateSelection Bot
+       |> saveModif
+          ( TreeModif
+            { treeId = treeId
+            , restoreTree = Just oldTree
+            , window = win }
+          )
 
 
 -- | An internal version of `updateTree`, which does *not* update the history.
 updateTree_
-    : PartId
+    : Focus -> PartId
     -> (R.Tree Node -> Maybe (R.Tree Node))
     -> Model -> Model
-updateTree_ treeId update model =
+updateTree_ win treeId update model =
   let
     alter v = case v of
       Nothing -> Debug.crash "Model.updateTree_: no tree with the given ID"
-      -- Just tree -> Just (update tree)
       Just tree -> update tree
-    newTrees = D.update treeId alter model.file.treeMap
-    newModel = Lens.set (file => treeMap) newTrees model
+    newTrees = D.update treeId alter
+    newModel = Lens.update (fileLens win => treeMap) newTrees model
   in
     newModel
 
 
 -- | An internal version of `setTree`, which does *not* update the history.
 setTree_
-    : PartId
+    : Focus -> PartId
     -> Maybe (R.Tree Node)
     -> Model -> Model
-setTree_ treeId treeMay model =
+setTree_ win treeId treeMay model =
   let
-    newTrees =
+    newTrees treeMap =
         case treeMay of
-            Nothing -> D.remove treeId model.file.treeMap
-            Just tr -> D.insert treeId tr model.file.treeMap
-    newModel = Lens.set (file => treeMap) newTrees model
+            Nothing -> D.remove treeId treeMap
+            Just tr -> D.insert treeId tr treeMap
+    newModel = Lens.update (fileLens win => treeMap) newTrees model
   in
     newModel
 
@@ -785,8 +824,8 @@ nodesIn = S.fromList << L.map (Lens.get nodeId) << R.flatten
 
 
 -- | Remove the tree under a given ID.
-removeTree : PartId -> Model -> Model
-removeTree treeId = setTree treeId Nothing
+removeTree : Focus -> PartId -> Model -> Model
+removeTree win treeId = setTree win treeId Nothing
 
 
 ---------------------------------------------------
@@ -795,19 +834,24 @@ removeTree treeId = setTree treeId Nothing
 
 
 -- | Delete the set of links.
-deleteLinks : S.Set Link -> Model -> Model
-deleteLinks delLinks model =
+deleteLinks : Focus -> S.Set Link -> Model -> Model
+deleteLinks win delLinks model =
   let
-    linkData link = case D.get link model.file.linkSet of
+    linksLens = fileLens win => linkSet
+    linkData link = case D.get link (Lens.get linksLens model) of
       Nothing -> Nothing
       Just data -> Just (link, data)
     oldLinks = D.fromList <| Util.catMaybes <| L.map linkData (S.toList delLinks)
   in
     if S.isEmpty delLinks
     then model
-    -- else Lens.update links (\s -> D.diff s oldLinks) model
-    else Lens.update (file => linkSet) (\s -> D.diff s oldLinks) model
-      |> saveModif (LinkModif {addLinkSet = oldLinks, delLinkSet = D.empty})
+    else Lens.update linksLens (\s -> D.diff s oldLinks) model
+      |> saveModif
+         ( LinkModif
+           { addLinkSet = oldLinks
+           , delLinkSet = D.empty
+           , window = win }
+         )
 
 
 -- -- | Add links.
@@ -851,19 +895,29 @@ connectHelp {nodeFrom, nodeTo, focusTo} model =
     focusFrom = case focusTo of
       Top -> Bot
       Bot -> Top
-    treeFrom = getReprId (selectWin focusFrom model).tree model
-    treeTo = getReprId (selectWin focusTo model).tree model
+    treeFrom = getReprId Top (selectWin focusFrom model).tree model
+    treeTo = getReprId Top (selectWin focusTo model).tree model
     link = ((treeFrom, nodeFrom), (treeTo, nodeTo))
     (alter, modif) = case D.get link model.file.linkSet of
       Nothing ->
         ( D.insert link linkDataDefault
-        , LinkModif {addLinkSet = D.empty, delLinkSet = D.singleton link linkDataDefault} )
+        , LinkModif
+              { addLinkSet = D.empty
+              , delLinkSet = D.singleton link linkDataDefault
+              , window = Top }
+        )
       Just linkData ->
         ( D.remove link
-        , LinkModif {delLinkSet = D.empty, addLinkSet = D.singleton link linkData} )
+        , LinkModif
+              { delLinkSet = D.empty
+              , addLinkSet = D.singleton link linkData
+              , window = Top }
+        )
   in
-    -- Lens.update links alter model |> saveModif modif
-    Lens.update (file => linkSet) alter model |> saveModif modif
+    -- the operation works only in single annotation mode
+    case model.cmpFile of
+        Nothing -> Lens.update (file => linkSet) alter model |> saveModif modif
+        Just _ -> model
 
 
 -- | Connect a link to a signal.
@@ -875,20 +929,21 @@ connectSignal
 connectSignal link focus model =
   let
     win = selectWin focus model
-    treeId = getReprId win.tree model
+    treeId = getReprId focus win.tree model
   in
     case win.selMain of
       Nothing -> model
-      Just nodeId -> addSignal link (treeId, nodeId) model
+      Just nodeId -> addSignal focus link (treeId, nodeId) model
 
 
 -- | Connect a link to a signal.
 addSignal
   : Link   -- ^ The link to connect with the signal
+  -> Focus
   -> Addr  -- ^ The address of the signal
   -> Model
   -> Model
-addSignal link signal model =
+addSignal link focus signal model =
   let
     (alter, modif) = case D.get link model.file.linkSet of
       Nothing ->
@@ -900,11 +955,14 @@ addSignal link signal model =
           ( D.insert link newData
           , LinkModif
               { delLinkSet = D.singleton link newData
-              , addLinkSet = D.singleton link oldData }
+              , addLinkSet = D.singleton link oldData
+              , window = Top }
           )
   in
-    -- Lens.update links alter model |> saveModif modif
-    Lens.update (file => linkSet) alter model |> saveModif modif
+    -- the operation works only in single annotation mode
+    case model.cmpFile of
+        Nothing -> Lens.update (file => linkSet) alter model |> saveModif modif
+        Just _ -> model
 
 
 ---------------------------------------------------
@@ -926,7 +984,7 @@ updateSelection_ focus model =
   let
     wlen = winLens focus
     win = Lens.get wlen model -- selectWin focus model
-    tree = getTree (getReprId win.tree model) model
+    tree = getTree focus (getReprId focus win.tree model) model
     newID id = case getNode_ id tree of
       Nothing -> Nothing
       Just _  -> Just id
@@ -1014,20 +1072,26 @@ dragOn model =
 
 
 -- | Get a partition representative for a given treeID.
-getReprId : TreeId -> Model -> PartId
-getReprId (TreeId treeId) model =
-  case D.get treeId model.file.reprMap of
-    Nothing -> Debug.crash "Model.getReprId: no representative for the given ID"
-    Just bareId ->
-        if bareId == treeId
-        then bareId
-        else getReprId (TreeId bareId) model
+getReprId : Focus -> TreeId -> Model -> PartId
+getReprId win (TreeId treeId) model =
+    let
+      reprMap =
+          case (win, model.cmpFile) of
+              Nothing -> model.file.reprMap
+              Just fi -> fi.reprMap
+    in
+      case D.get treeId reprMap of
+        Nothing -> Debug.crash "Model.getReprId: no representative for the given ID"
+        Just bareId ->
+            if bareId == treeId
+            then bareId
+            else getReprId win (TreeId bareId) model
 
 
 -- | Get a tree under a given ID.
-getTree : PartId -> Model -> R.Tree Node
-getTree treeId model =
-    case getTreeMay treeId model of
+getTree : Focus -> PartId -> Model -> R.Tree Node
+getTree win treeId model =
+    case getTreeMay win treeId model of
       Nothing -> Debug.crash <| "Model.getTree: no tree with the ID " ++ toString treeId
       Just t -> t
 
@@ -1035,8 +1099,11 @@ getTree treeId model =
 -- | Get a tree under a given ID.  A version of `getTree` which does not
 -- assume that the tree exists (which is wrong to assume if, e.g., we undo
 -- a previous removal).
-getTreeMay : PartId -> Model -> Maybe (R.Tree Node)
-getTreeMay treeId model = D.get treeId model.file.treeMap
+getTreeMay : Focus -> PartId -> Model -> Maybe (R.Tree Node)
+getTreeMay win treeId model =
+    case (win, model.cmpFile) of
+        (Bot, Just file) -> D.get treeId file.treeMap
+        _ -> D.get treeId model.file.treeMap
 
 
 -- | Retrieve all selected nodes.
@@ -1053,12 +1120,13 @@ selAll win =
 setTreeCheck : FileId -> PartId -> R.Tree Node -> Model -> Model
 setTreeCheck fileId treeId tree model =
   let
-    win = selectWin model.focus model
-    treeIdSel = getReprId win.tree model
-    fileIdSel = model.fileId
+    focus = model.focus
+    win = selectWin focus model
+    treeIdSel = getReprId focus win.tree model
+    fileIdSel = getFileId focus model
   in
     if fileId == fileIdSel && treeId == treeIdSel
-    then updateTree treeIdSel (\_ -> tree) model
+    then updateTree focus treeIdSel (\_ -> tree) model
     else model
 
 
@@ -1072,10 +1140,11 @@ setTreeCheck fileId treeId tree model =
 setForestCheck : FileId -> PartId -> List (Maybe (R.Tree Node)) -> Model -> Model
 setForestCheck fileId treeId newForest0 model =
   let
-    win = selectWin model.focus model
-    treeIdSel = getReprId win.tree model
-    fileIdSel = model.fileId
-    oldForest = R.subTrees <| getTree treeIdSel model
+    focus = model.focus
+    win = selectWin focus model
+    treeIdSel = getReprId focus win.tree model
+    fileIdSel = getFileId focus model
+    oldForest = R.subTrees <| getTree focus treeIdSel model
     newForest =
         flip L.map (L.map2 (,) oldForest newForest0) <|
             \(oldTree, mayNewTree) ->
@@ -1086,21 +1155,21 @@ setForestCheck fileId treeId newForest0 model =
     newTree = reID <| R.Node sentNode newForest
   in
     if fileId == fileIdSel && treeId == treeIdSel
-    then updateTree treeIdSel (\_ -> newTree) model
+    then updateTree focus treeIdSel (\_ -> newTree) model
     else model
 
 
 -- | Retrieve the sentence corresponding to the given partition.
-getSent : PartId -> Model -> Sent
-getSent partId = L.concat << D.values << getSentMap partId
+getSent : Focus -> PartId -> Model -> Sent
+getSent focus partId = L.concat << D.values << getSentMap focus partId
 
 
 -- | Get the sub-sentence corresponding to the given ID and the token ID
 -- corresponding to its first token.
-getSubSent : TreeId -> Model -> (Sent, Int)
-getSubSent treeId model =
+getSubSent : Focus -> TreeId -> Model -> (Sent, Int)
+getSubSent focus treeId model =
     let
-        partId = getReprId treeId model
+        partId = getReprId focus treeId model
         go tokID sentList =
             case sentList of
                 [] -> Debug.crash "Model.getSubSent: impossible happened"
@@ -1109,14 +1178,14 @@ getSubSent treeId model =
                     then (sent, tokID)
                     else go (tokID + L.length sent) rest
     in
-        go 0 <| D.toList <| getSentMap partId model
+        go 0 <| D.toList <| getSentMap focus partId model
 
 
 -- | Retrieve the sentences corresponding to the given partition.
-getSentMap : PartId -> Model -> D.Dict TreeIdBare Sent
-getSentMap partId model =
+getSentMap : Focus -> PartId -> Model -> D.Dict TreeIdBare Sent
+getSentMap win partId model =
     let
-        part = Maybe.withDefault S.empty <| getPart partId model
+        part = Maybe.withDefault S.empty <| getPart win partId model
         sents = L.map
                 (\treeId -> (treeId, getSent_ treeId model))
                 (S.toList part)
@@ -1125,25 +1194,25 @@ getSentMap partId model =
 
 
 -- | Get the sentence corresponding to the given ID.
-getSent_ : TreeIdBare -> Model -> Sent
-getSent_ treeId model =
-    case D.get treeId model.file.sentMap of
+getSent_ : Focus -> TreeIdBare -> Model -> Sent
+getSent_ win treeId model =
+    case D.get treeId (Lens.get (fileLens win) model).sentMap of
         Nothing -> Debug.crash "Model.getSent_: got Nothing"
         Just sent -> sent
 
 
 -- | Get the token on the given position in the given partition.
-getToken : Int -> PartId -> Model -> Token
-getToken pos partId model =
-    case getTokenMay pos partId model of
+getToken : Int -> Focus -> PartId -> Model -> Token
+getToken pos win partId model =
+    case getTokenMay pos win partId model of
         Nothing -> Debug.crash "Model.getToken: got Nothing"
         Just tok -> tok
 
 
 -- | Get the token on the given position in the given partition.
-getTokenMay : Int -> PartId -> Model -> Maybe Token
-getTokenMay pos partId model =
-    Util.at pos (getSent partId model)
+getTokenMay : Int -> Focus -> PartId -> Model -> Maybe Token
+getTokenMay pos win partId model =
+    Util.at pos (getSent win partId model)
 
 
 -- | Change the sentence in focus, provided that it has the appropriate
@@ -1151,12 +1220,13 @@ getTokenMay pos partId model =
 setSentCheck : FileId -> PartId -> Sent -> Model -> Model
 setSentCheck fileId treeId sent model =
   let
-    win = selectWin model.focus model
-    treeIdSel = getReprId win.tree model
-    fileIdSel = model.fileId
+    focus = model.focus
+    win = selectWin focus model
+    treeIdSel = getReprId focus win.tree model
+    fileIdSel = getFileId focus model
   in
     if fileId == fileIdSel && treeId == treeIdSel
-    then Maybe.withDefault model <| setSent treeIdSel sent model
+    then Maybe.withDefault model <| setSent focus treeIdSel sent model
     else model
 
 
@@ -1341,13 +1411,13 @@ selectNodeAux focus i model =
 ---------------------------------------------------
 
 
--- | TODO: this function is too high level, it should be probably discarded
--- (while the actual `getNode_` should take its place).
+-- | TODO: this function is too high level, it should be probably discarded or
+-- moved elsewhere (while the actual `getNode_` should take its place).
 getNode : NodeId -> Focus -> Model -> Node
 getNode id focus model =
   let
-    partId = getReprId (selectWin focus model).tree model
-    tree = getTree partId model
+    partId = getReprId focus (selectWin focus model).tree model
+    tree = getTree focus partId model
   in
     case getNode_ id tree of
       Nothing -> Debug.crash "Model.getNode: unknown node ID"
@@ -1440,9 +1510,9 @@ updateNode id focus updNode model =
       [] -> []
       hd :: tl -> update hd :: updateF tl
     win = selectWin focus model
-    treeId = getReprId win.tree model
+    treeId = getReprId focus win.tree model
   in
-    updateTree treeId update model
+    updateTree focus treeId update model
 
 
 setNode : NodeId -> Focus -> Node -> Model -> Model
@@ -1570,43 +1640,44 @@ setTimexType id focus newVal model =
 --    so that we can show popup, perhaps?)
 -- setTimexAnchorGen :  NodeId -> Focus -> Model -> Either String Model
 setTimexAnchorGen lens id focus model =
-    let
-        -- lens = nodeTyp => maybeLens => nodeTimex => timexAnchor
-        update newVal = Lens.set lens newVal
-        anchorMaybe = or anchorInFocus anchorNoFocus
-        or x y = case x of
-            Nothing -> y
-            _ -> x
-        win = selectWin focus model
-        anchorInFocus =
-            case S.toList win.selAux of
-                [x] -> Just (getReprId win.tree model, x)
-                _   -> Nothing
-        anchorNoFocus =
-            let
-                otherFocus = case focus of
-                    Top -> Bot
-                    Bot -> Top
-                otherWin = selectWin otherFocus model
-            in
-                case otherWin.selMain of
-                    Just x  -> Just (getReprId otherWin.tree model, x)
-                    Nothing -> Nothing
-        isTyped addr =
-            case R.label (subTreeAt addr model) of
-                Leaf _ -> False
-                Node r -> case r.nodeTyp of
-                  Just _  -> True
-                  Nothing -> False
-                  -- Just (NodeTimex _) -> True
-                  -- _ -> False
-    in
-        case anchorMaybe of
-            Nothing -> Left "To perform anchoring, you have to first either: (i) select an additional node in focus, or (ii) select a node in the other window."
-            Just anchor ->
-                if isTyped anchor
-                then Right <| updateNode id focus (update anchorMaybe) model
-                else Left "The selected node is untyped (not a TIMEX, EVENT, ...)"
+    Debug.crash "Model.setTimexAnchorGet: implement!"
+--     let
+--         -- lens = nodeTyp => maybeLens => nodeTimex => timexAnchor
+--         update newVal = Lens.set lens newVal
+--         anchorMaybe = or anchorInFocus anchorNoFocus
+--         or x y = case x of
+--             Nothing -> y
+--             _ -> x
+--         win = selectWin focus model
+--         anchorInFocus =
+--             case S.toList win.selAux of
+--                 [x] -> Just (getReprId win.tree model, x)
+--                 _   -> Nothing
+--         anchorNoFocus =
+--             let
+--                 otherFocus = case focus of
+--                     Top -> Bot
+--                     Bot -> Top
+--                 otherWin = selectWin otherFocus model
+--             in
+--                 case otherWin.selMain of
+--                     Just x  -> Just (getReprId otherWin.tree model, x)
+--                     Nothing -> Nothing
+--         isTyped addr =
+--             case R.label (subTreeAt addr model) of
+--                 Leaf _ -> False
+--                 Node r -> case r.nodeTyp of
+--                   Just _  -> True
+--                   Nothing -> False
+--                   -- Just (NodeTimex _) -> True
+--                   -- _ -> False
+--     in
+--         case anchorMaybe of
+--             Nothing -> Left "To perform anchoring, you have to first either: (i) select an additional node in focus, or (ii) select a node in the other window."
+--             Just anchor ->
+--                 if isTyped anchor
+--                 then Right <| updateNode id focus (update anchorMaybe) model
+--                 else Left "The selected node is untyped (not a TIMEX, EVENT, ...)"
 
 
 -- | Set the anchor (timex) of the given node to the selected node.
@@ -1709,12 +1780,12 @@ procSel
 procSel f focus model =
   let
     win = selectWin focus model
-    treeId = getReprId win.tree model
-    tree = getTree treeId model
+    treeId = getReprId focus win.tree model
+    tree = getTree focus treeId model
     newTree = f (selAll win) tree
   in
     if tree /= newTree
-    then updateTree treeId (\_ -> newTree) model
+    then updateTree focus treeId (\_ -> newTree) model
     else model
 
 
@@ -1725,14 +1796,14 @@ procSelWithSent
 procSelWithSent f focus model =
   let
       win = selectWin focus model
-      treeId = getReprId win.tree model
-      sent = getSent treeId model
-      tree = getTree treeId model
+      treeId = getReprId focus win.tree model
+      sent = getSent focus treeId model
+      tree = getTree focus treeId model
       (newSent, newTree) = f (selAll win) sent tree
   in
       model |>
-      updateTree treeId (\_ -> newTree) |>
-      setSent treeId newSent |>
+      updateTree focus treeId (\_ -> newTree) |>
+      setSent focus treeId newSent |>
       Maybe.withDefault model
 
 
@@ -1750,7 +1821,7 @@ deleteSel focus model =
   in
     case model.selLink of
       Nothing -> procSel f focus model
-      Just x -> deleteLinks
+      Just x -> deleteLinks focus
         (S.singleton x)
         {model | selLink = Nothing}
 
@@ -1965,12 +2036,12 @@ changeWith
 changeWith changeFun focus model =
   let
     win = selectWin focus model
-    treeId = getReprId win.tree model
-    tree = getTree treeId model
+    treeId = getReprId focus win.tree model
+    tree = getTree focus treeId model
   in
     case win.selMain of
       Nothing -> model
-      Just id -> updateTree treeId (\_ -> changeFun id tree) model
+      Just id -> updateTree focus treeId (\_ -> changeFun id tree) model
 
 
 ---------------------------------------------------
@@ -2289,98 +2360,109 @@ splitTree model =
 --
 -- NOTE: as an effect of this operation, one of its arguments becomes invalid
 -- (is no longer a partition representative).
-join : PartId -> PartId -> Model -> Model
-join tid1 tid2 model =
+join : Focus -> PartId -> PartId -> Model -> Model
+join win tid1 tid2 model =
     if tid1 == tid2
     then model
-    else joinIndeed tid1 tid2 model
+    else joinIndeed win tid1 tid2 model
 
 
--- | Internal join function which does not check that the two given ids can really be joined.
-joinIndeed : PartId -> PartId -> Model -> Model
-joinIndeed tid1 tid2 model =
+-- | Internal join function which does not check that the two given ids can
+-- really be joined.
+joinIndeed : Focus -> PartId -> PartId -> Model -> Model
+joinIndeed win tid1 tid2 model =
     let
         newRepr = if tid1 < tid2 then tid1 else tid2
         oldRepr = if tid1 < tid2 then tid2 else tid1
         newPart = S.union
-                  (Maybe.withDefault S.empty <| getPart newRepr model)
-                  (Maybe.withDefault S.empty <| getPart oldRepr model)
+                  (Maybe.withDefault S.empty <| getPart win newRepr model)
+                  (Maybe.withDefault S.empty <| getPart win oldRepr model)
         newTree = joinTrees
-                  (getTree newRepr model)
-                  (getTree oldRepr model)
+                  (getTree win newRepr model)
+                  (getTree win oldRepr model)
         addPOS mod = R.map <| Lens.update leafPos (\k->k+mod)
         joinTrees t1 t2Init =
             let root = Node {nodeId=0, nodeVal="ROOT", nodeTyp=Nothing, nodeComment=""}
-                shift = L.length <| getSent newRepr model
+                shift = L.length <| getSent win newRepr model
                 t2 = addPOS shift t2Init
             -- in  reID <| rePOS <| R.Node root (R.subTrees t1 ++ R.subTrees t2)
             in  reID <| R.Node root (R.subTrees t1 ++ R.subTrees t2)
     in
-        setPart newRepr (Just newPart) <| setRepr oldRepr newRepr <|
+        setPart win newRepr (Just newPart) <| setRepr win oldRepr newRepr <|
         -- setPart oldRepr newPart <|
-        removePart oldRepr <|
+        removePart win oldRepr <|
         -- NOTE: the only reason to first remove the `newRepr` tree and then to
         -- update it is to get the corresponding links deleted.
-        setTree newRepr (Just newTree) <| removeTree newRepr <|
+        setTree win newRepr (Just newTree) <| removeTree win newRepr <|
         -- updateTree newRepr (\_ -> newTree) <|
-        removeTree oldRepr <|
+        removeTree win oldRepr <|
         model
 
 
 -- | Remove partition under the given partition ID.
-removePart : PartId -> Model -> Model
-removePart treeId = setPart treeId Nothing
+removePart : Focus -> PartId -> Model -> Model
+removePart win treeId = setPart win treeId Nothing
 
 
 -- | Set partition for the given tree ID.
-setPart : PartId -> Maybe (S.Set TreeIdBare) -> Model -> Model
-setPart treeId newPartMay model =
+setPart : Focus -> PartId -> Maybe (S.Set TreeIdBare) -> Model -> Model
+setPart win treeId newPartMay model =
     let
-        oldPart = getPart treeId model
+        oldPart = getPart win treeId model
     in
-        setPart_ treeId newPartMay model
-            |> saveModif (PartModif {treeId = treeId, restorePart = oldPart})
+        setPart_ win treeId newPartMay model
+            |> saveModif
+               ( PartModif
+                 { treeId = treeId
+                 , restorePart = oldPart
+                 , window = win }
+               )
 
 
 -- | Set partition for the given tree ID.
-setPart_ : PartId -> Maybe (S.Set TreeIdBare) -> Model -> Model
-setPart_ treeId newPartMay model =
+setPart_ : Focus -> PartId -> Maybe (S.Set TreeIdBare) -> Model -> Model
+setPart_ win treeId newPartMay model =
     let
-        newPartMap =
+        newPartMap partMap =
             case newPartMay of
-                Nothing ->
-                    D.remove treeId model.file.partMap
-                Just newPart ->
-                    D.insert treeId newPart model.file.partMap
-        newModel = Lens.set (file => partMap) newPartMap model
+                Nothing -> D.remove treeId partMap
+                Just newPart -> D.insert treeId newPart partMap
+        newModel = Lens.update (fileLens win => partMap) newPartMap model
     in
         newModel
 
 
-getPart : PartId -> Model -> Maybe (S.Set TreeIdBare)
-getPart treeId model = D.get treeId model.file.partMap
---     case D.get treeId model.file.partMap of
---         -- Nothing -> S.empty
---         Nothing -> Debug.crash "getPart: no partition for a given ID"
---         Just st -> st
+getPart : Focus -> PartId -> Model -> Maybe (S.Set TreeIdBare)
+getPart win treeId model =
+    case (win, model.cmpFile) of
+        (Bot, Just file) -> D.get treeId file.partMap
+        _ -> D.get treeId model.file.partMap
 
 
 -- | Set representative for the given tree ID.
-setRepr : TreeIdBare -> TreeIdBare -> Model -> Model
-setRepr treeId newRepr model =
+setRepr : Focus -> TreeIdBare -> TreeIdBare -> Model -> Model
+setRepr win treeId newRepr model =
     let
-        oldRepr = getRepr treeId model
+        oldRepr = getRepr win treeId model
         newModel = Lens.update (file => reprMap) (D.insert treeId newRepr) model
     in
         newModel
-            |> saveModif (ReprModif {treeId = treeId, restoreRepr = oldRepr})
+            |> saveModif
+               ( ReprModif
+                 { treeId = treeId
+                 , restoreRepr = oldRepr
+                 , window = win }
+               )
 
 
-getRepr : TreeIdBare -> Model -> TreeIdBare
-getRepr treeId model =
-    case D.get treeId model.file.reprMap of
-        Nothing -> Debug.crash "getRepr: no representative for a given ID"
-        Just st -> st
+getRepr : Focus -> TreeIdBare -> Model -> TreeIdBare
+getRepr win treeId model =
+    let
+        file = Lens.get (fileLens win) model
+    in
+        case D.get treeId file.reprMap of
+            Nothing -> Debug.crash "getRepr: no representative for a given ID"
+            Just st -> st
 
 
 ---------------------------------------------------
@@ -2398,14 +2480,14 @@ attachSel model =
     toMay = case S.toList win.selAux of
       [to] -> Just to
       _    -> Nothing
-    treeId = getReprId win.tree model
-    inTree = getTree treeId model
+    treeId = getReprId focus win.tree model
+    inTree = getTree focus treeId model
   in
     case (fromMay, toMay) of
       (Just from, Just to) ->
         case attach from to inTree of
           Just newTree ->
-            updateTree treeId (\_ -> newTree) model
+            updateTree focus treeId (\_ -> newTree) model
           Nothing -> model
       _ -> model
 
@@ -2480,13 +2562,13 @@ swapSel left model =
     focus = model.focus
     win = selectWin focus model
     nodeMay = win.selMain
-    treeId = getReprId win.tree model
-    inTree = getTree treeId model
+    treeId = getReprId focus win.tree model
+    inTree = getTree focus treeId model
     -- left = not model.ctrl
   in
     nodeMay
       |> Maybe.andThen (\nodeId -> swap left nodeId inTree
-      |> Maybe.map (\newTree -> updateTree treeId (\_ -> newTree) model))
+      |> Maybe.map (\newTree -> updateTree focus treeId (\_ -> newTree) model))
       |> Maybe.withDefault model
 --     case nodeMay of
 --       Just nodeId ->
@@ -2529,8 +2611,9 @@ changeSplit k model =
 performSplit : Int -> Model -> Model
 performSplit splitPlace model =
     let
-        win = selectWin model.focus model
-        partId = getReprId win.tree model
+        focus = model.focus
+        win = selectWin focus model
+        partId = getReprId focus win.tree model
         updTree theID tokID tree =
             let
                 newId1 = case findMaxID (R.map Just tree) of
@@ -2546,7 +2629,7 @@ performSplit splitPlace model =
                         [R.Node (Leaf new) []]
                 duplicate leaf =
                     let
-                        nodeVal = (getToken leaf.leafPos partId model).orth
+                        nodeVal = (getToken leaf.leafPos focus partId model).orth
                         leftVal = String.left splitPlace nodeVal
                         rightVal = String.dropLeft splitPlace nodeVal
                         left  = {leaf | nodeVal = String.trim leftVal}
@@ -2572,24 +2655,25 @@ performSplit splitPlace model =
         case win.selMain of
             Nothing -> model
             Just id ->
-                let tokID = Lens.get leafPos <| getNode id model.focus model
-                in  updateTree partId (updTree id tokID) model
-                    |> performTokenSplit tokID splitPlace partId
+                let tokID = Lens.get leafPos <| getNode id focus model
+                in  updateTree focus partId (updTree id tokID) model
+                    |> performTokenSplit tokID splitPlace focus partId
 
 
 -- | Split the given token in the sentence corresponding to the given partition.
 performTokenSplit
     : Int  -- ^ The token ID (position)
     -> Int -- ^ Split place
+    -> Focus
     -> PartId
     -> Model
     -> Model
-performTokenSplit tokID splitPlace partId model =
+performTokenSplit tokID splitPlace win partId model =
     let
-        oldSent = getSent partId model
+        oldSent = getSent win partId model
         newSent = splitToken tokID splitPlace oldSent
     in
-        setSent partId newSent model
+        setSent win partId newSent model
             |> Maybe.withDefault model
 
 
@@ -2647,14 +2731,15 @@ splitToken tokID splitPlace toks =
 -- | Restore the given token (provided that it can even be restored).
 -- Does not handle the dummy case.
 restoreToken
-    : PartId
+    : Focus
+    -> PartId
     -> Int     -- ^ Token ID of the token to restore
     -> Model
     -> Model
-restoreToken partID tokID model =
+restoreToken win partID tokID model =
     let
-        tree = getTree partID model
-        tok = getToken tokID partID model
+        tree = getTree win partID model
+        tok = getToken tokID win partID model
         visible = visiblePositions tree
         isVisible i = S.member i visible
         onRight =
@@ -2668,7 +2753,7 @@ restoreToken partID tokID model =
         newModel =
             Util.guard (not <| isVisible tokID)
                 |> Maybe.andThen (\_ -> Util.mappend onRight onLeft)
-                |> Maybe.map (\newTree -> updateTree partID (\_ -> newTree) model)
+                |> Maybe.map (\newTree -> updateTree win partID (\_ -> newTree) model)
                 |> Maybe.withDefault model
     in
         newModel
@@ -2762,14 +2847,14 @@ visiblePositions tree =
 
 
 -- | Replace the tree assigned to the given partition by the dummy tree.
-dumify : PartId -> Model -> Model
-dumify partId model =
+dumify : Focus -> PartId -> Model -> Model
+dumify win partId model =
     let
-        oldSent = getSent partId model
+        oldSent = getSent win partId model
         newSent = [concatToks oldSent]
     in
-        setTree partId (Just dummyTree) model
-        |> setSent partId newSent
+        setTree win partId (Just dummyTree) model
+        |> setSent win partId newSent
         |> Maybe.withDefault model
 
 
@@ -2851,6 +2936,40 @@ file : Lens.Focus { record | file : a } a
 file = Lens.create
   .file
   (\fn model -> {model | file = fn model.file})
+
+
+cmpFile : Lens.Focus { record | cmpFile : Maybe a, file : a } a
+cmpFile =
+    let
+        set model =
+            case model.cmpFile of
+                Nothing -> model.file
+                Just fi -> fi
+        update fn model =
+            case model.cmpFile of
+                Nothing -> {model | file = fn model.file}
+                Just fi -> {model | cmpFile = Just (fn fi)}
+    in
+        Lens.create set update
+
+
+-- | Generic file lens whose behavior depends on the window in focus.
+fileLens : Focus -> Lens.Focus { record | cmpFile : Maybe a, file : a } a
+fileLens win =
+    case win of
+        Top -> file
+        Bot -> cmpFile
+
+
+-- | Not really a lens, just a getter...
+getFileId : Focus -> Model -> FileId
+getFileId win model =
+    case win of
+        Top -> model.fileId
+        Bot ->
+            case model.cmpFileId of
+                Nothing -> model.fileId
+                Just id -> id
 
 
 treeMap : Lens.Focus { record | treeMap : a } a
@@ -3731,11 +3850,11 @@ getWordsPos =
 
 
 -- | Get the subtree indicated by the given address.
-subTreeAt : Addr -> Model -> R.Tree Node
-subTreeAt (treeId, theNodeId) model =
+subTreeAt : Addr -> Focus -> Model -> R.Tree Node
+subTreeAt (treeId, theNodeId) win model =
     let
         pred x = Lens.get nodeId x == theNodeId
-        tree = getTree treeId model
+        tree = getTree win treeId model
     in
         case R.getSubTree pred tree of
             Nothing -> Debug.crash "View.subTreeAt: no node with the given ID"
