@@ -2,6 +2,45 @@
   <div class="panel-heading">Syntax</div>
   <div class="panel-body">
 
+    <p>
+      The goal of this annotation stage is to assign the correct syntactic
+      structure (constituency tree) to the given sentence and to assign the
+      correct labels (part-of-speech tags and phrasal labels) to the tree's
+      individual nodes. The trees assigned by default to the individual speech
+      turns were obtained with the Stanford parser.
+    </p>
+
+    <p>
+      At this point, we assume that the sentence is already correctly tokenized
+      and that the pragmatic expressions irrelevant for semantic annotation are
+      filtered out. If this is not the case, you should be probably looking at
+      the part describing the <a href=user/guide#segmentation>pre-processing</a>
+      annotation stage.
+    </p>
+
+    <h4>Edit</h4>
+    <p>
+      The label assigned to the selected node can be changed via the <b>Edit</b>
+      side window, which can be quickly reached via the <b>e</b> keyboard
+      shortcut.
+    </p>
+    <div class="row">
+      <div class="col-sm-3"/>
+      <div class="col-sm-6">
+        <figure><center>
+          <img src="public/img/guide/syntax/edit.png" alt="Edit" style="width:100%">
+          <figcaption>Editing node labels</figcaption>
+        </center></figure>
+      </div>
+      <div class="col-sm-3"/>
+    </div>
+    <p>
+      Note that there is also a <em>Comment</em> field below the
+      <em>Label</em> field in the <b>Edit</b> side window. You can use it,
+      e.g., to provide information related to the certainty of your annotation
+      of the node or its subtree.
+    </p>
+
     <h4 id="addnode">Add node</h4>
     <p>
       The <b>Add</b> command (<b>addnode</b> from command line) serves to add
@@ -22,29 +61,6 @@
         </center></figure>
       </div>
     </div>
-
-    <h4>Edit</h4>
-    <p>
-      The label assigned to the selected node can be changed via the
-      <b>Edit</b> side window, which can be quickly reached via the <b>e</b>
-      keyboard shortcut.
-    </p>
-    <div class="row">
-      <div class="col-sm-3"/>
-      <div class="col-sm-6">
-        <figure><center>
-          <img src="public/img/guide/syntax/edit.png" alt="Edit" style="width:100%">
-          <figcaption>Editing node labels</figcaption>
-        </center></figure>
-      </div>
-      <div class="col-sm-3"/>
-    </div>
-    <p>
-      Note that there is also a <em>Comment</em> field below the
-      <em>Label</em> field in the <b>Edit</b> side window. You can use it,
-      e.g., to provide information related to the certainty of your annotation
-      of the node or its subtree.
-    </p>
 
     <h4 id="delnode">Remove node</h4>
     <p>
@@ -136,9 +152,9 @@
     </div>
     <p>
       <b>WARNING</b>: The current limitation is that, once you create a
-      non-projective tree, the permuted sentence can be no loner re-parsed with
+      non-projective tree, the permuted sentence can be no longer re-parsed with
       the underlying parser. Some other operations, after which parsing is
-      performed by default, will no loner work correctly either. You should
+      performed by default, will no longer work correctly either. You should
       therefore create non-projective structures only at the end of the
       syntactic annotation of a given sentence.
     </p>
