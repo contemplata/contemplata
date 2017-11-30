@@ -1,5 +1,5 @@
 <div class="panel panel-default" id="relations">
-  <div class="panel-heading">Temporal relations</div>
+  <!--div class="panel-heading">Temporal relations</div-->
   <div class="panel-body">
     <p>
       For the moment, there is only one way to create untyped relations:

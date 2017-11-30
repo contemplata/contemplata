@@ -1,5 +1,5 @@
 <div class="panel panel-default" id="syntax">
-  <div class="panel-heading">Syntax</div>
+  <!--div class="panel-heading">Syntax</div-->
   <div class="panel-body">
 
     <p>
@@ -14,7 +14,7 @@
       At this point, we assume that the sentence is already correctly tokenized
       and that the pragmatic expressions irrelevant for semantic annotation are
       filtered out. If this is not the case, you should be probably looking at
-      the part describing the <a href=user/guide#segmentation>pre-processing</a>
+      the part describing the <a href=user/guide#preprocessing>preprocessing</a>
       annotation stage.
     </p>
 
@@ -22,7 +22,7 @@
     <p>
       The <b>Parse</b> operation takes the list of tokens in the current tree
       and re-analyzes them syntactically using the Stanford parser. It can be
-      useful after <a href=user/guide#word-split>word spitting</a> and other
+      useful after <a href=user/guide#preprocessing#word-split>word spitting</a> and other
       changes in segmentation.
     </p>
     <p>
@@ -64,8 +64,8 @@
     <p>
       This operation takes the list of tokens in the current tree, <b>together
       with the corresponding POS tags</b>, and uses the underlying parser to
-      re-analyze them. In contrast to <a href=user/guide#parse>Parse</a>, the
-      parser is <em>not</em> allowed to change the POS tags.
+      re-analyze them. In contrast to <a href=user/guide#syntax#parse>Parse</a>,
+      the parser is <em>not</em> allowed to change the POS tags.
     </p>
     <p>
       The operation can be launched with the <b>CTRL+Parse</b> menu command
@@ -93,8 +93,8 @@
       has to have a <b>proper POS tag</b> and a <b>single terminal child</b>.
     </p>
     <p>
-      <b>WARNING</b>: Just as <a href=user/guide#parse>Parse</a>, this operation
-      destroys the manual modifications of the syntactic structure.
+      <b>WARNING</b>: Just as <a href=user/guide#syntax#parse>Parse</a>, this
+      operation destroys the manual modifications of the syntactic structure.
     </p>
 
     <h4 id="addnode">Add node</h4>

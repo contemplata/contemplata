@@ -1,5 +1,5 @@
 <div class="panel panel-default" id="preprocessing">
-  <div class="panel-heading">Preprocessing</div>
+  <!--div class="panel-heading">Preprocessing</div-->
   <div class="panel-body">
 
     <p>
@@ -59,7 +59,7 @@
       expressions, as explained in the annotation guide), and then applies the
       Stanford parser in order to re-tokenize it and re-analyze it
       syntactically. It may be useful, in particular, after the <a
-      href=user/guide#merge>merging</a> operation, which results in several
+      href=user/guide#preprocessing#merge>merging</a> operation, which results in several
       SENT-rooted syntactic trees. <b>Restart</b>, then, re-analyses the entire
       sentence as one syntactic tree.
     </p>
@@ -146,7 +146,7 @@
       <figcaption>Joining words</figcaption>
     </center></figure>
     <p>
-      <b>NOTE</b>: the <a href=user/guide#parse>Parse</a> operation is
+      <b>NOTE</b>: the <a href=user/guide#syntax#parse>Parse</a> operation is
       automatically performed after the join.
     </p>
 

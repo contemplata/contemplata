@@ -1,5 +1,5 @@
 <div class="panel panel-default" id="entities">
-  <div class="panel-heading">Temporal entities</div>
+  <!--div class="panel-heading">Temporal entities</div-->
   <div class="panel-body">
 
     <h4>Marking events, signals, and temporal expressions</h4>

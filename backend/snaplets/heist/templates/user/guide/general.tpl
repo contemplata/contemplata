@@ -1,5 +1,5 @@
 <div class="panel panel-default" id="general">
-  <div class="panel-heading">General information</div>
+  <!--div class="panel-heading">General information</div-->
   <div class="panel-body">
 
     <h4>Tableau de bord</h4>
@@ -90,9 +90,9 @@
       There are two types of selection: main selection and additional selection.
       Additional selection allows to select several nodes at the same time. Some
       operations only take the main selection into account, while others will be
-      applied over all the selected nodes (e.g. the <a
-      href="user/guide#addnode">Add</a> and <a
-      href="user/guide#delnode">Delete</a> commands).
+      applied over all the selected nodes (e.g., the <a
+      href="user/guide#syntax#addnode">Add</a> and <a
+      href="user/guide#syntax#delnode">Delete</a> commands).
     </p>
     <p>
       To (main) select a node, it is sufficient to click on it. Additional
