@@ -97,11 +97,19 @@
       to the main menu and to save the currently annotated file, respectively.
 
       The other menu commands are divided into three annotation levels:
-      <b>Segmentation</b>, <b>Syntax</b>, and <b>Temporal</b>. You can click
-      (or CTRL+click) on the name of the current level to change it. The
-      commands from the other levels still can be used via the command line or
-      keyboard shortcuts, though.
+      <b>Segmentation</b>, <b>Syntax</b>, and <b>Temporal</b>. You can click on
+      the name of the current level to change it. 
     </p>
+    <p>
+      The command can have two different behaviors, depending on whether CTRL is
+      pressed or not. Such commands are marked in italics when the CTRL key is
+      pressed. You can also place the mouse over a menu command to see the
+      corresponding help message.
+    </p>
+    <!--p>
+      The commands from the other levels can be still used via the command line
+      or keyboard shortcuts, though.
+    </p-->
     <p>
       Some commands are available via keyboard shortcuts, which are typically
       indicated in the names of their corresponding menu commands as
