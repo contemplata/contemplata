@@ -262,29 +262,35 @@ switchSignal signal r =
 ---------------------------------------------------
 
 
+-- | Information about the annotated file. It includes the file itself, but also
+-- information about the positioning and the selected tree and nodes.
+type alias FileInfo
+    { file : File
+    -- ^ The annotated file
+    , top  : Window
+    -- ^ Its view in the top window
+    , bot  : Window
+    -- ^ Its view in the bottom window
+    }
+
+
+-- | Information about the top/bottom workspace.
+type alias Workspace
+    { fileId : FileId    -- ^ The file in view in the top window
+    , drag : Maybe Drag  -- ^ Workspace's drag
+    , side : SideWindow  -- ^ Which side window is selected
+    }
+
+
 type alias Model =
-  { mainFileId : FileId
+  { fileList : List (FileId, FileInfo)
+  -- ^ The list of annotated files, together with their IDs. The file IDs are
+  -- guaranteed to be distinct (we don't use a map because `FileId` cannot be a
+  -- key in Elm, only its encoded version, but the latter would be
+  -- invonvenient).
 
-  -- the underlying file
-  , mainFile : File
-
-  -- Optionally, another file can be specified, which will be shown in the
-  -- bottom window. TODO: document to what extend does it change the behavior of
-  -- the model, messages, etc. For sure, specifying relations between the top
-  -- and bottom windows should not be allowed!
-  , cmpFileId : Maybe FileId
-  , cmpFile : Maybe File
-
---   -- the underlying map of trees
---   , trees : TreeMap
---   -- the list of turns (TODO: trees, turns, and links, could be grouped in a
---   -- file)
---   , turns : List Turn
---   -- links between the nodes
---   , links : D.Dict Link LinkData
-
-  , top : Window
-  , bot : Window
+  , top : Workspace
+  , bot : Workspace
 
   -- which window is the focus on
   , focus : Focus
@@ -353,12 +359,6 @@ type alias Window =
 
   -- | Window's position shift
   , pos : Position
-
-  -- | Window's drag
-  , drag : Maybe Drag
-
-  -- | Information about the side window.
-  , side : SideWindow
   }
 
 
