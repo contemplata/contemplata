@@ -6,8 +6,8 @@
       The goal of this annotation stage is to assign the correct syntactic
       structure (constituency tree) to the given sentence and to assign the
       correct labels (part-of-speech tags and phrasal labels) to the tree's
-      individual nodes. The trees assigned by default to the individual speech
-      turns were obtained with the Stanford parser.
+      individual nodes. Note that the trees assigned by default to the
+      individual speech turns were obtained with the Stanford parser.
     </p>
 
     <p>
@@ -16,6 +16,25 @@
       filtered out. If this is not the case, you should be probably looking at
       the part describing the <a href=user/guide#segmentation>pre-processing</a>
       annotation stage.
+    </p>
+
+    <h4 id="parse">Parse</h4>
+    <p>
+      The <b>Parse</b> operation takes the list of tokens in the current tree
+      and re-analyzes them syntactically using the Stanford parser. It can be
+      useful after <a href=user/guide#word-split>word spitting</a> and other
+      changes in segmentation.
+    </p>
+    <p>
+      To perform the operation, use the <b>Parse</b> menu command (<b>parse</b>
+      from command line). Note that, in case the current tree contains several
+      SENT-rooted subtrees (i.e., several sub-sentences), only the selected
+      subtrees (i.e., those with at least one selected node) will be re-parsed.
+      If no node is selected, all sub-sentences will be re-parsed.
+    </p>
+    <p>
+      <b>WARNING</b>: This operation destroys all the modifications of syntactic
+      structure you have applied so far.
     </p>
 
     <h4>Edit</h4>
@@ -39,6 +58,43 @@
       <em>Label</em> field in the <b>Edit</b> side window. You can use it,
       e.g., to provide information related to the certainty of your annotation
       of the node or its subtree.
+    </p>
+
+    <h4 id="parsepos">Parse without changing POS tags</h4>
+    <p>
+      This operation takes the list of tokens in the current tree, <b>together
+      with the corresponding POS tags</b>, and uses the underlying parser to
+      re-analyze them. In contrast to <a href=user/guide#parse>Parse</a>, the
+      parser is <em>not</em> allowed to change the POS tags.
+    </p>
+    <p>
+      The operation can be launched with the <b>CTRL+Parse</b> menu command
+      (<b>parsepos</b> from command line).
+    </p>
+    <div class="row">
+      <div class="col-sm-6">
+        <figure><center>
+          <img src="public/img/guide/syntax/parsepos.png" alt="Parse without changing POS tags" style="width:100%">
+          <figcaption>Input for parsing: <em>numéro</em> and
+          <em>théléphone</em> both marked as nouns without specific POS
+          subcategories</figcaption>
+        </center></figure>
+      </div>
+      <div class="col-sm-6">
+        <figure><center>
+          <img src="public/img/guide/syntax/parsepos-result.png" alt="Parse without chaing POS tags: the result" style="width:100%">
+          <figcaption>The result: <em>numéro de théléphone</em> analyzed as a
+          MWE</figcaption>
+        </center></figure>
+      </div>
+    </div> 
+    <p>
+      <b>WARNING</b>: For this command to work correctly, each pre-terminal node
+      has to have a <b>proper POS tag</b> and a <b>single terminal child</b>.
+    </p>
+    <p>
+      <b>WARNING</b>: Just as <a href=user/guide#parse>Parse</a>, this operation
+      destroys the manual modifications of the syntactic structure.
     </p>
 
     <h4 id="addnode">Add node</h4>
@@ -89,45 +145,6 @@
       </div>
     </div> 
 
-    <h4 id="parse">Parse</h4>
-    <p>
-      To reparse the currently sentence (e.g. after some changes in
-      segmentation), use the <b>Parse</b> menu command (<b>parse</b> from
-      command line). Note that, in case the current tree contains several
-      SENT-rooted subtrees (i.e., several sub-sentences), only the selected
-      subtrees (i.e., those with at least one selected node) will be
-      re-parsed. If no node is selected, all sub-sentences will be re-parsed.
-    </p>
-
-    <h4 id="parsepos">Parse without changing POS tags</h4>
-    <p>
-      Similar to <b>Parse</b>, the <b>CTRL+Parse</b> menu command
-      (<b>parsepos</b> from command line) allows to reparse the current
-      sentence, but it does not allow the underlying parser to change the POS
-      tags.
-    </p>
-    <div class="row">
-      <div class="col-sm-6">
-        <figure><center>
-          <img src="public/img/guide/syntax/parsepos.png" alt="Parse without changing POS tags" style="width:100%">
-          <figcaption>Input for parsing: <em>numéro</em> and
-          <em>théléphone</em> both marked as nouns without specific POS
-          subcategories</figcaption>
-        </center></figure>
-      </div>
-      <div class="col-sm-6">
-        <figure><center>
-          <img src="public/img/guide/syntax/parsepos-result.png" alt="Parse without chaing POS tags: the result" style="width:100%">
-          <figcaption>The result: <em>numéro de théléphone</em> analyzed as a
-          MWE</figcaption>
-        </center></figure>
-      </div>
-    </div> 
-    <p>
-      <b>NOTE:</b> for this command to work correctly, each pre-terminal node
-      has to have a proper POS tag and a <b>single terminal child</b>.
-    </p>
-    
     <h4>Non-projective trees</h4>
     <p>
       The selected node, together with its subtree, can me moved left or right
