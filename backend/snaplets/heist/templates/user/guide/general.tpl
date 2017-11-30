@@ -31,13 +31,25 @@
     </p>
 
     <p>
+      <b>NOTE</b>: Even though Contemplata allows to modify the annotations at
+      the levels incompatible with the version of the file, modifications of
+      lower levels when annotating higher levels are not propagated downwards.
+      For instance, modifications of syntactic nature made in the
+      022_00000017:temporal file will not be copied to 022_00000017:syntax, the
+      syntax version of the 022_00000017 file.
+
+      You should therefore not exploit this possibility, which is left only for
+      exceptional situations.
+    </p>
+
+    <!--p>
       Regardeless of the version of the file, you are allowed to modify it at
       any level you wish. Note, however, that modifications of lower levels when
       annotating higher levels are not propagated downwards. For instance,
       modifications of syntactic nature made in the 022_00000017:temporal file
       will not be copied to 022_00000017:syntax, the syntax version of the
       022_00000017 file.
-    </p>
+    </p-->
 
     <h4>Annotation mode</h4>
     <p>
