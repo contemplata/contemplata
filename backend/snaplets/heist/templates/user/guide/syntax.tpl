@@ -91,12 +91,21 @@
 
     <h4 id="parse">Parse</h4>
     <p>
-      To reparse the currently sentence (e.g. after some changes in
-      segmentation), use the <b>Parse</b> menu command (<b>parse</b> from
-      command line). Note that, in case the current tree contains several
+      The <b>Parse</b> operation takes the list of tokens in the current tree
+      and re-analyzes them syntactically using the Stanford parser. It can be
+      useful after spitting (TODO: href) or other changes in segmentation.
+      TODO: move to pre-processing?
+    </p>
+    <p>
+      To perform the operation, use the <b>Parse</b> menu command (<b>parse</b>
+      from command line). Note that, in case the current tree contains several
       SENT-rooted subtrees (i.e., several sub-sentences), only the selected
-      subtrees (i.e., those with at least one selected node) will be
-      re-parsed. If no node is selected, all sub-sentences will be re-parsed.
+      subtrees (i.e., those with at least one selected node) will be re-parsed.
+      If no node is selected, all sub-sentences will be re-parsed.
+    </p>
+    <p>
+      <b>WARNING</b>: This operation destroys all the modifications of syntactic
+      structure you have applied so far.
     </p>
 
     <h4 id="parsepos">Parse without changing POS tags</h4>

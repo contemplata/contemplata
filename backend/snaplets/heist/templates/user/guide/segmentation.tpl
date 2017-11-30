@@ -5,27 +5,23 @@
     <p>
       In many cases there is no need to modify the segmentation, already
       performed correctly by the underlying syntactic parser. For the other
-      situation, several segmentation-related operations are available.
+      situations, several segmentation-related operations are available.
     </p>
 
-    <h4>Merging turns</h4>
-
+    <h4 id="merge">Merging turns</h4>
     <p>
       Sometimes a syntactically coherent portion of speech is divided between
       several speech turns in the file, as in the following example:
     </p>
-
     <figure><center>
       <img src="public/img/guide/syntax/joining-turns.png" alt="Join turns" style="width:75%">
       <figcaption>An utterance divided between several speech turns</figcaption>
     </center></figure>
-
     <p>
       You can merge the currently selected turn with another turn by
       CTRL+clicking on the latter in the context side window. This process can
       be iterated to join more than two turns together, as shown below.
     </p>
-
     <p>
       <center>
         <figure>
@@ -35,23 +31,27 @@
         </figure>
       </center>
     </p>
-
     <p>
       The merged turns are all highlighted in bold in the context side window
       when the corresponding tree is in focus.
     </p>
 
-    <h4>Restart with preprocessing</h4>
+    <h4>Restart annotation</h4>
     <p>
-      To syntactically annotate the given sentence from scratch, use the
-      <b>CTRL+Restart</b> menu command (i.e., click on the <b>Restart</b> menu
-      command with CTRL pressed, also available via <b>:restartpreproc</b> from
-      command line). It restores all the tokens, performs pre-processing, and
-      uses the parser to analyze the sentence.
-
-      It may be useful, in particular, after the merging operation, which
-      results in several SENT-rooted syntactic trees. Restart, then,
-      re-analyses the entire sentence as one syntactic tree.
+      This operation allows to restart annotation of the sentence in focus. It
+      takes the raw sentence, as shown in bold in the context side window,
+      applies the pre-processing procedure (i.e., removes certain irrelevant
+      expressions, as explained in the annotation guide), and then applies the
+      Stanford parser in order to re-tokenize it and re-analyze it
+      syntactically. It may be useful, in particular, after the <a
+      href=user/guide#merge>merging</a> operation, which results in several
+      SENT-rooted syntactic trees. <b>Restart</b>, then, re-analyses the entire
+      sentence as one syntactic tree.
+    </p>
+    <p>
+      To apply the operation, use the <b>CTRL+Restart</b> menu command (i.e.,
+      click on the <b>Restart</b> menu command with CTRL pressed, also available
+      via <b>:restartpreproc</b> from command line).
     </p>
 
     <h4>Restoring tokens</h4>
