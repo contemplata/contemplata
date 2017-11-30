@@ -130,8 +130,12 @@
       <img src="public/img/guide/syntax/join-words.png" alt="Join words" style="width:75%">
       <figcaption>Joining words</figcaption>
     </center></figure>
+    <p>
+      <b>NOTE</b>: the <a href=user/guide#parse>Parse</a> operation is
+      automatically performed after the join.
+    </p>
 
-    <h4>Split words</h4>
+    <h4 id="word-split">Split words</h4>
     <p>
       The inverse operation of word splitting is available via the <b>Split
       word</b> menu command (<b>splitword</b> from command line), which can be
