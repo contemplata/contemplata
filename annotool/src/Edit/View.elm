@@ -195,18 +195,23 @@ viewTreeId win model =
     txt0 = toString (M.treePos win model)
       ++ "/"
       ++ toString (M.treeNum win model)
-    -- txt1 = txt0 ++ " (" ++ C.encodeFileId model.fileId ++ ")"
-    txt1 = txt0 ++ " (" ++ C.encodeFileId (M.getFileId win model) ++ ")"
-    txt  = txt1 ++
-        if model.ctrl
-        then " CTRL"
-        else ""
-
---     txt = txt0 ++ case win of
---       M.Top -> " (" ++ toString model.dim.height ++ ")"
---       M.Bot -> " (" ++ toString model.dim.width ++ ")"
+    txt1 = "(" ++ C.encodeFileId (M.getFileId win model) ++ ")"
+    txt2 =
+      if model.ctrl
+      then "CTRL"
+      else ""
+    span = Html.span []
+      [ Html.text (txt0 ++ " ")
+      , Html.span
+          [ Events.onClick SwapFile
+          , Atts.style ["cursor" :> "pointer"]
+          , Atts.title "Click to swap the file (if other files are available)"
+          ]
+          [ Html.text txt1 ]
+      , Html.text (" " ++ txt2)
+      ]
   in
-    Html.div bottomStyle [Html.text txt]
+    Html.div bottomStyle [span]
 
 
 viewCommand : String -> M.Focus -> M.Model -> Html.Html Msg
@@ -2004,6 +2009,9 @@ mainKeyDown ctrl =
 
       -- "e"
       69 -> EditLabel
+
+      -- "TAB"
+      9 -> SwapFile
 
       -- "ctrl"
       17 -> CtrlDown

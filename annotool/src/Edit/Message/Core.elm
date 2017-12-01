@@ -91,6 +91,7 @@ type Msg
   | SplitChange Int
   | SplitFinish Int
   | ChangeAnnoLevel
+  | SwapFile
   | Dummy
   -- -- | Goto C.Addr -- ^ Move to a given node in the focused window
   | Many (List Msg)

@@ -72,6 +72,7 @@ module Edit.Model exposing
   , getFileId
   -- Various:
   , setTreeCheck, setForestCheck, setSentCheck, getWords, subTreeAt, nodesIn
+  , swapFile
   -- JSON decoding:
   , treeMapDecoder, fileDecoder, treeDecoder, sentDecoder, nodeDecoder
   -- JSON encoding:
@@ -1411,21 +1412,50 @@ moveCursorTo focus treeId model =
 moveTo : Focus -> FileId -> PartId -> Model -> Model
 moveTo focus fileId treeId model =
   let
-    alterWin win =
-      { win
-          | tree = TreeId treeId
-          , selMain = Nothing
-          , selAux = S.empty
-      }
+--     alterWin win =
+--       { win
+--           | tree = TreeId treeId
+--           , selMain = Nothing
+--           , selAux = S.empty
+--       }
     alterWS ws =
       { ws
           | fileId = fileId
           , drag = Nothing
       }
   in
-    Lens.update (windowLens focus) alterWin <|
-    Lens.update (workspaceLens focus) alterWS <|
-    model
+    -- Lens.update (windowLens focus) alterWin <|
+    Lens.update (workspaceLens focus) alterWS model
+
+
+-- | Move the given workspace to the given file and its first tree.
+moveToFirst : Focus -> FileId -> Model -> Model
+moveToFirst focus fileId model =
+    let
+        trees = Lens.get (fileLensAlt fileId => treeMap) model
+    in
+        case D.toList trees of
+            [] -> Debug.crash "moveToFirst: empty treeMap"
+            (partId, tree_) :: _ -> moveTo focus fileId partId model
+
+
+-- | Swap the file in the given workspace.
+swapFile : Focus -> Model -> Model
+swapFile focus model =
+    let
+        fileId = getFileId focus model
+        findNext xs = case xs of
+            [] -> Debug.crash "swapFile: empty fileList"
+            (fid, _) :: rest ->
+                if fileId == fid
+                then takeFirst rest
+                else findNext rest
+        takeFirst xs = case xs of
+            [] -> Debug.crash "swapFile.takeFirst: empty list"
+            (newFid, _) :: _ -> newFid
+    in
+        let files = model.fileList ++ model.fileList
+        in  moveToFirst focus (findNext files) model
 
 
 ---------------------------------------------------

@@ -465,6 +465,8 @@ update msg model =
                   else newLevel
             }
 
+    SwapFile -> idle <| M.swapFile model.focus model
+
     Dummy -> idle <|
         let focus = model.focus
             partId = M.getReprId focus (M.selectWin focus model).tree model
