@@ -1,5 +1,5 @@
 <div class="panel panel-default" id="general">
-  <div class="panel-heading">General information</div>
+  <!--div class="panel-heading">General information</div-->
   <div class="panel-body">
 
     <h4>Tableau de bord</h4>
@@ -31,13 +31,25 @@
     </p>
 
     <p>
+      <b>NOTE</b>: Even though Contemplata allows to modify the annotations at
+      the levels incompatible with the version of the file, modifications of
+      lower levels when annotating higher levels are not propagated downwards.
+      For instance, modifications of syntactic nature made in the
+      022_00000017:temporal file will not be copied to 022_00000017:syntax, the
+      syntax version of the 022_00000017 file.
+
+      You should therefore not exploit this possibility, which is left only for
+      exceptional situations.
+    </p>
+
+    <!--p>
       Regardeless of the version of the file, you are allowed to modify it at
       any level you wish. Note, however, that modifications of lower levels when
       annotating higher levels are not propagated downwards. For instance,
       modifications of syntactic nature made in the 022_00000017:temporal file
       will not be copied to 022_00000017:syntax, the syntax version of the
       022_00000017 file.
-    </p>
+    </p-->
 
     <h4>Annotation mode</h4>
     <p>
@@ -78,9 +90,9 @@
       There are two types of selection: main selection and additional selection.
       Additional selection allows to select several nodes at the same time. Some
       operations only take the main selection into account, while others will be
-      applied over all the selected nodes (e.g. the <a
-      href="user/guide#addnode">Add</a> and <a
-      href="user/guide#delnode">Delete</a> commands).
+      applied over all the selected nodes (e.g., the <a
+      href="user/guide#syntax#addnode">Add</a> and <a
+      href="user/guide#syntax#delnode">Delete</a> commands).
     </p>
     <p>
       To (main) select a node, it is sufficient to click on it. Additional
@@ -97,11 +109,19 @@
       to the main menu and to save the currently annotated file, respectively.
 
       The other menu commands are divided into three annotation levels:
-      <b>Segmentation</b>, <b>Syntax</b>, and <b>Temporal</b>. You can click
-      (or CTRL+click) on the name of the current level to change it. The
-      commands from the other levels still can be used via the command line or
-      keyboard shortcuts, though.
+      <b>Segmentation</b>, <b>Syntax</b>, and <b>Temporal</b>. You can click on
+      the name of the current level to change it. 
     </p>
+    <p>
+      The command can have two different behaviors, depending on whether CTRL is
+      pressed or not. Such commands are marked in italics when the CTRL key is
+      pressed. You can also place the mouse over a menu command to see the
+      corresponding help message.
+    </p>
+    <!--p>
+      The commands from the other levels can be still used via the command line
+      or keyboard shortcuts, though.
+    </p-->
     <p>
       Some commands are available via keyboard shortcuts, which are typically
       indicated in the names of their corresponding menu commands as

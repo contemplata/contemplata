@@ -1,12 +1,27 @@
-<div class="panel panel-default" id="segmentation">
-  <div class="panel-heading">Segmentation</div>
+<div class="panel panel-default" id="preprocessing">
+  <!--div class="panel-heading">Preprocessing</div-->
   <div class="panel-body">
 
     <p>
+      Each of the files in the database is, by default, preprocessed (a stage
+      when social obligations-related expressions, irrelevant for temporal
+      annotation, are automatically removed), tokenized, and syntactically
+      analyzed with the Stanford parser.
+    </p>
+    <p>
+      Nevertheless, some additional preprocessing steps may be sometimes
+      required to obtain a material which can be processed with the Stanford
+      parser. Speech turns may need to be merged, some expressions which should
+      be removed where not automatically identified, division into tokens might
+      be wrong, etc. This section describes the operations which allow to
+      perform the necessary modifications.
+    </p>
+
+    <!--p>
       In many cases there is no need to modify the segmentation, already
       performed correctly by the underlying syntactic parser. For the other
       situations, several segmentation-related operations are available.
-    </p>
+    </p-->
 
     <h4 id="merge">Merging turns</h4>
     <p>
@@ -40,18 +55,18 @@
     <p>
       This operation allows to restart annotation of the sentence in focus. It
       takes the raw sentence, as shown in bold in the context side window,
-      applies the pre-processing procedure (i.e., removes certain irrelevant
+      applies the preprocessing procedure (i.e., removes certain irrelevant
       expressions, as explained in the annotation guide), and then applies the
       Stanford parser in order to re-tokenize it and re-analyze it
       syntactically. It may be useful, in particular, after the <a
-      href=user/guide#merge>merging</a> operation, which results in several
+      href=user/guide#preprocessing#merge>merging</a> operation, which results in several
       SENT-rooted syntactic trees. <b>Restart</b>, then, re-analyses the entire
       sentence as one syntactic tree.
     </p>
     <p>
       To apply the operation, use the <b>CTRL+Restart</b> menu command (i.e.,
-      click on the <b>Restart</b> menu command with CTRL pressed, also available
-      via <b>:restartpreproc</b> from command line).
+      click on the <b>Restart</b> menu command with CTRL pressed). The operation
+      is also available via <b>:restartpreproc</b> from command line.
     </p>
 
     <h4>Restoring tokens</h4>
@@ -131,7 +146,7 @@
       <figcaption>Joining words</figcaption>
     </center></figure>
     <p>
-      <b>NOTE</b>: the <a href=user/guide#parse>Parse</a> operation is
+      <b>NOTE</b>: the <a href=user/guide#syntax#parse>Parse</a> operation is
       automatically performed after the join.
     </p>
 
