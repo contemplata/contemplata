@@ -61,10 +61,15 @@ update msg model =
         (Maybe.map (\{start} -> M.Drag start xy))
         model
 
-    DragEnd _ -> idle
-      <| Lens.update (M.winLens (M.dragOn model))
-           (\win -> { win | drag = Nothing, pos = M.getPosition win})
-      <| model
+    DragEnd _ -> idle <|
+      let
+          focus = M.dragOn model
+      in
+          Lens.update (M.workspaceLens focus)
+              (\ws -> {ws | drag = Nothing})
+          <| Lens.update (M.windowLens focus)
+              (\win -> {win | pos = M.getPosition focus model})
+          <| model
 
     Focus win -> idle <| {model | focus = win}
 
@@ -179,13 +184,15 @@ update msg model =
 
     Join ->
       let
+        fileTop = Lens.get (M.top => M.fileId) model
+        fileBot = Lens.get (M.bot => M.fileId) model
         treeTop = M.getReprId M.Top (M.selectWin M.Top model).tree model
         treeBot = M.getReprId M.Bot (M.selectWin M.Bot model).tree model
         newModel =
             -- operation not allowed in adjudication mode
-            case model.cmpFile of
-                Nothing -> M.join M.Top treeTop treeBot model
-                _ -> model
+            if fileTop == fileBot
+            then M.join M.Top treeTop treeBot model
+            else model
       in
         idle newModel
         -- parseSent Server.Stanford newModel
@@ -250,7 +257,8 @@ update msg model =
       let
         focus = model.focus
         fileId = M.getFileId focus model
-        wlen = M.winLens focus
+        -- wlen = M.winLens focus
+        wlen = M.windowLens focus
         treeId = M.getReprId focus (Lens.get wlen model).tree model
         (newTree, newSel) = Rule.apply Rule.theRule (M.getTree focus treeId model)
         updateSel win = {win | selAux = newSel, selMain = Nothing}

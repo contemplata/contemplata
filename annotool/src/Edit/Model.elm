@@ -9,6 +9,7 @@ module Edit.Model exposing
   , sentToString, emptyToken
   -- Model types:
   , Model, Dim, Window, SideWindow(..), Drag, Focus(..), AnnoLevel(..)
+  , Workspace
   -- Other:
   , selectWin, dragOn, getTree, getTreeMay, getReprId, selAll
   , getPosition, nextTree, prevTree, moveCursor, moveCursorTo
@@ -65,6 +66,7 @@ module Edit.Model exposing
   -- Lenses:
   , top, bot, dim, winLens, drag, side, pos, height, widthProp, heightProp
   , nodeId, nodeVal, treeMap, sentMap, partMap, reprMap, trees, fileLens
+  , workspaceLens, windowLens, fileId, selMain, linkSet
   -- Pseudo-lenses:
   -- , setTrees
   , getFileId
@@ -264,7 +266,7 @@ switchSignal signal r =
 
 -- | Information about the annotated file. It includes the file itself, but also
 -- information about the positioning and the selected tree and nodes.
-type alias FileInfo
+type alias FileInfo =
     { file : File
     -- ^ The annotated file
     , top  : Window
@@ -275,7 +277,7 @@ type alias FileInfo
 
 
 -- | Information about the top/bottom workspace.
-type alias Workspace
+type alias Workspace =
     { fileId : FileId    -- ^ The file in view in the top window
     , drag : Maybe Drag  -- ^ Workspace's drag
     , side : SideWindow  -- ^ Which side window is selected
@@ -347,9 +349,7 @@ type alias Command = String
 type alias Window =
   { tree : TreeId
   -- ^ NOTE: it is not guaranteed to be a tree representative (cf. file partitions)
-  -- ^ NOTE: to which file does this ID refer depends on whether a comparison
-  -- file is present. If so, the ID of the bottom window refers to this
-  -- alternative file.
+  -- ^ NOTE: this ID refers to the `file` in the corresponding `FileInfo`
 
   -- | Main selected node (if any)
   , selMain : Maybe NodeId
@@ -531,15 +531,21 @@ applyAtom histAtom model =
 -- | Focus on the given tree if needed.
 focusOnTree : Focus -> PartId -> Model -> Model
 focusOnTree focus treeId model =
-    case focus of
-        Top ->
-            if getReprId focus model.top.tree model == treeId
-            then model
-            else moveCursorTo focus treeId model
-        Bot ->
-            if getReprId focus model.bot.tree model == treeId
-            then model
-            else moveCursorTo focus treeId model
+    let
+        topTree = Lens.get (windowLens Top => tree) model
+        botTree = Lens.get (windowLens Bot => tree) model
+    in
+        case focus of
+            Top ->
+                -- if getReprId focus model.top.tree model == treeId
+                if getReprId focus topTree model == treeId
+                then model
+                else moveCursorTo focus treeId model
+            Bot ->
+                -- if getReprId focus model.bot.tree model == treeId
+                if getReprId focus botTree model == treeId
+                then model
+                else moveCursorTo focus treeId model
 
 
 -- | Apply a given history element.
@@ -880,7 +886,9 @@ connect model =
 -- | Add links.
 connectNodes : Model -> Model
 connectNodes model = model |>
-  case (model.top.selMain, model.bot.selMain) of
+  case ( Lens.get (windowLens Top => selMain) model
+       , Lens.get (windowLens Bot => selMain) model ) of
+  -- case (model.top.selMain, model.bot.selMain) of
     (Just topNode, Just botNode) ->
       connectHelp {nodeFrom = topNode, nodeTo = botNode, focusTo = Bot}
     _ -> identity
@@ -899,28 +907,31 @@ connectHelp {nodeFrom, nodeTo, focusTo} model =
     focusFrom = case focusTo of
       Top -> Bot
       Bot -> Top
+    fileFrom = Lens.get (top => fileId) model
+    fileTo   = Lens.get (bot => fileId) model
     treeFrom = getReprId Top (selectWin focusFrom model).tree model
-    treeTo = getReprId Top (selectWin focusTo model).tree model
+    treeTo   = getReprId Top (selectWin focusTo model).tree model
     link = ((treeFrom, nodeFrom), (treeTo, nodeTo))
-    (alter, modif) = case D.get link model.mainFile.linkSet of
-      Nothing ->
-        ( D.insert link linkDataDefault
-        , LinkModif
-              { addLinkSet = D.empty
-              , delLinkSet = D.singleton link linkDataDefault
-              , window = Top }
-        )
-      Just linkData ->
-        ( D.remove link
-        , LinkModif
-              { delLinkSet = D.empty
-              , addLinkSet = D.singleton link linkData
-              , window = Top }
-        )
+    (alter, modif) =
+        case D.get link (Lens.get (fileLens Top => linkSet) model) of
+            Nothing ->
+              ( D.insert link linkDataDefault
+              , LinkModif
+                    { addLinkSet = D.empty
+                    , delLinkSet = D.singleton link linkDataDefault
+                    , window = Top }
+              )
+            Just linkData ->
+              ( D.remove link
+              , LinkModif
+                    { delLinkSet = D.empty
+                    , addLinkSet = D.singleton link linkData
+                    , window = Top }
+              )
   in
-    case model.cmpFile of
-        Nothing -> Lens.update (mainFile => linkSet) alter model |> saveModif modif
-        Just _ -> model
+      if fileFrom == fileTo
+      then Lens.update (fileLens Top => linkSet) alter model |> saveModif modif
+      else model
 
 
 -- | Connect a link to a signal.
@@ -948,7 +959,9 @@ addSignal
   -> Model
 addSignal link focus signal model =
   let
-    (alter, modif) = case D.get link model.mainFile.linkSet of
+    fileFrom = Lens.get (top => fileId) model
+    fileTo   = Lens.get (bot => fileId) model
+    (alter, modif) = case D.get link (Lens.get (fileLens Top => linkSet) model) of
       Nothing ->
         Debug.crash "addSignal: should never happen!"
       Just oldData ->
@@ -962,11 +975,9 @@ addSignal link focus signal model =
               , window = Top }
           )
   in
-    -- the operation works only in single annotation mode
-    case model.cmpFile of
-        Nothing -> Lens.update (mainFile => linkSet) alter model |> saveModif modif
-        Just _ -> model
-
+    if fileFrom == fileTo
+    then Lens.update (fileLens Top => linkSet) alter model |> saveModif modif
+    else model
 
 ---------------------------------------------------
 -- Selection-wise?
@@ -985,8 +996,9 @@ updateSelection =
 updateSelection_ : Focus -> Model -> Model
 updateSelection_ focus model =
   let
-    wlen = winLens focus
-    win = Lens.get wlen model -- selectWin focus model
+    -- wlen = winLens focus
+    wlen = windowLens focus
+    win = Lens.get wlen model
     tree = getTree focus (getReprId focus win.tree model) model
     newID id = case getNode_ id tree of
       Nothing -> Nothing
@@ -1042,10 +1054,10 @@ updateLinkSelection model =
 
 -- | Return the window in focus.
 selectWin : Focus -> Model -> Window
-selectWin focus model =
-  case focus of
-    Top -> model.top
-    Bot -> model.bot
+selectWin focus = Lens.get (windowLens focus)
+--   case focus of
+--     Top -> model.top
+--     Bot -> model.bot
 
 
 -- | On which window the drag is activated?
@@ -1236,9 +1248,10 @@ setSentCheck fileId treeId sent model =
 treePos : Focus -> Model -> Int
 treePos win model =
   let
-    treeId = case win of
-      Top -> model.top.tree
-      Bot -> model.bot.tree
+    treeId = Lens.get (windowLens win => tree) model
+--     treeId = case win of
+--       Top -> model.top.tree
+--       Bot -> model.bot.tree
     partId = getReprId win treeId model
     go i keys = case keys of
       [] -> 0
@@ -1271,14 +1284,28 @@ treeNum win model = D.size (Lens.get (fileLens win) model).treeMap
 --     (Bot, _) -> model.bot.pos
 
 
-getPosition : Window -> Position
-getPosition win =
-  case win.drag of
-    Just {start, current} ->
-      Position
-        (win.pos.x + current.x - start.x)
-        (win.pos.y + current.y - start.y)
-    Nothing -> win.pos
+-- getPosition : Window -> Position
+-- getPosition win =
+--   case win.drag of
+--     Just {start, current} ->
+--       Position
+--         (win.pos.x + current.x - start.x)
+--         (win.pos.y + current.y - start.y)
+--     Nothing -> win.pos
+
+
+getPosition : Focus -> Model -> Position
+getPosition foc model =
+    let
+        win = Lens.get (windowLens foc) model
+        ws  = Lens.get (workspaceLens foc) model
+    in
+        case ws.drag of
+          Just {start, current} ->
+            Position
+              (win.pos.x + current.x - start.x)
+              (win.pos.y + current.y - start.y)
+          Nothing -> win.pos
 
 
 ---------------------------------------------------
@@ -1343,8 +1370,11 @@ moveCursorTo focus treeId model =
     update foc = Lens.update foc alter model
   in
     case focus of
-      Top -> update top
-      Bot -> update bot
+      Top -> update (windowLens Top)
+      Bot -> update (windowLens Bot)
+--     case focus of
+--       Top -> update top
+--       Bot -> update bot
 
 
 ---------------------------------------------------
@@ -1367,9 +1397,10 @@ selectNode focus i model =
       }
     update lens = Lens.update lens alter model
   in
-    case focus of
-      Top -> update top
-      Bot -> update bot
+    update (windowLens focus)
+--     case focus of
+--       Top -> update top
+--       Bot -> update bot
 
 
 -- We bypass the focus of the model since the node can be possibly selected
@@ -1385,9 +1416,10 @@ selectNodeAux focus i model =
       else {win | selAux = S.insert i win.selAux}
     update lens = Lens.update lens alter model
   in
-    case focus of
-      Top -> update top
-      Bot -> update bot
+    update (windowLens focus)
+--     case focus of
+--       Top -> update top
+--       Bot -> update bot
 
 
 ---------------------------------------------------
@@ -2417,10 +2449,11 @@ setPart_ win treeId newPartMay model =
 
 
 getPart : Focus -> PartId -> Model -> Maybe (S.Set TreeIdBare)
-getPart win treeId model =
-    case (win, model.cmpFile) of
-        (Bot, Just file) -> D.get treeId file.partMap
-        _ -> D.get treeId model.mainFile.partMap
+getPart win treeId =
+    D.get treeId << Lens.get (fileLens win => partMap)
+--     case (win, model.cmpFile) of
+--         (Bot, Just file) -> D.get treeId file.partMap
+--         _ -> D.get treeId model.mainFile.partMap
 
 
 -- | Set representative for the given tree ID.
@@ -2916,44 +2949,78 @@ bot = Lens.create
   (\fn model -> {model | bot = fn model.bot})
 
 
-mainFile : Lens.Focus { record | mainFile : a } a
-mainFile = Lens.create
-  .mainFile
-  (\fn model -> {model | mainFile = fn model.mainFile})
+fileId : Lens.Focus { record | fileId : a } a
+fileId = Lens.create
+  .fileId
+  (\fn model -> {model | fileId = fn model.fileId})
 
 
-cmpFile : Lens.Focus { record | cmpFile : Maybe a, mainFile : a } a
-cmpFile =
-    let
-        set model =
-            case model.cmpFile of
-                Nothing -> model.mainFile
-                Just fi -> fi
-        update fn model =
-            case model.cmpFile of
-                Nothing -> {model | mainFile = fn model.mainFile}
-                Just fi -> {model | cmpFile = Just (fn fi)}
-    in
-        Lens.create set update
+-- mainFile : Lens.Focus { record | mainFile : a } a
+-- mainFile = Lens.create
+--   .mainFile
+--   (\fn model -> {model | mainFile = fn model.mainFile})
+--
+--
+-- cmpFile : Lens.Focus { record | cmpFile : Maybe a, mainFile : a } a
+-- cmpFile =
+--     let
+--         get model =
+--             case model.cmpFile of
+--                 Nothing -> model.mainFile
+--                 Just fi -> fi
+--         update fn model =
+--             case model.cmpFile of
+--                 Nothing -> {model | mainFile = fn model.mainFile}
+--                 Just fi -> {model | cmpFile = Just (fn fi)}
+--     in
+--         Lens.create get update
+--
+--
+-- -- | Generic file lens whose behavior depends on the window in focus.
+-- fileLens : Focus -> Lens.Focus { record | cmpFile : Maybe a, mainFile : a } a
+-- fileLens win =
+--     case win of
+--         Top -> mainFile
+--         Bot -> cmpFile
 
 
--- | Generic file lens whose behavior depends on the window in focus.
-fileLens : Focus -> Lens.Focus { record | cmpFile : Maybe a, mainFile : a } a
+fileLens : Focus -> Lens.Focus Model File
 fileLens win =
-    case win of
-        Top -> mainFile
-        Bot -> cmpFile
+    let
+        getFileId model =
+            case win of
+                Top -> model.top.fileId
+                Bot -> model.bot.fileId
+        get model =
+            let fid = getFileId model in
+            case Util.find (((==) fid) << Tuple.first) model.fileList of
+                Nothing -> Debug.crash "Model.fileLens.get: unknown fileID"
+                Just (_, info) -> info.file
+        update fn model =
+            let
+                fid = getFileId model
+                go xs = case xs of
+                    [] -> Debug.crash "Model.fileLens.update: unknown fileID"
+                    ((fileId, info) :: rest) ->
+                        if fileId == fid
+                        then (fileId, {info | file = fn info.file}) :: rest
+                        else (fileId, info) :: go rest
+            in
+                {model | fileList = go model.fileList}
+    in
+        Lens.create get update
 
 
 -- | Not really a lens, just a getter...
 getFileId : Focus -> Model -> FileId
-getFileId win model =
-    case win of
-        Top -> model.mainFileId
-        Bot ->
-            case model.cmpFileId of
-                Nothing -> model.mainFileId
-                Just id -> id
+getFileId win =
+    Lens.get (workspaceLens win => fileId)
+--     case win of
+--         Top -> model.mainFileId
+--         Bot ->
+--             case model.cmpFileId of
+--                 Nothing -> model.mainFileId
+--                 Just id -> id
 
 
 treeMap : Lens.Focus { record | treeMap : a } a
@@ -2998,11 +3065,28 @@ trees = Lens.create
   (\fn model -> {model | trees = fn model.trees})
 
 
+-- | Focus on the window in given focus (well, yes, the names are not
+-- perfect...).  TODO: do we still need `winLens`?
+windowLens : Focus -> Lens.Focus Model Window
+windowLens win = Debug.crash "implement winLens"
+
+
+-- | Focus on the given workspace.
+workspaceLens : Focus -> Lens.Focus Model Workspace
+workspaceLens win = Debug.crash "implement workspaceLens"
+
+
 winLens : Focus -> Lens.Focus { record | bot : a, top : a } a
 winLens focus =
   case focus of
     Top -> top
     Bot -> bot
+
+
+selMain : Lens.Focus { record | selMain : a } a
+selMain = Lens.create
+  .selMain
+  (\fn model -> {model | selMain = fn model.selMain})
 
 
 dim : Lens.Focus { record | dim : a } a

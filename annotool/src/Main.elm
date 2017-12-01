@@ -195,11 +195,11 @@ topUpdate topMsg =
       Server.Files xs -> Debug.crash "Server.Files not implemented"
       Server.NewFile fileId file -> \model_ ->
         let (edit, cmd) =
-                Edit.Init.mkEdit (topCfg model_) fileId file Nothing
+                Edit.Init.mkEdit (topCfg model_) [(fileId, file)]
         in  (Edit edit, Cmd.map editMsg cmd)
-      Server.NewFile2 fileId file compId comp -> \model_ ->
+      Server.NewFiles fileList -> \model_ ->
         let (edit, cmd) =
-                Edit.Init.mkEdit (topCfg model_) fileId file (Just (compId, comp))
+                Edit.Init.mkEdit (topCfg model_) fileList
         in  (Edit edit, Cmd.map editMsg cmd)
       Server.ParseResult fileId treeId sentMay tree ->
         let updTree = Edit.Model.setTreeCheck fileId treeId tree

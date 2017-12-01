@@ -5,19 +5,22 @@ import Window as Window
 import Mouse exposing (Position)
 -- import WebSocket
 
+import Focus exposing ((=>))
+import Focus as Lens
+
 -- import Config as Cfg
 import Edit.Message.Core exposing (Msg(..))
-import Edit.Model
+import Edit.Model as Mod
 
 
-editSubscriptions : Edit.Model.Model -> Sub Msg
+editSubscriptions : Mod.Model -> Sub Msg
 editSubscriptions model =
   let
     resize = Window.resizes Resize
-    win = Edit.Model.selectWin model.focus model
-    -- listen = WebSocket.listen Cfg.socketServer TestGet
+    -- win = Edit.Model.selectWin model.focus model
+    workspace = Lens.get (Mod.workspaceLens model.focus) model
   in
-    case win.drag of
+    case workspace.drag of
       Nothing ->
         Sub.batch [resize] --, listen]
       Just _ ->

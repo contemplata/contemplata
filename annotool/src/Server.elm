@@ -234,8 +234,10 @@ type Answer
     -- ^ The list of files
   | NewFile C.FileId M.File
     -- ^ New file to edit
-  | NewFile2 C.FileId M.File C.FileId M.File
-    -- ^ New pair of files to edit
+--   | NewFile2 C.FileId M.File C.FileId M.File
+--     -- ^ New pair of files to edit
+  | NewFiles (List (C.FileId, M.File))
+    -- ^ New list of files to annotate
   | ParseResult C.FileId C.PartId (Maybe M.Sent) (R.Tree M.Node)
     -- ^ Parsing result
   | ParseResultList C.FileId C.PartId (List (Maybe (R.Tree M.Node)))
@@ -249,7 +251,7 @@ answerDecoder =
     Decode.oneOf
         [ filesDecoder
         , newFileDecoder
-        , newFileDecoder2
+        , newFilesDecoder
         , parseResultDecoder
         , parseResultListDecoder
         , notificationDecoder]
@@ -269,14 +271,21 @@ newFileDecoder =
     (Decode.field "file" M.fileDecoder)
 
 
-newFileDecoder2 : Decode.Decoder Answer
-newFileDecoder2 =
-  Decode.map5 (\tag_ -> NewFile2)
-    (Decode.field "tag" <| tagDecoder "NewFile2")
-    (Decode.field "fileId" C.fileIdDecoder)
-    (Decode.field "file" M.fileDecoder)
-    (Decode.field "compId" C.fileIdDecoder)
-    (Decode.field "comp" M.fileDecoder)
+newFilesDecoder : Decode.Decoder Answer
+newFilesDecoder =
+  Decode.map2 (\tag_ -> NewFiles)
+    (Decode.field "tag" <| tagDecoder "NewFiles")
+    (Decode.field "files" fileListDecoder)
+
+
+fileListDecoder : Decode.Decoder (List (C.FileId, M.File))
+fileListDecoder =
+  let
+      pairDecoder = Decode.map2 (\fileId file -> (fileId, file))
+          (Decode.field "fileId" C.fileIdDecoder)
+          (Decode.field "file" M.fileDecoder)
+  in
+      Decode.list pairDecoder
 
 
 tagDecoder : String -> Decode.Decoder ()

@@ -25,27 +25,35 @@ import Edit.Popup as Popup
 
 mkEdit
     : Cfg.Config
-    -> FileId
-    -> File
-    -> Maybe (FileId, File)
+    -> List (FileId, File)
     -> (Model, Cmd Msg)
-mkEdit config fileId file compPair =
+mkEdit config fileList =
   let
-    treeId = case D.toList file.treeMap of
+    treeId file = case D.toList file.treeMap of
       (id, tree) :: _ -> id
       _ -> Debug.crash "setTrees: empty tree dictionary"
     top = win Top
     bot = win Bot
-    win foc =
-      { tree = TreeId treeId
-      , pos = Position 400 50
+    win foc file =
+      { tree = TreeId (treeId file)
+      , pos = Position 600 100
       , selMain = Nothing
       , selAux = S.empty
+      }
+    workspace foc fileId =
+      { fileId = fileId
       , drag = Nothing
       , side = if foc == Top
                then Edit.Model.SideContext
                else Edit.Model.SideLog
       }
+    mainFileId = case fileList of
+      (id, file) :: _ -> id
+      _ -> Debug.crash "fileList empty"
+    mkFileInfo file =
+      { file = file
+      , top = win Top file
+      , bot = win Bot file }
     dim =
       { width = 0
       , height = 0
@@ -53,12 +61,11 @@ mkEdit config fileId file compPair =
       , heightProp = 50
       }
     model =
-      { mainFileId = fileId
-      , mainFile = file
-      , cmpFileId = Maybe.map Tuple.first compPair
-      , cmpFile = Maybe.map Tuple.second compPair
-      , top = top
-      , bot = bot
+      { fileList = List.map
+            (\(fileId, file) -> (fileId, mkFileInfo file))
+            fileList
+      , top = workspace Top mainFileId
+      , bot = workspace Bot mainFileId
       , focus = Top
       , selLink = Nothing
       , dim = dim

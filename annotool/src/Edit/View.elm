@@ -16,6 +16,7 @@ import Maybe as Maybe
 import Tuple exposing (first, second)
 import Mouse exposing (Position)
 import Focus as Lens
+import Focus exposing ((=>))
 
 import Rose as R
 import Util as Util
@@ -35,8 +36,8 @@ view : M.Model -> Html.Html Msg
 view model =
   Html.div
     [ Atts.style
-        [ "width" => "100%"
-        , "height" => "100%"
+        [ "width" :> "100%"
+        , "height" :> "100%"
         ]
 
     -- register the keyboard events from top-level
@@ -94,31 +95,31 @@ viewWindow win model =
   , Atts.attribute "tabindex" "1"
 
   , Atts.style
-    [ "position" => "absolute"
-    -- , "width" => (toString (100 - Cfg.sideSpace) ++ "%") -- "100%"
-    , "width" => (toString model.dim.widthProp ++ "%")
-    , "height" => case win of
+    [ "position" :> "absolute"
+    -- , "width" :> (toString (100 - Cfg.sideSpace) ++ "%") -- "100%"
+    , "width" :> (toString model.dim.widthProp ++ "%")
+    , "height" :> case win of
         M.Top -> toString model.dim.heightProp ++ "%"
         M.Bot -> toString (100 - model.dim.heightProp) ++ "%"
     , case win of
-        M.Top -> "top" => "0"
-        M.Bot -> "bottom" => "0"
+        M.Top -> "top" :> "0"
+        M.Bot -> "bottom" :> "0"
     -- Overflow is a very important attribute (it makes the scrollbars to appear
     -- if set to "auto") which makes sure that the trees do not go beyond the
     -- specified subwindows.  We set to "hidden" so that tracing links is easy
     -- (otherwise, special care has to be taken w.r.t. scrollbars).
-    , "overflow" => "hidden"
-    , "background-color" => backColor win model
-    , "opacity" => "1.0"
-    -- , "border" => "1px black solid"
+    , "overflow" :> "hidden"
+    , "background-color" :> backColor win model
+    , "opacity" :> "1.0"
+    -- , "border" :> "1px black solid"
 
     -- z-index important because of its interactions with how the edges are
     -- drawn *and* with popup windows
-    , "z-index" => "-1"
+    , "z-index" :> "-1"
 
     -- make the outline invisible (the fact that the window is in focus is
     -- visible anyway)
-    , "outline" => "0"
+    , "outline" :> "0"
     ]
   ]
 
@@ -144,8 +145,6 @@ backColor win model =
 viewTree : M.Focus -> M.Model -> Html.Html Msg
 viewTree focus model =
 
-  -- TEMP 28/11: seems OK
-
   let
 
     win = M.selectWin focus model
@@ -157,7 +156,8 @@ viewTree focus model =
     drawTree
       focus win.selMain win.selAux
       <| markMisplaced first
-      <| positionTree (M.getPosition win)
+      -- <| positionTree (M.getPosition win)
+      <| positionTree (M.getPosition focus model)
       <| R.withWidth stdWidth Cfg.stdMargin tree
 
 
@@ -229,11 +229,11 @@ bottomStyle : List (Html.Attribute msg)
 bottomStyle =
     [ Atts.class "noselect"
     , Atts.style
-        [ "position" => "absolute"
-        -- , "width" => "5%"
-        -- , "height" => "5%"
-        , "bottom" => px 10
-        , "left" => px 10
+        [ "position" :> "absolute"
+        -- , "width" :> "5%"
+        -- , "height" :> "5%"
+        , "bottom" :> px 10
+        , "left" :> px 10
         ]
     ]
 
@@ -332,8 +332,8 @@ viewPopupSplitGen msgSize cmdSize spl commandList defaultCommand =
                 , Atts.id Cfg.splitSelectName
                 , Atts.autofocus True -- ^ doesn't work?
                 , Atts.style
-                    [ "cursor" => "pointer"
-                    , "font-size" => ps msgSize ]
+                    [ "cursor" :> "pointer"
+                    , "font-size" :> ps msgSize ]
                 ]
                 ( List.map (option val) (List.range beg end) )
 
@@ -371,10 +371,10 @@ popupTextElem msgSize txt =
     Html.span
         [ Atts.class "noselect"
         , Atts.style
-            [ "cursor" => "default"
-            , "margin" => px 5
-            -- , "font-size" => "125%" ]
-            , "font-size" => ps msgSize ]
+            [ "cursor" :> "default"
+            , "margin" :> px 5
+            -- , "font-size" :> "125%" ]
+            , "font-size" :> ps msgSize ]
         ]
         [ Html.text txt ]
 
@@ -405,10 +405,10 @@ viewPopupMostGen cmdSize popupHtml commandList defaultCommand =
                     [ Atts.class "noselect"
                     , Events.onClick action
                     , Atts.style
-                        [ "cursor" => "pointer"
-                        , "margin-left" => px 5
-                        , "margin-right" => px 5
-                        , "font-size" => ps cmdSize ]
+                        [ "cursor" :> "pointer"
+                        , "margin-left" :> px 5
+                        , "margin-right" :> px 5
+                        , "font-size" :> ps cmdSize ]
                     ] ++ maybeID )
                     [ Html.text txt ]
 
@@ -423,16 +423,16 @@ viewPopupMostGen cmdSize popupHtml commandList defaultCommand =
         popupDiv =
             Html.div
                 [ Atts.style
-                  [ "position" => "absolute"
-                  , "display" => "inline-block"
-                  , "left" => "50%"
-                  -- , "left" => (toString (model.dim.widthProp // 2) ++ "%")
-                  , "top" => "50%"
-                  , "-webkit-transform" => "translate(-50%, -50%)"
-                  , "transform" => "translate(-50%, -50%)"
-                  -- , "background-color" => "#48e"
-                  , "text-align" => "center"
-                  -- , "border-radius" => "10%" -- "4px"
+                  [ "position" :> "absolute"
+                  , "display" :> "inline-block"
+                  , "left" :> "50%"
+                  -- , "left" :> (toString (model.dim.widthProp // 2) ++ "%")
+                  , "top" :> "50%"
+                  , "-webkit-transform" :> "translate(-50%, -50%)"
+                  , "transform" :> "translate(-50%, -50%)"
+                  -- , "background-color" :> "#48e"
+                  , "text-align" :> "center"
+                  -- , "border-radius" :> "10%" -- "4px"
                   ]
                 ]
                 [ popupHtml
@@ -458,14 +458,14 @@ viewPopupMostGen cmdSize popupHtml commandList defaultCommand =
 
             -- make the outline invisible (the fact that the window is in focus is
             -- visible anyway)
-            -- , "outline" => "0"
+            -- , "outline" :> "0"
 
             , Atts.style
-                  [ "position" => "absolute"
-                  , "width" => "100%"
-                  , "height" => "100%"
-                  , "opacity" => "0.85"
-                  -- , "background-color" => "#e84"
+                  [ "position" :> "absolute"
+                  , "width" :> "100%"
+                  , "height" :> "100%"
+                  , "opacity" :> "0.85"
+                  -- , "background-color" :> "#e84"
                   ]
             ]
             [ popupDiv
@@ -488,10 +488,10 @@ viewPopupMostGen cmdSize popupHtml commandList defaultCommand =
 --       [ Atts.class "noselect"
 --       , Events.onClick onClick
 --       , Atts.style
---         [ "position" => "absolute"
---         , "top" => px 10
---         , "left" => px pos
---         , "cursor" => "pointer"
+--         [ "position" :> "absolute"
+--         , "top" :> px 10
+--         , "left" :> px pos
+--         , "cursor" :> "pointer"
 --         ]
 --       ]
 --       -- [ Html.text txt ]
@@ -528,11 +528,11 @@ viewPopupMostGen cmdSize popupHtml commandList defaultCommand =
 --         Html.div
 --           ( [ Events.onClick onClick
 --             , Atts.style
---                 [ "cursor" => "pointer"
---                 , "margin-left" => px 10
---                 , "margin-right" => px 10
+--                 [ "cursor" :> "pointer"
+--                 , "margin-left" :> px 10
+--                 , "margin-right" :> px 10
 --                 -- | To make the list of commands wrap
---                 , "display" => "inline-block"
+--                 , "display" :> "inline-block"
 --                 ]
 --             ] ++ case hint of
 --                      Nothing -> []
@@ -576,9 +576,9 @@ viewPopupMostGen cmdSize popupHtml commandList defaultCommand =
 --     Html.div
 --       [ Atts.class "noselect"
 --       , Atts.style
---         [ "position" => "absolute"
---         , "top" => px 10
---         , "left" => px 5
+--         [ "position" :> "absolute"
+--         , "top" :> px 10
+--         , "left" :> px 5
 --         ]
 --       ] <| mkCommands <|
 --         [ (plainText "Menu", Popup Popup.Files Nothing, Just "Go to the main menu")
@@ -603,11 +603,11 @@ viewMenu model = -- fileName =
 --         Html.div
 --           ( [ Events.onClick onClick
 --             , Atts.style
---                 [ "cursor" => "pointer"
---                 , "margin-left" => px 10
---                 , "margin-right" => px 10
+--                 [ "cursor" :> "pointer"
+--                 , "margin-left" :> px 10
+--                 , "margin-right" :> px 10
 --                 -- | To make the list of commands wrap
---                 , "display" => "inline-block"
+--                 , "display" :> "inline-block"
 --                 ]
 --             ] ++ case hint of
 --                      Nothing -> []
@@ -670,9 +670,9 @@ viewMenu model = -- fileName =
     Html.div
       [ Atts.class "noselect"
       , Atts.style
-        [ "position" => "absolute"
-        , "top" => px 10
-        , "left" => px 5
+        [ "position" :> "absolute"
+        , "top" :> px 10
+        , "left" :> px 5
         ]
       ] <|
         [ Cmd.mkMenuItem
@@ -766,14 +766,14 @@ drawInternal node selMain selAux focus at mark =
     nodeId = node.nodeId
     auxStyle =
       ( if S.member nodeId selAux || Just nodeId == selMain
-        then ["background-color" => "#BC0000"]
+        then ["background-color" :> "#BC0000"]
         else if mark == Misplaced
-        then ["background-color" => "#EF597B"]
-        else ["background-color" => "#3C8D2F"] )
+        then ["background-color" :> "#EF597B"]
+        else ["background-color" :> "#3C8D2F"] )
       ++
       ( if Just nodeId == selMain
-          then ["border" => "solid", "border-color" => "black"]
-          else ["border" => "none"] )
+          then ["border" :> "solid", "border-color" :> "black"]
+          else ["border" :> "none"] )
     htmlLeaf =
         [ Html.text node.nodeVal
         , case node.nodeTyp of
@@ -787,22 +787,22 @@ drawInternal node selMain selAux focus at mark =
       [ nodeMouseDown focus intNode
       , Atts.class "noselect"
       , Atts.style <| auxStyle ++
-          [ "cursor" => "pointer"
-          -- , "opacity" => "1.0"
+          [ "cursor" :> "pointer"
+          -- , "opacity" :> "1.0"
 
-          , "width" => px width
-          , "height" => px height
-          , "border-radius" => "40%" -- "4px"
-          , "position" => "absolute"
-          -- , "left" => px (at.x - nodeWidth // 2)
-          -- , "top" => px (at.y - nodeHeight // 2)
-          , "left" => px (at.x - width // 2)
-          , "top" => px (at.y - height // 2)
+          , "width" :> px width
+          , "height" :> px height
+          , "border-radius" :> "40%" -- "4px"
+          , "position" :> "absolute"
+          -- , "left" :> px (at.x - nodeWidth // 2)
+          -- , "top" :> px (at.y - nodeHeight // 2)
+          , "left" :> px (at.x - width // 2)
+          , "top" :> px (at.y - height // 2)
 
-          , "color" => "white"
-          , "display" => "flex"
-          , "align-items" => "center"
-          , "justify-content" => "center"
+          , "color" :> "white"
+          , "display" :> "flex"
+          , "align-items" :> "center"
+          , "justify-content" :> "center"
           ]
       ]
       [Html.p [] htmlLeaf]
@@ -831,14 +831,14 @@ drawLeaf node selMain selAux focus at mark =
     nodeId = node.nodeId
     auxStyle =
       ( if S.member nodeId selAux || Just nodeId == selMain
-        then ["background-color" => "#BC0000"]
+        then ["background-color" :> "#BC0000"]
         else if mark == Misplaced
-        then ["background-color" => "#EF597B"]
-        else ["background-color" => "#1F5C9A"] ) -- "#1F9A6D"
+        then ["background-color" :> "#EF597B"]
+        else ["background-color" :> "#1F5C9A"] ) -- "#1F9A6D"
       ++
       ( if Just nodeId == selMain
-          then ["border" => "solid", "border-color" => "black"]
-          else ["border" => "none"] )
+          then ["border" :> "solid", "border-color" :> "black"]
+          else ["border" :> "none"] )
     htmlLeaf =
         [ Html.text node.nodeVal
         -- [ Html.text (sent node.leafPos).orth
@@ -848,22 +848,22 @@ drawLeaf node selMain selAux focus at mark =
       [ nodeMouseDown focus leafNode
       , Atts.class "noselect"
       , Atts.style <| auxStyle ++
-          [ "cursor" => "pointer"
-          -- , "opacity" => "1.0"
+          [ "cursor" :> "pointer"
+          -- , "opacity" :> "1.0"
 
-          , "width" => px width
-          , "height" => px height
-          , "border-radius" => "40%" -- "4px"
-          , "position" => "absolute"
-          -- , "left" => px (at.x - nodeWidth // 2)
-          -- , "top" => px (at.y - nodeHeight // 2)
-          , "left" => px (at.x - width // 2)
-          , "top" => px (at.y - height // 2)
+          , "width" :> px width
+          , "height" :> px height
+          , "border-radius" :> "40%" -- "4px"
+          , "position" :> "absolute"
+          -- , "left" :> px (at.x - nodeWidth // 2)
+          -- , "top" :> px (at.y - nodeHeight // 2)
+          , "left" :> px (at.x - width // 2)
+          , "top" :> px (at.y - height // 2)
 
-          , "color" => "white"
-          , "display" => "flex"
-          , "align-items" => "center"
-          , "justify-content" => "center"
+          , "color" :> "white"
+          , "display" :> "flex"
+          , "align-items" :> "center"
+          , "justify-content" :> "center"
           ]
       ]
       [Html.p [] htmlLeaf]
@@ -883,7 +883,8 @@ drawLeaf node selMain selAux focus at mark =
 viewSideWindow : M.Focus -> M.Model -> List (Html.Html Msg)
 viewSideWindow focus model =
     let
-        theSide = (M.selectWin focus model).side
+        -- theSide = (M.selectWin focus model).side
+        theSide = (Lens.get (M.workspaceLens focus) model).side
         context = viewSideContext (theSide == M.SideContext) focus model
         edit = viewSideEdit (theSide == M.SideEdit) focus model
         log = viewSideLog (theSide == M.SideLog) focus model
@@ -902,26 +903,26 @@ viewSideDiv visible win model children =
     dim = model.dim
     div = Html.div
       [ Atts.style
-        [ "position" => "absolute"
-        -- , "width" => (toString Cfg.sideSpace ++ "%")
-        , "width" => (toString (100 - dim.widthProp) ++ "%")
-        -- , "height" => "50%"
-        , "height" => case win of
+        [ "position" :> "absolute"
+        -- , "width" :> (toString Cfg.sideSpace ++ "%")
+        , "width" :> (toString (100 - dim.widthProp) ++ "%")
+        -- , "height" :> "50%"
+        , "height" :> case win of
             M.Top -> toString dim.heightProp ++ "%"
             M.Bot -> toString (100 - dim.heightProp) ++ "%"
-        , "right" => "0"
+        , "right" :> "0"
         , case win of
-            M.Top -> "top" => "0"
-            M.Bot -> "bottom" => "0"
-        , "overflow" => "auto"
+            M.Top -> "top" :> "0"
+            M.Bot -> "bottom" :> "0"
+        , "overflow" :> "auto"
         -- make the (focus-related) outline invisible
-        , "outline" => "0"
+        , "outline" :> "0"
         -- z-index important because of its interactions with popup windows;
         -- note that it creates a "stacking context" for all the children HTML
         -- elements
         -- (https://philipwalton.com/articles/what-no-one-told-you-about-z-index/)
-        , "z-index" => "-1"
-        , "display" => if visible then "block" else "none"
+        , "z-index" :> "-1"
+        , "display" :> if visible then "block" else "none"
         ]
       -- @tabindex required to make the div propagate the keyboard events
       -- (see the `view` function)
@@ -947,7 +948,7 @@ viewSideMenu focus model =
       M.Top -> 0
       M.Bot -> topHeight
 
-    sideWin = (M.selectWin focus model).side
+    sideWin = (Lens.get (M.workspaceLens focus) model).side
     menuElem onClick selected txt = Html.span
       [ Atts.class "noselect"
       , Events.onClick onClick
@@ -955,13 +956,13 @@ viewSideMenu focus model =
 --       -- (see the `view` function)
 --       , Atts.attribute "tabindex" "1"
       , Atts.style <|
-        [ "cursor" => "pointer"
+        [ "cursor" :> "pointer"
         -- NOTE: inline-block hidden because we want the side menu to be
         -- relatively fixed:
-        -- , "display" => "inline-block"
-        , "margin" => px 5
+        -- , "display" :> "inline-block"
+        , "margin" :> px 5
         ] ++ if selected
-             then ["font-weight" => "bold"]
+             then ["font-weight" :> "bold"]
              else []
       ]
       -- [ Html.text txt ]
@@ -971,14 +972,14 @@ viewSideMenu focus model =
 
     Html.div
       [ Atts.style
-          [ "position" => "fixed"
-          , "background-color" => "white" -- "#eee"
-          -- , "width" => "100%" -- <- hids the scrollbar! hence opacity
-          , "opacity" => "0.9"
-          -- , "z-index" => "1"
-          , "top" => px pos
+          [ "position" :> "fixed"
+          , "background-color" :> "white" -- "#eee"
+          -- , "width" :> "100%" -- <- hids the scrollbar! hence opacity
+          , "opacity" :> "0.9"
+          -- , "z-index" :> "1"
+          , "top" :> px pos
           -- make the (focus-related) outline invisible
-          , "outline" => "0" ]
+          , "outline" :> "0" ]
       -- @tabindex required to make the div propagate the keyboard events
       -- (see the `view` function)
       , Atts.attribute "tabindex" "1"
@@ -992,9 +993,10 @@ viewSideMenu focus model =
 viewSideEditLabel : M.Focus -> M.Model -> Html.Html Msg
 viewSideEditLabel win model =
   let
-    selected = case win of
-      M.Top -> model.top.selMain
-      M.Bot -> model.bot.selMain
+    selected = (Lens.get (M.windowLens win) model).selMain
+--     selected = case win of
+--       M.Top -> model.top.selMain
+--       M.Bot -> model.bot.selMain
     (condAtts, event) = case selected of
       Just nodeId ->
         ( [Atts.value (M.getLabel nodeId win model)]
@@ -1204,9 +1206,10 @@ viewSideEdit : Bool -> M.Focus -> M.Model -> Html.Html Msg
 viewSideEdit visible win model =
   let
 
-    selected = case win of
-      M.Top -> model.top.selMain
-      M.Bot -> model.bot.selMain
+    selected = (Lens.get (M.windowLens win) model).selMain
+--     selected = case win of
+--       M.Top -> model.top.selMain
+--       M.Bot -> model.bot.selMain
 
     divMain = case selected of
       Nothing -> []
@@ -1244,10 +1247,10 @@ viewSideEdit visible win model =
 
     div = Html.div
       [ Atts.style
-        [ "position" => "absolute"
-        -- , "width" => "50%"
-        , "top" => px Cfg.sideMenuHeight
-        , "margin" => px 5
+        [ "position" :> "absolute"
+        -- , "width" :> "50%"
+        , "top" :> px Cfg.sideMenuHeight
+        , "margin" :> px 5
         ]
       ]
       (divMain ++ divChildren)
@@ -1281,8 +1284,8 @@ viewSideEdit visible win model =
 --     div = viewSideDiv visible foc model
 --       [ Html.ul
 --           [Atts.style
---              [ "position" => "absolute"
---              , "top" => px Cfg.sideMenuHeight
+--              [ "position" :> "absolute"
+--              , "top" :> px Cfg.sideMenuHeight
 --              ]
 --           ]
 -- --           (List.map
@@ -1292,7 +1295,7 @@ viewSideEdit visible win model =
 --           (List.concat <| List.map viewTurn model.file.turns)
 -- --       , Html.p
 -- --           [ Atts.id <| Cfg.selectSentName True
--- --           , Atts.style ["position" => "absolute", "bottom" => px 0] ]
+-- --           , Atts.style ["position" :> "absolute", "bottom" => px 0] ]
 -- --           [Html.text "test text"]
 --       ]
 --   in
@@ -1310,7 +1313,7 @@ viewSideEdit visible win model =
 -- viewSent foc isSelected treeId sent spks who =
 --   let
 --     paraAtts = if isSelected
---       then [ Atts.style ["font-weight" => "bold"] ]
+--       then [ Atts.style ["font-weight" :> "bold"] ]
 --       else []
 --     liAtts = if isSelected
 --       then [ Atts.id <| Cfg.selectSentName <|
@@ -1328,7 +1331,7 @@ viewSideEdit visible win model =
 --                 Just x -> x
 --                 Nothing -> "?"
 --     para = Html.p
---       -- [Atts.style ["font-weight" => "bold"]]
+--       -- [Atts.style ["font-weight" :> "bold"]]
 --       paraAtts
 --       -- [Html.text <| toString treeId ++ "." ++ spk ++ ": " ++ sent]
 --       [Html.text <| spk ++ ": " ++ sent]
@@ -1336,7 +1339,7 @@ viewSideEdit visible win model =
 --       Html.div
 --         [ Atts.class "noselect"
 --         , Events.onClick (SelectTree foc treeId)
---         , Atts.style ["cursor" => "pointer"]
+--         , Atts.style ["cursor" :> "pointer"]
 --         ]
 --         [para]
 --   in
@@ -1368,7 +1371,7 @@ viewSideContext visible foc model =
     viewSpkHead spk =
         let color = backColor foc model in
         Html.th
-            [Atts.style ["border-bottom" => ("2px solid " ++ color)]]
+            [Atts.style ["border-bottom" :> ("2px solid " ++ color)]]
             [Html.text spk]
 
     viewTurnAlt : D.Dict String C.TreeId -> Html.Html Msg
@@ -1390,9 +1393,9 @@ viewSideContext visible foc model =
     divAlt = viewSideDiv visible foc model
       [ Html.table
           [Atts.style
-             [ "position" => "absolute"
-             , "top" => px Cfg.sideMenuHeight
-             , "border-collapse" => "collapse"
+             [ "position" :> "absolute"
+             , "top" :> px Cfg.sideMenuHeight
+             , "border-collapse" :> "collapse"
                -- ^ so that bottom border is continuous
              ]
           ] <|
@@ -1450,7 +1453,7 @@ viewSentAlt foc treeId spk model =
     partSelected = M.getReprId foc (M.selectWin foc model).tree model
     isSelected = partId == partSelected
     paraAtts = if isSelected
-      then [ Atts.style ["font-weight" => "bold"] ]
+      then [ Atts.style ["font-weight" :> "bold"] ]
       else []
     divAtts = if isSelected
       then [ Atts.id <| Cfg.selectSentName <|
@@ -1471,9 +1474,9 @@ viewSentAlt foc treeId spk model =
         [ Atts.class "noselect"
         , Events.onClick (SelectTree foc partId)
         , Atts.style
-            [ "cursor" => "pointer"
+            [ "cursor" :> "pointer"
             -- make the (focus-related) outline invisible
-            , "outline" => "0" ]
+            , "outline" :> "0" ]
         -- @tabindex required to make the div propagate the keyboard events
         -- (see the `view` function)
         , Atts.attribute "tabindex" "1"
@@ -1495,7 +1498,7 @@ viewToken focus partId isVisible tokID tok =
     let
         orth = (if tok.afterSpace then " " else "") ++ tok.orth
         color = if isVisible then "black" else "grey"
-        styleAtts = [Atts.style ["cursor" => "pointer", "color" => color]]
+        styleAtts = [Atts.style ["cursor" :> "pointer", "color" :> color]]
         eventAtts =
             [ Events.onClick (SelectToken focus partId tokID)
             ]
@@ -1517,7 +1520,7 @@ viewToken focus partId isVisible tokID tok =
 -- viewSent foc isSelected treeId sent spks who =
 --   let
 --     paraAtts = if isSelected
---       then [ Atts.style ["font-weight" => "bold"] ]
+--       then [ Atts.style ["font-weight" :> "bold"] ]
 --       else []
 --     liAtts = if isSelected
 --       then [ Atts.id <| Cfg.selectSentName <|
@@ -1541,7 +1544,7 @@ viewToken focus partId isVisible tokID tok =
 --       Html.div
 --         [ Atts.class "noselect"
 --         , Events.onClick (SelectTree foc treeId)
---         , Atts.style ["cursor" => "pointer"]
+--         , Atts.style ["cursor" :> "pointer"]
 --         ]
 --         [para]
 --   in
@@ -1561,8 +1564,8 @@ viewSideLog visible foc model =
     div = viewSideDiv visible foc model
       [ Html.ul
           [Atts.style
-             [ "position" => "absolute"
-             , "top" => px Cfg.sideMenuHeight ]
+             [ "position" :> "absolute"
+             , "top" :> px Cfg.sideMenuHeight ]
           ]
           (List.map
              (\msg -> viewMessage foc msg)
@@ -1598,12 +1601,22 @@ viewLinks
     : M.Model
     -> List (Html.Html Msg)
 viewLinks model =
-    case model.cmpFile of
-        Just _  -> []
-        Nothing ->
-            L.concatMap
-                (viewLink model)
-                (D.toList model.mainFile.linkSet)
+    let
+        fileTop = Lens.get (M.top => M.fileId) model
+        fileBot = Lens.get (M.bot => M.fileId) model
+        linkSet = Lens.get (M.fileLens M.Top => M.linkSet) model
+    in
+        if fileTop == fileBot
+        then L.concatMap
+            (viewLink model)
+            (D.toList linkSet)
+        else []
+--     case model.cmpFile of
+--         Just _  -> []
+--         Nothing ->
+--             L.concatMap
+--                 (viewLink model)
+--                 (D.toList model.mainFile.linkSet)
 
 
 -- | View the link only if not in the adjudication mode.
@@ -1612,22 +1625,27 @@ viewLink
   -> (M.Link, M.LinkData)
   -> List (Html.Html Msg)
 viewLink model link =
-    case model.cmpFile of
-        Nothing -> viewLink_ model link
-        Just _ -> []
+    let
+        fileTop = Lens.get (M.top => M.fileId) model
+        fileBot = Lens.get (M.bot => M.fileId) model
+    in
+        if fileTop == fileBot
+        then viewLink_ model link
+        else []
 
 
 -- | Internal view link, which does not check that we are not in the
 -- adjudication mode.
 viewLink_
    : M.Model
-  -- -> (C.Addr, C.Addr)
   -> (M.Link, M.LinkData)
   -> List (Html.Html Msg)
 viewLink_ model ((from, to), linkData) =
   let
-    top = model.top
-    bot = model.bot
+    -- top = model.top
+    top = Lens.get (M.windowLens M.Top) model
+    -- bot = model.bot
+    bot = Lens.get (M.windowLens M.Bot) model
     dim = model.dim
 
     -- mainWidth = (dim.width * (100 - Cfg.sideSpace)) // 100
@@ -1688,25 +1706,25 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
     nodePos1 nodeId pos tree = nodePos nodeId
       <| positionTree pos
       <| R.withWidth stdWidth Cfg.stdMargin tree
-    posIn addr win shift = Maybe.andThen shift <| nodePos1
+    posIn addr foc win shift = Maybe.andThen shift <| nodePos1
       (second addr)
-      (M.getPosition win)
-      (M.getTree M.Top (M.getReprId M.Top win.tree model) model)
+      (M.getPosition foc model)
+      (M.getTree foc (M.getReprId foc win.tree model) model)
 
     fromPos =
       if first from == M.getReprId M.Top top.tree model
-      then posIn from top shiftTop
-      else posIn from bot shiftBot
+      then posIn from M.Top top shiftTop
+      else posIn from M.Bot bot shiftBot
     toPos = -- posIn to bot shiftBot
       if first to == M.getReprId M.Top bot.tree model
-      then posIn to bot shiftBot
-      else posIn to top shiftTop
+      then posIn to M.Bot bot shiftBot
+      else posIn to M.Top top shiftTop
     signPos = case signalMay of
       Nothing -> Nothing
       Just addr ->
         if first addr == M.getReprId M.Top bot.tree model
-        then posIn addr bot shiftBot
-        else posIn addr top shiftTop
+        then posIn addr M.Bot bot shiftBot
+        else posIn addr M.Top top shiftTop
 
     lineCfg = { defLineCfg
       | strokeDasharray = Just Cfg.linkDasharray
@@ -1797,14 +1815,14 @@ drawCircle cfg at = Html.div [circleStyle cfg at] []
 
 circleStyle : CircleCfg -> Position -> Html.Attribute msg
 circleStyle cfg at = Atts.style
-  [ "background-color" => cfg.color
-  , "opacity" => cfg.opacity
-  , "width" => px cfg.width
-  , "height" => px cfg.height
-  , "border-radius" => "50%"
-  , "position" => "absolute"
-  , "left" => px (at.x - cfg.width // 2)
-  , "top" => px (at.y - cfg.height // 2)
+  [ "background-color" :> cfg.color
+  , "opacity" :> cfg.opacity
+  , "width" :> px cfg.width
+  , "height" :> px cfg.height
+  , "border-radius" :> "50%"
+  , "position" :> "absolute"
+  , "left" :> px (at.x - cfg.width // 2)
+  , "top" :> px (at.y - cfg.height // 2)
   ]
 
 
@@ -1866,11 +1884,11 @@ viewLine cfg beg end =
   in
     Html.div
       [ Atts.style
-          [ "position" => "absolute"
-          , "left" => px (min beg.x end.x)
-          , "top" => px (min beg.y end.y)
-          , "pointer-events" => "none"
-          , "z-index" => toString cfg.zindex
+          [ "position" :> "absolute"
+          , "left" :> px (min beg.x end.x)
+          , "top" :> px (min beg.y end.y)
+          , "pointer-events" :> "none"
+          , "z-index" :> toString cfg.zindex
           ]
       ]
       [svg]
@@ -2296,8 +2314,8 @@ trimBeg trim v = inverse <| trimEnd trim <| inverse v
 ---------------------------------------------------
 
 
-(=>) : a -> b -> (a, b)
-(=>) = (,)
+(:>) : a -> b -> (a, b)
+(:>) = (,)
 
 
 px : Int -> String
@@ -2458,7 +2476,7 @@ inputTimexGen model focus setAttr label value attr =
                 in
                     [ Html.span
                           [ Atts.class "noselect"
-                          , Atts.style ["cursor" => "pointer"]
+                          , Atts.style ["cursor" :> "pointer"]
                           , Atts.title "Goto"
                           , Events.onClick <|
                               Many
@@ -2467,7 +2485,7 @@ inputTimexGen model focus setAttr label value attr =
                           ]
                           [ Html.text string ]
                     , Html.button
-                          [ Atts.style ["margin-left" => px 5]
+                          [ Atts.style ["margin-left" :> px 5]
                           , Events.onClick remMsg]
                           [ Html.text "Remove" ]
                     ]
