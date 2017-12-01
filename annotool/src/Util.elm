@@ -1,6 +1,6 @@
 module Util exposing
     ( split, splitAt, catMaybes, find, at, unless, mappend, guard, check, and
-    , mapAccumL, average, single, px, isJust, unions
+    , intercalate, mapAccumL, average, single, px, isJust, unions
     -- * JSON
     , encodeMaybe
     )
@@ -76,6 +76,13 @@ mapAccumL f acc xs =
         (acc2, ys) = mapAccumL f acc1 tl
       in
         (acc2, y :: ys)
+
+
+intercalate : a -> List a -> List a
+intercalate p xs =
+    case xs of
+        x :: y :: rest -> x :: p :: intercalate p (y :: rest)
+        _ -> xs
 
 
 unions : List (S.Set comparable) -> S.Set comparable

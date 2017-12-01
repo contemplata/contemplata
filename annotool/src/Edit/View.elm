@@ -192,25 +192,39 @@ viewBottomLine win model =
 viewTreeId : M.Focus -> M.Model -> Html.Html Msg
 viewTreeId win model =
   let
+    currentFileId = M.getFileId win model
+    allFileIds = L.map Tuple.first model.fileList
+
     txt0 = toString (M.treePos win model)
       ++ "/"
       ++ toString (M.treeNum win model)
-    txt1 = "(" ++ C.encodeFileId (M.getFileId win model) ++ ")"
+
+    fileIDs = bracket "(" ")" <|
+      Util.intercalate (Html.text " ")
+      (L.map mkID allFileIds)
+    mkID fid =
+      if fid == currentFileId
+      then Html.text (C.encodeFileId fid)
+      else Html.span
+          [ Atts.style ["color" :> "gray", "cursor" :> "pointer"]
+          , Atts.title "Click to swap the file"
+          , Events.onClick (SwapFileTo fid) ]
+          [ Html.text (C.encodeFileId fid) ]
+    bracket x y xs = Html.text x :: xs ++ [Html.text y]
+
     txt2 =
       if model.ctrl
-      then "CTRL"
+      then " CTRL"
       else ""
+
     span = Html.span []
       [ Html.text (txt0 ++ " ")
-      , Html.span
-          [ Events.onClick SwapFile
-          , Atts.style ["cursor" :> "pointer"]
-          , Atts.title "Click to swap the file (if other files are available)"
-          ]
-          [ Html.text txt1 ]
-      , Html.text (" " ++ txt2)
+      , Html.span [] fileIDs
+      , Html.text txt2
       ]
+
   in
+
     Html.div bottomStyle [span]
 
 
@@ -670,6 +684,23 @@ viewMenu model = -- fileName =
         [ MkEvent, MkSignal, MkTimex
         ]
 
+    levelElem level = Html.div
+        [ Events.onClick (ChangeAnnoLevelTo level)
+        , Atts.style Cmd.menuItemStyle
+        , Atts.title <| "Switch to the " ++ toString level ++ " annotation level" ]
+        [ if model.annoLevel == level
+          then Html.text (toString level)
+          else Html.span [Atts.style ["color" :> "gray"]] [Html.text (toString level)]
+        ]
+    levelPart = Html.span [] <|
+        -- Util.intercalate (Html.text " ")
+        [ Html.text "|"
+        , levelElem M.Segmentation
+        , levelElem M.Syntax
+        , levelElem M.Temporal
+        , Html.text "|"
+        ]
+
   in
 
     Html.div
@@ -695,10 +726,11 @@ viewMenu model = -- fileName =
               SaveFile
               (Just "Save the entire current file")
               (plainText "Save")
-        , Cmd.mkMenuItem
-              ChangeAnnoLevel
-              (Just "Click to change the annotation level")
-              (plainText <| "| " ++ annoLevel ++ " |")
+        , levelPart
+--         , Cmd.mkMenuItem
+--               ChangeAnnoLevel
+--               (Just "Click to change the annotation level")
+--               (plainText <| "| " ++ annoLevel ++ " |")
         ] ++
         ( if model.annoLevel == M.Temporal
           then temporalCommands

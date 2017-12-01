@@ -72,7 +72,7 @@ module Edit.Model exposing
   , getFileId
   -- Various:
   , setTreeCheck, setForestCheck, setSentCheck, getWords, subTreeAt, nodesIn
-  , swapFile
+  , swapFile, moveToFirst
   -- JSON decoding:
   , treeMapDecoder, fileDecoder, treeDecoder, sentDecoder, nodeDecoder
   -- JSON encoding:

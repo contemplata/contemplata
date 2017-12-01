@@ -445,6 +445,8 @@ update msg model =
             ( {model | popup = Nothing}
             , Task.attempt (\_ -> dummy) (Dom.focus target) )
 
+    ChangeAnnoLevelTo newLevel -> idle <|
+        {model | annoLevel = newLevel}
     ChangeAnnoLevel -> idle <|
         let
             newLevel =
@@ -466,6 +468,7 @@ update msg model =
             }
 
     SwapFile -> idle <| M.swapFile model.focus model
+    SwapFileTo fid -> idle <| M.moveToFirst model.focus fid model
 
     Dummy -> idle <|
         let focus = model.focus
