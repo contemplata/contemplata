@@ -90,9 +90,9 @@ instance JSON.ToJSON a => JSON.ToJSON (ParseReq a) where
 
 -- | Request coming from the client.
 data Request
-  = GetFiles AnnoName
-  | GetFile AnnoName FileId
-  | GetFile2 AnnoName FileId FileId
+  -- = GetFiles AnnoName
+  = GetFile AnnoName FileId
+  | GetFiles AnnoName [FileId]
   | SaveFile AnnoName FileId File
   | ParseSent FileId TreeId ParserTyp
     [(Bool, [(Token, Maybe Stanford.Orth)])]
@@ -131,7 +131,7 @@ data Answer
     -- ^ The list of files
   | NewFile FileId File
     -- ^ New file to edit
-  | NewFile2 FileId File FileId File
+  | NewFiles [(FileId, File)]
     -- ^ New files to adjudicate
   | ParseResult
     FileId
@@ -160,12 +160,13 @@ instance JSON.ToJSON Answer where
       [ "tag" .= ("NewFile" :: T.Text)
       , "fileId" .= fileId
       , "file" .= file ]
-    NewFile2 fileId file compId comp -> JSON.object
-      [ "tag" .= ("NewFile2" :: T.Text)
-      , "fileId" .= fileId
-      , "file" .= file
-      , "compId" .= compId
-      , "comp" .= comp ]
+    NewFiles fileList -> JSON.object
+      [ "tag" .= ("NewFiles" :: T.Text)
+      , "files" .= JSON.toJSON (map encodePair fileList) ]
+      where
+        encodePair (fileId, file) = JSON.object
+          [ "fileId" .= fileId
+          , "file" .= file ]
     ParseResult fileId treeId sentMay tree -> JSON.object
       [ "fileId" .= fileId
       , "treeId" .= treeId
@@ -253,19 +254,19 @@ talk conn state snapCfg = forever $ do
         T.putStrLn msg
         WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
+--       Right (GetFiles anno) -> do
+--         DB.runDBT db (DB.fileSetFor anno $ const True) >>= \case
+--         -- DB.runDBT db DB.fileSet >>= \case
+--           Left err -> do
+--             let msg = T.concat ["GetFiles error: ", err]
+--             T.putStrLn msg
+--             WS.sendTextData conn . JSON.encode =<< mkNotif msg
+--           Right fs -> do
+--             let ret = Files (S.toList fs)
+--             WS.sendTextData conn (JSON.encode ret)
+
       -- TODO: What's the point of sending the annotator name? This should be
       -- immediately accessible at the server side!
-      Right (GetFiles anno) -> do
-        DB.runDBT db (DB.fileSetFor anno $ const True) >>= \case
-        -- DB.runDBT db DB.fileSet >>= \case
-          Left err -> do
-            let msg = T.concat ["GetFiles error: ", err]
-            T.putStrLn msg
-            WS.sendTextData conn . JSON.encode =<< mkNotif msg
-          Right fs -> do
-            let ret = Files (S.toList fs)
-            WS.sendTextData conn (JSON.encode ret)
-
       Right (GetFile anno fileId) -> do
         let getFile = do
               Just _ <- DB.accessLevel fileId anno
@@ -279,19 +280,21 @@ talk conn state snapCfg = forever $ do
             let ret = NewFile fileId file
             WS.sendTextData conn (JSON.encode ret)
 
-      Right (GetFile2 anno fileId compId) -> do
-        -- putStrLn $ "Running GetFile2 for " ++ show (fileId, compId)
+      Right (GetFiles anno fileList) -> do
         let getFile fid = do
               Just _ <- DB.accessLevel fid anno
-              DB.loadFile fid
-            getBoth = (,) <$> getFile fileId <*> getFile compId
-        DB.runDBT db getBoth >>= \case
+              file <- DB.loadFile fid
+              return (fid, file)
+            -- getBoth = (,) <$> getFile fileId <*> getFile compId
+            getAll = mapM getFile fileList
+        DB.runDBT db getAll >>= \case
           Left err -> do
             let msg = T.concat ["GetFile2 error: ", err]
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
-          Right (file1, file2) -> do
-            let ret = NewFile2 fileId file1 compId file2
+          Right fileList -> do
+            -- let ret = NewFiles [(fileId, file1), (compId, file2)]
+            let ret = NewFiles fileList
             WS.sendTextData conn (JSON.encode ret)
 
       Right (SaveFile anno fileId file) -> do

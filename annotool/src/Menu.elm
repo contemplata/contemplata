@@ -145,7 +145,7 @@ mkMenu2 config fileIdMay compIdMay =
         case (fileIdMay, compIdMay) of
             (Just fileId, Just compId) ->
                 Server.sendWS config
-                    (Server.GetFile2 config.user fileId compId)
+                    (Server.GetFiles config.user [fileId, compId])
             _ -> Cmd.none
   in
     (model, init)

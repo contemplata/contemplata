@@ -52,12 +52,12 @@ encodeParseReq encA parseReq =
 
 
 type Request
-  = GetFiles C.AnnoName
+  -- = GetFiles C.AnnoName
     -- ^ Obtain the list of files for a given annotator
-  | GetFile C.AnnoName C.FileId
+  = GetFile C.AnnoName C.FileId
     -- ^ Request the contents of the given file
-  | GetFile2 C.AnnoName C.FileId C.FileId
-    -- ^ Request two files for adjudication
+  | GetFiles C.AnnoName (List C.FileId)
+    -- ^ Request several files for annotation
   | SaveFile C.AnnoName C.FileId M.File
     -- ^ Request the contents of the given file
   | Break C.FileId C.PartId (List String)
@@ -90,11 +90,10 @@ encodeReq = Encode.encode 0 << encodeReqToVal
 
 encodeReqToVal : Request -> Encode.Value
 encodeReqToVal req = case req of
-  -- GetFiles -> Encode.string "getfiles"
-  GetFiles annoName -> Encode.object
-    [ ("tag", Encode.string "GetFiles")
-    , ("contents", Encode.string annoName)
-    ]
+--   GetFiles annoName -> Encode.object
+--     [ ("tag", Encode.string "GetFiles")
+--     , ("contents", Encode.string annoName)
+--     ]
   GetFile annoName id -> Encode.object
     [ ("tag", Encode.string "GetFile")
     -- , ("contents", Encode.string id)
@@ -103,12 +102,13 @@ encodeReqToVal req = case req of
          , C.encodeFileIdJSON id ]
       )
     ]
-  GetFile2 annoName id1 id2 -> Encode.object
-    [ ("tag", Encode.string "GetFile2")
+  GetFiles annoName ids -> Encode.object
+    [ ("tag", Encode.string "GetFiles")
     , ("contents", Encode.list
          [ Encode.string annoName
-         , C.encodeFileIdJSON id1
-         , C.encodeFileIdJSON id2 ]
+         , Encode.list (List.map C.encodeFileIdJSON ids) ]
+--          , C.encodeFileIdJSON id1
+--          , C.encodeFileIdJSON id2 ]
       )
     ]
   SaveFile annoName fileId file -> Encode.object

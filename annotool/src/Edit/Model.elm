@@ -64,7 +64,7 @@ module Edit.Model exposing
   , changeSplit, performSplit
   -- -- , changeTypeSel
   -- Lenses:
-  , top, bot, dim, winLens, drag, side, pos, height, widthProp, heightProp
+  , top, bot, dim, drag, side, pos, height, widthProp, heightProp
   , nodeId, nodeVal, treeMap, sentMap, partMap, reprMap, trees, fileLens
   , workspaceLens, windowLens, fileId, selMain, linkSet
   -- Pseudo-lenses:
@@ -411,8 +411,7 @@ type HistAtom
   = TreeModif -- ^ Modified a tree
     { treeId : PartId
       -- ^ To which tree ID does it refer
-    , window : Focus
-      -- ^ In which window (important if comparison mode is on)
+    , fileId : FileId
     , restoreTree : Maybe (R.Tree Node)
       -- ^ The tree to restore (or remove, if `Nothing`)
     }
@@ -421,30 +420,26 @@ type HistAtom
       -- ^ The links to add
     , delLinkSet : D.Dict Link LinkData
       -- ^ The links to remove
-    , window : Focus
-      -- ^ In which window (important if comparison mode is on)
+    , fileId : FileId
     }
   | PartModif -- ^ Modified a partition
     { treeId : PartId
       -- ^ To which partition ID does it refer
-    , window : Focus
-      -- ^ In which window (important if comparison mode is on)
+    , fileId : FileId
     , restorePart : Maybe (S.Set TreeIdBare)
       -- ^ The partition to restore (or remove, if `Nothing`)
     }
   | ReprModif -- ^ Modified a partition
     { treeId : TreeIdBare
       -- ^ To which tree ID does it refer
-    , window : Focus
-      -- ^ In which window (important if comparison mode is on)
+    , fileId : FileId
     , restoreRepr : TreeIdBare
       -- ^ The representative to restore
     }
   | SentModif -- ^ Modified a sentence
     { treeId : TreeIdBare
       -- ^ To which tree ID does it refer
-    , window : Focus
-      -- ^ In which window (important if comparison mode is on)
+    , fileId : FileId
     , restoreSent : Sent
       -- ^ The sentel to restore
     }
@@ -481,47 +476,47 @@ applyAtom histAtom model =
   case histAtom of
     TreeModif r ->
       let
-        oldTree = getTreeMay r.window r.treeId model
-        tmpModel = setTree_ r.window r.treeId r.restoreTree model
-        newModel = focusOnTree r.window r.treeId tmpModel
+        oldTree = getTreeMayAlt r.fileId r.treeId model
+        tmpModel = setTreeAlt_ r.fileId r.treeId r.restoreTree model
+        newModel = focusOnTree model.focus r.fileId r.treeId tmpModel
         newAtom = TreeModif {r | restoreTree = oldTree}
       in
         (newModel, newAtom)
     LinkModif r ->
       let
-        lens = fileLens r.window => linkSet
+        lens = fileLensAlt r.fileId => linkSet
         newLinks = D.union r.addLinkSet <| D.diff (Lens.get lens model) r.delLinkSet
         newModel = Lens.set lens newLinks model
         newAtom = LinkModif
                   { addLinkSet = r.delLinkSet
                   , delLinkSet = r.addLinkSet
-                  , window = r.window }
+                  , fileId = r.fileId }
       in
         (newModel, newAtom)
     PartModif r ->
       let
-        oldPart = getPart r.window r.treeId model
+        oldPart = getPartAlt r.fileId r.treeId model
         -- NOTE: we could simply use `setPart`, but we need to return a `newAtom`...
-        tmpModel = setPart_ r.window r.treeId r.restorePart model
-        newModel = focusOnTree r.window r.treeId tmpModel
+        tmpModel = setPartAlt_ r.fileId r.treeId r.restorePart model
+        newModel = focusOnTree model.focus r.fileId r.treeId tmpModel
         newAtom = PartModif {r | restorePart = oldPart}
       in
         (newModel, newAtom)
     ReprModif r ->
       let
-        oldRepr = getRepr r.window r.treeId model
+        oldRepr = getReprAlt r.fileId r.treeId model
         tmpModel = Lens.update
-                   (fileLens r.window => reprMap)
+                   (fileLensAlt r.fileId => reprMap)
                    (D.insert r.treeId r.restoreRepr) model
-        newModel = focusOnTree r.window r.treeId tmpModel
+        newModel = focusOnTree model.focus r.fileId r.treeId tmpModel
         newAtom = ReprModif {r | restoreRepr = oldRepr}
       in
         (newModel, newAtom)
     SentModif r ->
       let
-        oldSent = getSent_ r.window r.treeId model
+        oldSent = getSentAlt_ r.fileId r.treeId model
         newModel = Lens.update
-                   (fileLens r.window => sentMap)
+                   (fileLensAlt r.fileId => sentMap)
                    (D.insert r.treeId r.restoreSent) model
         newAtom = SentModif {r | restoreSent = oldSent}
       in
@@ -529,23 +524,43 @@ applyAtom histAtom model =
 
 
 -- | Focus on the given tree if needed.
-focusOnTree : Focus -> PartId -> Model -> Model
-focusOnTree focus treeId model =
+focusOnTree : Focus -> FileId -> PartId -> Model -> Model
+focusOnTree focus fileId treeId model =
     let
         topTree = Lens.get (windowLens Top => tree) model
         botTree = Lens.get (windowLens Bot => tree) model
     in
         case focus of
             Top ->
-                -- if getReprId focus model.top.tree model == treeId
-                if getReprId focus topTree model == treeId
+                if getReprId focus topTree model == treeId &&
+                   getFileId focus model == fileId
                 then model
-                else moveCursorTo focus treeId model
+                else moveTo focus fileId treeId model
             Bot ->
-                -- if getReprId focus model.bot.tree model == treeId
-                if getReprId focus botTree model == treeId
+                if getReprId focus botTree model == treeId &&
+                   getFileId focus model == fileId
                 then model
-                else moveCursorTo focus treeId model
+                else moveTo focus fileId treeId model
+
+
+-- -- | Focus on the given tree if needed.
+-- focusOnTree : Focus -> PartId -> Model -> Model
+-- focusOnTree focus treeId model =
+--     let
+--         topTree = Lens.get (windowLens Top => tree) model
+--         botTree = Lens.get (windowLens Bot => tree) model
+--     in
+--         case focus of
+--             Top ->
+--                 -- if getReprId focus model.top.tree model == treeId
+--                 if getReprId focus topTree model == treeId
+--                 then model
+--                 else moveCursorTo focus treeId model
+--             Bot ->
+--                 -- if getReprId focus model.bot.tree model == treeId
+--                 if getReprId focus botTree model == treeId
+--                 then model
+--                 else moveCursorTo focus treeId model
 
 
 -- | Apply a given history element.
@@ -641,7 +656,7 @@ setSent_ focus treeId sent model =
                ( SentModif
                  { treeId = treeId
                  , restoreSent = oldSent
-                 , window = focus }
+                 , fileId = getFileId focus model }
                )
 
 
@@ -728,8 +743,9 @@ setTree win treeId newTree model =
   let
 
     -- Calculate the new tree and update the model
-    oldTree = getTreeMay win treeId model
-    newModel = setTree_ win treeId newTree model
+    fileId = getFileId win model
+    oldTree = getTreeMayAlt fileId treeId model
+    newModel = setTreeAlt_ fileId treeId newTree model
 
     -- Delete the corresponding links, if needed. We assume that the new tree
     -- has nothing in common with the previous one, therefore, all previous
@@ -749,7 +765,7 @@ setTree win treeId newTree model =
           ( TreeModif
             { treeId = treeId
             , restoreTree = oldTree
-            , window = win }
+            , fileId = fileId }
           )
 
 
@@ -786,7 +802,7 @@ updateTree win treeId update model =
           ( TreeModif
             { treeId = treeId
             , restoreTree = Just oldTree
-            , window = win }
+            , fileId = getFileId win model }
           )
 
 
@@ -812,12 +828,21 @@ setTree_
     -> Maybe (R.Tree Node)
     -> Model -> Model
 setTree_ win treeId treeMay model =
+    setTreeAlt_ (getFileId win model) treeId treeMay model
+
+
+-- | A version of `setTree_`.
+setTreeAlt_
+    : FileId -> PartId
+    -> Maybe (R.Tree Node)
+    -> Model -> Model
+setTreeAlt_ fileId treeId treeMay model =
   let
     newTrees treeMap =
         case treeMay of
             Nothing -> D.remove treeId treeMap
             Just tr -> D.insert treeId tr treeMap
-    newModel = Lens.update (fileLens win => treeMap) newTrees model
+    newModel = Lens.update (fileLensAlt fileId => treeMap) newTrees model
   in
     newModel
 
@@ -859,7 +884,7 @@ deleteLinks win delLinks model =
          ( LinkModif
            { addLinkSet = oldLinks
            , delLinkSet = D.empty
-           , window = win }
+           , fileId = getFileId win model }
          )
 
 
@@ -919,14 +944,14 @@ connectHelp {nodeFrom, nodeTo, focusTo} model =
               , LinkModif
                     { addLinkSet = D.empty
                     , delLinkSet = D.singleton link linkDataDefault
-                    , window = Top }
+                    , fileId = fileFrom }
               )
             Just linkData ->
               ( D.remove link
               , LinkModif
                     { delLinkSet = D.empty
                     , addLinkSet = D.singleton link linkData
-                    , window = Top }
+                    , fileId = fileFrom }
               )
   in
       if fileFrom == fileTo
@@ -972,7 +997,7 @@ addSignal link focus signal model =
           , LinkModif
               { delLinkSet = D.singleton link newData
               , addLinkSet = D.singleton link oldData
-              , window = Top }
+              , fileId = fileFrom }
           )
   in
     if fileFrom == fileTo
@@ -1113,7 +1138,13 @@ getTree win treeId model =
 -- a previous removal).
 getTreeMay : Focus -> PartId -> Model -> Maybe (R.Tree Node)
 getTreeMay win treeId model =
-    D.get treeId <| Lens.get (fileLens win => treeMap) model
+    getTreeMayAlt (getFileId win model) treeId model
+
+
+-- | A version of `getTreeMay`.
+getTreeMayAlt : FileId -> PartId -> Model -> Maybe (R.Tree Node)
+getTreeMayAlt fileId treeId model =
+    D.get treeId <| Lens.get (fileLensAlt fileId => treeMap) model
 
 
 -- | Retrieve all selected nodes.
@@ -1206,10 +1237,15 @@ getSentMap win partId model =
 -- | Get the sentence corresponding to the given ID.
 getSent_ : Focus -> TreeIdBare -> Model -> Sent
 getSent_ win treeId model =
-    case D.get treeId (Lens.get (fileLens win) model).sentMap of
-        Nothing -> Debug.crash "Model.getSent_: got Nothing"
-        Just sent -> sent
+    getSentAlt_ (getFileId win model) treeId model
 
+
+-- | Get the sentence corresponding to the given ID.
+getSentAlt_ : FileId -> TreeIdBare -> Model -> Sent
+getSentAlt_ fileId treeId model =
+    case D.get treeId (Lens.get (fileLensAlt fileId) model).sentMap of
+        Nothing -> Debug.crash "Model.getSentAlt_: got Nothing"
+        Just sent -> sent
 
 -- | Get the token on the given position in the given partition.
 getToken : Int -> Focus -> PartId -> Model -> Token
@@ -1367,14 +1403,29 @@ moveCursorTo focus treeId model =
           , selMain = Nothing
           , selAux = S.empty
       }
-    update foc = Lens.update foc alter model
   in
-    case focus of
-      Top -> update (windowLens Top)
-      Bot -> update (windowLens Bot)
---     case focus of
---       Top -> update top
---       Bot -> update bot
+    Lens.update (windowLens focus) alter model
+
+
+-- | Move the given workspace to the given file and tree.
+moveTo : Focus -> FileId -> PartId -> Model -> Model
+moveTo focus fileId treeId model =
+  let
+    alterWin win =
+      { win
+          | tree = TreeId treeId
+          , selMain = Nothing
+          , selAux = S.empty
+      }
+    alterWS ws =
+      { ws
+          | fileId = fileId
+          , drag = Nothing
+      }
+  in
+    Lens.update (windowLens focus) alterWin <|
+    Lens.update (workspaceLens focus) alterWS <|
+    model
 
 
 ---------------------------------------------------
@@ -2431,29 +2482,46 @@ setPart win treeId newPartMay model =
                ( PartModif
                  { treeId = treeId
                  , restorePart = oldPart
-                 , window = win }
+                 , fileId = getFileId win model }
                )
 
 
 -- | Set partition for the given tree ID.
 setPart_ : Focus -> PartId -> Maybe (S.Set TreeIdBare) -> Model -> Model
 setPart_ win treeId newPartMay model =
+    setPartAlt_ (getFileId win model) treeId newPartMay model
+--     let
+--         newPartMap partMap =
+--             case newPartMay of
+--                 Nothing -> D.remove treeId partMap
+--                 Just newPart -> D.insert treeId newPart partMap
+--         newModel = Lens.update (fileLens win => partMap) newPartMap model
+--     in
+--         newModel
+
+
+-- | Set partition for the given tree ID.
+setPartAlt_ : FileId -> PartId -> Maybe (S.Set TreeIdBare) -> Model -> Model
+setPartAlt_ fileId treeId newPartMay model =
     let
         newPartMap partMap =
             case newPartMay of
                 Nothing -> D.remove treeId partMap
                 Just newPart -> D.insert treeId newPart partMap
-        newModel = Lens.update (fileLens win => partMap) newPartMap model
+        newModel = Lens.update (fileLensAlt fileId => partMap) newPartMap model
     in
         newModel
 
 
+getPartAlt : FileId -> PartId -> Model -> Maybe (S.Set TreeIdBare)
+getPartAlt fileId treeId =
+    D.get treeId << Lens.get (fileLensAlt fileId => partMap)
+
+
 getPart : Focus -> PartId -> Model -> Maybe (S.Set TreeIdBare)
-getPart win treeId =
-    D.get treeId << Lens.get (fileLens win => partMap)
---     case (win, model.cmpFile) of
---         (Bot, Just file) -> D.get treeId file.partMap
---         _ -> D.get treeId model.mainFile.partMap
+getPart win treeId model =
+    getPartAlt (getFileId win model) treeId model
+    -- D.get treeId << Lens.get (fileLens win => partMap)
 
 
 -- | Set representative for the given tree ID.
@@ -2468,17 +2536,22 @@ setRepr win treeId newRepr model =
                ( ReprModif
                  { treeId = treeId
                  , restoreRepr = oldRepr
-                 , window = win }
+                 , fileId = getFileId win model }
                )
 
 
 getRepr : Focus -> TreeIdBare -> Model -> TreeIdBare
 getRepr win treeId model =
+    getReprAlt (getFileId win model) treeId model
+
+
+getReprAlt : FileId -> TreeIdBare -> Model -> TreeIdBare
+getReprAlt fileId treeId model =
     let
-        file = Lens.get (fileLens win) model
+        file = Lens.get (fileLensAlt fileId) model
     in
         case D.get treeId file.reprMap of
-            Nothing -> Debug.crash "getRepr: no representative for a given ID"
+            Nothing -> Debug.crash "getReprAlt: no representative for a given ID"
             Just st -> st
 
 
@@ -2955,6 +3028,12 @@ fileId = Lens.create
   (\fn model -> {model | fileId = fn model.fileId})
 
 
+file : Lens.Focus { record | file : a } a
+file = Lens.create
+  .file
+  (\fn model -> {model | file = fn model.file})
+
+
 -- mainFile : Lens.Focus { record | mainFile : a } a
 -- mainFile = Lens.create
 --   .mainFile
@@ -2984,29 +3063,51 @@ fileId = Lens.create
 --         Bot -> cmpFile
 
 
-fileLens : Focus -> Lens.Focus Model File
-fileLens win =
+fileInfoLensAlt : FileId -> Lens.Focus Model FileInfo
+fileInfoLensAlt fid =
     let
-        getFileId model =
-            case win of
-                Top -> model.top.fileId
-                Bot -> model.bot.fileId
         get model =
-            let fid = getFileId model in
             case Util.find (((==) fid) << Tuple.first) model.fileList of
                 Nothing -> Debug.crash "Model.fileLens.get: unknown fileID"
-                Just (_, info) -> info.file
+                Just (_, info) -> info
         update fn model =
             let
-                fid = getFileId model
                 go xs = case xs of
                     [] -> Debug.crash "Model.fileLens.update: unknown fileID"
                     ((fileId, info) :: rest) ->
                         if fileId == fid
-                        then (fileId, {info | file = fn info.file}) :: rest
+                        then (fileId, fn info) :: rest
                         else (fileId, info) :: go rest
             in
                 {model | fileList = go model.fileList}
+    in
+        Lens.create get update
+
+
+fileInfoLens : Focus -> Lens.Focus Model FileInfo
+fileInfoLens win =
+    let
+        get model = Lens.get (fileInfoLensAlt <| getFileId win model) model
+        update fn model =
+            Lens.update (fileInfoLensAlt (getFileId win model)) fn model
+    in
+        Lens.create get update
+
+
+fileLens : Focus -> Lens.Focus Model File
+fileLens win =
+    let
+        get = Lens.get (fileInfoLens win => file)
+        update = Lens.update (fileInfoLens win => file)
+    in
+        Lens.create get update
+
+
+fileLensAlt : FileId -> Lens.Focus Model File
+fileLensAlt fileId =
+    let
+        get = Lens.get (fileInfoLensAlt fileId => file)
+        update = Lens.update (fileInfoLensAlt fileId => file)
     in
         Lens.create get update
 
@@ -3066,18 +3167,34 @@ trees = Lens.create
 
 
 -- | Focus on the window in given focus (well, yes, the names are not
--- perfect...).  TODO: do we still need `winLens`?
+-- perfect...).
 windowLens : Focus -> Lens.Focus Model Window
-windowLens win = Debug.crash "implement winLens"
+windowLens win =
+    let
+        get model =
+            let info = Lens.get (fileInfoLens win) model in
+            case win of
+                Top -> info.top
+                Bot -> info.bot
+        updateInfo fn info =
+            case win of
+                Top -> {info | top = fn info.top}
+                Bot -> {info | bot = fn info.bot}
+        update fn = Lens.update (fileInfoLens win) (updateInfo fn)
+    in
+        Lens.create get update
 
 
--- | Focus on the given workspace.
-workspaceLens : Focus -> Lens.Focus Model Workspace
-workspaceLens win = Debug.crash "implement workspaceLens"
+-- -- | Focus on the given workspace.
+-- workspaceLens : Focus -> Lens.Focus Model Workspace
+-- workspaceLens focus =
+--   case focus of
+--     Top -> top
+--     Bot -> bot
 
 
-winLens : Focus -> Lens.Focus { record | bot : a, top : a } a
-winLens focus =
+workspaceLens : Focus -> Lens.Focus { record | bot : a, top : a } a
+workspaceLens focus =
   case focus of
     Top -> top
     Bot -> bot

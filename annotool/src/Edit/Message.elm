@@ -51,13 +51,13 @@ update msg model =
 
     DragStart focus xy -> idle <|
       Lens.set
-        (M.winLens focus => M.drag)
+        (M.workspaceLens focus => M.drag)
         (Just (M.Drag xy xy))
         model
 
     DragAt xy -> idle <|
       Lens.update
-        (M.winLens (M.dragOn model) => M.drag)
+        (M.workspaceLens (M.dragOn model) => M.drag)
         (Maybe.map (\{start} -> M.Drag start xy))
         model
 
@@ -150,7 +150,7 @@ update msg model =
           M.Bot -> Cfg.editLabelName False
       in
         ( Lens.set
-            (M.winLens model.focus => M.side)
+            (M.workspaceLens model.focus => M.side)
             M.SideEdit
             model
         , Task.attempt
@@ -811,7 +811,7 @@ sideMenu focus sideWindow model =
     let
         newModel =
             Lens.set
-                (M.winLens focus => M.side)
+                (M.workspaceLens focus => M.side)
                 sideWindow
                 model
     in
