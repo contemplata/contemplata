@@ -487,7 +487,24 @@ applyAtom histAtom model =
       let
         lens = fileLensAlt r.fileId => linkSet
         newLinks = D.union r.addLinkSet <| D.diff (Lens.get lens model) r.delLinkSet
-        newModel = Lens.set lens newLinks model
+        chooseTree xs =
+            case xs of
+                [] -> Nothing
+                x :: _ -> Just x
+        topTreeId = chooseTree
+            <| L.map (\((treeId, _), _) -> treeId)
+            <| D.keys r.addLinkSet ++ D.keys r.delLinkSet
+        botTreeId = chooseTree
+            <| L.map (\(_, (treeId, _)) -> treeId)
+            <| D.keys r.addLinkSet ++ D.keys r.delLinkSet
+        maybe f mayArg x =
+            case mayArg of
+                Just arg -> f arg x
+                Nothing  -> x
+        newModel =
+            maybe (focusOnTree Top r.fileId) topTreeId <|
+            maybe (focusOnTree Bot r.fileId) botTreeId <|
+            Lens.set lens newLinks model
         newAtom = LinkModif
                   { addLinkSet = r.delLinkSet
                   , delLinkSet = r.addLinkSet
@@ -1412,19 +1429,19 @@ moveCursorTo focus treeId model =
 moveTo : Focus -> FileId -> PartId -> Model -> Model
 moveTo focus fileId treeId model =
   let
---     alterWin win =
---       { win
---           | tree = TreeId treeId
---           , selMain = Nothing
---           , selAux = S.empty
---       }
+    alterWin win =
+      { win
+          | tree = TreeId treeId
+          , selMain = Nothing
+          , selAux = S.empty
+      }
     alterWS ws =
       { ws
           | fileId = fileId
           , drag = Nothing
       }
   in
-    -- Lens.update (windowLens focus) alterWin <|
+    Lens.update (windowLens focus) alterWin <|
     Lens.update (workspaceLens focus) alterWS model
 
 
