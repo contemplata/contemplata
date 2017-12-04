@@ -66,8 +66,9 @@ routes =
   -- Generic handlers first
   [ ("/ws", wsHandler)
   -- , ("/style.css", FileServe.serveFileAs "text/css" "html/style.css")
-  , ("/annotate/:filename", Anno.annoHandler)
-  , ("/adjudicate/:main/:comp", Anno.adjuHandler)
+  -- , ("/annotate/:filename", Anno.annoHandler)
+  , ("/annotate", Anno.annoHandler)
+  -- , ("/adjudicate/:main/:comp", Anno.adjuHandler)
   , ("/public", publicHandler)
   , ("/login", Login.loginHandler)
   , ("/logout", Login.logoutHandler)

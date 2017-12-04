@@ -12,7 +12,6 @@ module Menu exposing
   -- , Request(..) , Answer (..), answerDecoder, encodeReq
   -- Initialization
   , mkMenu
-  , mkMenu2
   )
 
 
@@ -109,46 +108,47 @@ subscriptions _ = Sub.none
 
 mkMenu
     : Cfg.Config
-    -> Maybe C.FileId
+    -> List C.FileId
     -> (Model, Cmd Msg)
-mkMenu config fileIdMay =
-  let
-    msg = case fileIdMay of
-              Nothing -> "Incorrent file ID"
-              Just id -> "Fetching " ++ C.encodeFileId id
-    model = {config=config, message=msg}
-    init =
-        case fileIdMay of
-            Nothing -> Cmd.none
-            Just fileId ->
-                Server.sendWS config (Server.GetFile config.user fileId)
-  in
-    (model, init)
-
-
--- | For adjudication.
-mkMenu2
-    : Cfg.Config
-    -> Maybe C.FileId
-    -> Maybe C.FileId
-    -> (Model, Cmd Msg)
-mkMenu2 config fileIdMay compIdMay =
+mkMenu config fileIds =
   let
     msg =
-        case (fileIdMay, compIdMay) of
-            (Just fileId, Just compId) ->
-                "Fetching " ++ C.encodeFileId fileId ++
-                " and " ++ C.encodeFileId compId
-            _ -> "Incorrent file ID(s)"
+        case fileIds of
+            [] -> "Incorrent file IDs"
+            _  -> "Fetching " ++
+                  String.join ", " (List.map C.encodeFileId fileIds)
     model = {config=config, message=msg}
     init =
-        case (fileIdMay, compIdMay) of
-            (Just fileId, Just compId) ->
-                Server.sendWS config
-                    (Server.GetFiles config.user [fileId, compId])
-            _ -> Cmd.none
+        case fileIds of
+            [] -> Cmd.none
+            _ -> Server.sendWS config (Server.GetFiles config.user fileIds)
   in
     (model, init)
+
+
+-- -- | For adjudication.
+-- mkMenu2
+--     : Cfg.Config
+--     -> Maybe C.FileId
+--     -> Maybe C.FileId
+--     -> (Model, Cmd Msg)
+-- mkMenu2 config fileIdMay compIdMay =
+--   let
+--     msg =
+--         case (fileIdMay, compIdMay) of
+--             (Just fileId, Just compId) ->
+--                 "Fetching " ++ C.encodeFileId fileId ++
+--                 " and " ++ C.encodeFileId compId
+--             _ -> "Incorrent file ID(s)"
+--     model = {config=config, message=msg}
+--     init =
+--         case (fileIdMay, compIdMay) of
+--             (Just fileId, Just compId) ->
+--                 Server.sendWS config
+--                     (Server.GetFiles config.user [fileId, compId])
+--             _ -> Cmd.none
+--   in
+--     (model, init)
 
 
 ---------------------------------------------------

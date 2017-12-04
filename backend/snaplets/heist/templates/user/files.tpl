@@ -55,6 +55,15 @@
 
   </bind>
 
+  <compareList>
+    <div class="panel panel-default">
+      <div class="panel-heading">Compare</div>
+      <div class="panel-body">
+        <compareBody/>
+      </div>
+    </div>
+  </compareList>
+
   <ifNotGuest>
     <fileSection>
       <bind tag="access">Write</bind>

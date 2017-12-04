@@ -82,8 +82,8 @@ menuLens = (getMenu, setMenu)
 
 type alias Flags =
     { userName : String
-    , fileId : String
-    , compId : String
+    , fileIds : List String
+    -- , compId : String
     , websocketServer : String
     , websocketServerAlt : String }
 
@@ -259,12 +259,7 @@ topInit r =
           , socketServer=r.websocketServer
           , socketServerAlt=r.websocketServerAlt }
       (model, cmd) =
-          case r.compId of
-              "" -> Menu.mkMenu cfg
-                    (Edit.Core.decodeFileId r.fileId)
-              _  -> Menu.mkMenu2 cfg
-                    (Edit.Core.decodeFileId r.fileId)
-                    (Edit.Core.decodeFileId r.compId)
+          Menu.mkMenu cfg (List.filterMap Edit.Core.decodeFileId r.fileIds)
   in  (Menu model, Cmd.map menuMsg cmd)
 
 

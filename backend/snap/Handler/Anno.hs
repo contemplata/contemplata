@@ -8,14 +8,17 @@ module Handler.Anno
 ) where
 
 
-import           Control.Monad (when)
+import           Control.Monad (when, guard, forM_)
 import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Trans.Class (lift)
 
-import           Data.Map.Syntax ((##))
+import           Data.Maybe (mapMaybe)
+import qualified Data.Set as S
+import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Configurator as Cfg
+import           Data.Map.Syntax ((##))
 
 import qualified Snap.Snaplet.Heist as Heist
 import qualified Snap as Snap
@@ -45,8 +48,20 @@ annoHandler = do
 
 annoBodySplice :: Splice AppHandler
 annoBodySplice = do
-  Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
-  Just fileId <- return $ Odil.decodeFileId fileIdTxt
+
+--   Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
+--   Just fileId <- return $ Odil.decodeFileId fileIdTxt
+
+  fileSet <-
+    maybe S.empty
+      (S.fromList . mapMaybe (Odil.decodeFileId . T.decodeUtf8))
+    . M.lookup "filename"
+    . Snap.rqQueryParams
+    <$> Snap.getRequest
+
+  -- Ensure that the set of annotated files is not empty
+  guard . not $ S.null fileSet
+
   -- liftIO $ putStrLn "DEBUG: " >> print fileId
   mbUser <- lift $ Snap.with auth Auth.currentUser
   case mbUser of
@@ -54,29 +69,34 @@ annoBodySplice = do
     Just user -> do
       let login = Auth.userLogin user
       cfg <- lift Snap.getSnapletUserConfig
-      -- Just serverPath <- liftIO $ Cfg.fromCfg cfg "websocket-server"
-      -- Just serverPathAlt <- liftIO $ Cfg.fromCfg cfg "websocket-server-alt"
       Just serverPath <- liftIO $ Cfg.lookup cfg "websocket-server"
       Just serverPathAlt <- liftIO $ Cfg.lookup cfg "websocket-server-alt"
-      -- Mark the file as being annotated
+      -- Mark the files as being annotated
       lift . liftDB $ do
-        DB.accessLevel fileId login >>= \case
-          Just acc -> when
-            (acc >= Odil.Write)
-            (DB.startAnnotating fileId)
-          _ -> return ()
+        forM_ (S.toList fileSet) $ \fileId -> do
+          DB.accessLevel fileId login >>= \case
+            Just acc -> when
+              (acc >= Odil.Write)
+              (DB.startAnnotating fileId)
+            _ -> return ()
       let html = X.Element "body" [] [script]
           script = X.Element "script" [("type", "text/javascript")] [text]
-          mkArg key val = T.concat [key, ": \"", val, "\""]
-          mkArgs = T.intercalate ", " . map (uncurry mkArg)
+          mkVal val = T.concat ["\"", val, "\""]
+          mkArg key val = T.concat [key, ": ", mkVal val]
+          -- mkArgs = T.intercalate ", " . map (uncurry mkArg)
+          between p q xs = T.concat [p, xs, q]
           text = X.TextNode $ T.concat
             [ "Elm.Main.fullscreen({"
-            , mkArgs
-              [ ("userName", login)
-              , ("fileId", Odil.encodeFileId fileId)
-              , ("compId", "")
-              , ("websocketServer", serverPath)
-              , ("websocketServerAlt", serverPathAlt)
+            , T.intercalate ", "
+              [ mkArg "userName" login
+              -- , ("fileId", Odil.encodeFileId . head $ S.toList fileSet)
+              , T.concat
+                [ "fileIds: "
+                , between "[" "]" $ T.intercalate ","
+                  (map (mkVal . Odil.encodeFileId) (S.toList fileSet))
+                ]
+              , mkArg "websocketServer" serverPath
+              , mkArg "websocketServerAlt" serverPathAlt
               ]
             , "})"
             ]

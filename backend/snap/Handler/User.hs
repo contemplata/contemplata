@@ -22,10 +22,10 @@ import qualified Control.Monad.State.Strict as State
 import           Control.Monad (guard, filterM, void)
 import qualified Control.Concurrent as C
 
--- import           Data.Maybe (isJust)
+import           Data.Maybe (mapMaybe)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
--- import qualified Data.Set as S
+import qualified Data.Set as S
 import qualified Data.Map.Strict as M
 import           Data.Map.Syntax ((##))
 import qualified Data.ByteString as BS
@@ -60,37 +60,61 @@ import           Application
 filesHandler :: AppHandler ()
 filesHandler = do
   login <- userName
+  -- retrieve the set of files to compare
+  compSet <-
+    maybe S.empty
+      (S.fromList . mapMaybe (Odil.decodeFileId . T.decodeUtf8))
+    . M.lookup "compare"
+    . Snap.rqQueryParams
+    <$> Snap.getRequest
   writeList <- filterM (hasAccess Odil.Write login)
     . M.toList =<< liftDB DB.fileMap
   readList <- filterM (hasAccess Odil.Read login)
     . M.toList =<< liftDB DB.fileMap
   Heist.heistLocal
     ( bindSplices $
-      localSplices Odil.Write login writeList >>
-      localSplices Odil.Read login readList
+      localSplices Odil.Write login compSet writeList >>
+      localSplices Odil.Read login compSet readList >>
+      compareSplices compSet
     )
     (Heist.render "user/files")
   where
     hasAccess accLevel login (fileId, fileMeta) =
       (== Just accLevel) <$> liftDB (DB.accessLevel fileId login)
-    localSplices accLevel login fileList = do
+    localSplices accLevel login compSet fileList = do
       let withStatus val = map fst . filter (hasStatus val)
           accLevelStr = T.pack (show accLevel)
       ("newList" `T.append` accLevelStr) ##
-        mkFileTable login (withStatus Odil.New fileList)
+        mkFileTable login compSet (withStatus Odil.New fileList)
       ("touchedList" `T.append` accLevelStr) ##
-        mkTouchedTable accLevel login (withStatus Odil.Touched fileList)
+        mkTouchedTable accLevel login compSet (withStatus Odil.Touched fileList)
       ("doneList" `T.append` accLevelStr) ##
-        mkFileTable login (withStatus Odil.Done fileList)
+        mkFileTable login compSet (withStatus Odil.Done fileList)
     hasStatus val (_, Odil.FileMeta{..}) = fileStatus == val
+
+    compareSplices compSet = do
+      let body = T.intercalate ", "
+            [ Odil.encodeFileId fileIdTxt
+            | fileIdTxt <- S.toList compSet ]
+      "compareBody" ## return
+        [ mkLink "Compare" "Compare the selected files" $ T.concat
+          ["annotate?", annoParams compSet]
+        , X.TextNode ": "
+        , X.TextNode body
+        ]
+      "compareList" ## do
+        if S.null compSet
+          then return []
+          else X.childNodes <$> getParamNode
 
 
 -- | A list of members.
 mkFileTable
   :: Odil.AnnoName
+  -> S.Set Odil.FileId -- ^ The list of files to compare
   -> [Odil.FileId]
   -> Splice AppHandler
-mkFileTable annoName =
+mkFileTable annoName compSet =
   mapM mkElem
   where
 
@@ -101,15 +125,18 @@ mkFileTable annoName =
             [ T.pack . show $ Odil.annoLevel fileId
             , " (", Odil.copyId fileId, ")" ]
       return $ X.Element "tr" []
-        [ mkLink (Odil.fileName fileId) "annotate" $
-          T.intercalate "/" ["annotate", Odil.encodeFileId fileId]
+        [ X.Element "td" []
+          [ mkLink (Odil.fileName fileId) "Annotate the file" $ T.concat
+            ["annotate?", annoParams (S.singleton fileId)]
+            -- T.intercalate "/" ["annotate", Odil.encodeFileId fileId]
+          , X.TextNode " ("
+          , mkLink "select" "Select for comparison" $ T.concat
+            [ "user/files?"
+            , compareParams (S.insert fileId compSet) ]
+          , X.TextNode ")"
+          ]
         , mkText version
---         , mkText (T.toLower . T.pack . show $ access)
         , mkText (T.pack . show $ Odil.numberOfTokens file)
---         , mkLink "remove" "Click to remove" $
---           T.intercalate "/" ["admin", "file", fileName, "remanno", annoName]
---         , mkLink (T.pack $ show access) "Click to change" $
---           T.intercalate "/" ["admin", "file", fileName, "changeaccess", annoName]
         ]
 
 
@@ -117,9 +144,10 @@ mkFileTable annoName =
 mkTouchedTable
   :: Odil.AccessLevel
   -> Odil.AnnoName
+  -> S.Set Odil.FileId -- ^ The list of files to compare
   -> [Odil.FileId]
   -> Splice AppHandler
-mkTouchedTable access annoName =
+mkTouchedTable access annoName compSet =
   mapM mkElem
   where
     mkElem fileId = do
@@ -128,17 +156,25 @@ mkTouchedTable access annoName =
             if access < Odil.Write
             then []
             else
-              [ mkLink "postpone" "Click to postpone the annotation of the file" $
+              [ mkLinkTD "postpone" "Click to postpone the annotation of the file" $
                 T.intercalate "/" ["user", "file", Odil.encodeFileId fileId, "postpone"]
-              , mkLink "finish" "Click to finish the annotation of the file" $
+              , mkLinkTD "finish" "Click to finish the annotation of the file" $
                 T.intercalate "/" ["user", "file", Odil.encodeFileId fileId, "finish"]
               ]
           version = T.concat
             [ T.pack . show $ Odil.annoLevel fileId
             , " (", Odil.copyId fileId, ")" ]
       return $ X.Element "tr" [] $
-        [ mkLink (Odil.fileName fileId) "annotate" $
-          T.intercalate "/" ["annotate", Odil.encodeFileId fileId]
+        [ X.Element "td" []
+          [ mkLink (Odil.fileName fileId) "Annotate the file" $ T.concat
+            ["annotate?", annoParams (S.singleton fileId)]
+            -- T.intercalate "/" ["annotate", Odil.encodeFileId fileId]
+          , X.TextNode " ("
+          , mkLink "select" "Select for comparison" $ T.concat
+            [ "user/files?"
+            , compareParams (S.insert fileId compSet) ]
+          , X.TextNode ")"
+          ]
         , mkText version
         , mkText (T.pack . show $ Odil.numberOfTokens file)
         ] ++ modifLinks
@@ -304,10 +340,23 @@ userName = do
 
 
 mkText x = X.Element "td" [] [X.TextNode x]
-mkLink x tip href = X.Element "td" [] [X.Element "a"
-    [ ("href", href)
-    , ("title", tip) ]
-    [X.TextNode x] ]
+mkLinkTD x tip href = X.Element "td" [] [mkLink x tip href]
+mkLink x tip href = X.Element "a"
+  [ ("href", href)
+  , ("title", tip) ]
+  [X.TextNode x]
+
+
+compareParams :: S.Set Odil.FileId -> T.Text
+compareParams compSet = T.intercalate "&"
+  [ "compare=" `T.append` Odil.encodeFileId fileId
+  | fileId <- S.toList compSet ]
+
+
+annoParams :: S.Set Odil.FileId -> T.Text
+annoParams fileSet = T.intercalate "&"
+  [ "filename=" `T.append` Odil.encodeFileId fileId
+  | fileId <- S.toList fileSet ]
 
 
 ---------------------------------------
