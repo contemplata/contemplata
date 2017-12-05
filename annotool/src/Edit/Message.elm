@@ -24,6 +24,7 @@ import Edit.Core as C
 import Edit.Anno as Anno
 import Edit.Rule as Rule
 import Edit.Popup as Popup
+import Edit.Compare as Compare
 import Edit.Message.Core exposing (..)
 import Edit.Command as Command
 import Menu
@@ -469,6 +470,16 @@ update msg model =
 
     SwapFile -> idle <| M.swapFile model.focus model
     SwapFileTo fid -> idle <| M.moveToFirst model.focus fid model
+
+    Compare -> idle <|
+        let topId = M.getReprId M.Top (M.selectWin M.Top model).tree model
+            topTree = M.getTree M.Top topId model
+            botId = M.getReprId M.Bot (M.selectWin M.Bot model).tree model
+            botTree = M.getTree M.Bot topId model
+            (topIds, botIds) = Compare.compareSyntax topTree botTree
+        in  M.setSelection (S.fromList topIds) M.Top <|
+            M.setSelection (S.fromList botIds) M.Bot <|
+            model
 
     Dummy -> idle <|
         let focus = model.focus

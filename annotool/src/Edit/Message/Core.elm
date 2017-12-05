@@ -94,6 +94,7 @@ type Msg
   | ChangeAnnoLevelTo M.AnnoLevel
   | SwapFile
   | SwapFileTo C.FileId
+  | Compare
   | Dummy
   -- -- | Goto C.Addr -- ^ Move to a given node in the focused window
   | Many (List Msg)

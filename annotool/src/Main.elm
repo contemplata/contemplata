@@ -27,6 +27,7 @@ import Edit.Message
 import Edit.Message.Core
 import Edit.View
 import Edit.Subs
+import Edit.Compare
 
 
 ---------------------------------------------------

@@ -181,6 +181,8 @@ globalCommands =
     , { void
           | lineCmd = Just "connect" } => Connect
     , { void
+          | lineCmd = Just "compare" } => Compare
+    , { void
           | lineCmd = Just "join" } => Join
     , { void
           | lineCmd = Just "joinwords"

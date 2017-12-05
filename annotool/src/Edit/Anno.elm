@@ -80,6 +80,7 @@ module Edit.Anno exposing
 
 import Json.Decode as Decode
 import Json.Encode as Encode
+-- import Compare as Cmp
 
 import Set as S
 import Dict as D
@@ -235,6 +236,17 @@ type EventAttr
     | ModAttr (Maybe EventMod)
     | PredAttr String
     -- | CommentAttr String
+
+
+-- compEvent : Cmp.Comparator Event
+-- compEvent =
+--     Cmp.concat
+--         [ Cmp.compose .evClass compEventClass
+--         , Cmp.compose .evType compEventType
+--         , Cmp.compose .evInquisit compEventType
+--         , Cmp.compose .evAspect compEventAspect
+--         , Cmp.compose .evPolarity compEvent
+--         ]
 
 
 ---------------------------------------------------
@@ -722,6 +734,10 @@ type SignalAttr
     = SiTypeAttr SignalType
 
 
+-- compSignal : Cmp.Comparator Signal
+-- compSignal = Debug.crash "compSignal"
+
+
 ---------------------------------------------------
 -- Type
 ---------------------------------------------------
@@ -838,6 +854,10 @@ type TimexAttr
     | TiEndPointAttr Bool -- ^ Create if `True`, remove if `False`
     | TiQuantAttr (Maybe String)
     | TiFreqAttr (Maybe String)
+
+
+-- compTimex : Cmp.Comparator Timex
+-- compTimex = Debug.crash "compTimex"
 
 
 ---------------------------------------------------

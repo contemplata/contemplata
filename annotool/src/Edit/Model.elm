@@ -19,7 +19,7 @@ module Edit.Model exposing
   -- History:
   , freezeHist, undo, redo
   -- Selection:
-  , updateSelection
+  , updateSelection, setSelection
   -- Logging:
   , log
   -- Nodes:
@@ -193,9 +193,10 @@ type alias LeafNode =
       -- ^ Orth value, which is not necessarily equal to the orth values of the
       -- corresponding tokens.
     , leafPos : Int
-      -- ^ The position of the leaf in the underlying sentence.
-      -- The positions are not guaranteed to be consecutive (some tokens are not
-      -- taken into account when parsing).
+      -- ^ The position of the leaf in the underlying sentence. The positions
+      -- are not guaranteed to be consecutive (some tokens are not taken into
+      -- account when parsing). In addition, in non-projective trees, the
+      -- positions are not guaranteed to come in an increasing order.
     , nodeComment : String }
 
 
@@ -1086,6 +1087,19 @@ updateLinkSelection model =
   in
 
     {model | selLink = newLink}
+
+
+-- | Set the selection of the given window to the given node IDs. There's no
+-- relation between `setSelection` and `updateSelection`, really.
+setSelection : S.Set NodeId -> Focus -> Model -> Model
+setSelection ids focus =
+    let
+        updateWin win =
+            { win
+            | selAux = ids
+            , selMain = Nothing }
+    in
+        Lens.update (windowLens focus) updateWin
 
 
 ---------------------------------------------------
