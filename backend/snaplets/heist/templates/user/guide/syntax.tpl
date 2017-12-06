@@ -177,5 +177,21 @@
       syntactic annotation of a given sentence.
     </p>
 
+    <h4>Comparison and adjudication</h4>
+    <p>
+      Contemplata allows to compare and annotate several files at the same time.
+      See <a href=user/guide#general#tableau>tableau de bord</a> for information
+      on how to enter the comparison mode. Once you do that, you will remark
+      that the names of all the selected files are shown at the bottom of each
+      workspace. You can click on the name of the file to switch to it. The
+      annotations performed in the previously annotated file are not discarded,
+      but they are not stored in the database either. You might need to switch
+      back to the previous file and <b>Save</b> the changes before you quit
+      annotation.
+    </p>
+    <p>
+      TODO: the compare command.
+    </p>
+
   </div>
 </div>

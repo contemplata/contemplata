@@ -2,7 +2,7 @@
   <!--div class="panel-heading">General information</div-->
   <div class="panel-body">
 
-    <h4>Tableau de bord</h4>
+    <h4 id="tableau">Tableau de bord</h4>
     <p>
       You can find the list of ODIL files at the <a
       href="user/files">files</a> sub-page (see menu). The files listed in the
@@ -23,7 +23,25 @@
     </p>
 
     <p>
-      To each file information abouts its <b>version</b> is assigned. An
+      To annotate a file, click on its name in the first column of the table.
+      You can also choose to <b>select</b> it for comparison with other files
+      (the corresponding link is just beside the name of the file). This will
+      create a new section with the list of the files to compare, as shown
+      below. Click on <b>Compare</b> to start their annotation.
+    </p>
+    <div class="row">
+      <div class="col-sm-1"/>
+      <div class="col-sm-10">
+        <figure><center>
+          <img src="public/img/guide/general/compare.png" alt="Edit" style="width:100%">
+          <figcaption>Comparing files</figcaption>
+        </center></figure>
+      </div>
+      <div class="col-sm-1"/>
+    </div>
+
+    <p>
+      To each file information about its <b>version</b> is assigned. An
       original (<b>orig</b>) file is a file that has been originally put in the
       database. A <b>syntax</b> file is meant for annotation on the syntactic
       level. Similarly, a <b>temporal</b> or <b>relations</b> file is meant for
@@ -63,13 +81,16 @@
       selected tree node, and (iii) the <b>Messages</b> received from the
       server.
     </p>
-
-    <p><center>
-      <figure>
-        <img src="public/img/guide/syntax/workspace.png" alt="Workspace" style="width:75%">
-        <figcaption>Annotation mode</figcaption>
-      </figure>
-    </center></p>
+    <div class="row">
+      <div class="col-sm-2"/>
+      <div class="col-sm-8">
+        <figure><center>
+          <img src="public/img/guide/general/workspace.png" alt="Workspace" style="width:100%">
+          <figcaption>Annotation mode</figcaption>
+        </center></figure>
+      </div>
+      <div class="col-sm-2"/>
+    </div>
 
     <h4>Navigation in the annotation mode</h4>
     <p>
@@ -107,10 +128,13 @@
       the top-left corner of the main annotation workspace. The first two
       commands are generic -- <b>Menu</b> and <b>Save</b>, which allow to go
       to the main menu and to save the currently annotated file, respectively.
-
+      Note that, when you annotate several files at the same time, <b>Save</b>
+      only applies to the file in focus.
+    </p>
+    <p>
       The other menu commands are divided into three annotation levels:
-      <b>Segmentation</b>, <b>Syntax</b>, and <b>Temporal</b>. You can click on
-      the name of the current level to change it. 
+      <b>Segmentation</b>, <b>Syntax</b>, and <b>Temporal</b>. You can switch to
+      any of these levels by clicking on the corresponding menu item.
     </p>
     <p>
       The command can have two different behaviors, depending on whether CTRL is
@@ -131,11 +155,11 @@
     </p>
     <p>
       The third type of commands can be run via command line. After pressing
-      <b>Space</b>, you will see the list of available commands in this mode.
-      To run a particular command, just type it and press <b>Enter</b>. You
-      can also use <b>Tab</b> for auto-completion. Besides, you don't have to
-      type the entire command, just a prefix which uniquely identifies it (for
-      instance, <b>sa</b> for <b>save</b>).
+      <b>Space</b>, you will see the list of available commands of this type at
+      the bottom of the workspace. To run a particular command, just type it and
+      press <b>Enter</b>. You can also use <b>Tab</b> for auto-completion.
+      Besides, you don't have to type the entire command, just a prefix which
+      uniquely identifies it (for instance, <b>sa</b> for <b>save</b>).
     </p>
     <div class="row">
       <div class="col-sm-2"/>
