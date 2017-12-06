@@ -12,7 +12,7 @@ module Edit.Model exposing
   , Workspace
   -- Other:
   , selectWin, dragOn, getTree, getTreeMay, getReprId, selAll
-  , getPosition, nextTree, prevTree, moveCursor, moveCursorTo
+  , getPosition, nextTree, nextTree_, prevTree, moveCursor, moveCursorTo
   , treeNum, treePos
   -- Sentence:
   , getToken, getTokenMay, getSent, getSubSent
@@ -1384,9 +1384,15 @@ getPosition foc model =
 -- | Retrieve the next tree in the underlying model.
 -- Return the argument tree ID if not possible.
 nextTree : Focus -> TreeId -> Model -> PartId
-nextTree focus x0 model =
+nextTree focus x model =
+    nextTree_ focus (getReprId focus x model) model
+
+
+-- | Retrieve the next tree in the underlying model.
+-- Return the argument tree ID if not possible.
+nextTree_ : Focus -> PartId -> Model -> PartId
+nextTree_ focus x model =
   let
-    x = getReprId focus x0 model
     go keys = case keys of
       [] -> x
       hd1 :: []  -> x

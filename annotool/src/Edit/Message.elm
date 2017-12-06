@@ -471,16 +471,7 @@ update msg model =
     SwapFile -> idle <| M.swapFile model.focus model
     SwapFileTo fid -> idle <| M.moveToFirst model.focus fid model
 
-    Compare -> idle <|
-        let getTree foc =
-                let id = M.getReprId foc (M.selectWin foc model).tree model
-                in M.getTree foc id model
-            topTree = getTree M.Top
-            botTree = getTree M.Bot
-            (topIds, botIds) = Compare.compareSyntax topTree botTree
-        in  M.setSelection (S.fromList topIds) M.Top <|
-            M.setSelection (S.fromList botIds) M.Bot <|
-            model
+    Compare -> idle <| compare model
 
     Dummy -> idle <|
         let focus = model.focus
@@ -708,6 +699,58 @@ getWords sent tree =
         case reqList of
             [x] -> Server.Single x
             _ -> Server.Batch reqList
+
+
+----------------------------------------------
+-- Compare
+----------------------------------------------
+
+
+-- | Compare the curret trees, if no difference try to find the first pair with
+-- a difference.
+compare : M.Model -> M.Model
+compare model =
+    let
+        getId foc = M.getReprId foc (M.selectWin foc model).tree model
+        getTree foc id = M.getTree foc id model
+        topId = getId M.Top
+        topTree = getTree M.Top topId
+        botId = getId M.Bot
+        botTree = getTree M.Bot botId
+        (topIds, botIds) = Compare.compareSyntax topTree botTree
+    in
+        if L.isEmpty topIds && L.isEmpty botIds
+        then
+            let
+                newTopId = M.nextTree_ M.Top topId model
+                newBotId = M.nextTree_ M.Bot botId model
+            in
+                if newTopId /= topId ||
+                   newBotId /= botId
+                then
+                    compare <|
+                    M.moveCursorTo M.Top newTopId <|
+                    M.moveCursorTo M.Bot newBotId <|
+                    model
+                else model
+        else
+            M.setSelection (S.fromList topIds) M.Top <|
+            M.setSelection (S.fromList botIds) M.Bot <|
+            model
+
+
+-- | Compare only the currently selected trees.
+compareOne : M.Model -> M.Model
+compareOne model =
+    let getTree foc =
+            let id = M.getReprId foc (M.selectWin foc model).tree model
+            in M.getTree foc id model
+        topTree = getTree M.Top
+        botTree = getTree M.Bot
+        (topIds, botIds) = Compare.compareSyntax topTree botTree
+    in  M.setSelection (S.fromList topIds) M.Top <|
+        M.setSelection (S.fromList botIds) M.Bot <|
+        model
 
 
 ----------------------------------------------
