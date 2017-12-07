@@ -194,7 +194,13 @@
       line) which searches for (segmentation- and syntactic-level) differences
       between the trees in the top and the bottom workspaces. As a result of the
       operation, all the nodes that are present in one tree but not the other
-      will be highlighted in red (selected).
+      will be highlighted in red (i.e. selected). If the two trees are
+      identical, it automatically searches for differences in the subsequent
+      trees.
+    </p>
+    <p>
+      <b>WARNING</b>: The command does not search for differences at the level
+      of relations.
     </p>
 
   </div>
