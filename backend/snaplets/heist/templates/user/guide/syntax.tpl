@@ -184,13 +184,17 @@
       on how to enter the comparison mode. Once you do that, you will remark
       that the names of all the selected files are shown at the bottom of each
       workspace. You can click on the name of the file to switch to it. The
-      annotations performed in the previously annotated file are not discarded,
-      but they are not stored in the database either. You might need to switch
-      back to the previous file and <b>Save</b> the changes before you quit
-      annotation.
+      annotations performed in the previously annotated file are not discarded
+      in this case, but they are not stored in the database either. You might
+      need to switch back to the previous file and <b>Save</b> the changes
+      before you quit annotation.
     </p>
     <p>
-      TODO: the compare command.
+      Contemplata provides a comparison operation (<b>compare</b> from command
+      line) which searches for (segmentation- and syntactic-level) differences
+      between the trees in the top and the bottom workspaces. As a result of the
+      operation, all the nodes that are present in one tree but not the other
+      will be highlighted in red (selected).
     </p>
 
   </div>
