@@ -269,7 +269,7 @@ viewPopups : M.Model -> List (Html.Html Msg)
 viewPopups model =
     case model.popup of
         Nothing -> []
-        Just Popup.Files -> [viewPopupFiles model]
+        Just (Popup.Files x) -> [viewPopupFiles x]
         Just (Popup.Info x) -> [viewPopupInfo x]
         Just (Popup.Split x) -> [viewPopupSplit x]
 
@@ -279,13 +279,27 @@ viewPopupInfo info =
     viewPopupGen 125 125 info [("OK", QuitPopup)] 0
 
 
-viewPopupFiles : M.Model -> Html.Html Msg
-viewPopupFiles model =
-    viewPopupGen 200 125 "Do you wish to save?"
-        [ ("Yes", Many [SaveFile, QuitPopup, Files])
-        , ("No", Many [QuitPopup, Files])
-        , ("Cancel", QuitPopup)
-        ] 0
+viewPopupFiles : Maybe (List C.FileId) -> Html.Html Msg
+viewPopupFiles maybeFiles =
+    case maybeFiles of
+        Nothing ->
+            viewPopupGen 200 125 "Comparing file(s) with their database versions..."
+                [ ("Cancel", QuitPopup)
+                ] 0
+        Just [] ->
+            viewPopupGen 200 125 "All changes saved. Do you wish to exit?"
+                [ ("Yes", Many [QuitPopup, Files])
+                , ("No", QuitPopup)
+                ] 0
+        Just xs ->
+            let msg0 = "The following files differ from their versions in the database:"
+                msg1 = String.join ", " <| L.map C.encodeFileId xs
+                msg2 = "Are you sure you want to exit?"
+                msg = msg0 ++ " " ++ msg1 ++ ". " ++ msg2
+            in  viewPopupGen 200 125  msg
+                [ ("Yes", Many [QuitPopup, Files])
+                , ("No", QuitPopup)
+                ] 1
 
 
 viewPopupSplit : Popup.SplitPopup -> Html.Html Msg
@@ -711,8 +725,7 @@ viewMenu model = -- fileName =
         , "left" :> px 5
         ]
       ] <|
-        [ Cmd.mkMenuItem
-              (Popup Popup.Files Nothing)
+        [ Cmd.mkMenuItem Quit
               (Just "Go to the main menu")
               (plainText "Menu")
 --         , Html.div
@@ -2070,7 +2083,8 @@ mainKeyDown ctrl =
 --       13 -> CommandEnter
 
       -- "escape"
-      27 -> Popup Popup.Files Nothing
+      -- 27 -> Popup (Popup.Files Nothing) Nothing
+      27 -> Quit
 
       _  ->
           case Cmd.msgFromKeyCode ctrl code of

@@ -278,6 +278,15 @@ update msg model =
             ( {model | popup = Just x}
             , focCmd )
 
+    Quit ->
+      let
+        task = Task.succeed (Popup (Popup.Files Nothing) Nothing)
+        fileList = L.map (\(id, info) -> (id, info.file)) model.fileList
+        req = Server.CompareFiles fileList
+        send = Server.sendWS model.config req
+      in
+        (model, Cmd.batch [Task.perform identity task, send])
+
     SaveFile ->
       let
         focus = model.focus

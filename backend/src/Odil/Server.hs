@@ -94,6 +94,9 @@ data Request
   = GetFile AnnoName FileId
   | GetFiles AnnoName [FileId]
   | SaveFile AnnoName FileId File
+  | CompareFiles [(FileId, File)]
+    -- ^ Compare the file with the file in the DB to see if any modifications
+    -- have been made.
   | ParseSent FileId TreeId ParserTyp
     [(Bool, [(Token, Maybe Stanford.Orth)])]
     -- ^ FileId and TreeId are sent there and back so that it can be checked
@@ -148,6 +151,9 @@ data Answer
     -- WARNING: the trees in the result are not guaranteed to have different
     -- node IDs. This is because some subtrees are unknown (`Nothing`) and there
     -- is no way to take their node IDs into account anyway.
+  | DiffFiles [FileId]
+    -- ^ The list of the IDs of the files which differ from their version in the
+    -- database
   | Notification T.Text
     -- ^ Notication message
   deriving (Show)
@@ -178,6 +184,8 @@ instance JSON.ToJSON Answer where
       , "forest" .= forest ]
     Notification msg -> JSON.object
       [ "notification" .= msg ]
+    DiffFiles fileIds -> JSON.object
+      [ "fileIds" .= fileIds ]
 
 
 -----------
@@ -318,6 +326,22 @@ talk conn state snapCfg = forever $ do
             putStrLn "Saved"
             let msg = T.concat ["File ", encodeFileId fileId, " saved"]
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
+
+      Right (CompareFiles fileList) -> do
+        T.putStrLn $ "Comparing files: " `T.append`
+          T.intercalate ", " (map (encodeFileId.fst) fileList)
+        DB.runDBT db (mapM DB.loadFile $ map fst fileList) >>= \case
+          Left err -> do
+            let msg = T.concat ["Could not compare file: ", err]
+            T.putStrLn msg
+            WS.sendTextData conn . JSON.encode =<< mkNotif msg
+          Right files' -> do
+            let diff =
+                  [ fileId
+                  | ((fileId, file), file') <- zip fileList files'
+                  , file /= file' ]
+                res = DiffFiles diff
+            WS.sendTextData conn (JSON.encode res)
 
       Right (ParseRaw fileId treeId txt0 prep) -> do
         prepare <-

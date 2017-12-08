@@ -9,6 +9,7 @@ import Dict as D
 import String as String
 -- import Focus exposing ((=>))
 -- import Focus as Lens
+import Task as Task
 
 import WebSocket
 import Navigation
@@ -28,6 +29,7 @@ import Edit.Message.Core
 import Edit.View
 import Edit.Subs
 import Edit.Compare
+import Edit.Popup as Popup
 
 
 ---------------------------------------------------
@@ -202,6 +204,12 @@ topUpdate topMsg =
         let (edit, cmd) =
                 Edit.Init.mkEdit (topCfg model_) fileList
         in  (Edit edit, Cmd.map editMsg cmd)
+      Server.DiffFiles fileIds ->
+        let task = Task.succeed (Edit.Message.Core.Popup (Popup.Files (Just fileIds)) Nothing)
+            upd model =
+                ( model
+                , Task.perform identity task )
+        in  updateOn editLens editMsg upd
       Server.ParseResult fileId treeId sentMay tree ->
         let updTree = Edit.Model.setTreeCheck fileId treeId tree
             updSent = case sentMay of

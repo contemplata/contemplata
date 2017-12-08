@@ -4,9 +4,12 @@ module Edit.Popup exposing
   )
 
 
+import Edit.Core as C
+
+
 -- | Node in a syntactic tree is either an internal node or a leaf.
 type Popup
-  = Files -- SavePopup
+  = Files (Maybe (List C.FileId)) -- Quit popup
   | Info String -- Generic information popup
   | Split SplitPopup
 

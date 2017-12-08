@@ -60,6 +60,8 @@ type Request
     -- ^ Request several files for annotation
   | SaveFile C.AnnoName C.FileId M.File
     -- ^ Request the contents of the given file
+  | CompareFiles (List (C.FileId, M.File))
+    -- ^ Request the comparison of the given files
   | Break C.FileId C.PartId (List String)
     -- ^ Break the given partition into its components
   | ParseRaw C.FileId C.PartId String Bool
@@ -119,6 +121,16 @@ encodeReqToVal req = case req of
          , M.encodeFile file ]
       )
     ]
+  CompareFiles fileList ->
+      let
+          encodePair (fileId, file) = Encode.list
+            [ C.encodeFileIdJSON fileId
+            , M.encodeFile file ]
+      in
+        Encode.object
+          [ ("tag", Encode.string "CompareFiles")
+          , ("contents", Encode.list (List.map encodePair fileList))
+          ]
   Break fileId partId txts -> Encode.object
     [ ("tag", Encode.string "Break")
     , ("contents", Encode.list
@@ -242,6 +254,8 @@ type Answer
     -- ^ Parsing result
   | ParseResultList C.FileId C.PartId (List (Maybe (R.Tree M.Node)))
     -- ^ Parsing result list
+  | DiffFiles (List C.FileId)
+    -- ^ Coparison result
   | Notification String
     -- ^ Just a notification message from a server
 
@@ -254,6 +268,7 @@ answerDecoder =
         , newFilesDecoder
         , parseResultDecoder
         , parseResultListDecoder
+        , diffFilesDecoder
         , notificationDecoder]
 
 
@@ -313,6 +328,12 @@ parseResultListDecoder =
     (Decode.field "fileId" C.fileIdDecoder)
     (Decode.field "treeId" Decode.int)
     (Decode.field "forest" (Decode.list <| Decode.nullable M.treeDecoder))
+
+
+diffFilesDecoder : Decode.Decoder Answer
+diffFilesDecoder =
+  Decode.map DiffFiles
+    (Decode.field "fileIds" (Decode.list C.fileIdDecoder))
 
 
 notificationDecoder : Decode.Decoder Answer

@@ -83,6 +83,7 @@ type Msg
   | CommandComplete
   | CommandChar Char
   | CommandString String
+  | Quit
   | Popup              -- ^ Open a popup window
       Popup.Popup
       (Maybe String)   -- ^ The (optionl) HTML ID to focus on

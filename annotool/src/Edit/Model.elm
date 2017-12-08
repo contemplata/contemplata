@@ -61,7 +61,7 @@ module Edit.Model exposing
   -- Node annotation:
   , mkEventSel, mkSignalSel, mkTimexSel
   -- Popup-related
-  , changeSplit, performSplit
+  , setFilesPopup, changeSplit, performSplit
   -- -- , changeTypeSel
   -- Lenses:
   , top, bot, dim, drag, side, pos, height, widthProp, heightProp
@@ -2763,8 +2763,17 @@ swap left id tree =
 
 
 ---------------------------------------------------
--- Popups: splitting
+-- Popups
 ---------------------------------------------------
+
+
+-- | Change the value of the split in the popup window.
+setFilesPopup : List FileId -> Model -> Model
+setFilesPopup fileIds model =
+    case model.popup of
+        Just (Popup.Files _) ->
+            {model | popup = Just (Popup.Files (Just fileIds))}
+        _ -> model
 
 
 -- | Change the value of the split in the popup window.
