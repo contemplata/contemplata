@@ -468,10 +468,17 @@ update msg model =
                   else newLevel
             }
 
-    SwapFile -> idle <| M.swapFile model.focus model
-    SwapFileTo fid -> idle <| M.moveToFirst model.focus fid model
+    SwapFile ->
+        ( M.swapFile model.focus model
+        , focusOnTurn M.Top )
+    SwapFileTo fid ->
+        ( M.moveToFile model.focus fid model
+        , focusOnTurn M.Top )
 
-    Compare -> idle <| compare model
+    Compare ->
+        ( compare model
+        , Cmd.batch [focusOnTurn M.Top, focusOnTurn M.Bot]
+        )
 
     Dummy -> idle <|
         let focus = model.focus

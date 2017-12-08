@@ -72,7 +72,7 @@ module Edit.Model exposing
   , getFileId
   -- Various:
   , setTreeCheck, setForestCheck, setSentCheck, getWords, subTreeAt, nodesIn
-  , swapFile, moveToFirst
+  , swapFile, moveToFirst, moveToTree, moveToFile
   -- JSON decoding:
   , treeMapDecoder, fileDecoder, treeDecoder, sentDecoder, nodeDecoder
   -- JSON encoding:
@@ -554,12 +554,12 @@ focusOnTree focus fileId treeId model =
                 if getReprId focus topTree model == treeId &&
                    getFileId focus model == fileId
                 then model
-                else moveTo focus fileId treeId model
+                else moveToTree focus fileId treeId model
             Bot ->
                 if getReprId focus botTree model == treeId &&
                    getFileId focus model == fileId
                 then model
-                else moveTo focus fileId treeId model
+                else moveToTree focus fileId treeId model
 
 
 -- -- | Focus on the given tree if needed.
@@ -1446,8 +1446,21 @@ moveCursorTo focus treeId model =
 
 
 -- | Move the given workspace to the given file and tree.
-moveTo : Focus -> FileId -> PartId -> Model -> Model
-moveTo focus fileId treeId model =
+moveToFile : Focus -> FileId -> Model -> Model
+moveToFile focus fileId model =
+  let
+    alterWS ws =
+      { ws
+          | fileId = fileId
+          , drag = Nothing
+      }
+  in
+    Lens.update (workspaceLens focus) alterWS model
+
+
+-- | Move the given workspace to the given file and tree.
+moveToTree : Focus -> FileId -> PartId -> Model -> Model
+moveToTree focus fileId treeId model =
   let
     alterWin win =
       { win
@@ -1473,7 +1486,7 @@ moveToFirst focus fileId model =
     in
         case D.toList trees of
             [] -> Debug.crash "moveToFirst: empty treeMap"
-            (partId, tree_) :: _ -> moveTo focus fileId partId model
+            (partId, tree_) :: _ -> moveToTree focus fileId partId model
 
 
 -- | Swap the file in the given workspace.
@@ -1492,7 +1505,7 @@ swapFile focus model =
             (newFid, _) :: _ -> newFid
     in
         let files = model.fileList ++ model.fileList
-        in  moveToFirst focus (findNext files) model
+        in  moveToFile focus (findNext files) model
 
 
 ---------------------------------------------------
