@@ -1,0 +1,30 @@
+-- let
+--   withDefault =
+--     \(value : Text) ->
+--     \(r : {name : Text, among : List Text, default : Optional Text}) ->
+--       {name = r.name, among = r.among, default = [value] : Optional Text}
+-- in let
+--   attr =
+--     \(name : Text) ->
+--     \(among : List Text) -> 
+--       { name = name
+--       , among = among
+--       , default = [] : Optional Text
+--       }
+-- in
+  { name = "Event"
+  
+    -- Possible types
+  , type =
+      { among = ["State", "Process", "Transition"]
+      , default = [] : Optional Text
+      }
+  
+    -- Attributes
+  , attributes =
+      [ { name = "Class"
+        , among = ["Occurrence"]
+        , default = [] : Optional Text
+        }
+      ]
+  }

@@ -1,0 +1,27 @@
+let
+  free = ./Attr/free
+in let
+  closed =
+    \(r : {name : Text, among : List Text, default : Optional Text}) ->
+      <closed = r | free : {name : Text, default : Text}>
+in
+  { name = "Timex"
+  
+    -- Possible types
+  , type =
+      { among = ["Date", "Time", "Duration", "Set"] : List Text
+      , default = [] : Optional Text
+      }
+  
+    -- Attributes
+  , attributes =
+      [ closed
+        { name = "Calendar"
+        , among = ["ISO", "Gregor"] : List Text
+        , default = ["ISO"] : Optional Text }
+      , free
+        { name = "Pred"
+        , default = ""
+        }
+      ]
+  }
