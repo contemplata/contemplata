@@ -61,6 +61,8 @@ library
                      , bytes >= 0.15 && < 0.16
                      , time >= 1.6 && < 1.9
                      , configurator >= 0.3 && < 0.4
+                     , dhall >= 1.8 && < 1.9
+                     , dhall-json >= 1.0 && < 1.1
   default-language:    Haskell2010
 
 executable odil
