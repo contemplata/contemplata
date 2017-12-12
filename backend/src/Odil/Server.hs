@@ -463,9 +463,11 @@ talk conn state snapCfg = forever $ do
         forest <- mapM parser wss
 
         -- Send what you were able to parse
-        let oldForest = zip forest $ map snd wss
-            oldTokens = map snd oldForest
-            oldTrees = map (fmap removeRoot . fst) oldForest
+        -- let oldForest = zip forest $ map snd wss
+        --     oldTokens = map snd oldForest
+        --     oldTrees = map (fmap removeRoot . fst) oldForest
+        let oldTokens = map snd wss
+            oldTrees = map (fmap removeRoot) forest
               where removeRoot t = case R.subForest t of
                       [subTree] -> subTree
                       _ -> t

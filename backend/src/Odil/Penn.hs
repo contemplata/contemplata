@@ -238,8 +238,9 @@ toOdilForest =
           Nothing : go (acc + length toks) forestRest tokRest
         (Just tree : forestRest, toks : tokRest) ->
           Just (shift acc newTree) :
-          go (acc + length newToks) forestRest tokRest
-          where (newToks, newTree) = toOdilTree' tree toks
+          -- go (acc + length newToks) forestRest tokRest
+          go (acc + length toks) forestRest tokRest
+          where (_newToks, newTree) = toOdilTree' tree toks
         _ -> []
     shift k = fmap $ \node -> case node of
       Odil.Node{} -> node
@@ -252,8 +253,14 @@ toOdilTree'
      -- ^ The Penn tree
   -> SyncStack
      -- ^ The list of original tokens and the corresponding, pre-processed
-     -- tokens. The latter align with the given Penn tree.
+     -- words (some of which can be removed, indicated by `Nothing`).
   -> (Odil.Sent, Odil.Tree)
+     -- ^ The result is a pair:
+     --   (i) an ODIL sentence, i.e., a list of tokens which should corresond to
+     --     a prefix of the input `SyncStack` (more precisely, the original
+     --     `Token`s)
+     --   (ii) an ODIL tree, whose leaves align with the `Just` words in the
+     --     input `SyntStack`.
 toOdilTree' tree0 toks0
 
   = finalize
