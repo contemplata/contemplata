@@ -1,0 +1,9 @@
+let
+  free = ./Attr/free.fun
+in let
+  closed = ./Attr/closed.fun
+in
+  closed
+  { name = "Calendar"
+  , among = ["ISO", "Gregor"]
+  , def = ["ISO"] : Optional Text } : ./Attr.typ

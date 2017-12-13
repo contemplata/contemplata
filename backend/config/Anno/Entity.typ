@@ -1,4 +1,4 @@
 { name : Text
-, type : ./EntityType.typ
+, typ : ./EntityType.typ
 , attributes : List ./Attr.typ
 }

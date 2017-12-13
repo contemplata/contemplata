@@ -1,0 +1,3 @@
+{ name = "asdf"
+, among = ["erq"]
+, def = [] : Optional Text } : ./Closed.typ

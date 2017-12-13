@@ -1,27 +1,25 @@
 let
   free = ./Attr/free.fun
 in let
-  closed =
-    \(r : {name : Text, among : List Text, default : Optional Text}) ->
-      <closed = r | free : {name : Text, default : Text}>
+  closed = ./Attr/closed.fun
 in
   { name = "Timex"
   
     -- Possible types
-  , type =
-      { among = ["Date", "Time", "Duration", "Set"] : List Text
-      , default = [] : Optional Text
+  , typ =
+      { among = ["Date", "Time", "Duration", "Set"]
+      , def = [] : Optional Text
       }
   
     -- Attributes
   , attributes =
       [ closed
         { name = "Calendar"
-        , among = ["ISO", "Gregor"] : List Text
-        , default = ["ISO"] : Optional Text }
+        , among = ["ISO", "Gregor"]
+        , def = ["ISO"] : Optional Text }
       , free
         { name = "Pred"
-        , default = ""
+        , def = ""
         }
       ]
-  }
+  } : ./Entity.typ

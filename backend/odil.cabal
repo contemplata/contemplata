@@ -34,6 +34,15 @@ library
                      , Odil.DiscoDOP
                      , Odil.Penn
                      , Odil.FTB
+
+                     -- , Odil.Anno
+                     , Odil.Anno.Attr
+                     , Odil.Anno.Attr.Closed
+                     , Odil.Anno.Attr.Free
+                     , Odil.Anno.Attr.Anchor
+                     , Odil.Anno.Entity
+                     , Odil.Anno.Entity.Type
+
   other-modules:       Proto.Odil.Stanford.CoreNLP
   build-depends:       base >= 4.7 && < 5
                      , text >= 1.2 && < 1.3

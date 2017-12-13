@@ -1,2 +1,2 @@
 { name : Text
-, default : Text }
+, def : Text }
