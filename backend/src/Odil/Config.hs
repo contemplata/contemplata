@@ -11,6 +11,7 @@ module Odil.Config
 
 
 import Dhall
+import qualified Data.Aeson as JSON
 
 import qualified Odil.Config.Entity as E
 
@@ -21,3 +22,7 @@ data Config = Config
   } deriving (Generic, Show)
 
 instance Interpret Config
+
+instance JSON.FromJSON Config
+instance JSON.ToJSON Config where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions

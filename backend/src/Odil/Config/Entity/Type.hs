@@ -8,6 +8,7 @@ module Odil.Config.Entity.Type
 
 
 import Dhall
+import qualified Data.Aeson as JSON
 
 data EntityType = EntityType
   { among :: Vector Text
@@ -15,3 +16,7 @@ data EntityType = EntityType
   } deriving (Generic, Show)
 
 instance Interpret EntityType
+
+instance JSON.FromJSON EntityType
+instance JSON.ToJSON EntityType where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions

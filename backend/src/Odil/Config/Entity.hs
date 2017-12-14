@@ -13,6 +13,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
 
 import Dhall
+import qualified Data.Aeson as JSON
 
 import qualified Odil.Config.Attr as A
 import qualified Odil.Config.Entity.Type as E
@@ -25,6 +26,10 @@ data Entity = Entity
   } deriving (Generic, Show)
 
 instance Interpret Entity
+
+instance JSON.FromJSON Entity
+instance JSON.ToJSON Entity where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
 
 ------------------------------

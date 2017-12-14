@@ -12,6 +12,7 @@ module Odil.Config.Attr
 
 
 import Dhall
+import qualified Data.Aeson as JSON
 
 -- | An attribute.
 data Attr
@@ -25,3 +26,7 @@ data Attr
   deriving (Generic, Show)
 
 instance Interpret Attr
+
+instance JSON.FromJSON Attr
+instance JSON.ToJSON Attr where
+  toEncoding = JSON.genericToEncoding JSON.defaultOptions

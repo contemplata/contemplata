@@ -2,6 +2,7 @@ module Menu exposing
   (
   -- Model
     Model
+  , setAnnoConfig
   -- Messages
   , Msg(..), update
   -- View
@@ -24,6 +25,7 @@ import Dict as D
 
 import Util
 import Config as Cfg
+import Edit.Config
 import Rose as R
 import Edit.Core as C
 import Server
@@ -36,8 +38,19 @@ import Server
 
 type alias Model =
   { config : Cfg.Config
-  , message : String
+  , annoConfig : Maybe Edit.Config.Config
+  , fileIds : List C.FileId
   }
+
+
+-- | Set the annotation configuration, and, once this is done, set the request
+-- to fetch the files.
+setAnnoConfig : Edit.Config.Config -> Model -> (Model, Cmd Msg)
+setAnnoConfig annoCfg model =
+    ( {model | annoConfig = Just (Debug.log "annoCfg" annoCfg)}
+    , Server.sendWS model.config (Server.GetFiles model.config.user model.fileIds)
+    -- , Cmd.none
+    )
 
 
 ---------------------------------------------------
@@ -89,8 +102,15 @@ view model =
         , "transform" => "translate(-50%, -50%)"
         ]
     ]
-    [ Html.text model.message
+    [ Html.text <|
+          case model.fileIds of
+              [] -> "Incorrent file IDs"
+              _  -> case model.annoConfig of
+                  Nothing  -> "Fetching annotation configuration"
+                  Just cfg -> "Fetching " ++
+                      String.join ", " (List.map C.encodeFileId model.fileIds)
     ]
+
 
 ---------------------------------------------------
 -- Subscriptions
@@ -112,41 +132,32 @@ mkMenu
     -> (Model, Cmd Msg)
 mkMenu config fileIds =
   let
-    msg =
-        case fileIds of
-            [] -> "Incorrent file IDs"
-            _  -> "Fetching " ++
-                  String.join ", " (List.map C.encodeFileId fileIds)
-    model = {config=config, message=msg}
+    model = {config=config, annoConfig=Nothing, fileIds=fileIds}
     init =
         case fileIds of
             [] -> Cmd.none
-            _ -> Server.sendWS config (Server.GetFiles config.user fileIds)
+            -- _ -> Server.sendWS config (Server.GetFiles config.user fileIds)
+            _ -> Server.sendWS config Server.GetConfig
   in
     (model, init)
 
 
--- -- | For adjudication.
--- mkMenu2
+-- mkMenu
 --     : Cfg.Config
---     -> Maybe C.FileId
---     -> Maybe C.FileId
+--     -> List C.FileId
 --     -> (Model, Cmd Msg)
--- mkMenu2 config fileIdMay compIdMay =
+-- mkMenu config fileIds =
 --   let
 --     msg =
---         case (fileIdMay, compIdMay) of
---             (Just fileId, Just compId) ->
---                 "Fetching " ++ C.encodeFileId fileId ++
---                 " and " ++ C.encodeFileId compId
---             _ -> "Incorrent file ID(s)"
---     model = {config=config, message=msg}
+--         case fileIds of
+--             [] -> "Incorrent file IDs"
+--             _  -> "Fetching " ++
+--                   String.join ", " (List.map C.encodeFileId fileIds)
+--     model = {config=config, annoConfig=Nothing, message=msg}
 --     init =
---         case (fileIdMay, compIdMay) of
---             (Just fileId, Just compId) ->
---                 Server.sendWS config
---                     (Server.GetFiles config.user [fileId, compId])
---             _ -> Cmd.none
+--         case fileIds of
+--             [] -> Cmd.none
+--             _ -> Server.sendWS config (Server.GetFiles config.user fileIds)
 --   in
 --     (model, init)
 

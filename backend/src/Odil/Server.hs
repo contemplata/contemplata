@@ -53,11 +53,14 @@ import qualified Data.Configurator.Types as Cfg
 import qualified Data.Aeson as JSON
 import Data.Aeson ((.=))
 
+import qualified Dhall as Dhall
+
 import qualified Network.WebSockets as WS
 
 import Odil.Server.Types
 -- import qualified Odil.Server.Config as Cfg
 import qualified Odil.Server.DB as DB
+import qualified Odil.Config as AnnoConfig
 import qualified Odil.Stanford as Stanford
 import qualified Odil.DiscoDOP as DiscoDOP
 import qualified Odil.Penn as Penn
@@ -93,6 +96,7 @@ data Request
   -- = GetFiles AnnoName
   = GetFile AnnoName FileId
   | GetFiles AnnoName [FileId]
+  | GetConfig
   | SaveFile AnnoName FileId File
   | CompareFiles [(FileId, File)]
     -- ^ Compare the file with the file in the DB to see if any modifications
@@ -136,6 +140,8 @@ data Answer
     -- ^ New file to edit
   | NewFiles [(FileId, File)]
     -- ^ New files to adjudicate
+  | Config AnnoConfig.Config
+    -- ^ Configuration
   | ParseResult
     FileId
     TreeId
@@ -169,6 +175,13 @@ instance JSON.ToJSON Answer where
     NewFiles fileList -> JSON.object
       [ "tag" .= ("NewFiles" :: T.Text)
       , "files" .= JSON.toJSON (map encodePair fileList) ]
+      where
+        encodePair (fileId, file) = JSON.object
+          [ "fileId" .= fileId
+          , "file" .= file ]
+    Config annoCfg -> JSON.object
+      [ "tag" .= ("Config" :: T.Text)
+      , "config" .= JSON.toJSON annoCfg ]
       where
         encodePair (fileId, file) = JSON.object
           [ "fileId" .= fileId
@@ -304,6 +317,13 @@ talk conn state snapCfg = forever $ do
             -- let ret = NewFiles [(fileId, file1), (compId, file2)]
             let ret = NewFiles fileList
             WS.sendTextData conn (JSON.encode ret)
+
+      Right GetConfig -> do
+        putStrLn "Sending annotation configuration..."
+        Just cfgPath <- liftIO $ Cfg.lookup snapCfg "anno-config"
+        annoCfg <- liftIO $ Dhall.input Dhall.auto cfgPath
+        let ret = Config annoCfg
+        WS.sendTextData conn (JSON.encode ret)
 
       Right (SaveFile anno fileId file) -> do
         putStrLn "Saving file..."

@@ -196,6 +196,9 @@ topUpdate topMsg =
       updateOn menuLens menuMsg (Menu.update msg)
     Right (ServerMsg ans) -> case ans of
       Server.Files xs -> Debug.crash "Server.Files not implemented"
+      Server.Config annoCfg ->
+        let upd = Menu.setAnnoConfig (Debug.log "annoCfg" annoCfg)
+        in  updateOn menuLens menuMsg upd
       Server.NewFile fileId file -> \model_ ->
         let (edit, cmd) =
                 Edit.Init.mkEdit (topCfg model_) [(fileId, file)]

@@ -13,6 +13,7 @@ import WebSocket
 
 import Edit.Model as M
 import Edit.Core as C
+import Edit.Config
 import Config as Cfg
 import Util as Util
 
@@ -58,6 +59,8 @@ type Request
     -- ^ Request the contents of the given file
   | GetFiles C.AnnoName (List C.FileId)
     -- ^ Request several files for annotation
+  | GetConfig
+    -- ^ Request the annotation configuration
   | SaveFile C.AnnoName C.FileId M.File
     -- ^ Request the contents of the given file
   | CompareFiles (List (C.FileId, M.File))
@@ -109,9 +112,10 @@ encodeReqToVal req = case req of
     , ("contents", Encode.list
          [ Encode.string annoName
          , Encode.list (List.map C.encodeFileIdJSON ids) ]
---          , C.encodeFileIdJSON id1
---          , C.encodeFileIdJSON id2 ]
       )
+    ]
+  GetConfig -> Encode.object
+    [ ("tag", Encode.string "GetConfig")
     ]
   SaveFile annoName fileId file -> Encode.object
     [ ("tag", Encode.string "SaveFile")
@@ -250,6 +254,8 @@ type Answer
 --     -- ^ New pair of files to edit
   | NewFiles (List (C.FileId, M.File))
     -- ^ New list of files to annotate
+  | Config Edit.Config.Config
+    -- ^ Annotation config
   | ParseResult C.FileId C.PartId (Maybe M.Sent) (R.Tree M.Node)
     -- ^ Parsing result
   | ParseResultList C.FileId C.PartId (List (Maybe (R.Tree M.Node)))
@@ -266,6 +272,7 @@ answerDecoder =
         [ filesDecoder
         , newFileDecoder
         , newFilesDecoder
+        , configDecoder
         , parseResultDecoder
         , parseResultListDecoder
         , diffFilesDecoder
@@ -291,6 +298,13 @@ newFilesDecoder =
   Decode.map2 (\tag_ -> NewFiles)
     (Decode.field "tag" <| tagDecoder "NewFiles")
     (Decode.field "files" fileListDecoder)
+
+
+configDecoder : Decode.Decoder Answer
+configDecoder =
+  Decode.map2 (\tag_ -> Config)
+    (Decode.field "tag" <| tagDecoder "Config")
+    (Decode.field "config" Edit.Config.configDecoder)
 
 
 fileListDecoder : Decode.Decoder (List (C.FileId, M.File))

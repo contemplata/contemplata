@@ -11,6 +11,9 @@ module Edit.AnnoNew exposing
   )
 
 
+import Json.Decode as Decode
+import Json.Encode as Encode
+
 import Dict as D
 
 import Util
@@ -97,6 +100,7 @@ preTerminalLabelSet =
   -- , "$" ]
 
 
+-- | Changing a node attribute.
 type NodeAttr
     = NodeLabelAttr String
     | NodeCommentAttr String
@@ -156,6 +160,61 @@ defaultAttr cfg =
 
 
 ---------------------------------------------------
+-- JSON
+---------------------------------------------------
+
+
+entityDecoder : Decode.Decoder Entity
+entityDecoder =
+  let mkEntity name typ atts =
+        { name = name
+        , typ = typ
+        , attributes = atts
+        }
+  in  Decode.map3 mkEntity
+        (Decode.field "name" Decode.string)
+        (Decode.field "typ" Decode.string)
+        (Decode.field "attributes" attrMapDecoder)
+
+
+attrMapDecoder : Decode.Decoder (D.Dict String Attr)
+attrMapDecoder = Decode.dict attrDecoder
+
+
+attrDecoder : Decode.Decoder Attr
+attrDecoder = Decode.oneOf [pureAttrDecoder, anchorDecoder]
+
+
+pureAttrDecoder : Decode.Decoder Attr
+pureAttrDecoder =
+  Decode.map2 (\_ val -> Attr val)
+    (Decode.field "tag" (isString "Attr"))
+    (Decode.field "contents" Decode.string)
+
+
+anchorDecoder : Decode.Decoder Attr
+anchorDecoder =
+  Decode.map (\_ -> Anchor)
+    (Decode.field "tag" (isString "Anchor"))
+
+
+isString : String -> Decode.Decoder ()
+isString str0
+    =  Decode.string
+    |> Decode.andThen
+       (\str ->
+            if str == str0
+            then Decode.succeed ()
+            else Decode.fail <| "The two strings differ: " ++ str0 ++ " /= " ++ str
+       )
+
+
+---------------------------------------------------
+-- String representations
+---------------------------------------------------
+
+
+---------------------------------------------------
 -- Annotation modifications
 ---------------------------------------------------
 
@@ -176,3 +235,21 @@ type alias EntityAttr =
       -- In general, we should somehow make sure that the change is consistent
       -- with the config.
     }
+
+
+---------------------------------------------------
+-- Utils
+---------------------------------------------------
+
+
+-- toInt : String -> Int
+-- toInt x = String.toInt x |> Result.toMaybe |> Maybe.withDefault 0
+--
+--
+-- mapKeys
+--     : (comparable -> comparable2)
+--     -> D.Dict comparable c
+--     -> D.Dict comparable2 c
+-- mapKeys f d =
+--   let first f (x, y) = (f x, y)
+--   in  D.fromList <| L.map (first f) <| D.toList <| d
