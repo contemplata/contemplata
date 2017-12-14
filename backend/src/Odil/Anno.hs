@@ -6,18 +6,18 @@
 
 
 module Odil.Anno
-( Closed(..)
+( Config(..)
 ) where
 
 
 import Dhall
 
+import qualified Odil.Anno.Entity as E
+
 
 -- | A closed attribute.
-data Closed = Closed
-  { name :: Text
-  , among :: Vector Text
-  , def :: Maybe Text
+data Config = Config
+  { entities :: Vector E.Entity
   } deriving (Generic, Show)
 
-instance Interpret Closed
+instance Interpret Config

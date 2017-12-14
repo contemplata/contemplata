@@ -1,2 +1,2 @@
 \(r : ./Free.typ) ->
-  <free = r | closed : ./Closed.typ | anchor : ./Anchor.typ>
+  <Free = r | Closed : ./Closed.typ | Anchor : ./Anchor.typ>

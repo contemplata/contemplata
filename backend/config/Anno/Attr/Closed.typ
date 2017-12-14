@@ -1,3 +1,2 @@
-{ name : Text
-, among : List Text
+{ among : List Text
 , def : Optional Text }

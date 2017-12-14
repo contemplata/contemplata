@@ -1,4 +1,4 @@
-< free : ./Attr/Free.typ
-| closed : ./Attr/Closed.typ
-| anchor : ./Attr/Anchor.typ
+< Free : ./Attr/Free.typ
+| Closed : ./Attr/Closed.typ
+| Anchor : ./Attr/Anchor.typ
 >

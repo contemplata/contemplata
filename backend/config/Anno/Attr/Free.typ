@@ -1,2 +1,1 @@
-{ name : Text
-, def : Text }
+{ def : Optional Text }

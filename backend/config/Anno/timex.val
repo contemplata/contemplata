@@ -13,13 +13,14 @@ in
   
     -- Attributes
   , attributes =
-      [ closed
-        { name = "Calendar"
-        , among = ["ISO", "Gregor"]
-        , def = ["ISO"] : Optional Text }
-      , free
-        { name = "Pred"
-        , def = ""
+      [ { key = "Calendar"
+        , val = closed
+          { among = ["ISO", "Gregor"]
+          , def = ["ISO"] : Optional Text }
+        }
+      , { key = "Pred"
+        , val = free
+          {def = [] : Optional Text}
         }
       ]
   } : ./Entity.typ
