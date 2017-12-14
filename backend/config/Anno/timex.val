@@ -16,11 +16,12 @@ in
       [ { key = "Calendar"
         , val = closed
           { among = ["ISO", "Gregor"]
-          , def = ["ISO"] : Optional Text }
+          , def = ["ISO"] : Optional Text
+          , required = True }
         }
       , { key = "Pred"
         , val = free
-          {def = [] : Optional Text}
+          { def = [] : Optional Text }
         }
       ]
   } : ./Entity.typ

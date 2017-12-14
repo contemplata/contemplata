@@ -250,9 +250,9 @@ numberOfTokens File{..} = sum
 -----------
 
 
-instance JSON.FromJSON NodeTyp
-instance JSON.ToJSON NodeTyp where
-  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+-- instance JSON.FromJSON NodeTyp
+-- instance JSON.ToJSON NodeTyp where
+--   toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
 instance JSON.FromJSON Node
 instance JSON.ToJSON Node where

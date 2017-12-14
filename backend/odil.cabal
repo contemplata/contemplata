@@ -35,13 +35,13 @@ library
                      , Odil.Penn
                      , Odil.FTB
 
-                     , Odil.Anno
+                     , Odil.Config
+                     , Odil.Config.Attr
+                     , Odil.Config.Entity
+                     , Odil.Config.Entity.Type
+
                      , Odil.Anno.Attr
---                      , Odil.Anno.Attr.Closed
---                      , Odil.Anno.Attr.Free
---                      , Odil.Anno.Attr.Anchor
                      , Odil.Anno.Entity
-                     , Odil.Anno.Entity.Type
 
   other-modules:       Proto.Odil.Stanford.CoreNLP
   build-depends:       base >= 4.7 && < 5

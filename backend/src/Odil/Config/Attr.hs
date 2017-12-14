@@ -13,11 +13,12 @@ module Odil.Config.Attr
 
 import Dhall
 
--- | A free attribute.
+-- | An attribute.
 data Attr
   = Closed
     { among :: Vector Text
-    , def :: Maybe Text }
+    , def :: Maybe Text
+    , required :: Bool }
   | Free
     { def :: Maybe Text }
   | Anchor
