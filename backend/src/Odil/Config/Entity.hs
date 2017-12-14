@@ -4,7 +4,7 @@
 {-# LANGUAGE RecordWildCards   #-}
 
 
-module Odil.Anno.Entity
+module Odil.Config.Entity
 ( Entity(..)
 ) where
 
@@ -14,8 +14,8 @@ import qualified Data.Vector as V
 
 import Dhall
 
-import qualified Odil.Anno.Attr as A
-import qualified Odil.Anno.Entity.Type as E
+import qualified Odil.Config.Attr as A
+import qualified Odil.Config.Entity.Type as E
 
 
 data Entity = Entity

@@ -6,17 +6,12 @@
 -- | Attribute.
 
 
-module Odil.Anno.Attr
+module Odil.Config.Attr
 ( Attr(..)
 ) where
 
 
 import Dhall
-
--- import qualified Odil.Anno.Attr.Closed as C
--- import qualified Odil.Anno.Attr.Free as F
--- import qualified Odil.Anno.Attr.Anchor as A
-
 
 -- | A free attribute.
 data Attr

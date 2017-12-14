@@ -5,14 +5,14 @@
 -- | Fundamental annotation types, configured via Dhall.
 
 
-module Odil.Anno
+module Odil.Config
 ( Config(..)
 ) where
 
 
 import Dhall
 
-import qualified Odil.Anno.Entity as E
+import qualified Odil.Config.Entity as E
 
 
 -- | A closed attribute.

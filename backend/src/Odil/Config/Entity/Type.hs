@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 
-module Odil.Anno.Entity.Type
+module Odil.Config.Entity.Type
 ( EntityType(..)
 ) where
 

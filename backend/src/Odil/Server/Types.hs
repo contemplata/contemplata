@@ -58,8 +58,8 @@ import qualified Data.Tree as R
 import qualified Data.Text as T
 import qualified Data.Aeson as JSON
 
-import qualified Odil.AnnoTypes as Anno
--- import qualified Odil.Anno as Anno
+-- import qualified Odil.AnnoTypes as Anno
+import qualified Odil.Anno.Entity as E
 import Odil.CoreTypes
 
 
@@ -140,11 +140,12 @@ data Node
 
 
 -- | Type of the node, together with the corresponding annotation.
-data NodeTyp
-  = NodeEvent Anno.Event
-  | NodeSignal Anno.Signal
-  | NodeTimex Anno.Timex
-  deriving (Generic, Show, Eq, Ord)
+-- data NodeTyp
+--   = NodeEvent Anno.Event
+--   | NodeSignal Anno.Signal
+--   | NodeTimex Anno.Timex
+--   deriving (Generic, Show, Eq, Ord)
+type NodeTyp = E.Entity
 
 
 -- | A file.
