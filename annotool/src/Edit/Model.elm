@@ -100,6 +100,7 @@ import Config as Cfg
 import Rose as R
 import Edit.Core exposing (..)
 import Edit.Anno as Anno
+import Edit.AnnoNew
 import Edit.Popup as Popup
 
 
