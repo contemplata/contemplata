@@ -2,7 +2,7 @@ module Edit.Model exposing
   (
   -- Data types:
     TreeMap, Sent, Token, File, Turn
-  , Node(..), NodeAnnoTyp(..), Link, Command
+  , Node(..), NodeAnnoTyp, Link, Command
   , InternalNode, LeafNode
   , LinkData
   , isNode, isLeaf
@@ -34,24 +34,34 @@ module Edit.Model exposing
   , getLabel, setLabel
   -- Comments:
   , getComment, setComment
-  -- Event lenses:
-  , eventClass, eventType, eventTime, eventAspect, eventPolarity, eventMood
-  , eventModality -- eventComment
-  , eventInquisit, eventCardinality, eventMod
-  , eventPred
-  -- Event modification:
-  , setEventAttr -- , setEventClass, setEventType, setEventTime, setEventAspect
-  -- Signal lenses:
-  , signalType
-  -- Signal modification:
-  , setSignalAttr
-  -- Signal lenses:
-  , timexCalendar, timexType, timexPred, timexFunctionInDocument
-  , timexTemporalFunction, timexLingValue, timexValue, timexMod
-  , timexQuant, timexFreq
-  -- Signal modification:
-  , setTimexAttr, setTimexType, setTimexAnchor, setTimexBeginPoint, setTimexEndPoint
-  , remTimexAnchor, remTimexBeginPoint, remTimexEndPoint
+
+--   -- Event lenses:
+--   , eventClass, eventType, eventTime, eventAspect, eventPolarity, eventMood
+--   , eventModality -- eventComment
+--   , eventInquisit, eventCardinality, eventMod
+--   , eventPred
+
+  -- Entity modification:
+  , setEntityAttr
+
+  -- -- Event modification:
+  -- , setEventAttr
+  -- -- Signal modification:
+  -- , setSignalAttr
+  -- -- Timex modification:
+  -- , setTimexAttr
+  -- , setTimexType, setTimexAnchor, setTimexBeginPoint, setTimexEndPoint
+  -- , remTimexAnchor, remTimexBeginPoint, remTimexEndPoint
+
+--   -- Signal lenses:
+--   , signalType
+
+--   -- Timex lenses:
+--   , timexCalendar, timexType, timexPred, timexFunctionInDocument
+--   , timexTemporalFunction, timexLingValue, timexValue, timexMod
+--   , timexQuant, timexFreq
+
+
   -- Node selection:
   , selectNode, selectNodeAux
   -- Links
@@ -59,7 +69,8 @@ module Edit.Model exposing
   -- Tree modifications:
   , attachSel, deleteSel, deleteSelTree, addSel, swapSel
   -- Node annotation:
-  , mkEventSel, mkSignalSel, mkTimexSel
+  -- , mkEventSel, mkSignalSel, mkTimexSel
+  , mkEntitySel
   -- Popup-related
   , setFilesPopup, changeSplit, performSplit
   -- -- , changeTypeSel
@@ -99,8 +110,8 @@ import Util as Util
 import Config as Cfg
 import Rose as R
 import Edit.Core exposing (..)
+import Edit.Config as AnnoCfg
 import Edit.Anno as Anno
-import Edit.AnnoNew
 import Edit.Popup as Popup
 
 
@@ -207,10 +218,11 @@ type Node
   | Leaf LeafNode
 
 
-type NodeAnnoTyp
-    = NodeEvent Anno.Event
-    | NodeSignal Anno.Signal
-    | NodeTimex Anno.Timex
+type alias NodeAnnoTyp = Anno.Entity
+-- type NodeAnnoTyp
+--     = NodeEvent Anno.Event
+--     | NodeSignal Anno.Signal
+--     | NodeTimex Anno.Timex
 
 
 isNode : Node -> Bool
@@ -332,6 +344,9 @@ type alias Model =
 
   -- the external configuration
   , config : Cfg.Config
+
+  -- the annotation configuration
+  , annoConfig : AnnoCfg.Config
 
   -- which annotation level is in focus
   , annoLevel : AnnoLevel
@@ -1710,210 +1725,209 @@ setComment id focus newComment model =
 
 
 ---------------------------------------------------
--- Event modification
+-- Attribute modification
 ---------------------------------------------------
 
 
-setEventAttr : (Lens.Focus Anno.Event a) -> NodeId -> Focus -> a -> Model -> Model
-setEventAttr attLens id focus newVal model =
-    let lens = nodeTyp => maybeLens => nodeEvent => attLens
+setEntityAttr : (Lens.Focus Anno.Entity a) -> NodeId -> Focus -> a -> Model -> Model
+setEntityAttr attLens id focus newVal model =
+    let lens = nodeTyp => maybeLens => attLens
         update = Lens.set lens newVal
     in  updateNode id focus update model
 
 
--- setEventClass : NodeId -> Focus -> Anno.EventClass -> Model -> Model
--- setEventClass = setEventAttr eventClass
+-- ---------------------------------------------------
+-- -- Event modification
+-- ---------------------------------------------------
 --
--- setEventType : NodeId -> Focus -> Anno.EventType -> Model -> Model
--- setEventType = setEventAttr eventType
 --
--- setEventTime : NodeId -> Focus -> Maybe Anno.EventTime -> Model -> Model
--- setEventTime = setEventAttr eventTime
+-- setEventAttr : (Lens.Focus Anno.Event a) -> NodeId -> Focus -> a -> Model -> Model
+-- setEventAttr attLens id focus newVal model =
+--     let lens = nodeTyp => maybeLens => nodeEvent => attLens
+--         update = Lens.set lens newVal
+--     in  updateNode id focus update model
 --
--- setEventAspect : NodeId -> Focus -> Maybe Anno.EventAspect -> Model -> Model
--- setEventAspect = setEventAttr eventAspect
-
-
----------------------------------------------------
--- Signal modification
----------------------------------------------------
-
-
-setSignalAttr : (Lens.Focus Anno.Signal a) -> NodeId -> Focus -> a -> Model -> Model
-setSignalAttr attLens id focus newVal model =
-    let lens = nodeTyp => maybeLens => nodeSignal => attLens
-        update = Lens.set lens newVal
-    in  updateNode id focus update model
-
-
----------------------------------------------------
--- Timex modification
----------------------------------------------------
-
-
-setTimexAttr : (Lens.Focus Anno.Timex a) -> NodeId -> Focus -> a -> Model -> Model
-setTimexAttr attLens id focus newVal model =
-    let lens = nodeTyp => maybeLens => nodeTimex => attLens
-        update = Lens.set lens newVal
-    in  updateNode id focus update model
-
-
-setTimexType : NodeId -> Focus -> Anno.TimexType -> Model -> Model
-setTimexType id focus newVal model =
-    let lensTop = nodeTyp => maybeLens => nodeTimex
-        lensType = lensTop => timexType
-        lensBegin = lensTop => timexBeginPoint
-        lensEnd = lensTop => timexEndPoint
-        lensQuant = lensTop => timexQuant
-        lensFreq = lensTop => timexFreq
-        rmDurationRelated = Lens.set lensBegin Nothing >> Lens.set lensEnd Nothing
-        rmSetRelated = Lens.set lensQuant Nothing >> Lens.set lensFreq Nothing
-        update = Lens.set lensType newVal >>
-            case newVal of
-                Anno.Duration -> rmSetRelated
-                Anno.Set -> rmDurationRelated
-                _ -> rmSetRelated >> rmDurationRelated
-    in  updateNode id focus update model
-
-
--- | Set the anchor (timex) of the given node to the selected node.
--- Generic version.
 --
--- The process of deciding which node should be considered as the anchor
--- is as follows:
+-- ---------------------------------------------------
+-- -- Signal modification
+-- ---------------------------------------------------
 --
--- 1. If there is another node selected in focus, choose it
--- 2. Otherwise, choose the main selected node in the other window
--- 3. Otherwise, do nothing (should return nothing in this case
---    so that we can show popup, perhaps?)
--- setTimexAnchorGen :  NodeId -> Focus -> Model -> Either String Model
-setTimexAnchorGen lens id focus model =
-    Debug.crash "Model.setTimexAnchorGet: implement!"
---     let
---         -- lens = nodeTyp => maybeLens => nodeTimex => timexAnchor
---         update newVal = Lens.set lens newVal
---         anchorMaybe = or anchorInFocus anchorNoFocus
---         or x y = case x of
---             Nothing -> y
---             _ -> x
---         win = selectWin focus model
---         anchorInFocus =
---             case S.toList win.selAux of
---                 [x] -> Just (getReprId win.tree model, x)
---                 _   -> Nothing
---         anchorNoFocus =
---             let
---                 otherFocus = case focus of
---                     Top -> Bot
---                     Bot -> Top
---                 otherWin = selectWin otherFocus model
---             in
---                 case otherWin.selMain of
---                     Just x  -> Just (getReprId otherWin.tree model, x)
---                     Nothing -> Nothing
---         isTyped addr =
---             case R.label (subTreeAt addr model) of
---                 Leaf _ -> False
---                 Node r -> case r.nodeTyp of
---                   Just _  -> True
---                   Nothing -> False
---                   -- Just (NodeTimex _) -> True
---                   -- _ -> False
---     in
---         case anchorMaybe of
---             Nothing -> Left "To perform anchoring, you have to first either: (i) select an additional node in focus, or (ii) select a node in the other window."
---             Just anchor ->
---                 if isTyped anchor
---                 then Right <| updateNode id focus (update anchorMaybe) model
---                 else Left "The selected node is untyped (not a TIMEX, EVENT, ...)"
-
-
--- | Set the anchor (timex) of the given node to the selected node.
-setTimexAnchor :  NodeId -> Focus -> Model -> Either String Model
-setTimexAnchor =
-    let lens = nodeTyp => maybeLens => nodeTimex => timexAnchor
-    in  setTimexAnchorGen lens
+--
+-- setSignalAttr : (Lens.Focus Anno.Signal a) -> NodeId -> Focus -> a -> Model -> Model
+-- setSignalAttr attLens id focus newVal model =
+--     let lens = nodeTyp => maybeLens => nodeSignal => attLens
+--         update = Lens.set lens newVal
+--     in  updateNode id focus update model
+--
+--
+-- ---------------------------------------------------
+-- -- Timex modification
+-- ---------------------------------------------------
+--
+--
+-- setTimexAttr : (Lens.Focus Anno.Timex a) -> NodeId -> Focus -> a -> Model -> Model
+-- setTimexAttr attLens id focus newVal model =
+--     let lens = nodeTyp => maybeLens => nodeTimex => attLens
+--         update = Lens.set lens newVal
+--     in  updateNode id focus update model
+--
+--
+-- setTimexType : NodeId -> Focus -> Anno.TimexType -> Model -> Model
+-- setTimexType id focus newVal model =
+--     let lensTop = nodeTyp => maybeLens => nodeTimex
+--         lensType = lensTop => timexType
+--         lensBegin = lensTop => timexBeginPoint
+--         lensEnd = lensTop => timexEndPoint
+--         lensQuant = lensTop => timexQuant
+--         lensFreq = lensTop => timexFreq
+--         rmDurationRelated = Lens.set lensBegin Nothing >> Lens.set lensEnd Nothing
+--         rmSetRelated = Lens.set lensQuant Nothing >> Lens.set lensFreq Nothing
+--         update = Lens.set lensType newVal >>
+--             case newVal of
+--                 Anno.Duration -> rmSetRelated
+--                 Anno.Set -> rmDurationRelated
+--                 _ -> rmSetRelated >> rmDurationRelated
+--     in  updateNode id focus update model
+--
+--
+-- -- | Set the anchor (timex) of the given node to the selected node.
+-- -- Generic version.
+-- --
+-- -- The process of deciding which node should be considered as the anchor
+-- -- is as follows:
+-- --
+-- -- 1. If there is another node selected in focus, choose it
+-- -- 2. Otherwise, choose the main selected node in the other window
+-- -- 3. Otherwise, do nothing (should return nothing in this case
+-- --    so that we can show popup, perhaps?)
+-- -- setTimexAnchorGen :  NodeId -> Focus -> Model -> Either String Model
+-- setTimexAnchorGen lens id focus model =
+--     Debug.crash "Model.setTimexAnchorGet: implement!"
+-- --     let
+-- --         -- lens = nodeTyp => maybeLens => nodeTimex => timexAnchor
+-- --         update newVal = Lens.set lens newVal
+-- --         anchorMaybe = or anchorInFocus anchorNoFocus
+-- --         or x y = case x of
+-- --             Nothing -> y
+-- --             _ -> x
+-- --         win = selectWin focus model
+-- --         anchorInFocus =
+-- --             case S.toList win.selAux of
+-- --                 [x] -> Just (getReprId win.tree model, x)
+-- --                 _   -> Nothing
+-- --         anchorNoFocus =
+-- --             let
+-- --                 otherFocus = case focus of
+-- --                     Top -> Bot
+-- --                     Bot -> Top
+-- --                 otherWin = selectWin otherFocus model
+-- --             in
+-- --                 case otherWin.selMain of
+-- --                     Just x  -> Just (getReprId otherWin.tree model, x)
+-- --                     Nothing -> Nothing
+-- --         isTyped addr =
+-- --             case R.label (subTreeAt addr model) of
+-- --                 Leaf _ -> False
+-- --                 Node r -> case r.nodeTyp of
+-- --                   Just _  -> True
+-- --                   Nothing -> False
+-- --                   -- Just (NodeTimex _) -> True
+-- --                   -- _ -> False
+-- --     in
+-- --         case anchorMaybe of
+-- --             Nothing -> Left "To perform anchoring, you have to first either: (i) select an additional node in focus, or (ii) select a node in the other window."
+-- --             Just anchor ->
+-- --                 if isTyped anchor
+-- --                 then Right <| updateNode id focus (update anchorMaybe) model
+-- --                 else Left "The selected node is untyped (not a TIMEX, EVENT, ...)"
+--
+--
+-- -- | Set the anchor (timex) of the given node to the selected node.
+-- setTimexAnchor :  NodeId -> Focus -> Model -> Either String Model
+-- setTimexAnchor =
+--     let lens = nodeTyp => maybeLens => nodeTimex => timexAnchor
+--     in  setTimexAnchorGen lens
+-- --     let
+-- --         lens = nodeTyp => maybeLens => nodeTimex => timexAnchor
+-- --         update newVal = Lens.set lens newVal
+-- --         anchorMaybe = or anchorInFocus anchorNoFocus
+-- --         or x y = case x of
+-- --             Nothing -> y
+-- --             _ -> x
+-- --         win = selectWin focus model
+-- --         anchorInFocus =
+-- --             case S.toList win.selAux of
+-- --                 [x] -> Just (win.tree, x)
+-- --                 _   -> Nothing
+-- --         anchorNoFocus =
+-- --             let
+-- --                 otherFocus = case focus of
+-- --                     Top -> Bot
+-- --                     Bot -> Top
+-- --                 otherWin = selectWin otherFocus model
+-- --             in
+-- --                 case otherWin.selMain of
+-- --                     Just x  -> Just (otherWin.tree, x)
+-- --                     Nothing -> Nothing
+-- --         isTyped addr =
+-- --             case R.label (subTreeAt addr model) of
+-- --                 Leaf _ -> False
+-- --                 Node r -> case r.nodeTyp of
+-- --                   Just _  -> True
+-- --                   Nothing -> False
+-- --                   -- Just (NodeTimex _) -> True
+-- --                   -- _ -> False
+-- --     in
+-- --         case anchorMaybe of
+-- --             Nothing -> Left "To perform anchoring, you have to first either: (i) select an additional node in focus, or (ii) select a node in the other window."
+-- --             Just anchor ->
+-- --                 if isTyped anchor
+-- --                 then Right <| updateNode id focus (update anchorMaybe) model
+-- --                 else Left "The selected node is untyped (not a TIMEX, EVENT, ...)"
+--
+--
+-- -- | Set the anchor (timex) of the given node to the selected node.
+-- setTimexBeginPoint :  NodeId -> Focus -> Model -> Either String Model
+-- setTimexBeginPoint =
+--     let lens = nodeTyp => maybeLens => nodeTimex => timexBeginPoint
+--     in  setTimexAnchorGen lens
+--
+--
+-- -- | Set the anchor (timex) of the given node to the selected node.
+-- setTimexEndPoint :  NodeId -> Focus -> Model -> Either String Model
+-- setTimexEndPoint =
+--     let lens = nodeTyp => maybeLens => nodeTimex => timexEndPoint
+--     in  setTimexAnchorGen lens
+--
+--
+-- -- | Remove the anchor.
+-- remTimexAnchor :  NodeId -> Focus -> Model -> Model
+-- remTimexAnchor id focus model =
 --     let
 --         lens = nodeTyp => maybeLens => nodeTimex => timexAnchor
---         update newVal = Lens.set lens newVal
---         anchorMaybe = or anchorInFocus anchorNoFocus
---         or x y = case x of
---             Nothing -> y
---             _ -> x
---         win = selectWin focus model
---         anchorInFocus =
---             case S.toList win.selAux of
---                 [x] -> Just (win.tree, x)
---                 _   -> Nothing
---         anchorNoFocus =
---             let
---                 otherFocus = case focus of
---                     Top -> Bot
---                     Bot -> Top
---                 otherWin = selectWin otherFocus model
---             in
---                 case otherWin.selMain of
---                     Just x  -> Just (otherWin.tree, x)
---                     Nothing -> Nothing
---         isTyped addr =
---             case R.label (subTreeAt addr model) of
---                 Leaf _ -> False
---                 Node r -> case r.nodeTyp of
---                   Just _  -> True
---                   Nothing -> False
---                   -- Just (NodeTimex _) -> True
---                   -- _ -> False
+--         update = Lens.set lens Nothing
 --     in
---         case anchorMaybe of
---             Nothing -> Left "To perform anchoring, you have to first either: (i) select an additional node in focus, or (ii) select a node in the other window."
---             Just anchor ->
---                 if isTyped anchor
---                 then Right <| updateNode id focus (update anchorMaybe) model
---                 else Left "The selected node is untyped (not a TIMEX, EVENT, ...)"
-
-
--- | Set the anchor (timex) of the given node to the selected node.
-setTimexBeginPoint :  NodeId -> Focus -> Model -> Either String Model
-setTimexBeginPoint =
-    let lens = nodeTyp => maybeLens => nodeTimex => timexBeginPoint
-    in  setTimexAnchorGen lens
-
-
--- | Set the anchor (timex) of the given node to the selected node.
-setTimexEndPoint :  NodeId -> Focus -> Model -> Either String Model
-setTimexEndPoint =
-    let lens = nodeTyp => maybeLens => nodeTimex => timexEndPoint
-    in  setTimexAnchorGen lens
-
-
--- | Remove the anchor.
-remTimexAnchor :  NodeId -> Focus -> Model -> Model
-remTimexAnchor id focus model =
-    let
-        lens = nodeTyp => maybeLens => nodeTimex => timexAnchor
-        update = Lens.set lens Nothing
-    in
-        updateNode id focus update model
-
-
--- | Remove the anchor.
-remTimexBeginPoint :  NodeId -> Focus -> Model -> Model
-remTimexBeginPoint id focus model =
-    let
-        lens = nodeTyp => maybeLens => nodeTimex => timexBeginPoint
-        update = Lens.set lens Nothing
-    in
-        updateNode id focus update model
-
-
--- | Remove the anchor.
-remTimexEndPoint :  NodeId -> Focus -> Model -> Model
-remTimexEndPoint id focus model =
-    let
-        lens = nodeTyp => maybeLens => nodeTimex => timexEndPoint
-        update = Lens.set lens Nothing
-    in
-        updateNode id focus update model
+--         updateNode id focus update model
+--
+--
+-- -- | Remove the anchor.
+-- remTimexBeginPoint :  NodeId -> Focus -> Model -> Model
+-- remTimexBeginPoint id focus model =
+--     let
+--         lens = nodeTyp => maybeLens => nodeTimex => timexBeginPoint
+--         update = Lens.set lens Nothing
+--     in
+--         updateNode id focus update model
+--
+--
+-- -- | Remove the anchor.
+-- remTimexEndPoint :  NodeId -> Focus -> Model -> Model
+-- remTimexEndPoint id focus model =
+--     let
+--         lens = nodeTyp => maybeLens => nodeTimex => timexEndPoint
+--         update = Lens.set lens Nothing
+--     in
+--         updateNode id focus update model
 
 
 ---------------------------------------------------
@@ -2113,46 +2127,22 @@ reID =
 ---------------------------------------------------
 
 
--- | Change the type of the main selected nodes in a given window.
-changeTypeSel : Focus -> Model -> Model
-changeTypeSel = changeWith changeType
--- changeTypeSel focus model =
+-- -- | Change the type of the main selected nodes in a given window.
+-- changeTypeSel : Focus -> Model -> Model
+-- changeTypeSel = changeWith changeType
+--
+--
+-- -- | Change the type of a given node.
+-- changeType : NodeId -> R.Tree Node -> R.Tree Node
+-- changeType =
 --   let
---     win = selectWin focus model
---     tree = getTree win.tree model
---     -- newTree id = changeType id tree
---   in
---     case win.selMain of
---       Nothing -> model
---       Just id -> updateTree win.tree (\_ -> changeType id tree) model
-
-
--- | Change the type of a given node.
-changeType : NodeId -> R.Tree Node -> R.Tree Node
-changeType =
-  let
-    shiftTyp x = case x of
-      Nothing -> Just <| NodeEvent Anno.eventDefault
-      Just (NodeEvent _) -> Just <| NodeSignal Anno.signalDefault
-      Just (NodeSignal _) -> Just <| NodeTimex Anno.timexDefault
-      Just (NodeTimex _) -> Nothing
-  in
-    changeTypeWith shiftTyp
---   let
---     update x =
---       if id == Lens.get nodeId x && not (isLeaf x)
---       then shift x
---       else x
---     shift node = case node of
---       Leaf r -> node
---       Node r -> Node <| {r | nodeTyp = shiftTyp r.nodeTyp}
 --     shiftTyp x = case x of
 --       Nothing -> Just <| NodeEvent Anno.eventDefault
 --       Just (NodeEvent _) -> Just <| NodeSignal Anno.signalDefault
 --       Just (NodeSignal _) -> Just <| NodeTimex Anno.timexDefault
 --       Just (NodeTimex _) -> Nothing
 --   in
---     R.map update
+--     changeTypeWith shiftTyp
 
 
 -- | Change the type of a given node.
@@ -2166,11 +2156,6 @@ changeTypeWith shiftTyp id =
     shift node = case node of
       Leaf r -> node
       Node r -> Node <| {r | nodeTyp = shiftTyp r.nodeTyp}
---     shiftTyp x = case x of
---       Nothing -> Just <| NodeEvent Anno.eventDefault
---       Just (NodeEvent _) -> Just <| NodeSignal Anno.signalDefault
---       Just (NodeSignal _) -> Just <| NodeTimex Anno.timexDefault
---       Just (NodeTimex _) -> Nothing
   in
     R.map update
 
@@ -2193,53 +2178,73 @@ changeWith changeFun focus model =
 
 
 ---------------------------------------------------
--- Create signal
+-- Create an entity
 ---------------------------------------------------
 
 
-mkSignalSel : Focus -> Model -> Model
-mkSignalSel = changeWith mkSignal
-
-
--- | Mark a signal.
-mkSignal : NodeId -> R.Tree Node -> R.Tree Node
-mkSignal =
+mkEntitySel : AnnoCfg.Entity -> Focus -> Model -> Model
+mkEntitySel entCfg =
   let
-    mkTyp x = case x of
-      Just (NodeSignal _) -> Nothing
-      _ -> Just <| NodeSignal Anno.signalDefault
-  in
-    changeTypeWith mkTyp
-
-
----------------------------------------------------
--- Create event
----------------------------------------------------
-
-
-mkEventSel : Focus -> Model -> Model
-mkEventSel =
-  let
-    mkTyp x = case x of
-      Just (NodeEvent _) -> Nothing
-      _ -> Just <| NodeEvent Anno.eventDefault
+    add x =
+      case x of
+        Just ent -> ent.name /= entCfg.name
+        _ -> True
+    mkTyp x =
+      if add x
+      then Just <| Anno.defaultEntity entCfg
+      else Nothing
   in
     changeWith (changeTypeWith mkTyp)
 
 
----------------------------------------------------
--- Create timex
----------------------------------------------------
-
-
-mkTimexSel : Focus -> Model -> Model
-mkTimexSel =
-  let
-    mkTyp x = case x of
-      Just (NodeTimex _) -> Nothing
-      _ -> Just <| NodeTimex Anno.timexDefault
-  in
-    changeWith (changeTypeWith mkTyp)
+-- ---------------------------------------------------
+-- -- Create signal
+-- ---------------------------------------------------
+--
+--
+-- mkSignalSel : Focus -> Model -> Model
+-- mkSignalSel = changeWith mkSignal
+--
+--
+-- -- | Mark a signal.
+-- mkSignal : NodeId -> R.Tree Node -> R.Tree Node
+-- mkSignal =
+--   let
+--     mkTyp x = case x of
+--       Just (NodeSignal _) -> Nothing
+--       _ -> Just <| NodeSignal Anno.signalDefault
+--   in
+--     changeTypeWith mkTyp
+--
+--
+-- ---------------------------------------------------
+-- -- Create event
+-- ---------------------------------------------------
+--
+--
+-- mkEventSel : Focus -> Model -> Model
+-- mkEventSel =
+--   let
+--     mkTyp x = case x of
+--       Just (NodeEvent _) -> Nothing
+--       _ -> Just <| NodeEvent Anno.eventDefault
+--   in
+--     changeWith (changeTypeWith mkTyp)
+--
+--
+-- ---------------------------------------------------
+-- -- Create timex
+-- ---------------------------------------------------
+--
+--
+-- mkTimexSel : Focus -> Model -> Model
+-- mkTimexSel =
+--   let
+--     mkTyp x = case x of
+--       Just (NodeTimex _) -> Nothing
+--       _ -> Just <| NodeTimex Anno.timexDefault
+--   in
+--     changeWith (changeTypeWith mkTyp)
 
 
 ---------------------------------------------------
@@ -3423,157 +3428,148 @@ nodeComment =
     Lens.create get update
 
 
-nodeEvent : Lens.Focus NodeAnnoTyp Anno.Event
-nodeEvent =
-  let
-    getErr = "nodeEvent.lens: cannot get"
-    get typ = case typ of
-      NodeEvent event -> event
-      _ -> Debug.crash getErr
-    update f typ = case typ of
-      NodeEvent event -> NodeEvent (f event)
-      _ -> typ
-  in
-    Lens.create get update
-
-
-nodeSignal : Lens.Focus NodeAnnoTyp Anno.Signal
-nodeSignal =
-  let
-    getErr = "nodeSignal.lens: cannot get"
-    get typ = case typ of
-      NodeSignal event -> event
-      _ -> Debug.crash getErr
-    update f typ = case typ of
-      NodeSignal event -> NodeSignal (f event)
-      _ -> typ
-  in
-    Lens.create get update
-
-
-nodeTimex : Lens.Focus NodeAnnoTyp Anno.Timex
-nodeTimex =
-  let
-    getErr = "nodeTimex.lens: cannot get"
-    get typ = case typ of
-      NodeTimex timex -> timex
-      _ -> Debug.crash getErr
-    update f typ = case typ of
-      NodeTimex timex -> NodeTimex (f timex)
-      _ -> typ
-  in
-    Lens.create get update
-
-
-----------------------------
--- Event-related lenses
-----------------------------
-
-
-eventClass : Lens.Focus Anno.Event Anno.EventClass
-eventClass =
-  let
-    get (Anno.Event r) = r.evClass
-    update f (Anno.Event r) = Anno.Event {r | evClass = f r.evClass}
-  in
-    Lens.create get update
-
-
-eventType : Lens.Focus Anno.Event Anno.EventType
-eventType =
-  let
-    get (Anno.Event r) = r.evType
-    update f (Anno.Event r) = Anno.Event {r | evType = f r.evType}
-  in
-    Lens.create get update
-
-
-eventInquisit : Lens.Focus Anno.Event Anno.EventInquisit
-eventInquisit =
-  let
-    get (Anno.Event r) = r.evInquisit
-    update f (Anno.Event r) = Anno.Event {r | evInquisit = f r.evInquisit}
-  in
-    Lens.create get update
-
-
-eventTime : Lens.Focus Anno.Event (Maybe Anno.EventTime)
-eventTime =
-  let
-    get (Anno.Event r) = r.evTime
-    update f (Anno.Event r) = Anno.Event {r | evTime = f r.evTime}
-  in
-    Lens.create get update
-
-
-eventAspect : Lens.Focus Anno.Event (Maybe Anno.EventAspect)
-eventAspect =
-  let
-    get (Anno.Event r) = r.evAspect
-    update f (Anno.Event r) = Anno.Event {r | evAspect = f r.evAspect}
-  in
-    Lens.create get update
-
-
-eventPolarity : Lens.Focus Anno.Event Anno.EventPolarity
-eventPolarity =
-  let
-    get (Anno.Event r) = r.evPolarity
-    update f (Anno.Event r) = Anno.Event {r | evPolarity = f r.evPolarity}
-  in
-    Lens.create get update
-
-
-eventMood : Lens.Focus Anno.Event (Maybe Anno.EventMood)
-eventMood =
-  let
-    get (Anno.Event r) = r.evMood
-    update f (Anno.Event r) = Anno.Event {r | evMood = f r.evMood}
-  in
-    Lens.create get update
-
-
-eventModality : Lens.Focus Anno.Event (Maybe Anno.EventModality)
-eventModality =
-  let
-    get (Anno.Event r) = r.evModality
-    update f (Anno.Event r) = Anno.Event {r | evModality = f r.evModality}
-  in
-    Lens.create get update
-
-
-eventCardinality : Lens.Focus Anno.Event String
-eventCardinality =
-  let
-    get (Anno.Event r) = r.evCardinality
-    update f (Anno.Event r) = Anno.Event {r | evCardinality = f r.evCardinality}
-  in
-    Lens.create get update
-
-
-eventMod : Lens.Focus Anno.Event (Maybe Anno.EventMod)
-eventMod =
-  let
-    get (Anno.Event r) = r.evMod
-    update f (Anno.Event r) = Anno.Event {r | evMod = f r.evMod}
-  in
-    Lens.create get update
-
-
-eventPred : Lens.Focus Anno.Event String
-eventPred =
-  let
-    get (Anno.Event r) = r.evPred
-    update f (Anno.Event r) = Anno.Event {r | evPred = f r.evPred}
-  in
-    Lens.create get update
-
-
--- eventComment : Lens.Focus Anno.Event String
--- eventComment =
+-- nodeEvent : Lens.Focus NodeAnnoTyp Anno.Event
+-- nodeEvent =
 --   let
---     get (Anno.Event r) = r.evComment
---     update f (Anno.Event r) = Anno.Event {r | evComment = f r.evComment}
+--     getErr = "nodeEvent.lens: cannot get"
+--     get typ = case typ of
+--       NodeEvent event -> event
+--       _ -> Debug.crash getErr
+--     update f typ = case typ of
+--       NodeEvent event -> NodeEvent (f event)
+--       _ -> typ
+--   in
+--     Lens.create get update
+--
+--
+-- nodeSignal : Lens.Focus NodeAnnoTyp Anno.Signal
+-- nodeSignal =
+--   let
+--     getErr = "nodeSignal.lens: cannot get"
+--     get typ = case typ of
+--       NodeSignal event -> event
+--       _ -> Debug.crash getErr
+--     update f typ = case typ of
+--       NodeSignal event -> NodeSignal (f event)
+--       _ -> typ
+--   in
+--     Lens.create get update
+--
+--
+-- nodeTimex : Lens.Focus NodeAnnoTyp Anno.Timex
+-- nodeTimex =
+--   let
+--     getErr = "nodeTimex.lens: cannot get"
+--     get typ = case typ of
+--       NodeTimex timex -> timex
+--       _ -> Debug.crash getErr
+--     update f typ = case typ of
+--       NodeTimex timex -> NodeTimex (f timex)
+--       _ -> typ
+--   in
+--     Lens.create get update
+
+
+-- ----------------------------
+-- -- Event-related lenses
+-- ----------------------------
+--
+--
+-- eventClass : Lens.Focus Anno.Event Anno.EventClass
+-- eventClass =
+--   let
+--     get (Anno.Event r) = r.evClass
+--     update f (Anno.Event r) = Anno.Event {r | evClass = f r.evClass}
+--   in
+--     Lens.create get update
+--
+--
+-- eventType : Lens.Focus Anno.Event Anno.EventType
+-- eventType =
+--   let
+--     get (Anno.Event r) = r.evType
+--     update f (Anno.Event r) = Anno.Event {r | evType = f r.evType}
+--   in
+--     Lens.create get update
+--
+--
+-- eventInquisit : Lens.Focus Anno.Event Anno.EventInquisit
+-- eventInquisit =
+--   let
+--     get (Anno.Event r) = r.evInquisit
+--     update f (Anno.Event r) = Anno.Event {r | evInquisit = f r.evInquisit}
+--   in
+--     Lens.create get update
+--
+--
+-- eventTime : Lens.Focus Anno.Event (Maybe Anno.EventTime)
+-- eventTime =
+--   let
+--     get (Anno.Event r) = r.evTime
+--     update f (Anno.Event r) = Anno.Event {r | evTime = f r.evTime}
+--   in
+--     Lens.create get update
+--
+--
+-- eventAspect : Lens.Focus Anno.Event (Maybe Anno.EventAspect)
+-- eventAspect =
+--   let
+--     get (Anno.Event r) = r.evAspect
+--     update f (Anno.Event r) = Anno.Event {r | evAspect = f r.evAspect}
+--   in
+--     Lens.create get update
+--
+--
+-- eventPolarity : Lens.Focus Anno.Event Anno.EventPolarity
+-- eventPolarity =
+--   let
+--     get (Anno.Event r) = r.evPolarity
+--     update f (Anno.Event r) = Anno.Event {r | evPolarity = f r.evPolarity}
+--   in
+--     Lens.create get update
+--
+--
+-- eventMood : Lens.Focus Anno.Event (Maybe Anno.EventMood)
+-- eventMood =
+--   let
+--     get (Anno.Event r) = r.evMood
+--     update f (Anno.Event r) = Anno.Event {r | evMood = f r.evMood}
+--   in
+--     Lens.create get update
+--
+--
+-- eventModality : Lens.Focus Anno.Event (Maybe Anno.EventModality)
+-- eventModality =
+--   let
+--     get (Anno.Event r) = r.evModality
+--     update f (Anno.Event r) = Anno.Event {r | evModality = f r.evModality}
+--   in
+--     Lens.create get update
+--
+--
+-- eventCardinality : Lens.Focus Anno.Event String
+-- eventCardinality =
+--   let
+--     get (Anno.Event r) = r.evCardinality
+--     update f (Anno.Event r) = Anno.Event {r | evCardinality = f r.evCardinality}
+--   in
+--     Lens.create get update
+--
+--
+-- eventMod : Lens.Focus Anno.Event (Maybe Anno.EventMod)
+-- eventMod =
+--   let
+--     get (Anno.Event r) = r.evMod
+--     update f (Anno.Event r) = Anno.Event {r | evMod = f r.evMod}
+--   in
+--     Lens.create get update
+--
+--
+-- eventPred : Lens.Focus Anno.Event String
+-- eventPred =
+--   let
+--     get (Anno.Event r) = r.evPred
+--     update f (Anno.Event r) = Anno.Event {r | evPred = f r.evPred}
 --   in
 --     Lens.create get update
 
@@ -3583,135 +3579,135 @@ eventPred =
 ----------------------------
 
 
-signalType : Lens.Focus Anno.Signal Anno.SignalType
-signalType =
-  let
-    get (Anno.Signal r) = r.siType
-    update f (Anno.Signal r) = Anno.Signal {r | siType = f r.siType}
-  in
-    Lens.create get update
+-- signalType : Lens.Focus Anno.Signal Anno.SignalType
+-- signalType =
+--   let
+--     get (Anno.Signal r) = r.siType
+--     update f (Anno.Signal r) = Anno.Signal {r | siType = f r.siType}
+--   in
+--     Lens.create get update
 
 
-----------------------------
--- Timex-related lenses
-----------------------------
-
-
-timexCalendar : Lens.Focus Anno.Timex Anno.TimexCalendar
-timexCalendar =
-  let
-    get (Anno.Timex r) = r.tiCalendar
-    update f (Anno.Timex r) = Anno.Timex {r | tiCalendar = f r.tiCalendar}
-  in
-    Lens.create get update
-
-
-timexType : Lens.Focus Anno.Timex Anno.TimexType
-timexType =
-  let
-    get (Anno.Timex r) = r.tiType
-    update f (Anno.Timex r) = Anno.Timex {r | tiType = f r.tiType}
-  in
-    Lens.create get update
-
-
-timexFunctionInDocument : Lens.Focus Anno.Timex (Maybe Anno.TimexFunctionInDocument)
-timexFunctionInDocument =
-  let
-    get (Anno.Timex r) = r.tiFunctionInDocument
-    update f (Anno.Timex r) = Anno.Timex {r | tiFunctionInDocument = f r.tiFunctionInDocument}
-  in
-    Lens.create get update
-
-
-timexPred : Lens.Focus Anno.Timex String
-timexPred =
-  let
-    get (Anno.Timex r) = r.tiPred
-    update f (Anno.Timex r) = Anno.Timex {r | tiPred = f r.tiPred}
-  in
-    Lens.create get update
-
-
-timexTemporalFunction : Lens.Focus Anno.Timex (Maybe Anno.TimexTemporalFunction)
-timexTemporalFunction =
-  let
-    get (Anno.Timex r) = r.tiTemporalFunction
-    update f (Anno.Timex r) = Anno.Timex {r | tiTemporalFunction = f r.tiTemporalFunction}
-  in
-    Lens.create get update
-
-
-timexLingValue : Lens.Focus Anno.Timex String
-timexLingValue =
-  let
-    get (Anno.Timex r) = r.tiLingValue
-    update f (Anno.Timex r) = Anno.Timex {r | tiLingValue = f r.tiLingValue}
-  in
-    Lens.create get update
-
-
-timexValue : Lens.Focus Anno.Timex String
-timexValue =
-  let
-    get (Anno.Timex r) = r.tiValue
-    update f (Anno.Timex r) = Anno.Timex {r | tiValue = f r.tiValue}
-  in
-    Lens.create get update
-
-
-timexMod : Lens.Focus Anno.Timex (Maybe Anno.TimexMod)
-timexMod =
-  let
-    get (Anno.Timex r) = r.tiMod
-    update f (Anno.Timex r) = Anno.Timex {r | tiMod = f r.tiMod}
-  in
-    Lens.create get update
-
-
-timexAnchor : Lens.Focus Anno.Timex (Maybe Addr)
-timexAnchor =
-  let
-    get (Anno.Timex r) = r.tiAnchor
-    update f (Anno.Timex r) = Anno.Timex {r | tiAnchor = f r.tiAnchor}
-  in
-    Lens.create get update
-
-
-timexBeginPoint : Lens.Focus Anno.Timex (Maybe Addr)
-timexBeginPoint =
-  let
-    get (Anno.Timex r) = r.tiBeginPoint
-    update f (Anno.Timex r) = Anno.Timex {r | tiBeginPoint = f r.tiBeginPoint}
-  in
-    Lens.create get update
-
-
-timexEndPoint : Lens.Focus Anno.Timex (Maybe Addr)
-timexEndPoint =
-  let
-    get (Anno.Timex r) = r.tiEndPoint
-    update f (Anno.Timex r) = Anno.Timex {r | tiEndPoint = f r.tiEndPoint}
-  in
-    Lens.create get update
-
-
-timexQuant : Lens.Focus Anno.Timex (Maybe String)
-timexQuant =
-  let
-    get (Anno.Timex r) = r.tiQuant
-    update f (Anno.Timex r) = Anno.Timex {r | tiQuant = f r.tiQuant}
-  in
-    Lens.create get update
-
-
-timexFreq : Lens.Focus Anno.Timex (Maybe String)
-timexFreq =
-  let
-    get (Anno.Timex r) = r.tiFreq
-    update f (Anno.Timex r) = Anno.Timex {r | tiFreq = f r.tiFreq}
-  in
-    Lens.create get update
+-- ----------------------------
+-- -- Timex-related lenses
+-- ----------------------------
+--
+--
+-- timexCalendar : Lens.Focus Anno.Timex Anno.TimexCalendar
+-- timexCalendar =
+--   let
+--     get (Anno.Timex r) = r.tiCalendar
+--     update f (Anno.Timex r) = Anno.Timex {r | tiCalendar = f r.tiCalendar}
+--   in
+--     Lens.create get update
+--
+--
+-- timexType : Lens.Focus Anno.Timex Anno.TimexType
+-- timexType =
+--   let
+--     get (Anno.Timex r) = r.tiType
+--     update f (Anno.Timex r) = Anno.Timex {r | tiType = f r.tiType}
+--   in
+--     Lens.create get update
+--
+--
+-- timexFunctionInDocument : Lens.Focus Anno.Timex (Maybe Anno.TimexFunctionInDocument)
+-- timexFunctionInDocument =
+--   let
+--     get (Anno.Timex r) = r.tiFunctionInDocument
+--     update f (Anno.Timex r) = Anno.Timex {r | tiFunctionInDocument = f r.tiFunctionInDocument}
+--   in
+--     Lens.create get update
+--
+--
+-- timexPred : Lens.Focus Anno.Timex String
+-- timexPred =
+--   let
+--     get (Anno.Timex r) = r.tiPred
+--     update f (Anno.Timex r) = Anno.Timex {r | tiPred = f r.tiPred}
+--   in
+--     Lens.create get update
+--
+--
+-- timexTemporalFunction : Lens.Focus Anno.Timex (Maybe Anno.TimexTemporalFunction)
+-- timexTemporalFunction =
+--   let
+--     get (Anno.Timex r) = r.tiTemporalFunction
+--     update f (Anno.Timex r) = Anno.Timex {r | tiTemporalFunction = f r.tiTemporalFunction}
+--   in
+--     Lens.create get update
+--
+--
+-- timexLingValue : Lens.Focus Anno.Timex String
+-- timexLingValue =
+--   let
+--     get (Anno.Timex r) = r.tiLingValue
+--     update f (Anno.Timex r) = Anno.Timex {r | tiLingValue = f r.tiLingValue}
+--   in
+--     Lens.create get update
+--
+--
+-- timexValue : Lens.Focus Anno.Timex String
+-- timexValue =
+--   let
+--     get (Anno.Timex r) = r.tiValue
+--     update f (Anno.Timex r) = Anno.Timex {r | tiValue = f r.tiValue}
+--   in
+--     Lens.create get update
+--
+--
+-- timexMod : Lens.Focus Anno.Timex (Maybe Anno.TimexMod)
+-- timexMod =
+--   let
+--     get (Anno.Timex r) = r.tiMod
+--     update f (Anno.Timex r) = Anno.Timex {r | tiMod = f r.tiMod}
+--   in
+--     Lens.create get update
+--
+--
+-- timexAnchor : Lens.Focus Anno.Timex (Maybe Addr)
+-- timexAnchor =
+--   let
+--     get (Anno.Timex r) = r.tiAnchor
+--     update f (Anno.Timex r) = Anno.Timex {r | tiAnchor = f r.tiAnchor}
+--   in
+--     Lens.create get update
+--
+--
+-- timexBeginPoint : Lens.Focus Anno.Timex (Maybe Addr)
+-- timexBeginPoint =
+--   let
+--     get (Anno.Timex r) = r.tiBeginPoint
+--     update f (Anno.Timex r) = Anno.Timex {r | tiBeginPoint = f r.tiBeginPoint}
+--   in
+--     Lens.create get update
+--
+--
+-- timexEndPoint : Lens.Focus Anno.Timex (Maybe Addr)
+-- timexEndPoint =
+--   let
+--     get (Anno.Timex r) = r.tiEndPoint
+--     update f (Anno.Timex r) = Anno.Timex {r | tiEndPoint = f r.tiEndPoint}
+--   in
+--     Lens.create get update
+--
+--
+-- timexQuant : Lens.Focus Anno.Timex (Maybe String)
+-- timexQuant =
+--   let
+--     get (Anno.Timex r) = r.tiQuant
+--     update f (Anno.Timex r) = Anno.Timex {r | tiQuant = f r.tiQuant}
+--   in
+--     Lens.create get update
+--
+--
+-- timexFreq : Lens.Focus Anno.Timex (Maybe String)
+-- timexFreq =
+--   let
+--     get (Anno.Timex r) = r.tiFreq
+--     update f (Anno.Timex r) = Anno.Timex {r | tiFreq = f r.tiFreq}
+--   in
+--     Lens.create get update
 
 
 ----------------------------
@@ -3881,31 +3877,26 @@ leafDecoder =
 
 
 nodeTypDecoder : Decode.Decoder NodeAnnoTyp
-nodeTypDecoder = Decode.oneOf [nodeEventDecoder, nodeSignalDecoder, nodeTimexDecoder]
+nodeTypDecoder = Anno.entityDecoder
+-- nodeTypDecoder = Decode.oneOf [nodeEventDecoder, nodeSignalDecoder, nodeTimexDecoder]
 
 
-nodeEventDecoder : Decode.Decoder NodeAnnoTyp
-nodeEventDecoder =
-  Decode.map (\ev -> NodeEvent ev)
-    (Decode.field "contents" Anno.eventDecoder)
-
-
-nodeSignalDecoder : Decode.Decoder NodeAnnoTyp
-nodeSignalDecoder =
-  Decode.map (\si -> NodeSignal si)
-    (Decode.field "contents" Anno.signalDecoder)
-
-
-nodeTimexDecoder : Decode.Decoder NodeAnnoTyp
-nodeTimexDecoder =
-  Decode.map (\ti -> NodeTimex ti)
-    (Decode.field "contents" Anno.timexDecoder)
---   let
---     verifyTag x = case x of
---       "NodeTimex" -> Decode.succeed NodeTimex
---       _ -> Decode.fail "not a NodeTimex"
---   in
---     Decode.field "tag" Decode.string |> Decode.andThen verifyTag
+-- nodeEventDecoder : Decode.Decoder NodeAnnoTyp
+-- nodeEventDecoder =
+--   Decode.map (\ev -> NodeEvent ev)
+--     (Decode.field "contents" Anno.eventDecoder)
+--
+--
+-- nodeSignalDecoder : Decode.Decoder NodeAnnoTyp
+-- nodeSignalDecoder =
+--   Decode.map (\si -> NodeSignal si)
+--     (Decode.field "contents" Anno.signalDecoder)
+--
+--
+-- nodeTimexDecoder : Decode.Decoder NodeAnnoTyp
+-- nodeTimexDecoder =
+--   Decode.map (\ti -> NodeTimex ti)
+--     (Decode.field "contents" Anno.timexDecoder)
 
 
 ---------------------------------------------------
@@ -3960,15 +3951,15 @@ encodeLink : Link -> Encode.Value
 encodeLink (from, to) =
   Encode.object
     [ ("tag", Encode.string "Link")
-    , ("from", Anno.encodeAddr from)
-    , ("to", Anno.encodeAddr to)
+    , ("from", encodeAddr from)
+    , ("to", encodeAddr to)
     ]
 
 
 encodeLinkData : LinkData -> Encode.Value
 encodeLinkData x = Encode.object
   [ ("tag", Encode.string "LinkData")
-  , ("signalAddr", Util.encodeMaybe Anno.encodeAddr x.signalAddr)
+  , ("signalAddr", Util.encodeMaybe encodeAddr x.signalAddr)
   ]
 
 
@@ -4057,22 +4048,23 @@ encodeNode node = case node of
     [ ("tag", Encode.string "Node")
     , ("nodeId", Encode.int r.nodeId)
     , ("nodeVal", Encode.string r.nodeVal)
-    , ("nodeTyp", Util.encodeMaybe encodeNodeAnnoTyp r.nodeTyp)
+    -- , ("nodeTyp", Util.encodeMaybe encodeNodeAnnoTyp r.nodeTyp)
+    , ("nodeTyp", Util.encodeMaybe Anno.encodeEntity r.nodeTyp)
     , ("nodeComment", Encode.string r.nodeComment)
     ]
 
 
-encodeNodeAnnoTyp : NodeAnnoTyp -> Encode.Value
-encodeNodeAnnoTyp nodeTyp = case nodeTyp of
-  NodeEvent ev -> Encode.object
-    [ ("tag", Encode.string "NodeEvent")
-    , ("contents", Anno.encodeEvent ev) ]
-  NodeSignal si -> Encode.object
-    [ ("tag", Encode.string "NodeSignal")
-    , ("contents", Anno.encodeSignal si) ]
-  NodeTimex ti -> Encode.object
-    [ ("tag", Encode.string "NodeTimex")
-    , ("contents", Anno.encodeTimex ti) ]
+-- encodeNodeAnnoTyp : NodeAnnoTyp -> Encode.Value
+-- encodeNodeAnnoTyp nodeTyp = case nodeTyp of
+--   NodeEvent ev -> Encode.object
+--     [ ("tag", Encode.string "NodeEvent")
+--     , ("contents", Anno.encodeEvent ev) ]
+--   NodeSignal si -> Encode.object
+--     [ ("tag", Encode.string "NodeSignal")
+--     , ("contents", Anno.encodeSignal si) ]
+--   NodeTimex ti -> Encode.object
+--     [ ("tag", Encode.string "NodeTimex")
+--     , ("contents", Anno.encodeTimex ti) ]
 
 
 ---------------------------------------------------
@@ -4166,3 +4158,7 @@ findMaxID tree =
       <| L.map (\x -> Lens.get nodeId x)
       <| Util.catMaybes
       <| R.flatten tree
+
+
+encodeAddr : Addr -> Encode.Value
+encodeAddr (x, y) = Encode.list [Encode.int x, Encode.int y]

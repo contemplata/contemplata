@@ -39,9 +39,10 @@ type Msg
     -- together with the corresponding subtrees
   | Add -- ^ Delete the selected nodes in the focused window
   -- | ChangeType -- ^ Change the type of the selected node
-  | MkSignal -- ^ Create signal
-  | MkEvent -- ^ Create event
-  | MkTimex -- ^ Create event
+  | MkEntity String -- ^ Create entity of the given name
+--   | MkSignal -- ^ Create signal
+--   | MkEvent -- ^ Create event
+--   | MkTimex -- ^ Create event
   | ParseRaw Bool  -- ^ Reparse from scratch the sentence in focus; the argument determines
                    -- wheter pre-processing should be used or not
   | ParseSent Server.ParserTyp  -- ^ Reparse the sentence in focus
@@ -68,14 +69,11 @@ type Msg
   | SideMenuLog M.Focus
   -- * Modifying general node's attributes
   | SetNodeAttr C.NodeId M.Focus Anno.NodeAttr
-  -- * Event modification events...
-  | SetEventAttr C.NodeId M.Focus Anno.EventAttr
---   | SetEventClass C.NodeId M.Focus Anno.EventClass
---   | SetEventType C.NodeId M.Focus Anno.EventType
---   | SetEventTime C.NodeId M.Focus (Maybe Anno.EventTime)
---   | SetEventAspect C.NodeId M.Focus (Maybe Anno.EventAspect)
-  | SetSignalAttr C.NodeId M.Focus Anno.SignalAttr
-  | SetTimexAttr C.NodeId M.Focus Anno.TimexAttr
+  -- * Entity modification event
+  | SetEntityAttr C.NodeId M.Focus String Anno.Attr
+--   | SetEventAttr C.NodeId M.Focus Anno.EventAttr
+--   | SetSignalAttr C.NodeId M.Focus Anno.SignalAttr
+--   | SetTimexAttr C.NodeId M.Focus Anno.TimexAttr
   | CommandStart
   | CommandEnter
   | CommandEscape

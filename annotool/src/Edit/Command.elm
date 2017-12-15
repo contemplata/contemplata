@@ -199,18 +199,18 @@ globalCommands =
     , { void
           | keyCmd = Just {keyCode=83, char='s'}
           , menuCmd = Just "Signal"
-          , help = Just "Make the selected node as signal"
-      } => MkSignal
+          , help = Just "Mark the selected node as signal"
+      } => MkEntity "Signal"
     , { void
           | keyCmd = Just {keyCode=84, char='t'}
           , menuCmd = Just "Timex"
-          , help = Just "Make the selected node as timex"
-      } => MkTimex
+          , help = Just "Mark the selected node as timex"
+      } => MkEntity "Timex"
     , { void
           | keyCmd = Just {keyCode=86, char='v'}
           , menuCmd = Just "Event"
-          , help = Just "Make the selected node as event"
-      } => MkEvent
+          , help = Just "Mark the selected node as event"
+      } => MkEntity "Event"
 
     ]
 

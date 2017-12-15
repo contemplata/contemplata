@@ -7,12 +7,15 @@ module Edit.Config exposing
   , EntityType
   , Attr (..)
   , configDecoder
+  , entityConfig
+  , attrConfig
   )
 
 
 import Json.Decode as Decode
 import Json.Encode as Encode
 
+import Util
 import Dict as D
 
 
@@ -24,6 +27,7 @@ import Dict as D
 -- | A configuration to which an `Entity` must correspond.
 type alias Config =
   { entities : List Entity
+    -- ^ TODO: This could be a map!
   }
 
 
@@ -51,6 +55,32 @@ type Attr
   | Free
     { def : Maybe String }
   | Anchor
+
+
+-- | Retrieve the list of the values for the given attribute.
+-- Returns `Free Nothing` if the entity/attribute unknown.
+attrConfig
+    :  String -- ^ Entity name
+    -> String -- ^ Attribute name
+    -> Config -- ^ Config, obviously
+    -> Attr
+attrConfig name attr cfg =
+    let def = Free {def = Nothing} in
+    case Util.find (\x -> x.name == name) cfg.entities of
+        Nothing -> def
+        Just ent ->
+            case D.get attr ent.attributes of
+                Nothing -> def
+                Just at -> at
+
+
+-- | Get the configuration for a given entity name.
+entityConfig
+    :  String -- ^ Entity name
+    -> Config -- ^ Config
+    -> Maybe Entity
+entityConfig name cfg =
+    Util.find (\x -> x.name == name) cfg.entities
 
 
 ---------------------------------------------------

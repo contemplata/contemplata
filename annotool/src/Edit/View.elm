@@ -22,6 +22,7 @@ import Rose as R
 import Util as Util
 import Config as Cfg
 import Edit.Anno as Anno
+import Edit.Config as AnnoCfg
 import Edit.Model as M
 import Edit.Core as C
 import Edit.Command as Cmd
@@ -695,7 +696,9 @@ viewMenu model = -- fileName =
         , Delete, DeleteTree, Add
         ]
     temporalCommands = Util.catMaybes <| List.map mkMenuElem
-        [ MkEvent, MkSignal, MkTimex
+        [ MkEntity "Event"
+        , MkEntity "Signal"
+        , MkEntity "Timex"
         ]
 
     levelElem level = Html.div
@@ -828,9 +831,13 @@ drawInternal node selMain selAux focus at mark =
         [ Html.text node.nodeVal
         , case node.nodeTyp of
             Nothing -> Html.sub [] []
-            Just (M.NodeEvent _) -> Html.sub [] [Html.text "EV"]
-            Just (M.NodeSignal _) -> Html.sub [] [Html.text "SI"]
-            Just (M.NodeTimex _) -> Html.sub [] [Html.text "TX"]
+            Just en -> Html.sub []
+                       [ Html.text <|
+                         String.map Char.toUpper <|
+                         String.left 2 en.name ]
+--             Just (M.NodeEvent _) -> Html.sub [] [Html.text "EV"]
+--             Just (M.NodeSignal _) -> Html.sub [] [Html.text "SI"]
+--             Just (M.NodeTimex _) -> Html.sub [] [Html.text "TX"]
         ]
   in
     Html.div
@@ -1140,114 +1147,180 @@ viewSideEditInternal model focus nodeId nodeTyp node =
       ]
 
 
-viewSideEvent : M.Focus -> C.NodeId -> Anno.Event -> List (Html.Html Msg)
-viewSideEvent focus nodeId (Anno.Event ev) =
+-- viewSideEvent : M.Focus -> C.NodeId -> Anno.Event -> List (Html.Html Msg)
+-- viewSideEvent focus nodeId (Anno.Event ev) =
+--   let
+--
+--     inputGeneric = inputGenericGen (SetEventAttr nodeId focus)
+--     inpClass = inputGeneric "Class" ev.evClass Anno.eventClassStr Anno.ClassAttr
+--     inpType = inputGeneric "Type" ev.evType Anno.eventTypeStr Anno.TypeAttr
+--     inpInq = inputGeneric "Inquisit" ev.evInquisit Anno.eventInquisitStr Anno.InquisitAttr
+--     inpTime =
+--         inputGeneric "Time" ev.evTime
+--             (Anno.nullable Anno.eventTimeStr)
+--             Anno.TimeAttr
+--     inpAspect =
+--         inputGeneric "Aspect" ev.evAspect
+--             (Anno.nullable Anno.eventAspectStr)
+--             Anno.AspectAttr
+--     inpPolar = inputGeneric "Polarity" ev.evPolarity Anno.eventPolarityStr Anno.PolarityAttr
+--     inpMood =
+--         inputGeneric "Mood" ev.evMood
+--             (Anno.nullable Anno.eventMoodStr)
+--             Anno.MoodAttr
+--     inpModality =
+--         inputGeneric "Modality" ev.evModality
+--             (Anno.nullable Anno.eventModalityStr)
+--             Anno.ModalityAttr
+--     inpMod =
+--         inputGeneric "Mod" ev.evMod
+--             (Anno.nullable Anno.eventModStr)
+--             Anno.ModAttr
+--
+--     textGeneric = textGenericGen (SetEventAttr nodeId focus)
+--     inpCardinality = textGeneric Anno.CardinalityAttr "Cardinality: " ev.evCardinality Nothing
+--     inpPred = textGeneric Anno.PredAttr "Pred: " ev.evPred Nothing
+--     -- inpComment = textGeneric Anno.CommentAttr "Comment: " ev.evComment
+--
+--   in
+--       [ Html.hr [] []
+--       , Html.text "Event:"
+--       , Html.table []
+--             [ inpClass, inpType, inpInq, inpTime, inpAspect , inpPolar, inpMood
+--             , inpModality, inpCardinality, inpMod, inpPred ] -- , inpComment ]
+--       ]
+--
+--
+-- viewSideSignal : M.Focus -> C.NodeId -> Anno.Signal -> List (Html.Html Msg)
+-- viewSideSignal focus nodeId (Anno.Signal x) =
+--   let
+--
+--     inputGeneric = inputGenericGen (SetSignalAttr nodeId focus)
+--
+--     inpType = inputGeneric "Type" x.siType Anno.signalTypeStr Anno.SiTypeAttr
+--
+--   in
+--       [ Html.hr [] []
+--       , Html.text "Signal:"
+--       , Html.table []
+--             [ inpType ]
+--       ]
+--
+--
+-- viewSideTimex : M.Model -> M.Focus -> C.NodeId -> M.InternalNode -> Anno.Timex -> List (Html.Html Msg)
+-- viewSideTimex model focus nodeId node (Anno.Timex ti) =
+--   let
+--
+--     inputGeneric = inputGenericGen (SetTimexAttr nodeId focus)
+--     inpCalendar = inputGeneric "Calendar" ti.tiCalendar Anno.timexCalendarStr Anno.TiCalendarAttr
+--     inpFunctionInDocument =
+--         inputGeneric "Function" ti.tiFunctionInDocument
+--             (Anno.nullable Anno.timexFunctionInDocumentStr)
+--             Anno.TiFunctionInDocumentAttr
+--     inpType = inputGeneric "Type" ti.tiType Anno.timexTypeStr Anno.TiTypeAttr
+--     inpTemporalFunction =
+--         inputGeneric "Temporal Fun" ti.tiTemporalFunction
+--             (Anno.nullable Anno.timexTemporalFunctionStr)
+--             Anno.TiTemporalFunctionAttr
+--     inpMod =
+--         inputGeneric "Mod" ti.tiMod
+--             (Anno.nullable Anno.timexModStr)
+--             Anno.TiModAttr
+--
+--     inputTimex = inputTimexGen model focus (SetTimexAttr nodeId focus)
+--     inpAnchor = inputTimex "Anchor" ti.tiAnchor Anno.TiAnchorAttr
+--     inpBeginPoint = inputTimex "Begin" ti.tiBeginPoint Anno.TiBeginPointAttr
+--     inpEndPoint = inputTimex "End" ti.tiEndPoint Anno.TiEndPointAttr
+--
+--     textGeneric = textGenericGen (SetTimexAttr nodeId focus)
+--     inpPred = textGeneric Anno.TiPredAttr "Pred: " ti.tiPred Nothing
+--     inpLingValue = textGeneric Anno.TiLingValueAttr "LingValue: " ti.tiLingValue Nothing
+--     inpValue = textGeneric Anno.TiValueAttr "Value: " ti.tiValue Nothing
+--
+--     mayTextGeneric = mayTextGenericGen (SetTimexAttr nodeId focus)
+--     inpQuant = mayTextGeneric Anno.TiQuantAttr "Quant:" ti.tiQuant
+--     inpFreq = mayTextGeneric  Anno.TiFreqAttr "Freq:" ti.tiFreq
+--
+--     typeDependent =
+--         case ti.tiType of
+--             Anno.Duration -> [inpBeginPoint, inpEndPoint]
+--             Anno.Set -> [inpQuant, inpFreq]
+--             _ -> []
+--
+--   in
+--       [ Html.hr [] []
+--       -- , Html.h3 [] [Html.text "Timex:"]
+--       , Html.text "Timex:"
+--       , Html.table [] <|
+--             [ inpCalendar, inpFunctionInDocument, inpPred, inpType
+--             , inpTemporalFunction, inpLingValue, inpValue, inpMod
+--             , inpAnchor ] ++ typeDependent
+--       ]
+
+
+viewSideEntity
+     : M.Model
+    -> M.Focus
+    -> C.NodeId
+    -> M.InternalNode
+    -> Anno.Entity
+    -> List (Html.Html Msg)
+viewSideEntity model focus nodeId node ent =
   let
 
-    inputGeneric = inputGenericGen (SetEventAttr nodeId focus)
-    inpClass = inputGeneric "Class" ev.evClass Anno.eventClassStr Anno.ClassAttr
-    inpType = inputGeneric "Type" ev.evType Anno.eventTypeStr Anno.TypeAttr
-    inpInq = inputGeneric "Inquisit" ev.evInquisit Anno.eventInquisitStr Anno.InquisitAttr
-    inpTime =
-        inputGeneric "Time" ev.evTime
-            (Anno.nullable Anno.eventTimeStr)
-            Anno.TimeAttr
-    inpAspect =
-        inputGeneric "Aspect" ev.evAspect
-            (Anno.nullable Anno.eventAspectStr)
-            Anno.AspectAttr
-    inpPolar = inputGeneric "Polarity" ev.evPolarity Anno.eventPolarityStr Anno.PolarityAttr
-    inpMood =
-        inputGeneric "Mood" ev.evMood
-            (Anno.nullable Anno.eventMoodStr)
-            Anno.MoodAttr
-    inpModality =
-        inputGeneric "Modality" ev.evModality
-            (Anno.nullable Anno.eventModalityStr)
-            Anno.ModalityAttr
-    inpMod =
-        inputGeneric "Mod" ev.evMod
-            (Anno.nullable Anno.eventModStr)
-            Anno.ModAttr
+    -- inputGeneric = inputGenericGen (SetTimexAttr nodeId focus)
+    inputGeneric attrName = inputGenericGen (SetEntityAttr nodeId focus attrName) attrName
 
-    textGeneric = textGenericGen (SetEventAttr nodeId focus)
-    inpCardinality = textGeneric Anno.CardinalityAttr "Cardinality: " ev.evCardinality Nothing
-    inpPred = textGeneric Anno.PredAttr "Pred: " ev.evPred Nothing
-    -- inpComment = textGeneric Anno.CommentAttr "Comment: " ev.evComment
+    -- inpCalendar = inputGeneric "Calendar" ti.tiCalendar Anno.timexCalendarStr Anno.TiCalendarAttr
+    inputAttr (attrName, val) =
+        inputGeneric attrName
+            val -- (Anno.getAttr attr ent)
+            (AnnoCfg.attrConfig ent.name attrName model.annoConfig) -- Anno.timexCalendarStr
+            -- Anno.TiCalendarAttr
 
-  in
-      [ Html.hr [] []
-      , Html.text "Event:"
-      , Html.table []
-            [ inpClass, inpType, inpInq, inpTime, inpAspect , inpPolar, inpMood
-            , inpModality, inpCardinality, inpMod, inpPred ] -- , inpComment ]
-      ]
-
-
-viewSideSignal : M.Focus -> C.NodeId -> Anno.Signal -> List (Html.Html Msg)
-viewSideSignal focus nodeId (Anno.Signal x) =
-  let
-
-    inputGeneric = inputGenericGen (SetSignalAttr nodeId focus)
-
-    inpType = inputGeneric "Type" x.siType Anno.signalTypeStr Anno.SiTypeAttr
-
-  in
-      [ Html.hr [] []
-      , Html.text "Signal:"
-      , Html.table []
-            [ inpType ]
-      ]
-
-
-viewSideTimex : M.Model -> M.Focus -> C.NodeId -> M.InternalNode -> Anno.Timex -> List (Html.Html Msg)
-viewSideTimex model focus nodeId node (Anno.Timex ti) =
-  let
-
-    inputGeneric = inputGenericGen (SetTimexAttr nodeId focus)
-    inpCalendar = inputGeneric "Calendar" ti.tiCalendar Anno.timexCalendarStr Anno.TiCalendarAttr
-    inpFunctionInDocument =
-        inputGeneric "Function" ti.tiFunctionInDocument
-            (Anno.nullable Anno.timexFunctionInDocumentStr)
-            Anno.TiFunctionInDocumentAttr
-    inpType = inputGeneric "Type" ti.tiType Anno.timexTypeStr Anno.TiTypeAttr
-    inpTemporalFunction =
-        inputGeneric "Temporal Fun" ti.tiTemporalFunction
-            (Anno.nullable Anno.timexTemporalFunctionStr)
-            Anno.TiTemporalFunctionAttr
-    inpMod =
-        inputGeneric "Mod" ti.tiMod
-            (Anno.nullable Anno.timexModStr)
-            Anno.TiModAttr
-
-    inputTimex = inputTimexGen model focus (SetTimexAttr nodeId focus)
-    inpAnchor = inputTimex "Anchor" ti.tiAnchor Anno.TiAnchorAttr
-    inpBeginPoint = inputTimex "Begin" ti.tiBeginPoint Anno.TiBeginPointAttr
-    inpEndPoint = inputTimex "End" ti.tiEndPoint Anno.TiEndPointAttr
-
-    textGeneric = textGenericGen (SetTimexAttr nodeId focus)
-    inpPred = textGeneric Anno.TiPredAttr "Pred: " ti.tiPred Nothing
-    inpLingValue = textGeneric Anno.TiLingValueAttr "LingValue: " ti.tiLingValue Nothing
-    inpValue = textGeneric Anno.TiValueAttr "Value: " ti.tiValue Nothing
-
-    mayTextGeneric = mayTextGenericGen (SetTimexAttr nodeId focus)
-    inpQuant = mayTextGeneric Anno.TiQuantAttr "Quant:" ti.tiQuant
-    inpFreq = mayTextGeneric  Anno.TiFreqAttr "Freq:" ti.tiFreq
-
-    typeDependent =
-        case ti.tiType of
-            Anno.Duration -> [inpBeginPoint, inpEndPoint]
-            Anno.Set -> [inpQuant, inpFreq]
-            _ -> []
+--     inpFunctionInDocument =
+--         inputGeneric "Function" ti.tiFunctionInDocument
+--             (Anno.nullable Anno.timexFunctionInDocumentStr)
+--             Anno.TiFunctionInDocumentAttr
+--     inpType = inputGeneric "Type" ti.tiType Anno.timexTypeStr Anno.TiTypeAttr
+--     inpTemporalFunction =
+--         inputGeneric "Temporal Fun" ti.tiTemporalFunction
+--             (Anno.nullable Anno.timexTemporalFunctionStr)
+--             Anno.TiTemporalFunctionAttr
+--     inpMod =
+--         inputGeneric "Mod" ti.tiMod
+--             (Anno.nullable Anno.timexModStr)
+--             Anno.TiModAttr
+--
+--     inputTimex = inputTimexGen model focus (SetTimexAttr nodeId focus)
+--     inpAnchor = inputTimex "Anchor" ti.tiAnchor Anno.TiAnchorAttr
+--     inpBeginPoint = inputTimex "Begin" ti.tiBeginPoint Anno.TiBeginPointAttr
+--     inpEndPoint = inputTimex "End" ti.tiEndPoint Anno.TiEndPointAttr
+--
+--     textGeneric = textGenericGen (SetTimexAttr nodeId focus)
+--     inpPred = textGeneric Anno.TiPredAttr "Pred: " ti.tiPred Nothing
+--     inpLingValue = textGeneric Anno.TiLingValueAttr "LingValue: " ti.tiLingValue Nothing
+--     inpValue = textGeneric Anno.TiValueAttr "Value: " ti.tiValue Nothing
+--
+--     mayTextGeneric = mayTextGenericGen (SetTimexAttr nodeId focus)
+--     inpQuant = mayTextGeneric Anno.TiQuantAttr "Quant:" ti.tiQuant
+--     inpFreq = mayTextGeneric  Anno.TiFreqAttr "Freq:" ti.tiFreq
+--
+--     typeDependent =
+--         case ti.tiType of
+--             Anno.Duration -> [inpBeginPoint, inpEndPoint]
+--             Anno.Set -> [inpQuant, inpFreq]
+--             _ -> []
 
   in
       [ Html.hr [] []
       -- , Html.h3 [] [Html.text "Timex:"]
-      , Html.text "Timex:"
+      , Html.text <| ent.name ++ ":"
       , Html.table [] <|
-            [ inpCalendar, inpFunctionInDocument, inpPred, inpType
-            , inpTemporalFunction, inpLingValue, inpValue, inpMod
-            , inpAnchor ] ++ typeDependent
+          L.map inputAttr (D.toList ent.attributes)
+--             [ inpCalendar, inpFunctionInDocument, inpPred, inpType
+--             , inpTemporalFunction, inpLingValue, inpValue, inpMod
+--             , inpAnchor ] ++ typeDependent
       ]
 
 
@@ -1280,20 +1353,10 @@ viewSideEdit visible win model =
         M.Leaf r -> []
         M.Node r -> case r.nodeTyp of
           Nothing -> []
-          Just (M.NodeTimex ti) -> viewSideTimex model win nodeId r ti
-          Just (M.NodeSignal si) -> viewSideSignal win nodeId si
-          Just (M.NodeEvent ev) -> viewSideEvent win nodeId ev
-            -- [ Html.div [] [Html.button [] [Html.text "Send"]]
-            -- ,  ]
-
-          -- TODO: make it slightly more smart! In particular, you can base
-          -- yourself o on the functions `Model.getLabel` and `Model.setLabel`,
-          -- which allow to change the label. Indeed, here we just generalize
-          -- these functions to modify the entire nodes, and not just their
-          -- lalels. In fact, the label-related functions should be later based
-          -- on the new ones.
-          --
-          -- UPDATE 16/10/2017: not really sure what I meant in the previous comment...
+          Just en -> viewSideEntity model win nodeId r en
+--           Just (M.NodeTimex ti) -> viewSideTimex model win nodeId r ti
+--           Just (M.NodeSignal si) -> viewSideSignal win nodeId si
+--           Just (M.NodeEvent ev) -> viewSideEvent win nodeId ev
 
     div = Html.div
       [ Atts.style
@@ -2440,28 +2503,85 @@ mayTextGenericGen setAttr attr text mayValue =
       ]
 
 
--- | Doubly generic list input field.
-inputGenericGen setAttr label value valList attr =
+-- | Doubly generic input field...
+inputGenericGen
+    : (Anno.Attr -> Msg)
+    -- ^ Message to send when an attribute is selected
+    -> String
+    -- ^ Attribute name
+    -> Anno.Attr
+    -- ^ The chosen attribute value
+    -> AnnoCfg.Attr
+    -- ^ The configuration corresponding to the attribute
+    -> Html.Html Msg
+inputGenericGen setAttr label attrValue attrCfg =
   let
-    setMsg str = setAttr (attr <| Anno.valueFromStr valList str)
-    option evVal (str, val) = Html.option
-      [ Atts.value str
-      , Atts.selected (val == evVal) ]
-      [ Html.text str ]
+    labelTD =
+        Html.td
+            [ Atts.class "noselect"
+            , Atts.align "right" ]
+            [Html.text (label ++ ": ")]
   in
-    Html.tr []
-      [ Html.td
-          [ Atts.class "noselect"
-          , Atts.align "right"
-          ]
-          [Html.text (label ++ ": ")]
-      , Html.td []
-          [Html.select
-               [ Events.on "change" (Decode.map setMsg Events.targetValue)
-               , blockKeyDownEvents ]
-               (List.map (option value) valList)
-          ]
-      ]
+    case (attrValue, attrCfg) of
+        (Anno.Anchor, AnnoCfg.Anchor) ->
+            Html.tr []
+              [ labelTD
+              , Html.td
+                  [ Atts.class "noselect"
+                  , Atts.align "right"
+                  ]
+                  [Html.text "ANCHOR (IMPLEMENT)"]
+              ]
+        (Anno.Attr value, AnnoCfg.Closed r) ->
+            let
+              setMsg = setAttr << Anno.Attr
+              option val = Html.option
+                [ Atts.value val
+                , Atts.selected (val == value) ]
+                [ Html.text val ]
+            in
+              Html.tr []
+                [ labelTD
+                , Html.td []
+                    [Html.select
+                         [ Events.on "change" (Decode.map setMsg Events.targetValue)
+                         , blockKeyDownEvents ]
+                         (List.map option r.among)
+                    ]
+                ]
+        _ ->
+            Html.tr []
+              [ labelTD
+              , Html.td
+                  [ Atts.class "noselect"
+                  , Atts.align "right"
+                  ]
+                  [Html.text <| "TODO: " ++ toString (attrValue, attrCfg)]
+              ]
+
+
+-- -- | Doubly generic list input field.
+-- inputGenericGen setAttr label value valList attr =
+--   let
+--     setMsg str = setAttr (attr <| Anno.valueFromStr valList str)
+--     option evVal (str, val) = Html.option
+--       [ Atts.value str
+--       , Atts.selected (val == evVal) ]
+--       [ Html.text str ]
+--   in
+--     Html.tr []
+--       [ Html.td
+--           [ Atts.class "noselect"
+--           , Atts.align "right"
+--           ]
+--           [Html.text (label ++ ": ")]
+--       , Html.td []
+--           [Html.select
+--                [ Events.on "change" (Decode.map setMsg Events.targetValue)
+--                , blockKeyDownEvents ]
+--                (List.map (option value) valList)
+--           ]
+--       ]
 
 
 -- | Doubly generic list input field.
@@ -2492,78 +2612,66 @@ inputGenericConstrainedGen setAttr label value valList attr mayId =
       ]
 
 
--- | Generic TIMEX input field.
-inputTimexGen
-    : M.Model
-    -> M.Focus
-    -> (Anno.TimexAttr -> Msg)
-    -> String
-    -> Maybe C.Addr
-    -> (Bool -> Anno.TimexAttr)
-    -> Html.Html Msg
-inputTimexGen model focus setAttr label value attr =
-  let
-    setMsg = setAttr (attr True)
-    remMsg = setAttr (attr False)
-    html =
-        case value of
-            Nothing ->
-                [ Html.button
-                      [ Events.onClick setMsg
-                      , Atts.title "Link (i) with the additionally selected node in focus, or (ii) with the main selected node in the other window" ]
-                      [Html.text "Create"]
-                ]
-            Just addr ->
-                let
-                    subTree = M.subTreeAt addr focus model
-                    rootLabel = Lens.get M.nodeVal <| R.label subTree
-                    words = String.join " " <| L.map (\r -> r.nodeVal) <| M.getWords subTree
-                    string = rootLabel ++ " (\"" ++ words ++ "\")"
---                     positions = L.map (\r -> r.leafPos) <| M.getWords subTree
---                     beg = case L.minimum positions of
---                               Nothing -> ""
---                               Just x  -> toString x
---                     end = case L.maximum positions of
---                               Nothing -> ""
---                               Just x  -> toString x
---                     string = rootLabel ++ " (\"" ++ beg ++ ", " ++ end ++ "\")"
-                in
-                    [ Html.span
-                          [ Atts.class "noselect"
-                          , Atts.style ["cursor" :> "pointer"]
-                          , Atts.title "Goto"
-                          , Events.onClick <|
-                              Many
-                              [ SelectTree model.focus (Tuple.first addr)
-                              , Select model.focus (Tuple.second addr) ]
-                          ]
-                          [ Html.text string ]
-                    , Html.button
-                          [ Atts.style ["margin-left" :> px 5]
-                          , Events.onClick remMsg]
-                          [ Html.text "Remove" ]
-                    ]
-  in
-    Html.tr []
-      [ Html.td
-          [ Atts.class "noselect"
-          , Atts.align "right"
-          ]
-          [Html.text (label ++ ": ")]
-      , Html.td [] html
-      ]
-
-
--- -- | Get the subtree indicated by the given address.
--- subTreeAt : C.Addr -> M.Model -> R.Tree M.Node
--- subTreeAt (treeId, nodeId) model =
---     let
---         pred x = Lens.get M.nodeId x == nodeId
---         tree = M.getTree treeId model
---     in
---         case R.getSubTree pred tree of
---             Nothing -> Debug.crash "View.subTreeAt: no node with the given ID"
---             Just t  -> t
+-- -- | Generic TIMEX input field.
+-- inputTimexGen
+--     : M.Model
+--     -> M.Focus
+--     -> (Anno.TimexAttr -> Msg)
+--     -> String
+--     -> Maybe C.Addr
+--     -> (Bool -> Anno.TimexAttr)
+--     -> Html.Html Msg
+-- inputTimexGen model focus setAttr label value attr =
+--   let
+--     setMsg = setAttr (attr True)
+--     remMsg = setAttr (attr False)
+--     html =
+--         case value of
+--             Nothing ->
+--                 [ Html.button
+--                       [ Events.onClick setMsg
+--                       , Atts.title "Link (i) with the additionally selected node in focus, or (ii) with the main selected node in the other window" ]
+--                       [Html.text "Create"]
+--                 ]
+--             Just addr ->
+--                 let
+--                     subTree = M.subTreeAt addr focus model
+--                     rootLabel = Lens.get M.nodeVal <| R.label subTree
+--                     words = String.join " " <| L.map (\r -> r.nodeVal) <| M.getWords subTree
+--                     string = rootLabel ++ " (\"" ++ words ++ "\")"
+-- --                     positions = L.map (\r -> r.leafPos) <| M.getWords subTree
+-- --                     beg = case L.minimum positions of
+-- --                               Nothing -> ""
+-- --                               Just x  -> toString x
+-- --                     end = case L.maximum positions of
+-- --                               Nothing -> ""
+-- --                               Just x  -> toString x
+-- --                     string = rootLabel ++ " (\"" ++ beg ++ ", " ++ end ++ "\")"
+--                 in
+--                     [ Html.span
+--                           [ Atts.class "noselect"
+--                           , Atts.style ["cursor" :> "pointer"]
+--                           , Atts.title "Goto"
+--                           , Events.onClick <|
+--                               Many
+--                               [ SelectTree model.focus (Tuple.first addr)
+--                               , Select model.focus (Tuple.second addr) ]
+--                           ]
+--                           [ Html.text string ]
+--                     , Html.button
+--                           [ Atts.style ["margin-left" :> px 5]
+--                           , Events.onClick remMsg]
+--                           [ Html.text "Remove" ]
+--                     ]
+--   in
+--     Html.tr []
+--       [ Html.td
+--           [ Atts.class "noselect"
+--           , Atts.align "right"
+--           ]
+--           [Html.text (label ++ ": ")]
+--       , Html.td [] html
+--       ]
 
 
 ---------------------------------------------------

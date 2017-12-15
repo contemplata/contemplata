@@ -22,6 +22,7 @@ import Config as Cfg
 import Server
 import Menu
 import Edit.Core
+import Edit.Config as AnnoCfg
 import Edit.Model
 import Edit.Init
 import Edit.Message
@@ -149,6 +150,12 @@ topCfg top = case top of
   Menu mod -> mod.config
 
 
+topAnnoCfg : TopModel -> Maybe AnnoCfg.Config
+topAnnoCfg top = case top of
+  Edit mod -> Just mod.annoConfig
+  Menu mod -> mod.annoConfig
+
+
 -- -- | Get the name of the current user.
 -- currentUser : TopModel -> String
 -- currentUser top = case top of
@@ -200,13 +207,19 @@ topUpdate topMsg =
         let upd = Menu.setAnnoConfig (Debug.log "annoCfg" annoCfg)
         in  updateOn menuLens menuMsg upd
       Server.NewFile fileId file -> \model_ ->
-        let (edit, cmd) =
-                Edit.Init.mkEdit (topCfg model_) [(fileId, file)]
-        in  (Edit edit, Cmd.map editMsg cmd)
+        case topAnnoCfg model_ of
+          Nothing -> Debug.crash "Server.NewFile: annoConfig not set!"
+          Just annoCfg ->
+              let (edit, cmd) =
+                      Edit.Init.mkEdit (topCfg model_) annoCfg [(fileId, file)]
+              in  (Edit edit, Cmd.map editMsg cmd)
       Server.NewFiles fileList -> \model_ ->
-        let (edit, cmd) =
-                Edit.Init.mkEdit (topCfg model_) fileList
-        in  (Edit edit, Cmd.map editMsg cmd)
+        case topAnnoCfg model_ of
+          Nothing -> Debug.crash "Server.NewFile: annoConfig not set!"
+          Just annoCfg ->
+              let (edit, cmd) =
+                      Edit.Init.mkEdit (topCfg model_) annoCfg fileList
+              in  (Edit edit, Cmd.map editMsg cmd)
       Server.DiffFiles fileIds ->
         let task = Task.succeed (Edit.Message.Core.Popup (Popup.Files (Just fileIds)) Nothing)
             upd model =

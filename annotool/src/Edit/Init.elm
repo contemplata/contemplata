@@ -11,6 +11,7 @@ import Dict as D
 import Set as S
 
 import Config as Cfg
+import Edit.Config as AnnoCfg
 import Edit.Core exposing (FileId, TreeId(..))
 import Edit.Model exposing (Model, Focus(..), File, AnnoLevel(..))
 import Edit.Message.Core exposing (Msg(..))
@@ -25,9 +26,10 @@ import Edit.Popup as Popup
 
 mkEdit
     : Cfg.Config
+    -> AnnoCfg.Config
     -> List (FileId, File)
     -> (Model, Cmd Msg)
-mkEdit config fileList =
+mkEdit config annoConfig fileList =
   let
     treeId file = case D.toList file.treeMap of
       (id, tree) :: _ -> id
@@ -78,6 +80,7 @@ mkEdit config fileList =
       , command = Nothing
       , popup = Nothing -- Just Popup.Files
       , config = config
+      , annoConfig = annoConfig
       , annoLevel = Temporal
       }
     initHeight = Task.perform Resize Window.size

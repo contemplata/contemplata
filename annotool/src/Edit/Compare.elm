@@ -5,6 +5,7 @@ module Edit.Compare exposing
 
 import Basics exposing (Order(..))
 import Set as S
+import Dict as D
 import Compare as Cmp
 
 import Rose as R
@@ -126,22 +127,48 @@ compSpanSet =
     Cmp.compose S.toList (lexico Basics.compare)
 
 
-compAnnoTyp : Cmp.Comparator M.NodeAnnoTyp
-compAnnoTyp annoX annoY =
-    case (annoX, annoY) of
-        (M.NodeEvent evX, M.NodeEvent evY) ->
-            -- Well, yes, we should not probably use `toString` here, but
-            -- really, it's too much trouble to define the comparison function
-            -- for more complex types...
-            Basics.compare (toString evX) (toString evY)
-        (M.NodeEvent _, _) -> LT
-        (_, M.NodeEvent _) -> GT
-        (M.NodeSignal siX, M.NodeSignal siY) ->
-            Basics.compare (toString siX) (toString siY)
-        (M.NodeSignal _, _) -> LT
-        (_, M.NodeSignal _) -> GT
-        (M.NodeTimex tiX, M.NodeTimex tiY) ->
-            Basics.compare (toString tiX) (toString tiY)
+compAnnoTyp : Cmp.Comparator Anno.Entity
+compAnnoTyp =
+    Cmp.concat
+        [ Cmp.by .name
+        , Cmp.by .typ
+        , Cmp.compose .attributes compAttrMap ]
+
+
+compAttrMap : Cmp.Comparator (D.Dict String Anno.Attr)
+compAttrMap =
+    let compPair =
+            Cmp.concat
+                [ Cmp.by Tuple.first
+                , Cmp.compose Tuple.second compAttr ]
+    in  Cmp.compose D.toList (lexico compPair)
+
+
+compAttr : Cmp.Comparator Anno.Attr
+compAttr attrX attrY =
+    case (attrX, attrY) of
+        (Anno.Attr x, Anno.Attr y) -> Basics.compare x y
+        (Anno.Attr _, _) -> LT
+        (_, Anno.Attr _) -> GT
+        (Anno.Anchor, Anno.Anchor) -> EQ
+
+
+-- compAnnoTyp : Cmp.Comparator M.NodeAnnoTyp
+-- compAnnoTyp annoX annoY =
+--     case (annoX, annoY) of
+--         (M.NodeEvent evX, M.NodeEvent evY) ->
+--             -- Well, yes, we should not probably use `toString` here, but
+--             -- really, it's too much trouble to define the comparison function
+--             -- for more complex types...
+--             Basics.compare (toString evX) (toString evY)
+--         (M.NodeEvent _, _) -> LT
+--         (_, M.NodeEvent _) -> GT
+--         (M.NodeSignal siX, M.NodeSignal siY) ->
+--             Basics.compare (toString siX) (toString siY)
+--         (M.NodeSignal _, _) -> LT
+--         (_, M.NodeSignal _) -> GT
+--         (M.NodeTimex tiX, M.NodeTimex tiY) ->
+--             Basics.compare (toString tiX) (toString tiY)
 
 
 ---------------------------------------------------

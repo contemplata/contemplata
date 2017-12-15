@@ -19,6 +19,7 @@ import Either exposing (..)
 import Rose as R
 
 import Config as Cfg
+import Edit.Config as AnnoCfg
 import Edit.Model as M
 import Edit.Core as C
 import Edit.Anno as Anno
@@ -167,9 +168,14 @@ update msg model =
 
     -- ChangeType -> idle <| M.changeTypeSel model.focus model
 
-    MkSignal -> idle <| M.mkSignalSel model.focus model
-    MkEvent -> idle <| M.mkEventSel model.focus model
-    MkTimex -> idle <| M.mkTimexSel model.focus model
+    MkEntity name -> idle <|
+      case AnnoCfg.entityConfig name model.annoConfig of
+          Nothing -> model
+          Just en -> M.mkEntitySel en model.focus model
+
+--     MkSignal -> idle <| M.mkSignalSel model.focus model
+--     MkEvent -> idle <| M.mkEventSel model.focus model
+--     MkTimex -> idle <| M.mkTimexSel model.focus model
 
     CtrlDown -> idle <| {model | ctrl=True}
     CtrlUp -> idle <| {model | ctrl=False}
@@ -336,61 +342,64 @@ update msg model =
         Anno.NodeLabelAttr x -> M.setLabel nodeId focus x model
         Anno.NodeCommentAttr x -> M.setComment nodeId focus x model
 
-    SetEventAttr nodeId focus attr -> idle <|
-      case attr of
-        Anno.ClassAttr x -> M.setEventAttr M.eventClass nodeId focus x model
-        Anno.TypeAttr x -> M.setEventAttr M.eventType nodeId focus x model
-        Anno.InquisitAttr x -> M.setEventAttr M.eventInquisit nodeId focus x model
-        Anno.TimeAttr x -> M.setEventAttr M.eventTime nodeId focus x model
-        Anno.AspectAttr x -> M.setEventAttr M.eventAspect nodeId focus x model
-        Anno.PolarityAttr x -> M.setEventAttr M.eventPolarity nodeId focus x model
-        Anno.MoodAttr x -> M.setEventAttr M.eventMood nodeId focus x model
-        Anno.ModalityAttr x -> M.setEventAttr M.eventModality nodeId focus x model
-        Anno.CardinalityAttr x -> M.setEventAttr M.eventCardinality nodeId focus x model
-        Anno.ModAttr x -> M.setEventAttr M.eventMod nodeId focus x model
-        Anno.PredAttr x -> M.setEventAttr M.eventPred nodeId focus x model
-        -- Anno.CommentAttr x -> M.setEventAttr M.eventComment nodeId focus x model
-        -- _ -> Debug.crash "SetEventAttr: not implemented yet!"
+    SetEntityAttr nodeId focus attr val -> idle <|
+      M.setEntityAttr (Anno.entityAttr attr) nodeId focus (Just val) model
 
-    SetSignalAttr nodeId focus attr -> idle <|
-      case attr of
-        Anno.SiTypeAttr x -> M.setSignalAttr M.signalType nodeId focus x model
-
-    SetTimexAttr nodeId focus attr ->
-      let
-        setAnchor set =
-            case set nodeId focus model of
-                Left err ->
-                    let popup = Popup.Info err
-                    in  (model, firePopup popup Nothing)
-                Right model -> idle model
-      in
-        case attr of
-          Anno.TiAnchorAttr True -> setAnchor M.setTimexAnchor
-          Anno.TiBeginPointAttr True -> setAnchor M.setTimexBeginPoint
-          Anno.TiEndPointAttr True -> setAnchor M.setTimexEndPoint
-          _ -> idle <| case attr of
-            Anno.TiCalendarAttr x -> M.setTimexAttr M.timexCalendar nodeId focus x model
-            Anno.TiTypeAttr x -> M.setTimexType nodeId focus x model
-            Anno.TiFunctionInDocumentAttr x ->
-                M.setTimexAttr M.timexFunctionInDocument nodeId focus x model
-            Anno.TiPredAttr x -> M.setTimexAttr M.timexPred nodeId focus x model
-            Anno.TiTemporalFunctionAttr x ->
-                M.setTimexAttr M.timexTemporalFunction nodeId focus x model
-            Anno.TiLingValueAttr x -> M.setTimexAttr M.timexLingValue nodeId focus x model
-            Anno.TiValueAttr x -> M.setTimexAttr M.timexValue nodeId focus x model
-            Anno.TiModAttr x -> M.setTimexAttr M.timexMod nodeId focus x model
-            Anno.TiAnchorAttr True ->
-                Debug.crash "Message: impossible happened (TiAnchorAttr True)!"
-            Anno.TiAnchorAttr False -> M.remTimexAnchor nodeId focus model
-            Anno.TiBeginPointAttr True ->
-                Debug.crash "Message: impossible happened (TiBeginPointAttr True)!"
-            Anno.TiBeginPointAttr False -> M.remTimexBeginPoint nodeId focus model
-            Anno.TiEndPointAttr True ->
-                Debug.crash "Message: impossible happened (TiEndPointAttr True)!"
-            Anno.TiEndPointAttr False -> M.remTimexEndPoint nodeId focus model
-            Anno.TiQuantAttr x -> M.setTimexAttr M.timexQuant nodeId focus x model
-            Anno.TiFreqAttr x -> M.setTimexAttr M.timexFreq nodeId focus x model
+--     SetEventAttr nodeId focus attr -> idle <|
+--       case attr of
+--         Anno.ClassAttr x -> M.setEventAttr M.eventClass nodeId focus x model
+--         Anno.TypeAttr x -> M.setEventAttr M.eventType nodeId focus x model
+--         Anno.InquisitAttr x -> M.setEventAttr M.eventInquisit nodeId focus x model
+--         Anno.TimeAttr x -> M.setEventAttr M.eventTime nodeId focus x model
+--         Anno.AspectAttr x -> M.setEventAttr M.eventAspect nodeId focus x model
+--         Anno.PolarityAttr x -> M.setEventAttr M.eventPolarity nodeId focus x model
+--         Anno.MoodAttr x -> M.setEventAttr M.eventMood nodeId focus x model
+--         Anno.ModalityAttr x -> M.setEventAttr M.eventModality nodeId focus x model
+--         Anno.CardinalityAttr x -> M.setEventAttr M.eventCardinality nodeId focus x model
+--         Anno.ModAttr x -> M.setEventAttr M.eventMod nodeId focus x model
+--         Anno.PredAttr x -> M.setEventAttr M.eventPred nodeId focus x model
+--         -- Anno.CommentAttr x -> M.setEventAttr M.eventComment nodeId focus x model
+--         -- _ -> Debug.crash "SetEventAttr: not implemented yet!"
+--
+--     SetSignalAttr nodeId focus attr -> idle <|
+--       case attr of
+--         Anno.SiTypeAttr x -> M.setSignalAttr M.signalType nodeId focus x model
+--
+--     SetTimexAttr nodeId focus attr ->
+--       let
+--         setAnchor set =
+--             case set nodeId focus model of
+--                 Left err ->
+--                     let popup = Popup.Info err
+--                     in  (model, firePopup popup Nothing)
+--                 Right model -> idle model
+--       in
+--         case attr of
+--           Anno.TiAnchorAttr True -> setAnchor M.setTimexAnchor
+--           Anno.TiBeginPointAttr True -> setAnchor M.setTimexBeginPoint
+--           Anno.TiEndPointAttr True -> setAnchor M.setTimexEndPoint
+--           _ -> idle <| case attr of
+--             Anno.TiCalendarAttr x -> M.setTimexAttr M.timexCalendar nodeId focus x model
+--             Anno.TiTypeAttr x -> M.setTimexType nodeId focus x model
+--             Anno.TiFunctionInDocumentAttr x ->
+--                 M.setTimexAttr M.timexFunctionInDocument nodeId focus x model
+--             Anno.TiPredAttr x -> M.setTimexAttr M.timexPred nodeId focus x model
+--             Anno.TiTemporalFunctionAttr x ->
+--                 M.setTimexAttr M.timexTemporalFunction nodeId focus x model
+--             Anno.TiLingValueAttr x -> M.setTimexAttr M.timexLingValue nodeId focus x model
+--             Anno.TiValueAttr x -> M.setTimexAttr M.timexValue nodeId focus x model
+--             Anno.TiModAttr x -> M.setTimexAttr M.timexMod nodeId focus x model
+--             Anno.TiAnchorAttr True ->
+--                 Debug.crash "Message: impossible happened (TiAnchorAttr True)!"
+--             Anno.TiAnchorAttr False -> M.remTimexAnchor nodeId focus model
+--             Anno.TiBeginPointAttr True ->
+--                 Debug.crash "Message: impossible happened (TiBeginPointAttr True)!"
+--             Anno.TiBeginPointAttr False -> M.remTimexBeginPoint nodeId focus model
+--             Anno.TiEndPointAttr True ->
+--                 Debug.crash "Message: impossible happened (TiEndPointAttr True)!"
+--             Anno.TiEndPointAttr False -> M.remTimexEndPoint nodeId focus model
+--             Anno.TiQuantAttr x -> M.setTimexAttr M.timexQuant nodeId focus x model
+--             Anno.TiFreqAttr x -> M.setTimexAttr M.timexFreq nodeId focus x model
 
     SplitBegin ->
         let
