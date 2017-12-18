@@ -1730,11 +1730,37 @@ setComment id focus newComment model =
 ---------------------------------------------------
 
 
+-- | Not only sets the type of the entity in focus, but also clears the
+-- attributes inconsistent with the new type.
 setEntityType : NodeId -> Focus -> String -> Model -> Model
 setEntityType id focus newTyp model =
-    let lens = nodeTyp => maybeLens => Anno.entityType
-        update = Lens.set lens newTyp
-    in  updateNode id focus update model
+    let
+        lensEnt = nodeTyp => maybeLens
+        updateEnt ent =
+            let
+                -- Entity configuration
+                cfg = AnnoCfg.entityConfig ent.name model.annoConfig
+                -- Old and new type-dependent attributes
+                getAtts typ =
+                    D.fromList <|
+                    Maybe.withDefault [] <|
+                    D.get typ cfg.attributesOnType
+                oldAtts = getAtts ent.typ
+                newAtts = getAtts newTyp
+                -- High-level update functions
+                updateType = Lens.set Anno.entityType newTyp
+                remAtts ent0 = List.foldl
+                    (\attr -> Lens.set (Anno.entityAttr attr) Nothing)
+                    ent0 (D.keys <| D.diff oldAtts newAtts)
+                addAtts ent0 = List.foldl
+                    (\(attr, attrCfg) ->
+                         Lens.set (Anno.entityAttr attr) (Anno.defaultAttr attrCfg))
+                    ent0 (D.toList <| D.diff newAtts oldAtts)
+            in
+                updateType << addAtts << remAtts <| ent
+        update = Lens.update lensEnt updateEnt
+    in
+        updateNode id focus update model
 
 
 setEntityAttr : (Lens.Focus Anno.Entity a) -> NodeId -> Focus -> a -> Model -> Model

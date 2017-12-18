@@ -22,7 +22,9 @@ import qualified Odil.Config.Entity.Type as E
 data Entity = Entity
   { name :: Text
   , typ :: E.EntityType
-  , attributes :: M.Map Text A.Attr
+  -- , attributes :: M.Map Text A.Attr
+  , attributes :: [(Text, A.Attr)]
+  , attributesOnType :: M.Map Text [(Text, A.Attr)]
   } deriving (Generic, Show)
 
 instance Interpret Entity

@@ -1270,12 +1270,15 @@ viewSideEntity model focus nodeId node ent =
     entCfg = AnnoCfg.entityConfig ent.name model.annoConfig
     inputAttr attrName = inputGenericGen (SetEntityAttr nodeId focus attrName) attrName
     inputType = inputTypeGen (SetEntityType nodeId focus) entCfg.typ ent.typ
+    procAtts (attrName, attrCfg) =
+        inputAttr attrName attrCfg (D.get attrName ent.attributes)
+    inputCoreAtts = L.map procAtts entCfg.attributes
+    inputDepAtts = L.map procAtts
+      (Maybe.withDefault [] <| D.get ent.typ entCfg.attributesOnType)
   in
       [ Html.hr [] []
       , Html.text <| ent.name ++ ":"
-      , Html.table [] <| inputType ::
-          L.map (\(attrName, attrCfg) -> inputAttr attrName attrCfg (D.get attrName ent.attributes))
-              (D.toList entCfg.attributes)
+      , Html.table [] <| inputType :: (inputCoreAtts ++ inputDepAtts)
       ]
 
 

@@ -15,6 +15,7 @@ module Edit.Anno exposing
 
   -- * Default
   , defaultEntity
+  , defaultAttr
 
   -- * JSON
   , encodeEntity
@@ -148,21 +149,28 @@ type Attr
 
 defaultEntity : Cfg.Entity -> Entity
 defaultEntity cfg =
-  { name = cfg.name
-  , typ =
-      case cfg.typ.def of
-          Just val -> val
-          Nothing ->
-              case cfg.typ.among of
-                  val :: _ -> val
-                  [] -> Debug.crash "Anno.defaultEntity: empty list of types"
-  , attributes =
-      let onPair (name, attrCfg) =
-              case defaultAttr attrCfg of
-                  Nothing -> Nothing
-                  Just attr -> Just (name, attr)
-      in  D.fromList <| List.filterMap onPair <| D.toList cfg.attributes
-  }
+  let
+    typ0 =
+        case cfg.typ.def of
+            Just val -> val
+            Nothing ->
+                case cfg.typ.among of
+                    val :: _ -> val
+                    [] -> Debug.crash "Anno.defaultEntity: empty list of types"
+  in
+    { name = cfg.name
+    , typ = typ0
+    , attributes =
+        let onPair (name, attrCfg) =
+                case defaultAttr attrCfg of
+                    Nothing -> Nothing
+                    Just attr -> Just (name, attr)
+        in  D.fromList <|
+            List.filterMap onPair <|
+            -- D.toList cfg.attributes
+            cfg.attributes ++
+                (Maybe.withDefault [] <| D.get typ0 cfg.attributesOnType)
+    }
 
 
 defaultAttr : Cfg.Attr -> Maybe Attr

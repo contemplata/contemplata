@@ -8,7 +8,7 @@ module Edit.Config exposing
   , Attr (..)
   , configDecoder
   , entityConfig
-  , attrConfig
+  -- , attrConfig
   )
 
 
@@ -35,7 +35,9 @@ type alias Config =
 type alias Entity =
   { name : String
   , typ : EntityType
-  , attributes : D.Dict String Attr
+  -- , attributes : D.Dict String Attr
+  , attributes : List (String, Attr)
+  , attributesOnType : D.Dict String (List (String, Attr))
   }
 
 
@@ -57,32 +59,33 @@ type Attr
   | Anchor
 
 
--- -- | Retrieve the list of the values for the given attribute.
+-- -- -- | Retrieve the list of the values for the given attribute.
+-- -- attrConfig
+-- --     :  String -- ^ Entity name
+-- --     -> String -- ^ Attribute name
+-- --     -> Config -- ^ Config, obviously
+-- --     -> Attr
+-- -- attrConfig name attr cfg =
+-- --     let err = "Config.attrConfig: invalid attribute name" in
+-- --     case Util.find (\x -> x.name == name) cfg.entities of
+-- --         Nothing -> Debug.crash err
+-- --         Just ent ->
+-- --             case D.get attr ent.attributes of
+-- --                 Nothing -> Debug.crash err
+-- --                 Just at -> at
+--
+--
+-- -- | Retrieve the list of values for the given attribute.
 -- attrConfig
---     :  String -- ^ Entity name
---     -> String -- ^ Attribute name
---     -> Config -- ^ Config, obviously
+--     :  String -- ^ Attribute name
+--     -> Entity -- ^ Entity config
 --     -> Attr
--- attrConfig name attr cfg =
+-- attrConfig attr ent =
 --     let err = "Config.attrConfig: invalid attribute name" in
---     case Util.find (\x -> x.name == name) cfg.entities of
+--     -- case D.get attr ent.attributes of
+--     case Util.find (\(x, _) -> attr == x) ent.attributes of
 --         Nothing -> Debug.crash err
---         Just ent ->
---             case D.get attr ent.attributes of
---                 Nothing -> Debug.crash err
---                 Just at -> at
-
-
--- | Retrieve the list of the values for the given attribute.
-attrConfig
-    :  String -- ^ Attribute name
-    -> Entity -- ^ Entity config
-    -> Attr
-attrConfig attr ent =
-    let err = "Config.attrConfig: invalid attribute name" in
-    case D.get attr ent.attributes of
-        Nothing -> Debug.crash err
-        Just at -> at
+--         Just (_, val) -> val
 
 
 -- | Get the configuration for a given entity name.
@@ -110,15 +113,17 @@ configDecoder =
 
 entityDecoder : Decode.Decoder Entity
 entityDecoder =
-  let mkEntity name typ atts =
+  let mkEntity name typ atts attsOnType =
         { name = name
         , typ = typ
         , attributes = atts
+        , attributesOnType = attsOnType
         }
-  in  Decode.map3 mkEntity
+  in  Decode.map4 mkEntity
         (Decode.field "name" Decode.string)
         (Decode.field "typ" typDecoder)
-        (Decode.field "attributes" attrMapDecoder)
+        (Decode.field "attributes" attrListDecoder)
+        (Decode.field "attributesOnType" attsOnTypeDecoder)
 
 
 typDecoder : Decode.Decoder EntityType
@@ -131,8 +136,22 @@ typDecoder =
         (Decode.field "def" (Decode.nullable Decode.string))
 
 
-attrMapDecoder : Decode.Decoder (D.Dict String Attr)
-attrMapDecoder = Decode.dict attrDecoder
+-- attrMapDecoder : Decode.Decoder (D.Dict String Attr)
+-- attrMapDecoder = Decode.dict attrDecoder
+
+
+attrListDecoder : Decode.Decoder (List (String, Attr))
+attrListDecoder =
+    let
+      pairDecoder = Decode.map2 (\name val -> (name, val))
+        (Decode.index 0 Decode.string)
+        (Decode.index 1 attrDecoder)
+    in
+      Decode.list pairDecoder
+
+
+attsOnTypeDecoder : Decode.Decoder (D.Dict String (List (String, Attr)))
+attsOnTypeDecoder = Decode.dict attrListDecoder
 
 
 attrDecoder : Decode.Decoder Attr

@@ -2,6 +2,8 @@ let
   free = ./Attr/free.fun
 in let
   closed = ./Attr/closed.fun
+in let
+  anchor = ./Attr/anchor.fun
 in
   { name = "Timex"
   
@@ -13,15 +15,41 @@ in
   
     -- Attributes
   , attributes =
-      [ { key = "Calendar"
-        , val = closed
+      [ { _1 = "Calendar"
+        , _2 = closed
           { among = ["ISO", "Gregor"]
           , def = ["ISO"] : Optional Text
           , required = True }
         }
-      , { key = "Pred"
-        , val = free
-          { def = [] : Optional Text }
+      , { _1 = "Pred"
+        , _2 = free {def = [] : Optional Text}
         }
+      , { _1 = "Anchor"
+        , _2 = anchor {=}
+        }
+      ]
+
+    -- Type-dependent attributes
+  , attributesOnType =
+      [ { key = "Duration"
+        , val =
+          [ { _1 = "Begin"
+            , _2 = anchor {=}
+            }
+          , { _1 = "End"
+            , _2 = anchor {=}
+            }
+          ]
+	}
+      , { key = "Set"
+        , val =
+          [ { _1 = "Quant"
+            , _2 = free {def = ["Some quantity"] : Optional Text}
+            }
+          , { _1 = "Freq"
+            , _2 = free {def = [] : Optional Text}
+            }
+          ]
+	}
       ]
   } : ./Entity.typ
