@@ -1267,60 +1267,15 @@ viewSideEntity
     -> List (Html.Html Msg)
 viewSideEntity model focus nodeId node ent =
   let
-
-    -- inputGeneric = inputGenericGen (SetTimexAttr nodeId focus)
-    inputGeneric attrName = inputGenericGen (SetEntityAttr nodeId focus attrName) attrName
-
-    -- inpCalendar = inputGeneric "Calendar" ti.tiCalendar Anno.timexCalendarStr Anno.TiCalendarAttr
-    inputAttr (attrName, val) =
-        inputGeneric attrName
-            val -- (Anno.getAttr attr ent)
-            (AnnoCfg.attrConfig ent.name attrName model.annoConfig) -- Anno.timexCalendarStr
-            -- Anno.TiCalendarAttr
-
---     inpFunctionInDocument =
---         inputGeneric "Function" ti.tiFunctionInDocument
---             (Anno.nullable Anno.timexFunctionInDocumentStr)
---             Anno.TiFunctionInDocumentAttr
---     inpType = inputGeneric "Type" ti.tiType Anno.timexTypeStr Anno.TiTypeAttr
---     inpTemporalFunction =
---         inputGeneric "Temporal Fun" ti.tiTemporalFunction
---             (Anno.nullable Anno.timexTemporalFunctionStr)
---             Anno.TiTemporalFunctionAttr
---     inpMod =
---         inputGeneric "Mod" ti.tiMod
---             (Anno.nullable Anno.timexModStr)
---             Anno.TiModAttr
---
---     inputTimex = inputTimexGen model focus (SetTimexAttr nodeId focus)
---     inpAnchor = inputTimex "Anchor" ti.tiAnchor Anno.TiAnchorAttr
---     inpBeginPoint = inputTimex "Begin" ti.tiBeginPoint Anno.TiBeginPointAttr
---     inpEndPoint = inputTimex "End" ti.tiEndPoint Anno.TiEndPointAttr
---
---     textGeneric = textGenericGen (SetTimexAttr nodeId focus)
---     inpPred = textGeneric Anno.TiPredAttr "Pred: " ti.tiPred Nothing
---     inpLingValue = textGeneric Anno.TiLingValueAttr "LingValue: " ti.tiLingValue Nothing
---     inpValue = textGeneric Anno.TiValueAttr "Value: " ti.tiValue Nothing
---
---     mayTextGeneric = mayTextGenericGen (SetTimexAttr nodeId focus)
---     inpQuant = mayTextGeneric Anno.TiQuantAttr "Quant:" ti.tiQuant
---     inpFreq = mayTextGeneric  Anno.TiFreqAttr "Freq:" ti.tiFreq
---
---     typeDependent =
---         case ti.tiType of
---             Anno.Duration -> [inpBeginPoint, inpEndPoint]
---             Anno.Set -> [inpQuant, inpFreq]
---             _ -> []
-
+    entCfg = AnnoCfg.entityConfig ent.name model.annoConfig
+    inputAttr attrName = inputGenericGen (SetEntityAttr nodeId focus attrName) attrName
+    inputType = inputTypeGen (SetEntityType nodeId focus) entCfg.typ ent.typ
   in
       [ Html.hr [] []
-      -- , Html.h3 [] [Html.text "Timex:"]
       , Html.text <| ent.name ++ ":"
-      , Html.table [] <|
-          L.map inputAttr (D.toList ent.attributes)
---             [ inpCalendar, inpFunctionInDocument, inpPred, inpType
---             , inpTemporalFunction, inpLingValue, inpValue, inpMod
---             , inpAnchor ] ++ typeDependent
+      , Html.table [] <| inputType ::
+          L.map (\(attrName, attrCfg) -> inputAttr attrName attrCfg (D.get attrName ent.attributes))
+              (D.toList entCfg.attributes)
       ]
 
 
@@ -2503,18 +2458,50 @@ mayTextGenericGen setAttr attr text mayValue =
       ]
 
 
+-- | Type input field.
+inputTypeGen
+    : (String -> Msg)
+    -- ^ Message to send when a type value is selected
+    -> AnnoCfg.EntityType
+    -- ^ The chosen type value
+    -> String
+    -- ^ The chosen type value
+    -> Html.Html Msg
+inputTypeGen setMsg typCfg typValue =
+  let
+    labelTD =
+        Html.td
+            [ Atts.class "noselect"
+            , Atts.align "right" ]
+            [Html.text "Type: "]
+    option val = Html.option
+      [ Atts.value val
+      , Atts.selected (val == typValue) ]
+      [ Html.text val ]
+  in
+    Html.tr []
+      [ labelTD
+      , Html.td []
+          [Html.select
+               [ Events.on "change" (Decode.map setMsg Events.targetValue)
+               , blockKeyDownEvents ]
+               (List.map option typCfg.among)
+          ]
+      ]
+
+
 -- | Doubly generic input field...
 inputGenericGen
-    : (Anno.Attr -> Msg)
+    : (Maybe Anno.Attr -> Msg)
     -- ^ Message to send when an attribute is selected
     -> String
     -- ^ Attribute name
-    -> Anno.Attr
-    -- ^ The chosen attribute value
     -> AnnoCfg.Attr
     -- ^ The configuration corresponding to the attribute
+    -> Maybe Anno.Attr
+    -- ^ The chosen attribute value
     -> Html.Html Msg
-inputGenericGen setAttr label attrValue attrCfg =
+inputGenericGen setAttr label attrCfg attrValue =
   let
     labelTD =
         Html.td
@@ -2522,8 +2509,8 @@ inputGenericGen setAttr label attrValue attrCfg =
             , Atts.align "right" ]
             [Html.text (label ++ ": ")]
   in
-    case (attrValue, attrCfg) of
-        (Anno.Anchor, AnnoCfg.Anchor) ->
+    case attrCfg of
+        AnnoCfg.Anchor ->
             Html.tr []
               [ labelTD
               , Html.td
@@ -2532,13 +2519,28 @@ inputGenericGen setAttr label attrValue attrCfg =
                   ]
                   [Html.text "ANCHOR (IMPLEMENT)"]
               ]
-        (Anno.Attr value, AnnoCfg.Closed r) ->
+        AnnoCfg.Closed r ->
             let
-              setMsg = setAttr << Anno.Attr
+              setMsg newVal =
+                case newVal of
+                  "--" -> setAttr Nothing
+                  _ -> setAttr (Just <| Anno.Attr newVal)
+              among r =
+                if r.required
+                then L.map Just r.among
+                else Nothing :: L.map Just r.among
+              value =
+                case attrValue of
+                  Just (Anno.Attr x) -> Just x
+                  _ -> Nothing
+              val2str val =
+                case val of
+                  Nothing -> "--"
+                  Just x  -> x
               option val = Html.option
-                [ Atts.value val
+                [ Atts.value (val2str val)
                 , Atts.selected (val == value) ]
-                [ Html.text val ]
+                [ Html.text (val2str val) ]
             in
               Html.tr []
                 [ labelTD
@@ -2546,18 +2548,68 @@ inputGenericGen setAttr label attrValue attrCfg =
                     [Html.select
                          [ Events.on "change" (Decode.map setMsg Events.targetValue)
                          , blockKeyDownEvents ]
-                         (List.map option r.among)
+                         (List.map option (among r))
                     ]
                 ]
-        _ ->
-            Html.tr []
-              [ labelTD
-              , Html.td
-                  [ Atts.class "noselect"
-                  , Atts.align "right"
-                  ]
-                  [Html.text <| "TODO: " ++ toString (attrValue, attrCfg)]
-              ]
+        AnnoCfg.Free r ->
+            let
+              setMsg newVal =
+                case newVal of
+                  "" -> setAttr Nothing
+                  _ -> setAttr (Just <| Anno.Attr newVal)
+              value =
+                case attrValue of
+                  Just (Anno.Attr x) -> x
+                  _ -> ""
+            in
+              Html.tr []
+                [ labelTD
+                , Html.td []
+                    [Html.input
+                         [ Events.onInput setMsg
+                         , Atts.value value
+                         , blockKeyDownEvents ]
+                         []
+                    ]
+                ]
+
+
+--     case (attrValue, attrCfg) of
+--         (Anno.Anchor, AnnoCfg.Anchor) ->
+--             Html.tr []
+--               [ labelTD
+--               , Html.td
+--                   [ Atts.class "noselect"
+--                   , Atts.align "right"
+--                   ]
+--                   [Html.text "ANCHOR (IMPLEMENT)"]
+--               ]
+--         (Anno.Attr value, AnnoCfg.Closed r) ->
+--             let
+--               setMsg = setAttr << Anno.Attr
+--               option val = Html.option
+--                 [ Atts.value val
+--                 , Atts.selected (val == value) ]
+--                 [ Html.text val ]
+--             in
+--               Html.tr []
+--                 [ labelTD
+--                 , Html.td []
+--                     [Html.select
+--                          [ Events.on "change" (Decode.map setMsg Events.targetValue)
+--                          , blockKeyDownEvents ]
+--                          (List.map option r.among)
+--                     ]
+--                 ]
+--         _ ->
+--             Html.tr []
+--               [ labelTD
+--               , Html.td
+--                   [ Atts.class "noselect"
+--                   , Atts.align "right"
+--                   ]
+--                   [Html.text <| "TODO: " ++ toString (attrValue, attrCfg)]
+--               ]
 
 
 -- -- | Doubly generic list input field.

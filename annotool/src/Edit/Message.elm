@@ -169,9 +169,11 @@ update msg model =
     -- ChangeType -> idle <| M.changeTypeSel model.focus model
 
     MkEntity name -> idle <|
-      case AnnoCfg.entityConfig name model.annoConfig of
-          Nothing -> model
-          Just en -> M.mkEntitySel en model.focus model
+      let en = AnnoCfg.entityConfig name model.annoConfig
+      in  M.mkEntitySel en model.focus model
+--       case AnnoCfg.entityConfig name model.annoConfig of
+--           Nothing -> model
+--           Just en -> M.mkEntitySel en model.focus model
 
 --     MkSignal -> idle <| M.mkSignalSel model.focus model
 --     MkEvent -> idle <| M.mkEventSel model.focus model
@@ -342,8 +344,11 @@ update msg model =
         Anno.NodeLabelAttr x -> M.setLabel nodeId focus x model
         Anno.NodeCommentAttr x -> M.setComment nodeId focus x model
 
+    SetEntityType nodeId focus newTyp -> idle <|
+      M.setEntityType nodeId focus newTyp model
+
     SetEntityAttr nodeId focus attr val -> idle <|
-      M.setEntityAttr (Anno.entityAttr attr) nodeId focus (Just val) model
+      M.setEntityAttr (Anno.entityAttr attr) nodeId focus val model
 
 --     SetEventAttr nodeId focus attr -> idle <|
 --       case attr of

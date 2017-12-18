@@ -70,7 +70,15 @@ type Msg
   -- * Modifying general node's attributes
   | SetNodeAttr C.NodeId M.Focus Anno.NodeAttr
   -- * Entity modification event
-  | SetEntityAttr C.NodeId M.Focus String Anno.Attr
+  | SetEntityType
+    C.NodeId
+    M.Focus
+    String            -- ^ New type value
+  | SetEntityAttr
+    C.NodeId
+    M.Focus
+    String            -- ^ Attribute name
+    (Maybe Anno.Attr) -- ^ Attribute value
 --   | SetEventAttr C.NodeId M.Focus Anno.EventAttr
 --   | SetSignalAttr C.NodeId M.Focus Anno.SignalAttr
 --   | SetTimexAttr C.NodeId M.Focus Anno.TimexAttr

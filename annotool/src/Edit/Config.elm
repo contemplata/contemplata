@@ -57,30 +57,43 @@ type Attr
   | Anchor
 
 
+-- -- | Retrieve the list of the values for the given attribute.
+-- attrConfig
+--     :  String -- ^ Entity name
+--     -> String -- ^ Attribute name
+--     -> Config -- ^ Config, obviously
+--     -> Attr
+-- attrConfig name attr cfg =
+--     let err = "Config.attrConfig: invalid attribute name" in
+--     case Util.find (\x -> x.name == name) cfg.entities of
+--         Nothing -> Debug.crash err
+--         Just ent ->
+--             case D.get attr ent.attributes of
+--                 Nothing -> Debug.crash err
+--                 Just at -> at
+
+
 -- | Retrieve the list of the values for the given attribute.
--- Returns `Free Nothing` if the entity/attribute unknown.
 attrConfig
-    :  String -- ^ Entity name
-    -> String -- ^ Attribute name
-    -> Config -- ^ Config, obviously
+    :  String -- ^ Attribute name
+    -> Entity -- ^ Entity config
     -> Attr
-attrConfig name attr cfg =
-    let def = Free {def = Nothing} in
-    case Util.find (\x -> x.name == name) cfg.entities of
-        Nothing -> def
-        Just ent ->
-            case D.get attr ent.attributes of
-                Nothing -> def
-                Just at -> at
+attrConfig attr ent =
+    let err = "Config.attrConfig: invalid attribute name" in
+    case D.get attr ent.attributes of
+        Nothing -> Debug.crash err
+        Just at -> at
 
 
 -- | Get the configuration for a given entity name.
 entityConfig
     :  String -- ^ Entity name
     -> Config -- ^ Config
-    -> Maybe Entity
+    -> Entity
 entityConfig name cfg =
-    Util.find (\x -> x.name == name) cfg.entities
+    case Util.find (\x -> x.name == name) cfg.entities of
+        Nothing -> Debug.crash "Config.entityConfig: unknown entity name"
+        Just en -> en
 
 
 ---------------------------------------------------

@@ -42,6 +42,7 @@ module Edit.Model exposing
 --   , eventPred
 
   -- Entity modification:
+  , setEntityType
   , setEntityAttr
 
   -- -- Event modification:
@@ -1725,8 +1726,15 @@ setComment id focus newComment model =
 
 
 ---------------------------------------------------
--- Attribute modification
+-- Attribute and type modification
 ---------------------------------------------------
+
+
+setEntityType : NodeId -> Focus -> String -> Model -> Model
+setEntityType id focus newTyp model =
+    let lens = nodeTyp => maybeLens => Anno.entityType
+        update = Lens.set lens newTyp
+    in  updateNode id focus update model
 
 
 setEntityAttr : (Lens.Focus Anno.Entity a) -> NodeId -> Focus -> a -> Model -> Model
