@@ -6,6 +6,7 @@ regular JSON anyway. -}
 { -- What types of node annotations are allowed
   entities =
     [ ./Anno/timex.val
-    -- , ./Anno/event.val
+    , ./Anno/event.val
+    , ./Anno/signal.val
     ] : List ./Anno/Entity.typ
 }

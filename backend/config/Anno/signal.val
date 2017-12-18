@@ -1,0 +1,23 @@
+let
+  free = ./Attr/free.fun
+in let
+  closed = ./Attr/closed.fun
+in let
+  anchor = ./Attr/anchor.fun
+in
+  { name = "Signal"
+  
+    -- Possible types
+  , typ =
+      { among = ["Locative", "Measure", "Boundary", "Orientation"]
+      , def = ["Locative"] : Optional Text
+      }
+  
+    -- Attributes
+  , attributes = [] : List {_1 : Text, _2 : ./Attr.typ}
+
+    -- Type-dependent attributes
+  , attributesOnType = [] : List
+      { key : Text
+      , val : List {_1 : Text, _2 : ./Attr.typ} }
+  } : ./Entity.typ

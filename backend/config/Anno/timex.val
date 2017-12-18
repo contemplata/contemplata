@@ -10,19 +10,43 @@ in
     -- Possible types
   , typ =
       { among = ["Date", "Time", "Duration", "Set"]
-      , def = [] : Optional Text
+      , def = ["Time"] : Optional Text
       }
   
     -- Attributes
   , attributes =
       [ { _1 = "Calendar"
         , _2 = closed
-          { among = ["ISO", "Gregor"]
+          { among = ["ISO", "Gregor", "Jour", "Unix", "RD", "Hebr", "Islam", "MayaCirc", "MayaLon", "Pers", "JulJD", "JulAN", "JulMOD", "Copt", "Ethiop", "Egypt", "Armen", "Ind", "HindSol", "HindSolAN", "HindLun", "HindLunAN", "Chinv", "Roman", "Revolut", "Postitiv", "Balines", "BahaiOcc", "BahaiFut", "Other"]
           , def = ["ISO"] : Optional Text
           , required = True }
         }
+      , { _1 = "Function"
+        , _2 = closed
+          { among = ["CreationTime", "ExpirationTime", "ModificationTime", "PublicationTime", "ReleaseTime", "ReceptionTime"]
+          , def = [] : Optional Text
+          , required = False }
+        }
       , { _1 = "Pred"
         , _2 = free {def = [] : Optional Text}
+        }
+      , { _1 = "TemporalFun"
+        , _2 = closed
+          { among = ["S", "R"]
+          , def = [] : Optional Text
+          , required = False }
+        }
+      , { _1 = "LingValue"
+        , _2 = free {def = [] : Optional Text}
+        }
+      , { _1 = "Value"
+        , _2 = free {def = [] : Optional Text}
+        }
+      , { _1 = "Mod"
+        , _2 = closed
+          { among = ["Before", "After", "OnOrBefore", "OnOrAfter", "LessThan", "MoreThan", "EqualOrLess", "EqualOrMore", "StartX", "MidX", "EndX", "Approx"]
+          , def = [] : Optional Text
+          , required = False }
         }
       , { _1 = "Anchor"
         , _2 = anchor {=}
@@ -44,7 +68,7 @@ in
       , { key = "Set"
         , val =
           [ { _1 = "Quant"
-            , _2 = free {def = ["Some quantity"] : Optional Text}
+            , _2 = free {def = [] : Optional Text}
             }
           , { _1 = "Freq"
             , _2 = free {def = [] : Optional Text}

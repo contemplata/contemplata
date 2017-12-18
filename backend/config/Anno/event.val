@@ -1,30 +1,78 @@
--- let
---   withDefault =
---     \(value : Text) ->
---     \(r : {name : Text, among : List Text, def : Optional Text}) ->
---       {name = r.name, among = r.among, def = [value] : Optional Text}
--- in let
---   attr =
---     \(name : Text) ->
---     \(among : List Text) -> 
---       { name = name
---       , among = among
---       , def = [] : Optional Text
---       }
--- in
+let
+  free = ./Attr/free.fun
+in let
+  closed = ./Attr/closed.fun
+in let
+  anchor = ./Attr/anchor.fun
+in
   { name = "Event"
   
     -- Possible types
   , typ =
-      { among = ["State", "Process", "Transition"]
-      , def = [] : Optional Text
+      { among = ["Process", "State", "Transition"]
+      , def = ["Process"] : Optional Text
       }
   
     -- Attributes
-  , attributes =
-      [ { name = "Class"
-        , among = ["Occurrence"]
-        , def = [] : Optional Text
+  , attributes = 
+      [ { _1 = "Class"
+        , _2 = closed
+          { among = ["Occurrence", "Perception", "Reporting", "Aspectual", "State", "IState", "IAction", "Cause", "EventContainer"]
+          , def = ["Occurrence"] : Optional Text
+          , required = True }
+        }
+      , { _1 = "Inquisit"
+        , _2 = closed
+          { among = ["TQuest", "Quest", "Order", "TOrder", "Decl"]
+          , def = ["Decl"] : Optional Text
+          , required = True }
+        }
+      , { _1 = "Time"
+        , _2 = closed
+          { among = ["Future", "Past", "Present", "Omni", "Zero"]
+          , def = ["Present"] : Optional Text
+          , required = False }
+        }
+      , { _1 = "Aspect"
+        , _2 = closed
+          { among = ["Progressive", "Perfective", "Prospective", "Imperfective"]
+          , def = [] : Optional Text
+          , required = False }
+        }
+      , { _1 = "Polarity"
+        , _2 = closed
+          { among = ["Pos", "Neg"]
+          , def = ["Pos"] : Optional Text
+          , required = True }
+        }
+      , { _1 = "Mood"
+        , _2 = closed
+          { among = ["Subjunctive", "Conditional"]
+          , def = [] : Optional Text
+          , required = False }
+        }
+      , { _1 = "Modality"
+        , _2 = closed
+          { among = ["Certainty", "Conjectural", "Necessity", "Obligation", "Permission", "Possibility", "Probability"]
+          , def = [] : Optional Text
+          , required = False }
+        }
+      , { _1 = "Cardinality"
+        , _2 = free {def = [] : Optional Text}
+        }
+      , { _1 = "Mod"
+        , _2 = closed
+          { among = ["Start", "Mid", "End"]
+          , def = [] : Optional Text
+          , required = False }
+        }
+      , { _1 = "Pred"
+        , _2 = free {def = [] : Optional Text}
         }
       ]
-  }
+
+    -- Type-dependent attributes
+  , attributesOnType = [] : List
+      { key : Text
+      , val : List {_1 : Text, _2 : ./Attr.typ} }
+  } : ./Entity.typ
