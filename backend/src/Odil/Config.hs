@@ -19,6 +19,8 @@ import qualified Odil.Config.Entity as E
 -- | A closed attribute.
 data Config = Config
   { entities :: Vector E.Entity
+  , nonTerminals :: Vector Text
+  , preTerminals :: Vector Text
   } deriving (Generic, Show)
 
 instance Interpret Config

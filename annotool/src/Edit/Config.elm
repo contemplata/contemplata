@@ -30,6 +30,8 @@ import Dict as D
 type alias Config =
   { entities : List Entity
     -- ^ TODO: This could be a map!
+  , nonTerminals : List String
+  , preTerminals : List String
   }
 
 
@@ -114,9 +116,15 @@ entityConfig name cfg =
 
 configDecoder : Decode.Decoder Config
 configDecoder =
-  let mkConfig ents = {entities = ents}
-  in  Decode.map mkConfig
+  let mkConfig ents nons pres =
+        { entities = ents
+        , nonTerminals = nons
+        , preTerminals = pres
+        }
+  in  Decode.map3 mkConfig
         (Decode.field "entities" (Decode.list entityDecoder))
+        (Decode.field "nonTerminals" (Decode.list Decode.string))
+        (Decode.field "preTerminals" (Decode.list Decode.string))
 
 
 entityDecoder : Decode.Decoder Entity

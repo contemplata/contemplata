@@ -1116,11 +1116,14 @@ viewSideEditInternal
 viewSideEditInternal model focus nodeId nodeTyp node =
   let
 
+    preTerminals = model.annoConfig.preTerminals
+    nonTerminals = model.annoConfig.nonTerminals
+    allTerminals = nonTerminals ++ preTerminals
     labelSet = if nodeTyp == M.PosNode
-               then Anno.preTerminalLabelSet
+               then preTerminals
                else if nodeTyp == M.Phrasal
-                    then Anno.phrasalLabelSet
-                    else Anno.nodeLabelSet
+                    then nonTerminals
+                    else allTerminals
     inpLabel = inputGenericConstrainedGen
                (SetNodeAttr nodeId focus)
                "Label"

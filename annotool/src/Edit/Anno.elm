@@ -4,10 +4,10 @@
 module Edit.Anno exposing
   (
   -- * Nodes (in general)
-    nodeLabelSet
-  , phrasalLabelSet
-  , preTerminalLabelSet
-  , NodeAttr (..)
+--     nodeLabelSet
+--   , phrasalLabelSet
+--   , preTerminalLabelSet
+    NodeAttr (..)
 
   -- * Annotations
   , Entity
@@ -46,81 +46,6 @@ import Edit.Core exposing (Addr)
 ---------------------------------------------------
 -- General
 ---------------------------------------------------
-
-
-nodeLabelSet : List String
-nodeLabelSet = phrasalLabelSet ++ preTerminalLabelSet
-
-
-phrasalLabelSet : List String
-phrasalLabelSet =
-    let
-        baseList =
-            [ "AP"
-            , "AdP"
-            , "COORD"
-            , "MWA"
-            , "MWADV"
-            , "MWC"
-            , "MWCL"
-            , "MWD"
-            , "MWN"
-            , "MWP"
-            , "MWPRO"
-            , "MWV"
-            , "NP"
-            , "PP"
-            , "ROOT"
-            , "SENT"
-            , "Sint"
-            , "Srel"
-            , "Ssub"
-            , "VN"
-            , "VP"
-            , "VPinf"
-            , "VPpart"
-            -- below, custom additional labels
-            , "PARA" ]
-        addDolar x = "$" ++ x
-    in
-        baseList ++ List.map addDolar baseList
-
-
-preTerminalLabelSet : List String
-preTerminalLabelSet =
-  [ "ADJ"
-  , "ADJWH"
-  , "ADV"
-  , "ADVWH"
-  , "C"
-  , "CC"
-  , "CS"
-  , "CL"
-  , "CLO"
-  , "CLR"
-  , "CLS"
-  , "DET"
-  , "DETWH"
-  , "ET"
-  , "I"
-  , "N"
-  , "NC"
-  , "NPP"
-  , "P"
-  , "PREF"
-  , "PRO"
-  , "PROREL"
-  , "PROWH"
-  , "PUNC"
-  , "V"
-  , "VIMP"
-  , "VINF"
-  , "VPP"
-  , "VPR"
-  , "VS" ]
-  -- below, custom additional labels
-  -- , "PARA"
-  -- , "$" ]
 
 
 -- | Changing a node attribute.

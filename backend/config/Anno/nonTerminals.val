@@ -1,0 +1,34 @@
+let
+  baseList =
+    [ "AP"
+    , "AdP"
+    , "COORD"
+    , "MWA"
+    , "MWADV"
+    , "MWC"
+    , "MWCL"
+    , "MWD"
+    , "MWN"
+    , "MWP"
+    , "MWPRO"
+    , "MWV"
+    , "NP"
+    , "PP"
+    , "ROOT"
+    , "SENT"
+    , "Sint"
+    , "Srel"
+    , "Ssub"
+    , "VN"
+    , "VP"
+    , "VPinf"
+    , "VPpart"
+    , "PARA"]
+in let
+  addDolar = \(x : Text) -> "$" ++ x
+in let
+  map =
+    ../Prelude/List/map
+    -- https://ipfs.io/ipfs/QmQ8w5PLcsNz56dMvRtq54vbuPe9cNnCCUXAQp6xLc6Ccx/Prelude/List/map
+in
+  baseList # map Text Text addDolar baseList
