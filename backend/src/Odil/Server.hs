@@ -18,9 +18,9 @@ module Odil.Server
 , Answer (..)
 
 -- * Server
-, runServer
 , loadDB
 , application
+-- , runServer
 
 -- * Utils
 , parseRetokFR
@@ -222,14 +222,15 @@ loadDB dbPath = do
 -----------
 
 
-runServer
-  :: FilePath -- ^ DB path
-  -> String -- ^ Server address
-  -> Int -- ^ Port
-  -> IO ()
-runServer dbPath serverAddr serverPort = do
-  state <- C.newMVar =<< loadDB dbPath
-  WS.runServer serverAddr serverPort $ application state Cfg.empty
+-- OBSOLETE: the server is now run from Snap.
+-- runServer
+--   :: FilePath -- ^ DB path
+--   -> String -- ^ Server address
+--   -> Int -- ^ Port
+--   -> IO ()
+-- runServer dbPath serverAddr serverPort = do
+--   state <- C.newMVar =<< loadDB dbPath
+--   WS.runServer serverAddr serverPort $ application state Cfg.empty
 
 
 -----------
@@ -310,7 +311,7 @@ talk conn state snapCfg = forever $ do
             getAll = mapM getFile fileList
         DB.runDBT db getAll >>= \case
           Left err -> do
-            let msg = T.concat ["GetFile2 error: ", err]
+            let msg = T.concat ["GetFiles error: ", err]
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
           Right fileList -> do

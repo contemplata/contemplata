@@ -25,15 +25,18 @@ module Handler.Admin
 ) where
 
 
-import           Control.Monad.IO.Class (liftIO)
+import           Control.Monad.IO.Class (liftIO, MonadIO)
 import           Control.Monad.Trans.Class (lift)
 import           Control.Monad (guard, (<=<))
 
 import qualified Data.Set as S
 import qualified Data.List as L
+import qualified Data.Vector as V
 import qualified Data.Map.Strict as M
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
+import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Encoding as T
 import qualified Data.Configurator as Cfg
 import           Data.Map.Syntax ((##))
@@ -43,16 +46,20 @@ import qualified Snap as Snap
 import qualified Snap.Snaplet.Auth as Auth
 import qualified Snap.Snaplet.Heist as Heist
 import           Heist.Interpreted (bindSplices, Splice)
-import           Heist (getParamNode)
+import           Heist (getParamNode, Splices)
 import qualified Text.XmlHtml as X
 
 import           Text.Digestive.Form (Form, (.:))
 import qualified Text.Digestive.Form as D
 import           Text.Digestive.Heist (bindDigestiveSplices)
+import qualified Text.Digestive.Heist as H
 import qualified Text.Digestive.View as D
 import qualified Text.Digestive.Snap as D
 
+import qualified Dhall as Dhall
 
+
+import qualified Odil.Config as AnnoCfg
 import           Odil.Server.Types
 import qualified Odil.Server.DB as DB
 import qualified Odil.Server.Users as Users
@@ -132,6 +139,31 @@ fileHandler = ifAdmin $ do
   Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
   Just fileId <- return $ decodeFileId fileIdTxt
 
+  -------------------------------------
+  -- Copy file form
+  -------------------------------------
+
+  snapCfg <- Snap.getSnapletUserConfig
+  levels <- liftIO $ do
+    Just cfgPath <- Cfg.lookup snapCfg "anno-config"
+    cfg <- Dhall.input Dhall.auto cfgPath
+    return . map TL.toStrict . V.toList . AnnoCfg.annoLevels $ cfg
+  (copyView, copyName) <- D.runForm
+    "copy-file-form"
+    (copyFileForm levels)
+
+  case copyName of
+    Nothing -> return ()
+    Just newFileId -> do
+      liftIO . T.putStrLn $ T.unwords
+        [ "Copy", encodeFileId fileId
+        , "=>", encodeFileId newFileId ]
+      liftDB $ DB.copyFile fileId newFileId
+
+  -------------------------------------
+  -- Add annotator form
+  -------------------------------------
+
   allAnnotators <- do
     cfg <- Snap.getSnapletUserConfig
     passPath <- liftIO $ MyCfg.fromCfg' cfg "password" -- "pass.json"
@@ -160,9 +192,21 @@ fileHandler = ifAdmin $ do
         "currentAnnotators" ## return
           (map (mkElem fileIdTxt) annotations)
 
+  -------------------------------------
+  -- Finalize
+  -------------------------------------
+
+  -- WARNING: Normally we would use `bindDigestiveSplices`, but this solution
+  -- does not support several forms on a single page, it seems
+  let annoSplices = digestiveSplices "anno" annoView
+      copySplices = digestiveSplices "copy" copyView
+      allSplices = mconcat
+        -- [localSplices, annoSplices, copySplices]
+        [localSplices, copySplices, annoSplices]
   Heist.heistLocal
-    ( bindSplices localSplices .
-      bindDigestiveSplices annoView )
+    ( bindSplices allSplices )
+    -- . bindDigestiveSplices annoView
+    -- . bindDigestiveSplices copyView )
     ( Heist.render "admin/file" )
 
   where
@@ -182,11 +226,21 @@ fileHandler = ifAdmin $ do
         [X.TextNode x] ]
 
 
--- | Login form for a user.
+-- | Add annotator form.
 addAnnoForm :: [T.Text] -> Form T.Text AppHandler T.Text
 addAnnoForm anns =
   let double x = (x, x)
   in  "anno-name" .: D.choice (map double anns) Nothing
+
+
+-- | Copy file form.
+copyFileForm :: [T.Text] -> Form T.Text AppHandler FileId
+copyFileForm levels = FileId
+  <$> "file-name" .: D.text Nothing
+  <*> "file-level" .: D.choice (map double levels) Nothing
+  <*> "file-id" .: D.text Nothing
+  where
+    double x = (x, x)
 
 
 ---------------------------------------
@@ -310,6 +364,39 @@ addUserForm annoSet = (,)
 ---------------------------------------
 -- DB utils
 ---------------------------------------
+
+
+---------------------------------------
+-- Digestive utils
+---------------------------------------
+
+
+digestiveSplices
+  :: MonadIO m
+  => T.Text -- ^ The prefix of the form
+  -> D.View T.Text
+  -> Splices (Splice m)
+digestiveSplices prefix view = do
+    prefix#"Input"            ## H.dfInput view
+    prefix#"InputList"        ## H.dfInputList view
+    prefix#"InputText"        ## H.dfInputText view
+    prefix#"InputTextArea"    ## H.dfInputTextArea view
+    prefix#"InputPassword"    ## H.dfInputPassword view
+    prefix#"InputHidden"      ## H.dfInputHidden view
+    prefix#"InputSelect"      ## H.dfInputSelect view
+    prefix#"InputSelectGroup" ## H.dfInputSelectGroup view
+    prefix#"InputRadio"       ## H.dfInputRadio view
+    prefix#"InputCheckbox"    ## H.dfInputCheckbox view
+    prefix#"InputFile"        ## H.dfInputFile view
+    prefix#"InputSubmit"      ## H.dfInputSubmit view
+    prefix#"Label"            ## H.dfLabel view
+    prefix#"Form"             ## H.dfForm view
+    prefix#"ErrorList"        ## H.dfErrorList view
+    prefix#"ChildErrorList"   ## H.dfChildErrorList view
+    prefix#"SubView"          ## H.dfSubView view
+    prefix#"IfChildErrors"    ## H.dfIfChildErrors view
+      where
+        (#) = T.append
 
 
 ---------------------------------------

@@ -21,6 +21,7 @@ data Config = Config
   { entities :: Vector E.Entity
   , nonTerminals :: Vector Text
   , preTerminals :: Vector Text
+  , annoLevels :: Vector Text
   } deriving (Generic, Show)
 
 instance Interpret Config

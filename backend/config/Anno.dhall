@@ -9,4 +9,7 @@
 -- Phrasal and part-of-speech tags
 , nonTerminals = ./Anno/nonTerminals.val
 , preTerminals = ./Anno/preTerminals.val
+
+-- Annotation levels
+, annoLevels = ["orig", "syntax", "temporal", "relations"]
 }

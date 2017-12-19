@@ -46,34 +46,35 @@ import qualified Data.Aeson.Types as JSON
 type FileName = T.Text
 
 
--- | Annotation level.
-data AnnoLevel
-  = Orig
-    -- ^ Original file
-  | Syntax
-    -- ^ Syntactic level
-  | Temporal
-    -- ^ Temporal level
-  | Relations
-    -- ^ Temporal relations level
-  deriving (Eq, Ord, Generic)
+-- | Annotation level (e.g. orig(inal), syntax, termporal, etc.).
+type AnnoLevel = T.Text
+-- data AnnoLevel
+--   = Orig
+--     -- ^ Original file
+--   | Syntax
+--     -- ^ Syntactic level
+--   | Temporal
+--     -- ^ Temporal level
+--   | Relations
+--     -- ^ Temporal relations level
+--   deriving (Eq, Ord, Generic)
 
 
-instance Show AnnoLevel where
-  show anno = case anno of
-    Orig -> "orig"
-    Syntax -> "syntax"
-    Temporal -> "temporal"
-    Relations -> "relations"
+-- instance Show AnnoLevel where
+--   show anno = case anno of
+--     Orig -> "orig"
+--     Syntax -> "syntax"
+--     Temporal -> "temporal"
+--     Relations -> "relations"
 
 
-readAnnoLevel :: T.Text -> Maybe AnnoLevel
-readAnnoLevel annoStr = case annoStr of
-  "orig" -> Just Orig
-  "syntax" -> Just Syntax
-  "temporal" -> Just Temporal
-  "relations" -> Just Relations
-  _ -> Nothing
+-- readAnnoLevel :: T.Text -> Maybe AnnoLevel
+-- readAnnoLevel annoStr = case annoStr of
+--   "orig" -> Just Orig
+--   "syntax" -> Just Syntax
+--   "temporal" -> Just Temporal
+--   "relations" -> Just Relations
+--   _ -> Nothing
 
 
 -- | ID of a file.
@@ -91,23 +92,18 @@ data FileId = FileId
 encodeFileId :: FileId -> T.Text
 encodeFileId FileId{..} = T.intercalate ":"
   [ fileName
-  , T.pack (show annoLevel)
+  , annoLevel
   , copyId
   ]
 
 
 decodeFileId :: T.Text -> Maybe FileId
--- decodeFileId enc = maybe (error err) id $ do
 decodeFileId enc = do
   [name, level, cid] <- Just $ T.split (==':') enc
-  textLevel <- readAnnoLevel level
   return FileId
     { fileName = name
-    , annoLevel = textLevel
+    , annoLevel = level
     , copyId = cid }
---   where
---     err = "CoreTypes.decodeFileId: cannot decode \""
---       ++ T.unpack enc ++ "\""
 
 
 --------------------
@@ -189,9 +185,9 @@ instance JSON.FromJSON FileMeta
 instance JSON.ToJSON FileMeta where
   toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
-instance JSON.FromJSON AnnoLevel
-instance JSON.ToJSON AnnoLevel where
-  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+-- instance JSON.FromJSON AnnoLevel
+-- instance JSON.ToJSON AnnoLevel where
+--   toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
 instance JSON.FromJSON FileId
 instance JSON.FromJSONKey FileId where

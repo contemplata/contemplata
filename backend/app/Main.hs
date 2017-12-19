@@ -68,8 +68,8 @@ data Command
 --         FilePath -- ^ File with original sentences
 --       -- ^ Convert a Penn file to a JSON file
 
-    | Server FilePath String Int
-      -- ^ Run the backend annotation server
+--     | Server FilePath String Int
+--       -- ^ Run the backend annotation server
 
     | NewDB FilePath
       -- ^ Create a new DB under a given path
@@ -149,25 +149,25 @@ penn2jsonOptions = pure Penn2JSON
 --        <> help "File with original sentences" )
 
 
-serverOptions :: Parser Command
-serverOptions = Server
-  <$> strOption
-        ( long "dbdir"
-       <> short 'd'
-       <> metavar "DIR"
-       <> help "DB directory" )
-  <*> strOption
-        ( long "url"
-       <> short 'u'
-       <> metavar "URL"
-       <> value ServerCfg.serverAddr
-       <> help "Address to bind (WebSocket server)" )
-  <*> option auto
-        ( long "port"
-       <> short 'p'
-       <> metavar "INT"
-       <> value ServerCfg.serverPort
-       <> help "Port to listen to (WebSocket server)" )
+-- serverOptions :: Parser Command
+-- serverOptions = Server
+--   <$> strOption
+--         ( long "dbdir"
+--        <> short 'd'
+--        <> metavar "DIR"
+--        <> help "DB directory" )
+--   <*> strOption
+--         ( long "url"
+--        <> short 'u'
+--        <> metavar "URL"
+--        <> value ServerCfg.serverAddr
+--        <> help "Address to bind (WebSocket server)" )
+--   <*> option auto
+--         ( long "port"
+--        <> short 'p'
+--        <> metavar "INT"
+--        <> value ServerCfg.serverPort
+--        <> help "Port to listen to (WebSocket server)" )
 
 
 newDbOptions :: Parser Command
@@ -305,10 +305,10 @@ opts = subparser
 --     (info (helper <*> penn2odilOptions)
 --       (progDesc "Convert Penn trees to Odil trees in JSON")
 --     )
-  <> command "server"
-    (info (helper <*> serverOptions)
-      (progDesc "Run the backed annotation server")
-    )
+--   <> command "server"
+--     (info (helper <*> serverOptions)
+--       (progDesc "Run the backed annotation server")
+--     )
   <> command "createdb"
     (info (helper <*> newDbOptions)
       (progDesc "Create a new DB under a given path")
@@ -420,8 +420,8 @@ run cmd =
       LBS.putStr (JSON.encode odil)
 
 
-    -- Server-related
-    Server dbPath addr port -> Server.runServer dbPath addr port
+    -- -- Server-related
+    -- Server dbPath addr port -> Server.runServer dbPath addr port
 
     -- DB-related
     NewDB dbPath -> do
