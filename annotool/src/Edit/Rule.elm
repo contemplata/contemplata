@@ -212,7 +212,8 @@ allRules =
           , left = seq
               -- (star <| rootSat <| \label -> label /= "CS")
               (optional <| root "PUNC")
-              (root "CS")
+              -- (root "CS")
+              (rootSat <| \x -> List.member x ["CS", "MWC"])
           , middle = star any
           , right = Epsilon
           , result = "Sint" }
