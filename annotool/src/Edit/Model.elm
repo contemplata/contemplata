@@ -1804,16 +1804,20 @@ setEntityAnchor attLens id focus model =
             case S.toList win.selAux of
                 [x] -> Just (getReprId focus win.tree model, x)
                 _   -> Nothing
-        anchorNoFocus = Nothing
---             let
---                 otherFocus = case focus of
---                     Top -> Bot
---                     Bot -> Top
---                 otherWin = selectWin otherFocus model
---             in
---                 case otherWin.selMain of
---                     Just x  -> Just (getReprId otherWin.tree model, x)
---                     Nothing -> Nothing
+        anchorNoFocus =
+            let
+                otherFocus = case focus of
+                    Top -> Bot
+                    Bot -> Top
+                otherWin = selectWin otherFocus model
+            in
+                Util.guard (model.top.fileId == model.bot.fileId)
+                  |> Maybe.andThen (\_ ->
+                    case otherWin.selMain of
+                      Just x  -> Just
+                        (getReprId otherFocus otherWin.tree model, x)
+                      Nothing -> Nothing
+                                   )
         isTyped addr =
             case R.label (subTreeAt addr focus model) of
                 Leaf _ -> False
@@ -1822,7 +1826,7 @@ setEntityAnchor attLens id focus model =
                   Nothing -> False
     in
         case anchorMaybe of
-            Nothing -> Left "To perform anchoring, you have to first either: (i) select an additional node in focus, or (ii) select a node in the other window."
+            Nothing -> Left "To perform anchoring, you have to first either: (i) select an additional node in focus, or (ii) select a node in the other window. Note also that nodes from two different files cannot be linked."
             Just anchor ->
                 if isTyped anchor
                 then Right <| updateNode id focus (update anchorMaybe) model
