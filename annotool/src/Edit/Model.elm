@@ -44,6 +44,7 @@ module Edit.Model exposing
   -- Entity modification:
   , setEntityType
   , setEntityAttr
+  , setEntityAnchor
 
   -- -- Event modification:
   -- , setEventAttr
@@ -1768,6 +1769,76 @@ setEntityAttr attLens id focus newVal model =
     let lens = nodeTyp => maybeLens => attLens
         update = Lens.set lens newVal
     in  updateNode id focus update model
+
+
+---------------------------------------------------
+-- Attribute and type modification
+---------------------------------------------------
+
+
+-- | Set the anchor (timex) of the given node to the selected node.
+-- Generic version.
+--
+-- The process of deciding which node should be considered as the anchor
+-- is as follows:
+--
+-- 1. If there is another node selected in focus, choose it
+-- 2. Otherwise, choose the main selected node in the other window
+-- 3. Otherwise, do nothing (but return the error message)
+setEntityAnchor
+    : (Lens.Focus Anno.Entity (Maybe Anno.Attr))
+    -> NodeId
+    -> Focus
+    -> Model
+    -> Either String Model
+setEntityAnchor attLens id focus model =
+    let
+        lens = nodeTyp => maybeLens => attLens
+        update newVal = Lens.set lens (Maybe.map Anno.Anchor newVal)
+        anchorMaybe = or anchorInFocus anchorNoFocus
+        or x y = case x of
+            Nothing -> y
+            _ -> x
+        win = selectWin focus model
+        anchorInFocus =
+            case S.toList win.selAux of
+                [x] -> Just (getReprId focus win.tree model, x)
+                _   -> Nothing
+        anchorNoFocus = Nothing
+--             let
+--                 otherFocus = case focus of
+--                     Top -> Bot
+--                     Bot -> Top
+--                 otherWin = selectWin otherFocus model
+--             in
+--                 case otherWin.selMain of
+--                     Just x  -> Just (getReprId otherWin.tree model, x)
+--                     Nothing -> Nothing
+        isTyped addr =
+            case R.label (subTreeAt addr focus model) of
+                Leaf _ -> False
+                Node r -> case r.nodeTyp of
+                  Just _  -> True
+                  Nothing -> False
+    in
+        case anchorMaybe of
+            Nothing -> Left "To perform anchoring, you have to first either: (i) select an additional node in focus, or (ii) select a node in the other window."
+            Just anchor ->
+                if isTyped anchor
+                then Right <| updateNode id focus (update anchorMaybe) model
+                else Left "The selected node is untyped (not a TIMEX, EVENT, ...)"
+
+
+-- -- | Set the anchor (timex) of the given node to the selected node.
+-- setAnchor
+--     :  String -- ^ The name of the anchoring attribute
+--     -> NodeId
+--     -> Focus
+--     -> Model
+--     -> Either String Model
+-- setAnchor =
+--     let lens = nodeTyp => maybeLens => nodeTimex => timexAnchor
+--     in  setTimexAnchorGen lens
 
 
 -- ---------------------------------------------------
@@ -3825,22 +3896,14 @@ linkSetDecoder =
 linkDecoder : Decode.Decoder Link
 linkDecoder =
   Decode.map2 (\from to -> (from, to))
-    (Decode.field "from" addrDecoder)
-    (Decode.field "to" addrDecoder)
+    (Decode.field "from" Anno.addrDecoder)
+    (Decode.field "to" Anno.addrDecoder)
 
 
 linkDataDecoder : Decode.Decoder LinkData
 linkDataDecoder =
   Decode.map (\x -> {signalAddr=x})
-    (Decode.field "signalAddr" (Decode.nullable addrDecoder))
-
-
-addrDecoder : Decode.Decoder Addr
-addrDecoder =
-  Decode.map2 (\treeId nodeId -> (treeId, nodeId))
-    -- (Decode.index 0 Decode.string)
-    (Decode.index 0 Decode.int)
-    (Decode.index 1 Decode.int)
+    (Decode.field "signalAddr" (Decode.nullable Anno.addrDecoder))
 
 
 -- treeMapDecoder : Decode.Decoder TreeMap
@@ -3985,23 +4048,16 @@ encodeLink : Link -> Encode.Value
 encodeLink (from, to) =
   Encode.object
     [ ("tag", Encode.string "Link")
-    , ("from", encodeAddr from)
-    , ("to", encodeAddr to)
+    , ("from", Anno.encodeAddr from)
+    , ("to", Anno.encodeAddr to)
     ]
 
 
 encodeLinkData : LinkData -> Encode.Value
 encodeLinkData x = Encode.object
   [ ("tag", Encode.string "LinkData")
-  , ("signalAddr", Util.encodeMaybe encodeAddr x.signalAddr)
+  , ("signalAddr", Util.encodeMaybe Anno.encodeAddr x.signalAddr)
   ]
-
-
--- encodeAddr : Addr -> Encode.Value
--- encodeAddr (PartId treeId, nodeId) = Encode.list
---   -- [ Encode.string treeId
---   [ Encode.int treeId
---   , Encode.int nodeId ]
 
 
 -- encodeTreeMap : TreeMap -> Encode.Value
@@ -4192,7 +4248,3 @@ findMaxID tree =
       <| L.map (\x -> Lens.get nodeId x)
       <| Util.catMaybes
       <| R.flatten tree
-
-
-encodeAddr : Addr -> Encode.Value
-encodeAddr (x, y) = Encode.list [Encode.int x, Encode.int y]

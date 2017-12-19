@@ -1268,7 +1268,21 @@ viewSideEntity
 viewSideEntity model focus nodeId node ent =
   let
     entCfg = AnnoCfg.entityConfig ent.name model.annoConfig
-    inputAttr attrName = inputGenericGen (SetEntityAttr nodeId focus attrName) attrName
+
+    setAnchor attrName create =
+        if create
+        then SetEntityAnchor nodeId focus attrName
+        else SetEntityAttr nodeId focus attrName Nothing
+
+    inputAttr attrName attrCfg =
+      case attrCfg of
+        AnnoCfg.Anchor ->
+            inputAnchor (setAnchor attrName) attrName model
+        AnnoCfg.Closed r ->
+            inputClosed (SetEntityAttr nodeId focus attrName) attrName r
+        AnnoCfg.Free r ->
+            inputFree (SetEntityAttr nodeId focus attrName) attrName r
+
     inputType = inputTypeGen (SetEntityType nodeId focus) entCfg.typ ent.typ
     procAtts (attrName, attrCfg) =
         inputAttr attrName attrCfg (D.get attrName ent.attributes)
@@ -2493,18 +2507,85 @@ inputTypeGen setMsg typCfg typValue =
       ]
 
 
--- | Doubly generic input field...
-inputGenericGen
+-- | Anchor input field...
+inputAnchor
+    : (Bool -> Msg)
+    -- ^ Message to send on Create/Remove
+    -> String
+    -- ^ Anchor name
+    -> M.Model
+    -- ^ The model
+    -> Maybe Anno.Attr
+    -- ^ The chosen attribute value
+    -> Html.Html Msg
+inputAnchor setMsg anchorName model attrValue =
+  let
+    labelTD =
+        Html.td
+            [ Atts.class "noselect"
+            , Atts.align "right" ]
+            [Html.text (anchorName ++ ": ")]
+    value =
+      case attrValue of
+        Just (Anno.Anchor x) -> Just x
+        _ -> Nothing
+    html =
+      case value of
+          Nothing ->
+              [ Html.button
+                    [ Events.onClick (setMsg True)
+                    , Atts.title "Link (i) with the additionally selected node in focus, or (ii) with the main selected node in the other window" ]
+                    [Html.text "Create"]
+              ]
+          Just addr ->
+              let
+                  subTree = M.subTreeAt addr model.focus model
+                  rootLabel = Lens.get M.nodeVal <| R.label subTree
+                  words = String.join " " <| L.map (\r -> r.nodeVal) <| M.getWords subTree
+                  string = rootLabel ++ " (\"" ++ words ++ "\")"
+--                   positions = L.map (\r -> r.leafPos) <| M.getWords subTree
+--                   beg = case L.minimum positions of
+--                             Nothing -> ""
+--                             Just x  -> toString x
+--                   end = case L.maximum positions of
+--                             Nothing -> ""
+--                             Just x  -> toString x
+--                   string = rootLabel ++ " (\"" ++ beg ++ ", " ++ end ++ "\")"
+              in
+                  [ Html.span
+                        [ Atts.class "noselect"
+                        , Atts.style ["cursor" :> "pointer"]
+                        , Atts.title "Goto"
+                        , Events.onClick <|
+                            Many
+                            [ SelectTree model.focus (Tuple.first addr)
+                            , Select model.focus (Tuple.second addr) ]
+                        ]
+                        [ Html.text string ]
+                  , Html.button
+                        [ Atts.style ["margin-left" :> px 5]
+                        , Events.onClick (setMsg False)]
+                        [ Html.text "Remove" ]
+                  ]
+  in
+    Html.tr []
+      [ labelTD
+      , Html.td [] html
+      ]
+
+
+-- | Closed input field.
+inputClosed
     : (Maybe Anno.Attr -> Msg)
     -- ^ Message to send when an attribute is selected
     -> String
     -- ^ Attribute name
-    -> AnnoCfg.Attr
+    -> AnnoCfg.ClosedRec
     -- ^ The configuration corresponding to the attribute
     -> Maybe Anno.Attr
     -- ^ The chosen attribute value
     -> Html.Html Msg
-inputGenericGen setAttr label attrCfg attrValue =
+inputClosed setAttr label r attrValue =
   let
     labelTD =
         Html.td
@@ -2512,88 +2593,123 @@ inputGenericGen setAttr label attrCfg attrValue =
             , Atts.align "right" ]
             [Html.text (label ++ ": ")]
   in
-    case attrCfg of
-        AnnoCfg.Anchor ->
-            Html.tr []
-              [ labelTD
-              , Html.td
-                  [ Atts.class "noselect"
-                  , Atts.align "right"
-                  ]
-                  [Html.text "ANCHOR (IMPLEMENT)"]
-              ]
-        AnnoCfg.Closed r ->
-            let
-              setMsg newVal =
-                case newVal of
-                  "--" -> setAttr Nothing
-                  _ -> setAttr (Just <| Anno.Attr newVal)
-              among r =
-                if r.required
-                then L.map Just r.among
-                else Nothing :: L.map Just r.among
-              value =
-                case attrValue of
-                  Just (Anno.Attr x) -> Just x
-                  _ -> Nothing
-              val2str val =
-                case val of
-                  Nothing -> "--"
-                  Just x  -> x
-              option val = Html.option
-                [ Atts.value (val2str val)
-                , Atts.selected (val == value) ]
-                [ Html.text (val2str val) ]
-            in
-              Html.tr []
-                [ labelTD
-                , Html.td []
-                    [Html.select
-                         [ Events.on "change" (Decode.map setMsg Events.targetValue)
-                         , blockKeyDownEvents ]
-                         (List.map option (among r))
-                    ]
-                ]
-        AnnoCfg.Free r ->
-            let
-              setMsg newVal =
-                case newVal of
-                  "" -> setAttr Nothing
-                  _ -> setAttr (Just <| Anno.Attr newVal)
-              value =
-                case attrValue of
-                  Just (Anno.Attr x) -> x
-                  _ -> ""
-            in
-              Html.tr []
-                [ labelTD
-                , Html.td []
-                    [Html.input
-                         [ Events.onInput setMsg
-                         , Atts.value value
-                         , blockKeyDownEvents ]
-                         []
-                    ]
-                ]
+    let
+      setMsg newVal =
+        case newVal of
+          "--" -> setAttr Nothing
+          _ -> setAttr (Just <| Anno.Attr newVal)
+      among r =
+        if r.required
+        then L.map Just r.among
+        else Nothing :: L.map Just r.among
+      value =
+        case attrValue of
+          Just (Anno.Attr x) -> Just x
+          _ -> Nothing
+      val2str val =
+        case val of
+          Nothing -> "--"
+          Just x  -> x
+      option val = Html.option
+        [ Atts.value (val2str val)
+        , Atts.selected (val == value) ]
+        [ Html.text (val2str val) ]
+    in
+      Html.tr []
+        [ labelTD
+        , Html.td []
+            [Html.select
+                 [ Events.on "change" (Decode.map setMsg Events.targetValue)
+                 , blockKeyDownEvents ]
+                 (List.map option (among r))
+            ]
+        ]
 
 
---     case (attrValue, attrCfg) of
---         (Anno.Anchor, AnnoCfg.Anchor) ->
---             Html.tr []
---               [ labelTD
---               , Html.td
---                   [ Atts.class "noselect"
---                   , Atts.align "right"
---                   ]
---                   [Html.text "ANCHOR (IMPLEMENT)"]
---               ]
---         (Anno.Attr value, AnnoCfg.Closed r) ->
+-- | Free input field.
+inputFree
+    : (Maybe Anno.Attr -> Msg)
+    -- ^ Message to send when an attribute is selected
+    -> String
+    -- ^ Attribute name
+    -> AnnoCfg.FreeRec
+    -- ^ The configuration corresponding to the attribute
+    -> Maybe Anno.Attr
+    -- ^ The chosen attribute value
+    -> Html.Html Msg
+inputFree setAttr label _ attrValue =
+  let
+    labelTD =
+        Html.td
+            [ Atts.class "noselect"
+            , Atts.align "right" ]
+            [Html.text (label ++ ": ")]
+  in
+    let
+      setMsg newVal =
+        case newVal of
+          "" -> setAttr Nothing
+          _ -> setAttr (Just <| Anno.Attr newVal)
+      value =
+        case attrValue of
+          Just (Anno.Attr x) -> x
+          _ -> ""
+    in
+      Html.tr []
+        [ labelTD
+        , Html.td []
+            [Html.input
+                 [ Events.onInput setMsg
+                 , Atts.value value
+                 , blockKeyDownEvents ]
+                 []
+            ]
+        ]
+
+
+-- -- | Doubly generic input field...
+-- inputGenericGen
+--     : (Maybe Anno.Attr -> Msg)
+--     -- ^ Message to send when an attribute is selected
+--     -> String
+--     -- ^ Attribute name
+--     -> AnnoCfg.Attr
+--     -- ^ The configuration corresponding to the attribute
+--     -> Maybe Anno.Attr
+--     -- ^ The chosen attribute value
+--     -> Html.Html Msg
+-- inputGenericGen setAttr label attrCfg attrValue =
+--   let
+--     labelTD =
+--         Html.td
+--             [ Atts.class "noselect"
+--             , Atts.align "right" ]
+--             [Html.text (label ++ ": ")]
+--   in
+--     case attrCfg of
+--         AnnoCfg.Anchor -> Debug.crash "asdf"
+--         AnnoCfg.Closed r ->
 --             let
---               setMsg = setAttr << Anno.Attr
+--               setMsg newVal =
+--                 case newVal of
+--                   "--" -> setAttr Nothing
+--                   _ -> setAttr (Just <| Anno.Attr newVal)
+--               among r =
+--                 if r.required
+--                 then L.map Just r.among
+--                 else Nothing :: L.map Just r.among
+--               value =
+--                 case attrValue of
+--                   Just (Anno.Attr x) -> Just x
+--                   _ -> Nothing
+--               val2str val =
+--                 case val of
+--                   Nothing -> "--"
+--                   Just x  -> x
 --               option val = Html.option
---                 [ Atts.value val
+--                 [ Atts.value (val2str val)
 --                 , Atts.selected (val == value) ]
---                 [ Html.text val ]
+--                 [ Html.text (val2str val) ]
 --             in
 --               Html.tr []
 --                 [ labelTD
@@ -2601,18 +2717,30 @@ inputGenericGen setAttr label attrCfg attrValue =
 --                     [Html.select
 --                          [ Events.on "change" (Decode.map setMsg Events.targetValue)
 --                          , blockKeyDownEvents ]
---                          (List.map option r.among)
+--                          (List.map option (among r))
 --                     ]
 --                 ]
---         _ ->
---             Html.tr []
---               [ labelTD
---               , Html.td
---                   [ Atts.class "noselect"
---                   , Atts.align "right"
---                   ]
---                   [Html.text <| "TODO: " ++ toString (attrValue, attrCfg)]
---               ]
+--         AnnoCfg.Free _ ->
+--             let
+--               setMsg newVal =
+--                 case newVal of
+--                   "" -> setAttr Nothing
+--                   _ -> setAttr (Just <| Anno.Attr newVal)
+--               value =
+--                 case attrValue of
+--                   Just (Anno.Attr x) -> x
+--                   _ -> ""
+--             in
+--               Html.tr []
+--                 [ labelTD
+--                 , Html.td []
+--                     [Html.input
+--                          [ Events.onInput setMsg
+--                          , Atts.value value
+--                          , blockKeyDownEvents ]
+--                          []
+--                     ]
+--                 ]
 
 
 -- -- | Doubly generic list input field.

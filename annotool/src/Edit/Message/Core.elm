@@ -79,9 +79,10 @@ type Msg
     M.Focus
     String            -- ^ Attribute name
     (Maybe Anno.Attr) -- ^ Attribute value
---   | SetEventAttr C.NodeId M.Focus Anno.EventAttr
---   | SetSignalAttr C.NodeId M.Focus Anno.SignalAttr
---   | SetTimexAttr C.NodeId M.Focus Anno.TimexAttr
+  | SetEntityAnchor
+    C.NodeId
+    M.Focus
+    String            -- ^ Anchor name
   | CommandStart
   | CommandEnter
   | CommandEscape

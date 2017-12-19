@@ -20,6 +20,8 @@ module Edit.Anno exposing
   -- * JSON
   , encodeEntity
   , entityDecoder
+  , encodeAddr
+  , addrDecoder
 
   -- * Lenses
   , entityType
@@ -38,6 +40,7 @@ import Dict as D
 
 import Util
 import Edit.Config as Cfg
+import Edit.Core exposing (Addr)
 
 
 ---------------------------------------------------
@@ -144,7 +147,7 @@ type alias Entity =
 -- | Corresponding to `Odil.Config.Attr`.
 type Attr
   = Attr String -- ^ A closed or free attribute.
-  | Anchor
+  | Anchor Addr
 
 
 defaultEntity : Cfg.Entity -> Entity
@@ -183,7 +186,7 @@ defaultAttr cfg =
                     else Nothing
             in  Maybe.map Attr <| Util.mappend r.def def0
         Cfg.Free r -> Maybe.map Attr r.def
-        Cfg.Anchor -> Just Anchor
+        Cfg.Anchor -> Nothing
 
 
 ----------------------------
@@ -207,6 +210,21 @@ entityAttr
       -- ^ The name of the attribute
     -> Lens.Focus Entity (Maybe Attr)
 entityAttr attrName =
+  let
+    get ent =
+        D.get attrName ent.attributes
+    update f ent =
+        {ent | attributes = D.update attrName f ent.attributes}
+  in
+    Lens.create get update
+
+
+-- | A lens for the given attribute.
+entityAnchor
+    : String
+      -- ^ The name of the attribute
+    -> Lens.Focus Entity (Maybe Attr)
+entityAnchor attrName =
   let
     get ent =
         D.get attrName ent.attributes
@@ -251,8 +269,9 @@ pureAttrDecoder =
 
 anchorDecoder : Decode.Decoder Attr
 anchorDecoder =
-  Decode.map (\_ -> Anchor)
+  Decode.map2 (\_ val -> Anchor val)
     (Decode.field "tag" (isString "Anchor"))
+    (Decode.field "contents" addrDecoder)
 
 
 isString : String -> Decode.Decoder ()
@@ -264,6 +283,14 @@ isString str0
             then Decode.succeed ()
             else Decode.fail <| "The two strings differ: " ++ str0 ++ " /= " ++ str
        )
+
+
+addrDecoder : Decode.Decoder Addr
+addrDecoder =
+  Decode.map2 (\treeId nodeId -> (treeId, nodeId))
+    -- (Decode.index 0 Decode.string)
+    (Decode.index 0 Decode.int)
+    (Decode.index 1 Decode.int)
 
 
 ---------------------------------------------------
@@ -294,9 +321,14 @@ encodeAttr attr =
       [ ("tag", Encode.string "Attr")
       , ("contents", Encode.string x)
       ]
-    Anchor -> Encode.object
+    Anchor x -> Encode.object
       [ ("tag", Encode.string "Anchor")
+      , ("contents", encodeAddr x)
       ]
+
+
+encodeAddr : Addr -> Encode.Value
+encodeAddr (x, y) = Encode.list [Encode.int x, Encode.int y]
 
 
 ---------------------------------------------------

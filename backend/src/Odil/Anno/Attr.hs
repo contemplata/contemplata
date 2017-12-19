@@ -10,12 +10,14 @@ import GHC.Generics (Generic)
 import qualified Data.Aeson as JSON
 import Data.Text (Text)
 
+import Odil.CoreTypes (Addr)
+
 
 -- | Corresponding to `Odil.Config.Attr`.
 data Attr
   = Attr Text
     -- ^ A closed or free attribute.
-  | Anchor
+  | Anchor Addr
   deriving (Generic, Show, Eq, Ord)
 
 

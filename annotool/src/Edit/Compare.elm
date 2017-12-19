@@ -147,10 +147,12 @@ compAttrMap =
 compAttr : Cmp.Comparator Anno.Attr
 compAttr attrX attrY =
     case (attrX, attrY) of
-        (Anno.Attr x, Anno.Attr y) -> Basics.compare x y
+        (Anno.Attr x, Anno.Attr y) ->
+            Basics.compare x y
         (Anno.Attr _, _) -> LT
         (_, Anno.Attr _) -> GT
-        (Anno.Anchor, Anno.Anchor) -> EQ
+        (Anno.Anchor x, Anno.Anchor y) ->
+            Basics.compare x y
 
 
 -- compAnnoTyp : Cmp.Comparator M.NodeAnnoTyp

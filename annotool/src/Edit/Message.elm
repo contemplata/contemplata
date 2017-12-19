@@ -350,6 +350,13 @@ update msg model =
     SetEntityAttr nodeId focus attr val -> idle <|
       M.setEntityAttr (Anno.entityAttr attr) nodeId focus val model
 
+    SetEntityAnchor nodeId focus attr ->
+      case M.setEntityAnchor (Anno.entityAttr attr) nodeId focus model of
+          Left err ->
+              let popup = Popup.Info err
+              in  (model, firePopup popup Nothing)
+          Right model -> idle model
+
 --     SetEventAttr nodeId focus attr -> idle <|
 --       case attr of
 --         Anno.ClassAttr x -> M.setEventAttr M.eventClass nodeId focus x model

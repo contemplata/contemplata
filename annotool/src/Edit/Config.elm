@@ -6,6 +6,8 @@ module Edit.Config exposing
   , Entity
   , EntityType
   , Attr (..)
+  , ClosedRec
+  , FreeRec
   , configDecoder
   , entityConfig
   -- , attrConfig
@@ -48,14 +50,20 @@ type alias EntityType =
   }
 
 
+type alias ClosedRec =
+  { among : List String
+  , def : Maybe String
+  , required : Bool }
+
+
+type alias FreeRec =
+  { def : Maybe String }
+
+
 -- | Attribute configuration.
 type Attr
-  = Closed
-    { among : List String
-    , def : Maybe String
-    , required : Bool }
-  | Free
-    { def : Maybe String }
+  = Closed ClosedRec
+  | Free FreeRec
   | Anchor
 
 
