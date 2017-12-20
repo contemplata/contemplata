@@ -22,6 +22,7 @@ import Edit.Config as AnnoCfg
 import Edit.Model as M
 import Edit.Core as C
 import Edit.Anno as Anno
+import Edit.Anno.Core as Anno
 import Edit.Rule as Rule
 import Edit.Popup as Popup
 import Edit.Compare as Compare
@@ -29,7 +30,8 @@ import Edit.Message.Core exposing (..)
 import Edit.Command as Command
 import Menu
 import Server
-import Server exposing (ParseReq(..))
+import Server.Core as Server
+import Server.Core exposing (ParseReq(..))
 import Util
 
 
@@ -128,8 +130,8 @@ update msg model =
           else Just link
         newModel = {model | selLink = newLink}
         target = case model.focus of
-          M.Top -> Cfg.windowName True
-          M.Bot -> Cfg.windowName False
+          C.Top -> Cfg.windowName True
+          C.Bot -> Cfg.windowName False
       in
         ( newModel
         , Task.attempt
@@ -147,8 +149,8 @@ update msg model =
     EditLabel ->
       let
         target = case model.focus of
-          M.Top -> Cfg.editLabelName True
-          M.Bot -> Cfg.editLabelName False
+          C.Top -> Cfg.editLabelName True
+          C.Bot -> Cfg.editLabelName False
       in
         ( Lens.set
             (M.workspaceLens model.focus => M.side)
@@ -194,12 +196,12 @@ update msg model =
       let
         fileTop = Lens.get (M.top => M.fileId) model
         fileBot = Lens.get (M.bot => M.fileId) model
-        treeTop = M.getReprId M.Top (M.selectWin M.Top model).tree model
-        treeBot = M.getReprId M.Bot (M.selectWin M.Bot model).tree model
+        treeTop = M.getReprId C.Top (M.selectWin C.Top model).tree model
+        treeBot = M.getReprId C.Bot (M.selectWin C.Bot model).tree model
         newModel =
             -- operation not allowed in adjudication mode
             if fileTop == fileBot
-            then M.join M.Top treeTop treeBot model
+            then M.join C.Top treeTop treeBot model
             else model
       in
         idle newModel
@@ -322,8 +324,8 @@ update msg model =
 --     SideMenuContext focus ->
 --       let
 --         target = Cfg.sideDivName <| case focus of
---           M.Top -> True
---           M.Bot -> False
+--           C.Top -> True
+--           C.Bot -> False
 --       in
 --         ( Lens.set
 --             (M.winLens focus => M.side)
@@ -469,8 +471,8 @@ update msg model =
         let
             target =
                 case model.focus of
-                    M.Top -> Cfg.windowName True
-                    M.Bot -> Cfg.windowName False
+                    C.Top -> Cfg.windowName True
+                    C.Bot -> Cfg.windowName False
         in
             ( {model | popup = Nothing}
             , Task.attempt (\_ -> dummy) (Dom.focus target) )
@@ -481,14 +483,14 @@ update msg model =
         let
             newLevel =
                 case model.annoLevel of
-                    M.Segmentation -> M.Syntax
-                    M.Syntax -> M.Temporal
-                    _ -> M.Segmentation
+                    C.Segmentation -> C.Syntax
+                    C.Syntax -> C.Temporal
+                    _ -> C.Segmentation
             newLevelCtrl =
                 case model.annoLevel of
-                    M.Syntax -> M.Segmentation
-                    M.Temporal -> M.Syntax
-                    _ -> M.Temporal
+                    C.Syntax -> C.Segmentation
+                    C.Temporal -> C.Syntax
+                    _ -> C.Temporal
         in
             { model
                 | annoLevel =
@@ -499,14 +501,14 @@ update msg model =
 
     SwapFile ->
         ( M.swapFile model.focus model
-        , focusOnTurn M.Top )
+        , focusOnTurn C.Top )
     SwapFileTo fid ->
         ( M.moveToFile model.focus fid model
-        , focusOnTurn M.Top )
+        , focusOnTurn C.Top )
 
     Compare ->
         ( compare model
-        , Cmd.batch [focusOnTurn M.Top, focusOnTurn M.Bot]
+        , Cmd.batch [focusOnTurn C.Top, focusOnTurn C.Bot]
         )
 
     Dummy -> idle <|
@@ -558,40 +560,11 @@ firePopup popupRaw targetMaybe =
 ----------------------------------------------
 
 
--- | The list of commands.
-cmdList : List (M.Command, Msg)
-cmdList = Command.cmdLineList
---   [ ("save", SaveFile)
---   , ("delete", Delete)
---   , ("deltree", DeleteTree)
---   , ("add", Add)
---   , ("restart", ParseRaw False)
---   , ("preprocess", ParseRaw True)
---   , ("parse", ParseSent Server.Stanford)
---   , ("parsepos", ParseSentPos Server.Stanford)
---   , ("dopparse", ParseSent Server.DiscoDOP)
---   -- , ("dopparsepos", ParseSentPos Server.DiscoDOP)
---   -- , ("parsecons", ParseSentCons Server.Stanford)
---   -- , ("dopparsecons", ParseSentCons Server.DiscoDOP)
---   , ("deepen", ApplyRules)
---   , ("splittree", SplitTree)
---   , ("connect", Connect)
---   , ("join", Join)
---   -- , ("break", Break)
---   , ("splitword", SplitBegin)
---   , ("concat", ConcatWords)
---   , ("dummy", Dummy)
-
---   , ("undo", Undo)
---   , ("redo", Redo)
---   ] ++
-
-
 -- | Translate a command into the corresponding model-related message.
-toMsg : M.Command -> Maybe (Cmd Msg)
+toMsg : String -> Maybe (Cmd Msg)
 toMsg cmd0 =
   let
-    exact = case List.filter (\(cmd, msg) -> cmd == cmd0) cmdList of
+    exact = case List.filter (\(cmd, msg) -> cmd == cmd0) Command.cmdLineList of
       [(cmd, msg)] -> Just <| Task.perform identity (Task.succeed msg)
       _ -> Nothing
     prefix = case cmdsWithPrefix_ cmd0 of
@@ -605,17 +578,17 @@ toMsg cmd0 =
 
 
 -- | Return all the commands beginning with the given prefix.
-cmdsWithPrefix : String -> List M.Command
+cmdsWithPrefix : String -> List String
 cmdsWithPrefix =
   List.map Tuple.first << cmdsWithPrefix_
 
 
 
 -- | Return all the commands beginning with the given prefix.
-cmdsWithPrefix_ : String -> List (M.Command, Msg)
+cmdsWithPrefix_ : String -> List (String, Msg)
 cmdsWithPrefix_ prf =
   let p (cmd, msg) = String.startsWith prf cmd
-  in  List.filter p cmdList
+  in  List.filter p Command.cmdLineList
 
 
 -- | Complete the command (if it's a prefix of other commands).
@@ -749,29 +722,29 @@ compare model =
     let
         getId foc = M.getReprId foc (M.selectWin foc model).tree model
         getTree foc id = M.getTree foc id model
-        topId = getId M.Top
-        topTree = getTree M.Top topId
-        botId = getId M.Bot
-        botTree = getTree M.Bot botId
+        topId = getId C.Top
+        topTree = getTree C.Top topId
+        botId = getId C.Bot
+        botTree = getTree C.Bot botId
         (topIds, botIds) = Compare.compareSyntax topTree botTree
     in
         if L.isEmpty topIds && L.isEmpty botIds
         then
             let
-                newTopId = M.nextTree_ M.Top topId model
-                newBotId = M.nextTree_ M.Bot botId model
+                newTopId = M.nextTree_ C.Top topId model
+                newBotId = M.nextTree_ C.Bot botId model
             in
                 if newTopId /= topId ||
                    newBotId /= botId
                 then
                     compare <|
-                    M.moveCursorTo M.Top newTopId <|
-                    M.moveCursorTo M.Bot newBotId <|
+                    M.moveCursorTo C.Top newTopId <|
+                    M.moveCursorTo C.Bot newBotId <|
                     model
                 else model
         else
-            M.setSelection (S.fromList topIds) M.Top <|
-            M.setSelection (S.fromList botIds) M.Bot <|
+            M.setSelection (S.fromList topIds) C.Top <|
+            M.setSelection (S.fromList botIds) C.Bot <|
             model
 
 
@@ -781,11 +754,11 @@ compareOne model =
     let getTree foc =
             let id = M.getReprId foc (M.selectWin foc model).tree model
             in M.getTree foc id model
-        topTree = getTree M.Top
-        botTree = getTree M.Bot
+        topTree = getTree C.Top
+        botTree = getTree C.Bot
         (topIds, botIds) = Compare.compareSyntax topTree botTree
-    in  M.setSelection (S.fromList topIds) M.Top <|
-        M.setSelection (S.fromList botIds) M.Bot <|
+    in  M.setSelection (S.fromList topIds) C.Top <|
+        M.setSelection (S.fromList botIds) C.Bot <|
         model
 
 
@@ -887,10 +860,10 @@ positionTree =
 
 
 -- | Focus on the given main window.
-focusOnWindow : M.Focus -> Cmd Msg
+focusOnWindow : C.Focus -> Cmd Msg
 focusOnWindow focus =
     let
-        isTop = focus == M.Top
+        isTop = focus == C.Top
     in
         Task.attempt
             (\_ -> dummy)
@@ -902,7 +875,7 @@ focusOnWindow focus =
 ----------------------------------------------
 
 
-sideMenu : M.Focus -> M.SideWindow -> M.Model -> (M.Model, Cmd Msg)
+sideMenu : C.Focus -> M.SideWindow -> M.Model -> (M.Model, Cmd Msg)
 sideMenu focus sideWindow model =
     let
         newModel =
@@ -915,13 +888,13 @@ sideMenu focus sideWindow model =
 
 
 -- | Focus on the selected turn in the side (context) window.
-focusOnTurn : M.Focus -> Cmd Msg
+focusOnTurn : C.Focus -> Cmd Msg
 focusOnTurn focus =
     let
         target = Cfg.selectSentName <|
             case focus of
-                M.Top -> True
-                M.Bot -> False
+                C.Top -> True
+                C.Bot -> False
     in
         Task.attempt
             (\_ -> dummy)

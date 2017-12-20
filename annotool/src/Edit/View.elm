@@ -22,14 +22,17 @@ import Rose as R
 import Util as Util
 import Config as Cfg
 import Edit.Anno as Anno
+import Edit.Anno.Core as Anno
 import Edit.Config as AnnoCfg
 import Edit.Model as M
 import Edit.Core as C
 import Edit.Command as Cmd
 import Edit.Message as Msg
 import Edit.Message.Core exposing (Msg(..))
+import Edit.Message.Core as Msg
 import Edit.Popup as Popup
 import Server
+import Server.Core as Server
 
 
 -- | The main view function.
@@ -47,10 +50,10 @@ view model =
     , globalKeyUp
     ]
     ( [ stylesheet
-      , viewWindow M.Top model
-      ] ++ viewSideWindow M.Top model ++
-      [ viewWindow M.Bot model
-      ] ++ viewSideWindow M.Bot model
+      , viewWindow C.Top model
+      ] ++ viewSideWindow C.Top model ++
+      [ viewWindow C.Bot model
+      ] ++ viewSideWindow C.Bot model
         ++ viewLinks model
         ++ viewPopups model
     )
@@ -72,7 +75,7 @@ stylesheet =
 
 
 -- | The view of the top/bottom window.
-viewWindow : M.Focus -> M.Model -> Html.Html Msg
+viewWindow : C.Focus -> M.Model -> Html.Html Msg
 viewWindow win model =
   Html.div
   [ backMouseDown win
@@ -80,16 +83,16 @@ viewWindow win model =
 
   -- , topOnResize
 --   , case win of
---       M.Top -> Atts.autofocus True
---       M.Bot -> Atts.autofocus False
+--       C.Top -> Atts.autofocus True
+--       C.Bot -> Atts.autofocus False
 
 --   , case win of
---       M.Top -> Atts.id "top"
---       M.Bot -> Atts.id "bot"
+--       C.Top -> Atts.id "top"
+--       C.Bot -> Atts.id "bot"
 
   , Atts.id <| case win of
-      M.Top -> Cfg.windowName True
-      M.Bot -> Cfg.windowName False
+      C.Top -> Cfg.windowName True
+      C.Bot -> Cfg.windowName False
 
   -- @tabindex required to make the div propagate the keyboard events
   -- (see the `view` function)
@@ -100,11 +103,11 @@ viewWindow win model =
     -- , "width" :> (toString (100 - Cfg.sideSpace) ++ "%") -- "100%"
     , "width" :> (toString model.dim.widthProp ++ "%")
     , "height" :> case win of
-        M.Top -> toString model.dim.heightProp ++ "%"
-        M.Bot -> toString (100 - model.dim.heightProp) ++ "%"
+        C.Top -> toString model.dim.heightProp ++ "%"
+        C.Bot -> toString (100 - model.dim.heightProp) ++ "%"
     , case win of
-        M.Top -> "top" :> "0"
-        M.Bot -> "bottom" :> "0"
+        C.Top -> "top" :> "0"
+        C.Bot -> "bottom" :> "0"
     -- Overflow is a very important attribute (it makes the scrollbars to appear
     -- if set to "auto") which makes sure that the trees do not go beyond the
     -- specified subwindows.  We set to "hidden" so that tracing links is easy
@@ -128,14 +131,14 @@ viewWindow win model =
 
   [ viewTree win model
   , viewBottomLine win model ]
-  ++ if (win == M.Bot && model.dim.heightProp <= 0) ||
-        (win == M.Top && model.dim.heightProp > 0)
+  ++ if (win == C.Bot && model.dim.heightProp <= 0) ||
+        (win == C.Top && model.dim.heightProp > 0)
      then [viewMenu model] -- model.fileId]
      else []
 
 
 -- | Determine the background color.
-backColor : M.Focus -> M.Model -> String
+backColor : C.Focus -> M.Model -> String
 backColor win model =
   if win == model.focus
     then "#ddd"
@@ -143,7 +146,7 @@ backColor win model =
 
 
 -- | View tree in the specified window.
-viewTree : M.Focus -> M.Model -> Html.Html Msg
+viewTree : C.Focus -> M.Model -> Html.Html Msg
 viewTree focus model =
 
   let
@@ -183,14 +186,14 @@ viewTree focus model =
 
 
 -- | View the bottom line: either tree ID or the command.
-viewBottomLine : M.Focus -> M.Model -> Html.Html Msg
+viewBottomLine : C.Focus -> M.Model -> Html.Html Msg
 viewBottomLine win model =
   case (model.command, win == model.focus) of
     (Just cmd, True) -> viewCommand cmd win model
     _ -> viewTreeId win model
 
 
-viewTreeId : M.Focus -> M.Model -> Html.Html Msg
+viewTreeId : C.Focus -> M.Model -> Html.Html Msg
 viewTreeId win model =
   let
     currentFileId = M.getFileId win model
@@ -229,7 +232,7 @@ viewTreeId win model =
     Html.div bottomStyle [span]
 
 
-viewCommand : String -> M.Focus -> M.Model -> Html.Html Msg
+viewCommand : String -> C.Focus -> M.Model -> Html.Html Msg
 viewCommand pref win model =
   let
     cmdLst = Msg.cmdsWithPrefix pref
@@ -712,9 +715,9 @@ viewMenu model = -- fileName =
     levelPart = Html.span [] <|
         -- Util.intercalate (Html.text " ")
         [ Html.text "|"
-        , levelElem M.Segmentation
-        , levelElem M.Syntax
-        , levelElem M.Temporal
+        , levelElem C.Segmentation
+        , levelElem C.Syntax
+        , levelElem C.Temporal
         , Html.text "|"
         ]
 
@@ -748,9 +751,9 @@ viewMenu model = -- fileName =
 --               (Just "Click to change the annotation level")
 --               (plainText <| "| " ++ annoLevel ++ " |")
         ] ++
-        ( if model.annoLevel == M.Temporal
+        ( if model.annoLevel == C.Temporal
           then temporalCommands
-          else if model.annoLevel == M.Segmentation
+          else if model.annoLevel == C.Segmentation
                then segmentationCommands
                else syntaxCommands )
         -- [ Cmd.mkMenuItem Dummy (Just "Is CTRL down") (plainText isCtrl) ]
@@ -762,7 +765,7 @@ viewMenu model = -- fileName =
 
 
 drawTree
-   : M.Focus -- ^ Which window is it in?
+   : C.Focus -- ^ Which window is it in?
   -> Maybe C.NodeId -- ^ Selected main
   -> S.Set C.NodeId -- ^ Selected auxiliaries
   -> R.Tree ((M.Node, Position), NodeTyp) -- ^ Tree to draw
@@ -790,7 +793,7 @@ drawNode
    : M.Node
   -> Maybe C.NodeId
   -> S.Set C.NodeId
-  -> M.Focus
+  -> C.Focus
   -> Position
   -> NodeTyp -- ^ Should be marked as misplaced?
   -> Html.Html Msg
@@ -805,7 +808,7 @@ drawInternal
    : M.InternalNode
   -> Maybe C.NodeId
   -> S.Set C.NodeId
-  -> M.Focus
+  -> C.Focus
   -> Position
   -> NodeTyp -- ^ Should be marked as misplaced?
   -> Html.Html Msg
@@ -875,7 +878,7 @@ drawLeaf
    : M.LeafNode
   -> Maybe C.NodeId
   -> S.Set C.NodeId
-  -> M.Focus
+  -> C.Focus
   -> Position
   -> NodeTyp -- ^ Should be marked as misplaced?
   -> Html.Html Msg
@@ -937,7 +940,7 @@ drawLeaf node selMain selAux focus at mark =
 
 
 -- | The view of a side window.
-viewSideWindow : M.Focus -> M.Model -> List (Html.Html Msg)
+viewSideWindow : C.Focus -> M.Model -> List (Html.Html Msg)
 viewSideWindow focus model =
     let
         -- theSide = (M.selectWin focus model).side
@@ -951,7 +954,7 @@ viewSideWindow focus model =
 
 viewSideDiv
     : Bool        -- ^ Visible?
-    -> M.Focus
+    -> C.Focus
     -> M.Model
     -> List (Html.Html Msg)
     -> Html.Html Msg
@@ -965,12 +968,12 @@ viewSideDiv visible win model children =
         , "width" :> (toString (100 - dim.widthProp) ++ "%")
         -- , "height" :> "50%"
         , "height" :> case win of
-            M.Top -> toString dim.heightProp ++ "%"
-            M.Bot -> toString (100 - dim.heightProp) ++ "%"
+            C.Top -> toString dim.heightProp ++ "%"
+            C.Bot -> toString (100 - dim.heightProp) ++ "%"
         , "right" :> "0"
         , case win of
-            M.Top -> "top" :> "0"
-            M.Bot -> "bottom" :> "0"
+            C.Top -> "top" :> "0"
+            C.Bot -> "bottom" :> "0"
         , "overflow" :> "auto"
         -- make the (focus-related) outline invisible
         , "outline" :> "0"
@@ -986,8 +989,8 @@ viewSideDiv visible win model children =
       , Atts.attribute "tabindex" "1"
       , Atts.id <| Cfg.sideDivName <|
           case win of
-              M.Top -> True
-              M.Bot -> False
+              C.Top -> True
+              C.Bot -> False
       ]
     topChildren = [viewSideMenu win model]
   in
@@ -996,14 +999,14 @@ viewSideDiv visible win model children =
     div (children ++ topChildren)
 
 
-viewSideMenu : M.Focus -> M.Model -> Html.Html Msg
+viewSideMenu : C.Focus -> M.Model -> Html.Html Msg
 viewSideMenu focus model =
   let
 
     topHeight = (model.dim.height * model.dim.heightProp) // 100
     pos = case focus of
-      M.Top -> 0
-      M.Bot -> topHeight
+      C.Top -> 0
+      C.Bot -> topHeight
 
     sideWin = (Lens.get (M.workspaceLens focus) model).side
     menuElem onClick selected txt = Html.span
@@ -1047,13 +1050,13 @@ viewSideMenu focus model =
 
 
 -- | The view of the side edit window -- the label.
-viewSideEditLabel : M.Focus -> M.Model -> Html.Html Msg
+viewSideEditLabel : C.Focus -> M.Model -> Html.Html Msg
 viewSideEditLabel win model =
   let
     selected = (Lens.get (M.windowLens win) model).selMain
 --     selected = case win of
---       M.Top -> model.top.selMain
---       M.Bot -> model.bot.selMain
+--       C.Top -> model.top.selMain
+--       C.Bot -> model.bot.selMain
     (condAtts, event) = case selected of
       Just nodeId ->
         ( [Atts.value (M.getLabel nodeId win model)]
@@ -1065,8 +1068,8 @@ viewSideEditLabel win model =
       ( [ Events.onInput event
         , blockKeyDownEvents
         , Atts.id <| case win of
-            M.Top -> Cfg.editLabelName True
-            M.Bot -> Cfg.editLabelName False
+            C.Top -> Cfg.editLabelName True
+            C.Bot -> Cfg.editLabelName False
         ] ++ condAtts
       )
       []
@@ -1076,22 +1079,22 @@ viewSideEditLabel win model =
 
 -- | The view of the side edit window -- the label.
 viewSideEditLeaf
-    : M.Model -> M.Focus -> C.NodeId -> M.InternalNode -> List (Html.Html Msg)
+    : M.Model -> C.Focus -> C.NodeId -> M.InternalNode -> List (Html.Html Msg)
 viewSideEditLeaf model focus nodeId node =
   let
 
     inpLabel = textGenericGen
                (SetNodeAttr nodeId focus)
-               Anno.NodeLabelAttr
+               Msg.NodeLabelAttr
                "Label: "
                node.nodeVal
                (Just <| case focus of
-                            M.Top -> Cfg.editLabelName True
-                            M.Bot -> Cfg.editLabelName False)
+                            C.Top -> Cfg.editLabelName True
+                            C.Bot -> Cfg.editLabelName False)
 
     inpComment = textGenericGen
                  (SetNodeAttr nodeId focus)
-                 Anno.NodeCommentAttr
+                 Msg.NodeCommentAttr
                  "Comment: "
                  node.nodeComment
                  Nothing
@@ -1108,7 +1111,7 @@ viewSideEditLeaf model focus nodeId node =
 -- | The view of the side edit window -- the label.
 viewSideEditInternal
     : M.Model
-    -> M.Focus
+    -> C.Focus
     -> C.NodeId
     -> M.NodeTyp
     -> M.InternalNode
@@ -1129,14 +1132,14 @@ viewSideEditInternal model focus nodeId nodeTyp node =
                "Label"
                node.nodeVal
                labelSet
-               Anno.NodeLabelAttr
+               Msg.NodeLabelAttr
                (Just <| case focus of
-                            M.Top -> Cfg.editLabelName True
-                            M.Bot -> Cfg.editLabelName False)
+                            C.Top -> Cfg.editLabelName True
+                            C.Bot -> Cfg.editLabelName False)
 
     inpComment = textGenericGen
                  (SetNodeAttr nodeId focus)
-                 Anno.NodeCommentAttr
+                 Msg.NodeCommentAttr
                  "Comment: "
                  node.nodeComment
                  Nothing
@@ -1150,7 +1153,7 @@ viewSideEditInternal model focus nodeId nodeTyp node =
       ]
 
 
--- viewSideEvent : M.Focus -> C.NodeId -> Anno.Event -> List (Html.Html Msg)
+-- viewSideEvent : C.Focus -> C.NodeId -> Anno.Event -> List (Html.Html Msg)
 -- viewSideEvent focus nodeId (Anno.Event ev) =
 --   let
 --
@@ -1194,7 +1197,7 @@ viewSideEditInternal model focus nodeId nodeTyp node =
 --       ]
 --
 --
--- viewSideSignal : M.Focus -> C.NodeId -> Anno.Signal -> List (Html.Html Msg)
+-- viewSideSignal : C.Focus -> C.NodeId -> Anno.Signal -> List (Html.Html Msg)
 -- viewSideSignal focus nodeId (Anno.Signal x) =
 --   let
 --
@@ -1210,7 +1213,7 @@ viewSideEditInternal model focus nodeId nodeTyp node =
 --       ]
 --
 --
--- viewSideTimex : M.Model -> M.Focus -> C.NodeId -> M.InternalNode -> Anno.Timex -> List (Html.Html Msg)
+-- viewSideTimex : M.Model -> C.Focus -> C.NodeId -> M.InternalNode -> Anno.Timex -> List (Html.Html Msg)
 -- viewSideTimex model focus nodeId node (Anno.Timex ti) =
 --   let
 --
@@ -1263,7 +1266,7 @@ viewSideEditInternal model focus nodeId nodeTyp node =
 
 viewSideEntity
      : M.Model
-    -> M.Focus
+    -> C.Focus
     -> C.NodeId
     -> M.InternalNode
     -> Anno.Entity
@@ -1300,14 +1303,14 @@ viewSideEntity model focus nodeId node ent =
 
 
 -- | The view of a side window.
-viewSideEdit : Bool -> M.Focus -> M.Model -> Html.Html Msg
+viewSideEdit : Bool -> C.Focus -> M.Model -> Html.Html Msg
 viewSideEdit visible win model =
   let
 
     selected = (Lens.get (M.windowLens win) model).selMain
 --     selected = case win of
---       M.Top -> model.top.selMain
---       M.Bot -> model.bot.selMain
+--       C.Top -> model.top.selMain
+--       C.Bot -> model.bot.selMain
 
     divMain = case selected of
       Nothing -> []
@@ -1355,7 +1358,7 @@ viewSideEdit visible win model =
 -- -- | The view of a side window.
 -- viewSideContext
 --     : Bool           -- ^ Visible?
---     -> M.Focus
+--     -> C.Focus
 --     -> M.Model
 --     -> Html.Html Msg
 -- viewSideContext visible foc model =
@@ -1391,7 +1394,7 @@ viewSideEdit visible win model =
 
 
 -- viewSent
---   : M.Focus -- ^ Where is the focus on
+--   : C.Focus -- ^ Where is the focus on
 --   -> Bool -- ^ Is the tree currently viewed?
 --   -> C.TreeId -- ^ The tree ID (the representative) ...
 --   -> M.Sent -- ^ ... and the sentence corresponding to the tree
@@ -1406,8 +1409,8 @@ viewSideEdit visible win model =
 --     liAtts = if isSelected
 --       then [ Atts.id <| Cfg.selectSentName <|
 --                  case foc of
---                      M.Top -> True
---                      M.Bot -> False ]
+--                      C.Top -> True
+--                      C.Bot -> False ]
 --       else []
 --     spk = case who of
 --             Nothing ->
@@ -1437,7 +1440,7 @@ viewSideEdit visible win model =
 -- | The view of a side window.
 viewSideContext
     : Bool           -- ^ Visible?
-    -> M.Focus
+    -> C.Focus
     -> M.Model
     -> Html.Html Msg
 viewSideContext visible foc model =
@@ -1528,7 +1531,7 @@ getSpeakers = S.fromList << D.keys << inverseTurn
 
 
 viewSentAlt
-  : M.Focus   -- ^ Where is the focus on
+  : C.Focus   -- ^ Where is the focus on
   -> C.TreeId -- ^ The tree ID (the representative) ...
   -> String   -- ^ The speaker
   -> M.Model
@@ -1546,8 +1549,8 @@ viewSentAlt foc treeId spk model =
     divAtts = if isSelected
       then [ Atts.id <| Cfg.selectSentName <|
                  case foc of
-                     M.Top -> True
-                     M.Bot -> False ]
+                     C.Top -> True
+                     C.Bot -> False ]
       else []
     visible = M.visiblePositions tree
     isVisible tokID = S.member tokID visible
@@ -1576,7 +1579,7 @@ viewSentAlt foc treeId spk model =
 
 -- | View token.
 viewToken
-    : M.Focus     -- ^ Model focus
+    : C.Focus     -- ^ Model focus
     -> C.PartId   -- ^ Partition ID
     -> Bool       -- ^ Is it visible?
     -> Int        -- ^ Token ID
@@ -1598,7 +1601,7 @@ viewToken focus partId isVisible tokID tok =
 
 
 -- viewSent
---   : M.Focus -- ^ Where is the focus on
+--   : C.Focus -- ^ Where is the focus on
 --   -> Bool -- ^ Is the tree currently viewed?
 --   -> C.TreeId -- ^ The tree ID (the representative) ...
 --   -> M.Sent -- ^ ... and the sentence corresponding to the tree
@@ -1613,8 +1616,8 @@ viewToken focus partId isVisible tokID tok =
 --     liAtts = if isSelected
 --       then [ Atts.id <| Cfg.selectSentName <|
 --                  case foc of
---                      M.Top -> True
---                      M.Bot -> False ]
+--                      C.Top -> True
+--                      C.Bot -> False ]
 --       else []
 --     spk = case who of
 --             Nothing ->
@@ -1645,7 +1648,7 @@ viewToken focus partId isVisible tokID tok =
 
 
 -- | The view of a side window.
-viewSideLog : Bool -> M.Focus -> M.Model -> Html.Html Msg
+viewSideLog : Bool -> C.Focus -> M.Model -> Html.Html Msg
 viewSideLog visible foc model =
   let
     treeSelected = (M.selectWin foc model).tree
@@ -1665,7 +1668,7 @@ viewSideLog visible foc model =
 
 
 viewMessage
-  : M.Focus -- ^ Where is the focus on
+  : C.Focus -- ^ Where is the focus on
   -> String -- ^ Message
   -> Html.Html Msg
 viewMessage foc msg =
@@ -1692,7 +1695,7 @@ viewLinks model =
     let
         fileTop = Lens.get (M.top => M.fileId) model
         fileBot = Lens.get (M.bot => M.fileId) model
-        linkSet = Lens.get (M.fileLens M.Top => M.linkSet) model
+        linkSet = Lens.get (M.fileLens C.Top => M.linkSet) model
     in
         if fileTop == fileBot
         then L.concatMap
@@ -1710,7 +1713,7 @@ viewLinks model =
 -- | View the link only if not in the adjudication mode.
 viewLink
    : M.Model
-  -> (M.Link, M.LinkData)
+  -> (C.Link, M.LinkData)
   -> List (Html.Html Msg)
 viewLink model link =
     let
@@ -1726,14 +1729,14 @@ viewLink model link =
 -- adjudication mode.
 viewLink_
    : M.Model
-  -> (M.Link, M.LinkData)
+  -> (C.Link, M.LinkData)
   -> List (Html.Html Msg)
 viewLink_ model ((from, to), linkData) =
   let
     -- top = model.top
-    top = Lens.get (M.windowLens M.Top) model
+    top = Lens.get (M.windowLens C.Top) model
     -- bot = model.bot
-    bot = Lens.get (M.windowLens M.Bot) model
+    bot = Lens.get (M.windowLens C.Bot) model
     dim = model.dim
 
     -- mainWidth = (dim.width * (100 - Cfg.sideSpace)) // 100
@@ -1758,7 +1761,7 @@ viewLink_ model ((from, to), linkData) =
       else Nothing
 
     -- Safe because we know we are not in the adjudication mode.
-    getReprId = M.getReprId M.Top
+    getReprId = M.getReprId C.Top
 
   in
 
@@ -1800,19 +1803,19 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
       (M.getTree foc (M.getReprId foc win.tree model) model)
 
     fromPos =
-      if first from == M.getReprId M.Top top.tree model
-      then posIn from M.Top top shiftTop
-      else posIn from M.Bot bot shiftBot
+      if first from == M.getReprId C.Top top.tree model
+      then posIn from C.Top top shiftTop
+      else posIn from C.Bot bot shiftBot
     toPos = -- posIn to bot shiftBot
-      if first to == M.getReprId M.Top bot.tree model
-      then posIn to M.Bot bot shiftBot
-      else posIn to M.Top top shiftTop
+      if first to == M.getReprId C.Top bot.tree model
+      then posIn to C.Bot bot shiftBot
+      else posIn to C.Top top shiftTop
     signPos = case signalMay of
       Nothing -> Nothing
       Just addr ->
-        if first addr == M.getReprId M.Top bot.tree model
-        then posIn addr M.Bot bot shiftBot
-        else posIn addr M.Top top shiftTop
+        if first addr == M.getReprId C.Top bot.tree model
+        then posIn addr C.Bot bot shiftBot
+        else posIn addr C.Top top shiftTop
 
     lineCfg = { defLineCfg
       | strokeDasharray = Just Cfg.linkDasharray
@@ -1851,7 +1854,7 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
 -- | Draw the circle which represents the relation.
 drawLinkCircle
     : M.Model
-    -> M.Link
+    -> C.Link
     -> Position
     -> Html.Html Msg
 drawLinkCircle model link at =
@@ -1987,22 +1990,22 @@ viewLine cfg beg end =
 ---------------------------------------------------
 
 
-nodeMouseDown : M.Focus -> M.Node -> Html.Attribute Msg
+nodeMouseDown : C.Focus -> M.Node -> Html.Attribute Msg
 nodeMouseDown win x =
   Events.onMouseDown (Select win <| Lens.get M.nodeId x)
 
 
-backMouseDown : M.Focus -> Html.Attribute Msg
+backMouseDown : C.Focus -> Html.Attribute Msg
 backMouseDown win =
   Events.on "mousedown" (Decode.map (DragStart win) Mouse.position)
 
 
--- backDoubleClick : M.Focus -> Html.Attribute Msg
+-- backDoubleClick : C.Focus -> Html.Attribute Msg
 -- backDoubleClick win =
 --   Events.onDoubleClick (Focus win)
 
 
-winOnFocus : M.Focus -> Html.Attribute Msg
+winOnFocus : C.Focus -> Html.Attribute Msg
 winOnFocus win =
   Events.onFocus (Focus win)
 
@@ -2801,7 +2804,7 @@ inputGenericConstrainedGen setAttr label value valList attr mayId =
 -- -- | Generic TIMEX input field.
 -- inputTimexGen
 --     : M.Model
---     -> M.Focus
+--     -> C.Focus
 --     -> (Anno.TimexAttr -> Msg)
 --     -> String
 --     -> Maybe C.Addr

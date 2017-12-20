@@ -11,6 +11,7 @@ import Compare as Cmp
 import Rose as R
 
 import Edit.Core exposing (..)
+import Edit.Anno.Core as Anno
 import Edit.Anno as Anno
 import Edit.Model as M
 

@@ -12,8 +12,8 @@ import Set as S
 
 import Config as Cfg
 import Edit.Config as AnnoCfg
-import Edit.Core exposing (FileId, TreeId(..))
-import Edit.Model exposing (Model, Focus(..), File, AnnoLevel(..))
+import Edit.Core exposing (FileId, TreeId(..), Focus(..), AnnoLevel(..))
+import Edit.Model exposing (Model, File)
 import Edit.Message.Core exposing (Msg(..))
 import Edit.Message exposing (dummy)
 import Edit.Popup as Popup

@@ -1,5 +1,5 @@
 module Server exposing
-    ( ParserTyp(..), Request(..), Answer(..),  ParseReq(..)
+    ( Request(..), Answer(..)
     , answerDecoder, encodeReq, sendWS, listenWS
     )
 

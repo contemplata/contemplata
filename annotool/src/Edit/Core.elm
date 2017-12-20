@@ -7,8 +7,8 @@ module Edit.Core exposing
   , Addr
   , Link
 
-  , Focus
-  , AnnoLevel(..)
+  , Focus (..)
+  , AnnoLevel (..)
 
   -- * Encoding
   , encodeFileId

@@ -2,13 +2,13 @@ module Edit.Model exposing
   (
   -- Data types:
     TreeMap, Sent, Token, File, Turn
-  , Node(..), NodeAnnoTyp, Link
+  , Node(..), NodeAnnoTyp
   , InternalNode, LeafNode
   , LinkData
   , isNode, isLeaf
   , sentToString, emptyToken
   -- Model types:
-  , Model, Dim, Window, SideWindow(..), Drag, Focus(..), AnnoLevel(..)
+  , Model, Dim, Window, SideWindow(..), Drag
   , Workspace
   -- Other:
   , selectWin, dragOn, getTree, getTreeMay, getReprId, selAll
@@ -114,6 +114,7 @@ import Rose as R
 import Edit.Core exposing (..)
 import Edit.Config as AnnoCfg
 import Edit.Anno as Anno
+import Edit.Anno.Core as Anno
 import Edit.Popup as Popup
 
 

@@ -9,6 +9,7 @@ import Mouse exposing (Position)
 import Window as Window
 
 import Json.Decode as Decode
+import Json.Encode as Encode
 
 import Edit.Core as C
 import Edit.Anno.Core as Anno
@@ -138,9 +139,12 @@ msgDecoder =
         , simple Add "Add"
         , simple SaveFile "SaveFile"
         , simple Quit "Quit"
-        , Decode.value |> \val ->
-            let msg = Popup.Info ("Unknown message: " ++ toString val)
-            in  Decode.succeed <| Popup msg Nothing
+        , Decode.value |> Decode.andThen
+            ( \val ->
+                  let msg = "Unknown message: " ++ Encode.encode 0 val
+                      info = Popup.Info msg
+                  in  Decode.succeed <| Popup info Nothing
+            )
         ]
 
 
@@ -162,7 +166,7 @@ simple : Msg -> String -> Decode.Decoder Msg
 simple msg str =
   Decode.map2 (\_ _ -> msg)
     (Decode.field "tag" (isString "Simple"))
-    (Decode.field "contents" (isString str))
+    (Decode.field "name" (isString str))
 
 
 -- | Tag field with a given value.

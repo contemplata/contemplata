@@ -1,8 +1,7 @@
 module Edit.Command exposing
-    ( Command
-
+    (
     -- * View
-    , mkMenuItem
+      mkMenuItem
     , menuItemStyle
     , mkMenuElem
 
@@ -11,13 +10,6 @@ module Edit.Command exposing
 
     -- * Keybord shortcuts
     , msgFromKeyCode
-
-    -- * Obsolete
-    -- , MenuCmd(..)
-    -- , mkMenuCommand
-
-    -- * JSON
-    , commandDecoder
     )
 
 
@@ -33,7 +25,7 @@ import Html.Events as Events
 import Edit.Message.Core exposing (Msg(..))
 import Edit.Command.Core exposing (..)
 import Util
-import Server
+import Server.Core as Server
 
 
 ---------------------------------------------------
