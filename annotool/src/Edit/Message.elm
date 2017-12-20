@@ -454,7 +454,7 @@ update msg model =
     CommandComplete -> idle <|
       case model.command of
         Nothing -> model
-        Just cmd -> {model | command = Just <| complete cmd}
+        Just cmd -> {model | command = Just <| complete model.annoConfig cmd}
 
     CommandEscape -> idle <| {model | command = Nothing}
 
@@ -463,7 +463,7 @@ update msg model =
         newModel = {model | command = Nothing}
       in
         model.command |>
-        Maybe.andThen toMsg |>
+        Maybe.andThen (toMsg model.annoConfig) |>
         Maybe.map (\cmd -> (newModel, cmd)) |>
         Maybe.withDefault (idle newModel)
 
@@ -561,13 +561,13 @@ firePopup popupRaw targetMaybe =
 
 
 -- | Translate a command into the corresponding model-related message.
-toMsg : String -> Maybe (Cmd Msg)
-toMsg cmd0 =
+toMsg : AnnoCfg.Config -> String -> Maybe (Cmd Msg)
+toMsg cfg cmd0 =
   let
-    exact = case List.filter (\(cmd, msg) -> cmd == cmd0) Command.cmdLineList of
+    exact = case List.filter (\(cmd, msg) -> cmd == cmd0) (Command.cmdLineList cfg) of
       [(cmd, msg)] -> Just <| Task.perform identity (Task.succeed msg)
       _ -> Nothing
-    prefix = case cmdsWithPrefix_ cmd0 of
+    prefix = case cmdsWithPrefix_ cfg cmd0 of
       (cmd, msg) :: _ -> Just <| Task.perform identity (Task.succeed msg)
       _ -> Nothing
   in
@@ -578,24 +578,24 @@ toMsg cmd0 =
 
 
 -- | Return all the commands beginning with the given prefix.
-cmdsWithPrefix : String -> List String
-cmdsWithPrefix =
-  List.map Tuple.first << cmdsWithPrefix_
+cmdsWithPrefix : AnnoCfg.Config -> String -> List String
+cmdsWithPrefix cfg =
+  List.map Tuple.first << cmdsWithPrefix_ cfg
 
 
 
 -- | Return all the commands beginning with the given prefix.
-cmdsWithPrefix_ : String -> List (String, Msg)
-cmdsWithPrefix_ prf =
+cmdsWithPrefix_ : AnnoCfg.Config -> String -> List (String, Msg)
+cmdsWithPrefix_ cfg prf =
   let p (cmd, msg) = String.startsWith prf cmd
-  in  List.filter p Command.cmdLineList
+  in  List.filter p (Command.cmdLineList cfg)
 
 
 -- | Complete the command (if it's a prefix of other commands).
-complete : String -> String
-complete prf =
+complete : AnnoCfg.Config -> String -> String
+complete cfg prf =
   let
-    cmds = cmdsWithPrefix prf
+    cmds = cmdsWithPrefix cfg prf
   in
     case cmds of
       [] -> prf

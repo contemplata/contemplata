@@ -79,7 +79,7 @@ dhallChar = Type {..}
     extract (Dhall.Core.TextLit t) =
       case LT.uncons (Data.Text.Lazy.Builder.toLazyText t) of
         Just (c, "") -> pure c
-        Nothing -> empty
+        _ -> empty
     extract _ =
       empty
 

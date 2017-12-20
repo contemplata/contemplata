@@ -85,7 +85,7 @@ keyboardShortcutDecoder : Decode.Decoder KeyboardShortcut
 keyboardShortcutDecoder =
     Decode.map2 (\keyCode char -> {keyCode=keyCode, char=char})
       (Decode.field "keyCode" Decode.int)
-      (Decode.field "char" (Decode.map Char.fromCode Decode.int))
+      (Decode.field "char" charDecoder)
 
 
 commandDecoder : Decode.Decoder Command
@@ -105,3 +105,14 @@ commandDecoder =
         (Decode.field "menuCmd" (Decode.nullable Decode.string))
         (Decode.field "withCtrl" (Decode.nullable Decode.bool))
         (Decode.field "help" (Decode.nullable Decode.string))
+
+
+charDecoder : Decode.Decoder Char
+charDecoder =
+    let
+        fromText x =
+            case String.uncons x of
+                Just (c, "") -> Decode.succeed c
+                _ -> Decode.fail "not a char"
+    in
+        Decode.string |> Decode.andThen fromText

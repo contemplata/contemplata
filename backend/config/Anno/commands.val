@@ -2,11 +2,171 @@ let
   simple = ./Message/simple.fun
 in
   [ { _1 =
-      { keyCmd = [] : Optional ./KeyboardShortcut.typ
-      , lineCmd = ["delete"] : Optional Text
+      { keyCmd = [{keyCode=68, char="d"}] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["delnode"] : Optional Text
+      , menuCmd = ["Delete"] : Optional Text
+      , withCtrl = [False] : Optional Bool
+      , help = ["Delete the selected nodes"] : Optional Text }
+    , _2 = simple {name = "Delete"}
+    }
+  , { _1 =
+      { keyCmd = [{keyCode=68, char="d"}] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["deltree"] : Optional Text
       , menuCmd = ["Delete"] : Optional Text
       , withCtrl = [True] : Optional Bool
-      , help = ["No help so far"] : Optional Text }
-    , _2 = simple {name = "Delete"}
+      , help = ["Deleted the subtrees of the selected nodes"] : Optional Text }
+    , _2 = simple {name = "DeleteTree"}
+    }
+  , { _1 =
+      { keyCmd = [{keyCode=65, char="a"}] : Optional ./KeyboardShortcut.typ
+      , lineCmd = [] : Optional Text
+      , menuCmd = ["Add"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Add (a) new node(s) over the selected node(s)"] : Optional Text }
+    , _2 = simple {name = "Add"}
+    }
+  , { _1 =
+      { keyCmd = [{keyCode=83, char="s"}] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["save"] : Optional Text
+      , menuCmd = ["Save"] : Optional Text
+      , withCtrl = [True] : Optional Bool
+      , help = ["Save the file(s)"] : Optional Text }
+    , _2 = simple {name = "SaveFile"}
+    }
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["restart"] : Optional Text
+      , menuCmd = ["Restart"] : Optional Text
+      , withCtrl = [False] : Optional Bool
+      , help = ["Restart annotation of the file"] : Optional Text }
+    , _2 = simple {name = "ParseRaw"}
+    }
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["restartpreproc"] : Optional Text
+      , menuCmd = ["Restart"] : Optional Text
+      , withCtrl = [True] : Optional Bool
+      , help = ["Restart annotation of the file and perform preprocessing"] : Optional Text }
+    , _2 = simple {name = "ParseRawPreproc"}
+    }
+  , { _1 =
+      { keyCmd = [{keyCode=80, char="p"}] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["parse"] : Optional Text
+      , menuCmd = ["Parse"] : Optional Text
+      , withCtrl = [False] : Optional Bool
+      , help = ["Reparse the sentence"] : Optional Text }
+    , _2 = simple {name = "ParseSentStanford"}
+    }
+  , { _1 =
+      { keyCmd = [{keyCode=80, char="p"}] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["parsepos"] : Optional Text
+      , menuCmd = ["Parse"] : Optional Text
+      , withCtrl = [True] : Optional Bool
+      , help = ["Reparse the selected sub-sentence(s) without changing the POS tags"] : Optional Text }
+    , _2 = simple {name = "ParseSentPosStanford"}
+    }
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["dopparse"] : Optional Text
+      , menuCmd = [] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = [] : Optional Text }
+    , _2 = simple {name = "ParseSentPosDisco"}
+    }
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["parsecons"] : Optional Text
+      , menuCmd = [] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = [] : Optional Text }
+    , _2 = simple {name = "ParseSentConsDisco"}
+    }
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["deepen"] : Optional Text
+      , menuCmd = [] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = [] : Optional Text }
+    , _2 = simple {name = "ApplyRules"}
+    }
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["splitsent"] : Optional Text
+      , menuCmd = ["Split sentence"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Split the current sentence into several sentences at the selected terminal nodes"] : Optional Text }
+    , _2 = simple {name = "SplitTree"}
+    }
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["splitword"] : Optional Text
+      , menuCmd = ["Split word"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Split in two the token corresponding to the selected terminal"] : Optional Text }
+    , _2 = simple {name = "SplitBegin"}
+    }
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["connect"] : Optional Text
+      , menuCmd = [] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = [] : Optional Text }
+    , _2 = simple {name = "Connect"}
+    }
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["compare"] : Optional Text
+      , menuCmd = [] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = [] : Optional Text }
+    , _2 = simple {name = "Compare"}
+    }
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["join"] : Optional Text
+      , menuCmd = [] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = [] : Optional Text }
+    , _2 = simple {name = "Join"}
+    }
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["joinwords"] : Optional Text
+      , menuCmd = ["Join words"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Concatenate the tokens corresponding to the selected terminals"] : Optional Text }
+    , _2 = simple {name = "ConcatWords"}
+    }
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["dummify"] : Optional Text
+      , menuCmd = ["Dummify"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Destroy the entire tree"] : Optional Text }
+    , _2 = simple {name = "Dummy"}
+    }
+  , { _1 =
+      { keyCmd = [{keyCode=83, char="s"}] : Optional ./KeyboardShortcut.typ
+      , lineCmd = [] : Optional Text
+      , menuCmd = ["Signal"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Mark the selected node as signal"] : Optional Text }
+    , _2 = simple {name = "MkSignal"}
+    }
+  , { _1 =
+      { keyCmd = [{keyCode=84, char="t"}] : Optional ./KeyboardShortcut.typ
+      , lineCmd = [] : Optional Text
+      , menuCmd = ["Timex"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Mark the selected node as timex"] : Optional Text }
+    , _2 = simple {name = "MkTimex"}
+    }
+  , { _1 =
+      { keyCmd = [{keyCode=86, char="v"}] : Optional ./KeyboardShortcut.typ
+      , lineCmd = [] : Optional Text
+      , menuCmd = ["Event"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Mark the selected node as event"] : Optional Text }
+    , _2 = simple {name = "MkEvent"}
     }
   ]

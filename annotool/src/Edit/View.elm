@@ -235,7 +235,7 @@ viewTreeId win model =
 viewCommand : String -> C.Focus -> M.Model -> Html.Html Msg
 viewCommand pref win model =
   let
-    cmdLst = Msg.cmdsWithPrefix pref
+    cmdLst = Msg.cmdsWithPrefix model.annoConfig pref
     cmdStr = String.trim
              <| String.concat
              <| List.map (\cmd -> String.cons ' ' cmd)
@@ -686,7 +686,7 @@ viewMenu model = -- fileName =
 --       , (emphasize 0 "Signal", MkSignal, Just "Mark (or unmark) the selected node as signal")
 --       , (emphasize 0 "Timex", MkTimex, Just "Mark (or unmark) the selected node as timex") ]
 
-    mkMenuElem = Cmd.mkMenuElem model.ctrl
+    mkMenuElem = Cmd.mkMenuElem model.annoConfig model.ctrl
     segmentationCommands = Util.catMaybes <| List.map mkMenuElem
         [ ParseRaw False, ParseRaw True
         , SplitTree, SplitBegin
@@ -2024,7 +2024,7 @@ offsetHeight =
 globalKeyDown : M.Model -> Html.Attribute Msg
 globalKeyDown model =
     case model.command of
-        Nothing -> mainKeyDown model.ctrl
+        Nothing -> mainKeyDown model.annoConfig model.ctrl
         Just _ -> cmdKeyDown
 
 
@@ -2044,9 +2044,10 @@ cmdKeyDown =
 
 
 mainKeyDown
-  : Bool -- ^ CTRL down?
+  :  AnnoCfg.Config -- ^ CTRL down?
+  -> Bool -- ^ CTRL down?
   -> Html.Attribute Msg
-mainKeyDown ctrl =
+mainKeyDown annoCfg ctrl =
   let
     tag code = case code of
       -- "PgUp" and "PgDown"
@@ -2128,7 +2129,7 @@ mainKeyDown ctrl =
       27 -> Quit
 
       _  ->
-          case Cmd.msgFromKeyCode ctrl code of
+          case Cmd.msgFromKeyCode annoCfg ctrl code of
               Nothing -> Msg.dummy
               Just msg -> msg
   in
