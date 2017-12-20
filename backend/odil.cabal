@@ -39,6 +39,8 @@ library
                      , Odil.Config.Attr
                      , Odil.Config.Entity
                      , Odil.Config.Entity.Type
+                     , Odil.Config.Message
+                     , Odil.Config.Command
 
                      , Odil.Anno.Attr
                      , Odil.Anno.Entity

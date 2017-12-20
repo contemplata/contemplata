@@ -15,84 +15,25 @@ module Edit.Command exposing
     -- * Obsolete
     -- , MenuCmd(..)
     -- , mkMenuCommand
+
+    -- * JSON
+    , commandDecoder
     )
 
 
 import Focus as Lens
 import Dict as D
+import Char as Char
+import Json.Decode as Decode
 
 import Html as Html
 import Html.Attributes as Atts
 import Html.Events as Events
 
-import Edit.Model as M
 import Edit.Message.Core exposing (Msg(..))
+import Edit.Command.Core exposing (..)
 import Util
 import Server
-
-
----------------------------------------------------
----------------------------------------------------
--- New version
----------------------------------------------------
----------------------------------------------------
-
-
----------------------------------------------------
--- Menu Commands
----------------------------------------------------
-
-
--- | Command invocation by a keyboard shortcut
-type alias KeyboardShortcut =
-    { keyCode : Int
-      -- ^ Key code corresponding to the `char`
-    , char : Char
-      -- ^ The character of the shortcut
-    }
-
-
--- | A command in the command line mode
-type alias LineCommand = String
-
-
--- | A menu command
-type alias MenuCommand = String
---     { cmdName : String
---     }
-
-
--- | A specification of a menu command, which can be used to invoke a particular message.
-type alias Command =
-    { keyCmd : Maybe KeyboardShortcut
-    , lineCmd : Maybe LineCommand
-    , menuCmd : Maybe MenuCommand
-    , withCtrl : Maybe Bool
-      -- ^ If the command has to be invoked with CTRL pressed; if `Nothing`, it
-      -- can be invoked whether CTRl is pressed or not; applies to `keyCmd` and
-      -- `menuCmd`
-    , help : Maybe String
-      -- ^ Just a help string
-    }
-
-
--- | The void command
-void : Command
-void =
-    { keyCmd=Nothing
-    , lineCmd=Nothing
-    , menuCmd=Nothing
-    , withCtrl=Nothing
-    , help=Nothing
-    }
-
-
--- | Does the command have the given menu name?
-hasMenuName : String -> Command -> Bool
-hasMenuName name cmd =
-    case cmd.menuCmd of
-        Nothing -> False
-        Just menuCmd -> menuCmd == name
 
 
 ---------------------------------------------------
@@ -108,14 +49,14 @@ globalCommands =
           | keyCmd = Just {keyCode=68, char='d'}
           , lineCmd = Just "delnode"
           , menuCmd = Just "Delete"
-          , withCtrl=Just False
+          , withCtrl = Just False
           , help = Just "Delete the selected nodes"
       } => Delete
     , { void
           | keyCmd = Just {keyCode=68, char='d'}
           , lineCmd = Just "deltree"
           , menuCmd = Just "Delete"
-          , withCtrl=Just True
+          , withCtrl = Just True
           , help = Just "Deleted the subtrees of the selected nodes"
       } => DeleteTree
     , { void
@@ -250,7 +191,7 @@ msgFromKeyCode isCtrl code =
 
 
 -- | The list of command-line commands and the corresponding messages.
-cmdLineList : List (M.Command, Msg)
+cmdLineList : List (String, Msg)
 cmdLineList =
     let
         process (cmd, msg) =

@@ -12,4 +12,6 @@
 
 -- Annotation levels
 , annoLevels = ["orig", "syntax", "temporal", "relations"]
+
+, commands = ./Anno/commands.val
 }

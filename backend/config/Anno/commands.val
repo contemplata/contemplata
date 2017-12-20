@@ -1,0 +1,12 @@
+let
+  simple = ./Message/simple.fun
+in
+  [ { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["delete"] : Optional Text
+      , menuCmd = ["Delete"] : Optional Text
+      , withCtrl = [True] : Optional Bool
+      , help = ["No help so far"] : Optional Text }
+    , _2 = simple {name = "Delete"}
+    }
+  ]

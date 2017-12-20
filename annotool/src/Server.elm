@@ -11,6 +11,7 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import WebSocket
 
+import Server.Core exposing (..)
 import Edit.Model as M
 import Edit.Core as C
 import Edit.Config
@@ -25,31 +26,6 @@ import Util as Util
 
 type alias Orth = String
 type alias Pos = String
-
--- | The type of parser to use.
-type ParserTyp
-  = Stanford
-  | DiscoDOP
-
-
-type ParseReq a
-    = Single a
-    | Batch (List a)
-
-
-encodeParseReq : (a -> Encode.Value) -> ParseReq a -> Encode.Value
-encodeParseReq encA parseReq =
-    case parseReq of
-        Single x ->
-            Encode.object
-                [ ("tag", Encode.string "Single")
-                , ("contents", encA x)
-                ]
-        Batch xs ->
-            Encode.object
-                [ ("tag", Encode.string "Batch")
-                , ("contents", Encode.list (List.map encA xs))
-                ]
 
 
 type Request

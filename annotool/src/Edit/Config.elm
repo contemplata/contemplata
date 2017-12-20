@@ -20,6 +20,9 @@ import Json.Encode as Encode
 import Util
 import Dict as D
 
+import Edit.Command.Core as Cmd
+import Edit.Message.Core as Msg
+
 
 ---------------------------------------------------
 -- Configuration
@@ -32,6 +35,8 @@ type alias Config =
     -- ^ TODO: This could be a map!
   , nonTerminals : List String
   , preTerminals : List String
+  , annoLevels : List String
+  , commands : List (Cmd.Command, Msg.Msg)
   }
 
 
@@ -116,15 +121,19 @@ entityConfig name cfg =
 
 configDecoder : Decode.Decoder Config
 configDecoder =
-  let mkConfig ents nons pres =
+  let mkConfig ents nons pres lvs cmds =
         { entities = ents
         , nonTerminals = nons
         , preTerminals = pres
+        , annoLevels = lvs
+        , commands = cmds
         }
-  in  Decode.map3 mkConfig
+  in  Decode.map5 mkConfig
         (Decode.field "entities" (Decode.list entityDecoder))
         (Decode.field "nonTerminals" (Decode.list Decode.string))
         (Decode.field "preTerminals" (Decode.list Decode.string))
+        (Decode.field "annoLevels" (Decode.list Decode.string))
+        (Decode.field "commands" commandListDecoder)
 
 
 entityDecoder : Decode.Decoder Entity
@@ -198,6 +207,16 @@ anchorDecoder : Decode.Decoder Attr
 anchorDecoder =
     Decode.map (\_ -> Anchor)
         (Decode.field "tag" (isString "Anchor"))
+
+
+commandListDecoder : Decode.Decoder (List (Cmd.Command, Msg.Msg))
+commandListDecoder =
+    let
+      pairDecoder = Decode.map2 (\cmd msg -> (cmd, msg))
+        (Decode.index 0 Cmd.commandDecoder)
+        (Decode.index 1 Msg.msgDecoder)
+    in
+      Decode.list pairDecoder
 
 
 ---------------------------------------------------

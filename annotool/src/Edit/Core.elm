@@ -5,12 +5,14 @@ module Edit.Core exposing
   , AnnoName
   , NodeId
   , Addr
+  , Link
+
+  , Focus
+  , AnnoLevel(..)
 
   -- * Encoding
   , encodeFileId
   , decodeFileId
-  -- , showAnnoLevel
-  -- , readAnnoLevel
 
   , TreeId (..)
   , TreeIdBare
@@ -22,7 +24,6 @@ module Edit.Core exposing
 --   , cmpPartId
 
   -- * JSON
-  -- , encodeAnnoLevelJSONKey
   -- , annoLevelKeyDecoder
   , encodeFileIdJSON
   , fileIdDecoder
@@ -41,48 +42,11 @@ import Json.Encode as Encode
 type alias FileName = String
 
 
--- | Annotation level.
-type alias AnnoLevel = String
-
-
--- -- | Annotation level.
--- type AnnoLevel
---   = Orig
---     -- ^ Original file
---   | Syntax
---     -- ^ Syntactic level
---   | Temporal
---     -- ^ Temporal level
---   | Relations
---     -- ^ Temporal relations level
-
-
--- -- | Decode AnnoLevel.
--- showAnnoLevel : AnnoLevel -> String
--- showAnnoLevel annoLev =
---     case annoLev of
---         Orig -> "orig"
---         Syntax -> "syntax"
---         Temporal -> "temporal"
---         Relations -> "relations"
-
-
--- -- | Decode AnnoLevel.
--- readAnnoLevel : String -> Maybe AnnoLevel
--- readAnnoLevel str =
---     case str of
---         "orig" -> Just Orig
---         "syntax" -> Just Syntax
---         "temporal" -> Just Temporal
---         "relations" -> Just Relations
---         _ -> Nothing
-
-
 -- | ID of a file.
 type alias FileId =
   { fileName  : FileName
     -- ^ The name of the file (typically, the original name)
-  , annoLevel : AnnoLevel
+  , annoLevel : String
     -- ^ The level at which the file is being annotated
   , copyId    : String
     -- ^ ID of the copy of the file (to distinguish several copies of the same
@@ -97,7 +61,6 @@ type alias EncFileId = String
 encodeFileId : FileId -> EncFileId
 encodeFileId r = String.join ":"
   [ r.fileName
-  -- , showAnnoLevel r.annoLevel
   , r.annoLevel
   , r.copyId
   ]
@@ -141,6 +104,21 @@ type alias NodeId = Int
 type alias Addr = (PartId, NodeId)
 
 
+-- | Link between two trees.
+type alias Link = (Addr, Addr)
+
+
+-- | Focus selector.
+type Focus = Top | Bot
+
+
+-- | Annotation level
+type AnnoLevel
+    = Segmentation
+    | Syntax
+    | Temporal
+
+
 ---------------------------------------------------
 -- Partition IDs
 ---------------------------------------------------
@@ -165,42 +143,14 @@ type alias PartId = Int
 ---------------------------------------------------
 
 
--- encodeAnnoLevelJSON : AnnoLevel -> Encode.Value
--- encodeAnnoLevelJSON = Encode.string << toString
-
-
--- encodeAnnoLevelJSONKey : AnnoLevel -> Encode.Value
--- encodeAnnoLevelJSONKey = Encode.string << showAnnoLevel
-
-
 encodeFileIdJSON : FileId -> Encode.Value
 encodeFileIdJSON r =
     Encode.object
         [ ("tag", Encode.string "FileId")
         , ("fileName", Encode.string r.fileName)
-        -- , ("annoLevel", encodeAnnoLevelJSON r.annoLevel)
         , ("annoLevel", Encode.string r.annoLevel)
         , ("copyId", Encode.string r.copyId)
         ]
-
-
--- annoLevelDecoder : Decode.Decoder AnnoLevel
--- annoLevelDecoder =
---     let
---         readIt x =
---             case x of
---                 "Orig" -> Just Orig
---                 "Syntax" -> Just Syntax
---                 "Temporal" -> Just Temporal
---                 "Relations" -> Just Relations
---                 _ -> Nothing
---     in
---         Decode.map (Maybe.withDefault Orig << readIt) Decode.string
-
-
--- annoLevelKeyDecoder : Decode.Decoder AnnoLevel
--- annoLevelKeyDecoder =
---     Decode.map (Maybe.withDefault Orig << readAnnoLevel) Decode.string
 
 
 fileIdDecoder : Decode.Decoder FileId

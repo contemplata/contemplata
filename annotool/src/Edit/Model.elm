@@ -2,7 +2,7 @@ module Edit.Model exposing
   (
   -- Data types:
     TreeMap, Sent, Token, File, Turn
-  , Node(..), NodeAnnoTyp, Link, Command
+  , Node(..), NodeAnnoTyp, Link
   , InternalNode, LeafNode
   , LinkData
   , isNode, isLeaf
@@ -186,10 +186,6 @@ type alias Turn =
   }
 
 
--- | Link between two trees.
-type alias Link = (Addr, Addr)
-
-
 -- -- | Leaf identifier
 -- type alias LeafId = Int
 
@@ -339,7 +335,7 @@ type alias Model =
   , undoLast : List HistAtom
 
   -- scripting window
-  , command : Maybe Command
+  , command : Maybe String
 
   -- pop-up window
   , popup : Maybe Popup.Popup
@@ -353,17 +349,6 @@ type alias Model =
   -- which annotation level is in focus
   , annoLevel : AnnoLevel
   }
-
-
--- | Annotation level
-type AnnoLevel
-    = Segmentation
-    | Syntax
-    | Temporal
-
-
--- | The command being written by the user.
-type alias Command = String
 
 
 type alias Window =
@@ -411,10 +396,6 @@ type alias Drag =
     { start : Position
     , current : Position
     }
-
-
--- | Focus selector.
-type Focus = Top | Bot
 
 
 ---------------------------------------------------

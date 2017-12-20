@@ -12,7 +12,6 @@ import Dom.Scroll
 import Focus exposing ((=>))
 import Window as Window
 import WebSocket
-import Json.Decode as Decode
 import Focus as Lens
 import Either exposing (..)
 
@@ -341,8 +340,8 @@ update msg model =
 
     SetNodeAttr nodeId focus attr -> idle <|
       case attr of
-        Anno.NodeLabelAttr x -> M.setLabel nodeId focus x model
-        Anno.NodeCommentAttr x -> M.setComment nodeId focus x model
+        NodeLabelAttr x -> M.setLabel nodeId focus x model
+        NodeCommentAttr x -> M.setComment nodeId focus x model
 
     SetEntityType nodeId focus newTyp -> idle <|
       M.setEntityType nodeId focus newTyp model

@@ -1,37 +1,40 @@
 module Edit.Message.Core exposing
-    ( Msg(..)
+    ( Msg (..)
+    , NodeAttr (..)
+    , msgDecoder
     )
 
 
 import Mouse exposing (Position)
 import Window as Window
 
-import Edit.Model as M
+import Json.Decode as Decode
+
 import Edit.Core as C
-import Edit.Anno as Anno
+import Edit.Anno.Core as Anno
+import Server.Core as Server
 import Edit.Popup as Popup
-import Server
 
 
 type Msg
-  = DragStart M.Focus Position
+  = DragStart C.Focus Position
     -- ^ Neither `DragAt` nor `DragEnd` have their focus. This is on purpose.
     -- Focus should be determined, in their case, on the basis of the drag in
     -- the underlying model. We do not support concurrent drags at the moment.
   | DragAt Position
   | DragEnd Position
-  | Select M.Focus C.NodeId
-  | SelectTree M.Focus C.PartId
+  | Select C.Focus C.NodeId
+  | SelectTree C.Focus C.PartId
     -- ^ Select tree (or join if with CTRL);
-  | SelectToken M.Focus C.PartId Int
+  | SelectToken C.Focus C.PartId Int
     -- ^ Select token; the last argument represents the token ID.
-  | SelectLink M.Link
-  | Focus M.Focus
+  | SelectLink C.Link
+  | Focus C.Focus
   | Resize Window.Size -- ^ The height and width of the entire window
   | Increase Bool Bool -- ^ Change the proportions of the window
   | Previous
   | Next
-  | ChangeLabel C.NodeId M.Focus String
+  | ChangeLabel C.NodeId C.Focus String
   | EditLabel
   | Delete -- ^ Delete the selected nodes in the focused window
   | DeleteTree
@@ -63,25 +66,25 @@ type Msg
   -- | Break -- ^ Break the given partition into its components
   | Undo
   | Redo
-  | SideMenuEdit M.Focus
-  | SideMenuContext M.Focus
+  | SideMenuEdit C.Focus
+  | SideMenuContext C.Focus
   | ShowContext
-  | SideMenuLog M.Focus
+  | SideMenuLog C.Focus
   -- * Modifying general node's attributes
-  | SetNodeAttr C.NodeId M.Focus Anno.NodeAttr
+  | SetNodeAttr C.NodeId C.Focus NodeAttr
   -- * Entity modification event
   | SetEntityType
     C.NodeId
-    M.Focus
+    C.Focus
     String            -- ^ New type value
   | SetEntityAttr
     C.NodeId
-    M.Focus
+    C.Focus
     String            -- ^ Attribute name
     (Maybe Anno.Attr) -- ^ Attribute value
   | SetEntityAnchor
     C.NodeId
-    M.Focus
+    C.Focus
     String            -- ^ Anchor name
   | CommandStart
   | CommandEnter
@@ -99,7 +102,7 @@ type Msg
   | SplitChange Int
   | SplitFinish Int
   | ChangeAnnoLevel
-  | ChangeAnnoLevelTo M.AnnoLevel
+  | ChangeAnnoLevelTo C.AnnoLevel
   | SwapFile
   | SwapFileTo C.FileId
   | Compare
@@ -111,3 +114,68 @@ type Msg
 --   | TestGet String
 --   | TestSend
 
+
+-- | Changing a node attribute.
+type NodeAttr
+    = NodeLabelAttr String
+    | NodeCommentAttr String
+
+
+---------------------------------------------------
+-- JSON Decoding
+--
+-- We need it so that commands can be configured on
+-- the server side (via Dhall).
+---------------------------------------------------
+
+
+
+msgDecoder : Decode.Decoder Msg
+msgDecoder =
+    Decode.oneOf
+        [ simple Delete "Delete"
+        , simple DeleteTree "DeleteTree"
+        , simple Add "Add"
+        , simple SaveFile "SaveFile"
+        , simple Quit "Quit"
+        , Decode.value |> \val ->
+            let msg = Popup.Info ("Unknown message: " ++ toString val)
+            in  Decode.succeed <| Popup msg Nothing
+        ]
+
+
+---------------------------------------------------
+-- JSON Utils
+---------------------------------------------------
+
+
+-- -- | Decode a message withtout arguments.
+-- justTag : Msg -> String -> Decode.Decoder Msg
+-- justTag msg str =
+--     Decode.map
+--         (always msg)
+--         (tag str)
+
+
+-- | Tag field with a given value.
+simple : Msg -> String -> Decode.Decoder Msg
+simple msg str =
+  Decode.map2 (\_ _ -> msg)
+    (Decode.field "tag" (isString "Simple"))
+    (Decode.field "contents" (isString str))
+
+
+-- | Tag field with a given value.
+tag : String -> Decode.Decoder ()
+tag x = Decode.field "tag" (isString x)
+
+
+isString : String -> Decode.Decoder ()
+isString str0
+    =  Decode.string
+    |> Decode.andThen
+       (\str ->
+            if str == str0
+            then Decode.succeed ()
+            else Decode.fail <| "The two strings differ: " ++ str0 ++ " /= " ++ str
+       )
