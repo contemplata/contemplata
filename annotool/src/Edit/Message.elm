@@ -722,11 +722,17 @@ compare model =
     let
         getId foc = M.getReprId foc (M.selectWin foc model).tree model
         getTree foc id = M.getTree foc id model
+
         topId = getId C.Top
-        topTree = getTree C.Top topId
         botId = getId C.Bot
-        botTree = getTree C.Bot botId
-        (topIds, botIds) = Compare.compareSyntax topTree botTree
+
+        topCtx = getTree C.Top
+        botCtx = getTree C.Bot
+
+        topInp = (topCtx, topId)
+        botInp = (botCtx, botId)
+
+        (topIds, botIds) = Compare.compareSyntax topInp botInp
     in
         if L.isEmpty topIds && L.isEmpty botIds
         then
@@ -751,12 +757,11 @@ compare model =
 -- | Compare only the currently selected trees.
 compareOne : M.Model -> M.Model
 compareOne model =
-    let getTree foc =
-            let id = M.getReprId foc (M.selectWin foc model).tree model
-            in M.getTree foc id model
-        topTree = getTree C.Top
-        botTree = getTree C.Bot
-        (topIds, botIds) = Compare.compareSyntax topTree botTree
+    let getId foc = M.getReprId foc (M.selectWin foc model).tree model
+        getTree foc id = M.getTree foc id model
+        topInp = (getTree C.Top, getId C.Top)
+        botInp = (getTree C.Bot, getId C.Bot)
+        (topIds, botIds) = Compare.compareSyntax topInp botInp
     in  M.setSelection (S.fromList topIds) C.Top <|
         M.setSelection (S.fromList botIds) C.Bot <|
         model

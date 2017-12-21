@@ -7,6 +7,7 @@ import Basics exposing (Order(..))
 import Set as S
 import Dict as D
 import Compare as Cmp
+import Focus as Lens
 
 import Rose as R
 
@@ -21,6 +22,10 @@ import Edit.Model as M
 ---------------------------------------------------
 
 
+-- | Comparison context
+type alias Context = PartId -> R.Tree M.Node
+
+
 -- | Compare the basic, syntactic layer of two trees.
 --
 -- The resulting set of node IDs for a particular input tree will contain all
@@ -32,42 +37,75 @@ import Edit.Model as M
 -- * The lists of the spans of their children are different
 --
 -- The third one is supposed to account for the potential tree non-projectivity.
-compareSyntax : R.Tree M.Node -> R.Tree M.Node -> (List NodeId, List NodeId)
-compareSyntax tx ty =
-    let infos = List.sortWith compInfo << R.flatten << extractInfo
-    in  diffInfo (infos tx) (infos ty)
+compareSyntax
+    :  (Context, PartId)
+    -- ^ The first context with the selected tree
+    -> (Context, PartId)
+    -- ^ The other context with the selected tree
+    -> (List NodeId, List NodeId)
+compareSyntax (ctx, ix) (cty, iy) =
+    let tx = ctx ix
+        ty = cty iy
+        infos ct = List.sortWith compNodeInfo << R.flatten << extractNodeInfo ct
+    in  diffNodeInfo (infos ctx tx) (infos cty ty)
 
 
 -- | Compare two, ordered lists of infos.  The resulting pair (xs, ys) contains
 -- the missing node IDs in the two respective input lists.
-diffInfo : List Info -> List Info -> (List NodeId, List NodeId)
-diffInfo xs ys =
+diffNodeInfo : List NodeInfo -> List NodeInfo -> (List NodeId, List NodeId)
+diffNodeInfo xs ys =
     case (xs, ys) of
         (xHead :: xTail, yHead :: yTail) ->
-            case compInfo xHead yHead of
-                EQ -> diffInfo xTail yTail
-                LT -> consFst xHead.id <| diffInfo xTail ys
-                GT -> consSnd yHead.id <| diffInfo xs yTail
+            case compNodeInfo xHead yHead of
+                EQ -> diffNodeInfo xTail yTail
+                LT -> consFst xHead.id <| diffNodeInfo xTail ys
+                GT -> consSnd yHead.id <| diffNodeInfo xs yTail
         (xHead :: xTail, []) ->
-            consFst xHead.id <| diffInfo xTail []
+            consFst xHead.id <| diffNodeInfo xTail []
         ([], yHead :: yTail) ->
-            consSnd yHead.id <| diffInfo [] yTail
+            consSnd yHead.id <| diffNodeInfo [] yTail
         ([], []) -> ([], [])
 
 
 -- | Information about a node important for comparison.
-type alias Info =
+type alias NodeInfo =
     { id : NodeId
     -- ^ ID of the node
     , label : String
     -- ^ The label of the node
     , comment : String
     -- ^ The comment of the node
-    , annoTyp : Maybe M.NodeAnnoTyp
+    , annoTyp : Maybe EntityInfo
+    -- , annoTyp : Maybe Anno.Entity
     -- ^ Node annotation
     , spans : List (S.Set Int)
     -- ^ The set of positions in the leaves of the subsequent subtrees in the
     -- tree corresponding to the node
+    }
+
+
+-- | Annotation information.
+type alias EntityInfo =
+  { name : String
+  , typ : String
+  , attributes : D.Dict String AttrInfo
+  }
+
+
+-- | Relevant information about an attribut.
+type AttrInfo
+    = AttrVal String
+    -- ^ Just a regular string value
+    | Anchor AnchorInfo
+    -- ^ An anchor
+
+
+-- | Anchoring information
+type alias AnchorInfo =
+    { label : String
+    -- ^ The label of the target node
+    , span : S.Set Int
+    -- ^ The span of the target node
     }
 
 
@@ -79,9 +117,14 @@ merge xs =
         [] -> S.empty
 
 
--- | Extract the list of node information from the tree.
-extractInfo : R.Tree M.Node -> R.Tree Info
-extractInfo (R.Node x ts) =
+-- | Extract the node informations from the tree.
+extractNodeInfo
+    : Context
+    -- ^ The context to which the following tree belongs
+    -> R.Tree M.Node
+    -- ^ The tree for which extraction is to be applied
+    -> R.Tree NodeInfo
+extractNodeInfo ctx (R.Node x ts) =
     case x of
         M.Leaf r -> R.Node
             { id = r.nodeId
@@ -92,11 +135,11 @@ extractInfo (R.Node x ts) =
             []
         M.Node r ->
             let
-                children = List.map extractInfo ts
+                children = List.map (extractNodeInfo ctx) ts
                 value =
                     { id = r.nodeId
                     , comment = r.nodeComment
-                    , annoTyp = r.nodeTyp
+                    , annoTyp = Maybe.map (extractEntityInfo ctx) r.nodeTyp
                     , label = r.nodeVal
                     , spans = List.map (merge << .spans << R.label) children
                     }
@@ -104,18 +147,69 @@ extractInfo (R.Node x ts) =
                 R.Node value children
 
 
+-- | Extract attribute information.
+extractEntityInfo : Context -> Anno.Entity -> EntityInfo
+extractEntityInfo ctx ent =
+    { name = ent.name
+    , typ = ent.typ
+    , attributes = D.map (always <| extractAttrInfo ctx) ent.attributes
+    }
+
+
+-- | Extract attribute information.
+extractAttrInfo : Context -> Anno.Attr -> AttrInfo
+extractAttrInfo ctx attr =
+    case attr of
+        Anno.Attr x -> AttrVal x
+        Anno.Anchor (treeId, nodeId) ->
+            let tree = ctx treeId
+            in  Anchor (extractAnchorInfo nodeId tree)
+
+
 ---------------------------------------------------
--- Info comparison
+-- Extracting anchoring information
+---------------------------------------------------
+
+
+-- | Extract anchoring information from the tree.
+extractAnchorInfo
+    :  NodeId
+    -- ^ ID of the anchoring node
+    -> R.Tree M.Node
+    -- ^ The tree where the anchor resides
+    -> AnchorInfo
+extractAnchorInfo anchorId tree0 =
+    case R.getSubTree (\r -> Lens.get M.nodeId r == anchorId) tree0 of
+        Nothing -> {label = "", span = S.empty}
+        Just st ->
+            { label = Lens.get M.nodeVal (R.label st)
+            , span = getSpan st }
+
+
+-- | Retrieve the span of the given node in the given tree.
+getSpan : R.Tree M.Node -> S.Set Int
+getSpan =
+     let
+         span node =
+             case node of
+                 M.Leaf r -> Just r.leafPos
+                 _ -> Nothing
+     in
+         S.fromList << List.filterMap span << R.flatten
+
+
+---------------------------------------------------
+-- NodeInfo comparison
 ---------------------------------------------------
 
 
 -- | Compare two information values.
-compInfo : Cmp.Comparator Info
-compInfo =
+compNodeInfo : Cmp.Comparator NodeInfo
+compNodeInfo =
     Cmp.concat
         [ Cmp.by .label
         , Cmp.by .comment
-        , Cmp.compose .annoTyp (maybe compAnnoTyp)
+        , Cmp.compose .annoTyp (maybe compEntityInfo)
         , Cmp.compose .spans compSpanList ]
 
 
@@ -128,15 +222,15 @@ compSpanSet =
     Cmp.compose S.toList (lexico Basics.compare)
 
 
-compAnnoTyp : Cmp.Comparator Anno.Entity
-compAnnoTyp =
+compEntityInfo : Cmp.Comparator EntityInfo
+compEntityInfo =
     Cmp.concat
         [ Cmp.by .name
         , Cmp.by .typ
         , Cmp.compose .attributes compAttrMap ]
 
 
-compAttrMap : Cmp.Comparator (D.Dict String Anno.Attr)
+compAttrMap : Cmp.Comparator (D.Dict String AttrInfo)
 compAttrMap =
     let compPair =
             Cmp.concat
@@ -145,15 +239,23 @@ compAttrMap =
     in  Cmp.compose D.toList (lexico compPair)
 
 
-compAttr : Cmp.Comparator Anno.Attr
+compAttr : Cmp.Comparator AttrInfo
 compAttr attrX attrY =
     case (attrX, attrY) of
-        (Anno.Attr x, Anno.Attr y) ->
+        (AttrVal x, AttrVal y) ->
             Basics.compare x y
-        (Anno.Attr _, _) -> LT
-        (_, Anno.Attr _) -> GT
-        (Anno.Anchor x, Anno.Anchor y) ->
-            Basics.compare x y
+        (AttrVal _, _) -> LT
+        (_, AttrVal _) -> GT
+        (Anchor x, Anchor y) ->
+            -- Basics.compare x y
+            compAnchor x y
+
+
+compAnchor : Cmp.Comparator AnchorInfo
+compAnchor =
+    Cmp.concat
+        [ Cmp.by .label
+        , Cmp.compose .span compSpanSet ]
 
 
 -- compAnnoTyp : Cmp.Comparator M.NodeAnnoTyp
