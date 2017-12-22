@@ -69,6 +69,7 @@ viewTree focus model =
       , selAux = win.selAux
       , linkIn = getLinkNodes second
       , linkOut = getLinkNodes first
+      , selLink = model.selLink
       }
 
   in
@@ -86,15 +87,17 @@ viewTree focus model =
 
 type alias TreeCfg =
   { focus : C.Focus
-    -- ^ Which window is it in?
+  -- ^ Which window is it in?
   , selMain : Maybe C.NodeId
-    -- ^ Selected main
+  -- ^ Selected main
   , selAux : S.Set C.NodeId
-    -- ^ Selected auxiliary
+  -- ^ Selected auxiliary
   , linkIn : D.Dict C.NodeId (S.Set C.Link)
-    -- ^ The set of node IDs with an in-going relation
+  -- ^ The set of node IDs with an in-going relation
   , linkOut : D.Dict C.NodeId (S.Set C.Link)
-    -- ^ The set of node IDs with an out-going relation
+  -- ^ The set of node IDs with an out-going relation
+  , selLink : Maybe C.Link
+  -- ^ The currently selected link (if any)
   }
 
 
@@ -190,28 +193,40 @@ drawInternal cfg node at mark =
         [Html.p [] htmlLeaf]
 
     defCircleCfg = Circle.defCircleCfg
-    circleCfg isMain =
+    circCfg isMain =
       { defCircleCfg
       | opacity = Cfg.relMarkerOpacity
       , width = Cfg.relMarkerSize isMain
       , height = Cfg.relMarkerSize isMain }
-    circCfgUp = circleCfg (cfg.focus == C.Bot)
-    circCfgDown = circleCfg (cfg.focus == C.Top)
-    circUp =
-      { x = at.x - round (toFloat width / Cfg.relMarkerDist)
-      , y = at.y - round (toFloat height / Cfg.relMarkerDist) }
-    circDown =
-      { x = at.x - round (toFloat width / Cfg.relMarkerDist)
-      , y = at.y + round (toFloat height / Cfg.relMarkerDist) }
+
+    circPos foc =
+      case foc of
+        C.Top ->
+          { x = at.x - round (toFloat width / Cfg.relMarkerDist)
+          , y = at.y - round (toFloat height / Cfg.relMarkerDist) }
+        C.Bot ->
+          { x = at.x - round (toFloat width / Cfg.relMarkerDist)
+          , y = at.y + round (toFloat height / Cfg.relMarkerDist) }
+    circ foc linkSet =
+      let newLink = getNextLink cfg.selLink linkSet in
+      let isMain = cfg.focus == other foc in
+      let atts = if isMain then ["cursor" :> "pointer"] else [] in
+      let circleStyle = Circle.circleStyleExt atts (circCfg isMain) (circPos foc) in
+      if cfg.focus == other foc
+      then Html.div [circleStyle, Events.onClick (FocusLink newLink)] []
+      else Html.div [circleStyle] []
+
     relDivUp =
-      if D.member node.nodeId cfg.linkIn
-      then [Circle.drawCircle circCfgUp circUp]
-      else []
+      case D.get node.nodeId cfg.linkIn of
+          Just linkSet -> [circ C.Top linkSet]
+          Nothing -> []
     relDivDown =
-      if D.member node.nodeId cfg.linkOut
-      then [Circle.drawCircle circCfgDown circDown]
-      else []
+      case D.get node.nodeId cfg.linkOut of
+          Just linkSet -> [circ C.Bot linkSet]
+          Nothing -> []
+
   in
+
     Html.div [] (nodeDiv :: relDivUp ++ relDivDown)
 
 
@@ -265,6 +280,34 @@ drawLeaf cfg node at mark =
       ]
       [Html.p [] htmlLeaf]
 
+
+-- | Get the next link to focus on.
+getNextLink : Maybe C.Link -> S.Set C.Link -> C.Link
+getNextLink maySelLink linkSet =
+    let
+        err = "View.Tree.getNextLink: empty linkset"
+        takeFirst set =
+            case S.toList set of
+                x :: _ -> Just x
+                [] -> Nothing
+        result =
+            case maySelLink of
+                Nothing -> takeFirst linkSet
+                Just current ->
+                    Util.mappend
+                        (takeFirst <| S.filter (\link -> link > current) linkSet)
+                        (takeFirst linkSet)
+    in
+        case result of
+            Just x -> x
+            Nothing -> Debug.crash err
+
+
+other : C.Focus -> C.Focus
+other foc =
+    case foc of
+        C.Top -> C.Bot
+        C.Bot -> C.Top
 
 ---------------------------------------------------
 -- Lines

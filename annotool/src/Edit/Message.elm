@@ -146,9 +146,11 @@ update msg model =
             task = Task.succeed <| Many
                    [ SelectTree C.Top treeTop
                    , SelectTree C.Bot treeBot
+                   , SelectLink link
                    ]
         in
-            (model, Task.perform identity task)
+            ( model
+            , Task.perform identity task )
 
     Next -> (M.moveCursor True model, focusOnTurn model.focus)
 

@@ -3,6 +3,7 @@ module Edit.View.Circle exposing
    , defCircleCfg
    , drawCircle
    , circleStyle
+   , circleStyleExt
    )
 
 
@@ -38,7 +39,16 @@ drawCircle cfg at = Html.div [circleStyle cfg at] []
 
 
 circleStyle : CircleCfg -> Position -> Html.Attribute msg
-circleStyle cfg at = Atts.style
+circleStyle = circleStyleExt []
+
+
+-- | Extensible circle style
+circleStyleExt
+    :  List (String, String) -- ^ Additional style directives
+    -> CircleCfg
+    -> Position
+    -> Html.Attribute msg
+circleStyleExt sty cfg at = Atts.style <|
   [ "background-color" :> cfg.color
   , "opacity" :> cfg.opacity
   , "width" :> px cfg.width
@@ -47,7 +57,7 @@ circleStyle cfg at = Atts.style
   , "position" :> "absolute"
   , "left" :> px (at.x - cfg.width // 2)
   , "top" :> px (at.y - cfg.height // 2)
-  ]
+  ] ++ sty
 
 
 ---------------------------------------------------
