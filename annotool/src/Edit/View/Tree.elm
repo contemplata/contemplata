@@ -17,6 +17,7 @@ module Edit.View.Tree exposing
 import Char
 import List as L
 import Set as S
+import Dict as D
 import Focus as Lens
 import Tuple exposing (first, second)
 import Mouse exposing (Position)
@@ -33,6 +34,7 @@ import Config as Cfg
 import Edit.Core as C
 import Edit.Model as M
 import Edit.Message.Core exposing (Msg(..))
+import Edit.View.Circle as Circle
 
 
 ---------------------------------------------------
@@ -49,11 +51,29 @@ viewTree focus model =
     win = M.selectWin focus model
     treeId = M.getReprId focus win.tree model
     tree = M.getTree focus treeId model
+    file = Lens.get (M.fileLens focus) model
+
+    inTree treeId0 (treeId1, nodeId) =
+      if treeId0 == treeId1
+      then Just nodeId
+      else Nothing
+    getLinkNodes select =
+      S.fromList <|
+      L.filterMap (inTree treeId) <|
+      L.map select <|
+      D.keys file.linkSet
+
+    config =
+      { focus = focus
+      , selMain = win.selMain
+      , selAux = win.selAux
+      , linkIn = getLinkNodes second
+      , linkOut = getLinkNodes first
+      }
 
   in
 
-    drawTree
-      focus win.selMain win.selAux
+    drawTree config
       <| markMisplaced first
       <| positionTree (M.getPosition focus model)
       <| R.withWidth stdWidth Cfg.stdMargin tree
@@ -64,70 +84,75 @@ viewTree focus model =
 ---------------------------------------------------
 
 
+type alias TreeCfg =
+  { focus : C.Focus
+    -- ^ Which window is it in?
+  , selMain : Maybe C.NodeId
+    -- ^ Selected main
+  , selAux : S.Set C.NodeId
+    -- ^ Selected auxiliary
+  , linkIn : S.Set C.NodeId
+    -- ^ The set of node IDs with an in-going relation
+  , linkOut : S.Set C.NodeId
+    -- ^ The set of node IDs with an out-going relation
+  }
+
+
 drawTree
-   : C.Focus -- ^ Which window is it in?
-  -> Maybe C.NodeId -- ^ Selected main
-  -> S.Set C.NodeId -- ^ Selected auxiliaries
+   : TreeCfg
   -> R.Tree ((M.Node, Position), NodeTyp) -- ^ Tree to draw
   -> Html.Html Msg
-drawTree focus selMain selAux (R.Node ((node, pos), mark) subTrees) =
+drawTree cfg (R.Node ((node, pos), mark) subTrees) =
   let
     lineCfg = { defLineCfg
       | strokeWidth = 2
       , opacity = "0.7" }
-      -- , color = "gray" }
     drawForest forest = case forest of
       [] -> []
       t :: ts ->
-        drawTree focus selMain selAux t
+        drawTree cfg t
           :: viewLine lineCfg pos (second <| first <| R.label t)
           :: drawForest ts
   in
     Html.div []
-      (  drawNode node selMain selAux focus pos mark
+      (  drawNode cfg node pos mark
       :: drawForest subTrees )
 
 
 -- | Draw a tree node.
 drawNode
-   : M.Node
-  -> Maybe C.NodeId
-  -> S.Set C.NodeId
-  -> C.Focus
+   : TreeCfg
+  -> M.Node
   -> Position
   -> NodeTyp -- ^ Should be marked as misplaced?
   -> Html.Html Msg
-drawNode node =
+drawNode cfg node =
     case node of
-        M.Node r -> drawInternal r
-        M.Leaf r -> drawLeaf r
+        M.Node r -> drawInternal cfg r
+        M.Leaf r -> drawLeaf cfg r
 
 
 -- | Draw an internal tree node.
 drawInternal
-   : M.InternalNode
-  -> Maybe C.NodeId
-  -> S.Set C.NodeId
-  -> C.Focus
+   : TreeCfg
+  -> M.InternalNode
   -> Position
   -> NodeTyp -- ^ Should be marked as misplaced?
   -> Html.Html Msg
-drawInternal node selMain selAux focus at mark =
+drawInternal cfg node at mark =
   let
-    -- width = nodeWidth
-    intNode = M.Node node
-    width = stdWidth intNode
+    width = stdWidth (M.Node node)
     height = Cfg.nodeHeight
     -- nodeId = Lens.get M.nodeId node
     nodeId = node.nodeId
     auxStyle =
-      ( if S.member nodeId selAux || Just nodeId == selMain
+      ( if S.member nodeId cfg.selAux || Just nodeId == cfg.selMain
         then ["background-color" :> "#BC0000"]
         else if mark == Misplaced
         then ["background-color" :> "#EF597B"]
         else ["background-color" :> "#3C8D2F"] )
       ++
-      ( if Just nodeId == selMain
+      ( if Just nodeId == cfg.selMain
           then ["border" :> "solid", "border-color" :> "black"]
           else ["border" :> "none"] )
     htmlLeaf =
@@ -138,74 +163,83 @@ drawInternal node selMain selAux focus at mark =
                        [ Html.text <|
                          String.map Char.toUpper <|
                          String.left 2 en.name ]
---             Just (M.NodeEvent _) -> Html.sub [] [Html.text "EV"]
---             Just (M.NodeSignal _) -> Html.sub [] [Html.text "SI"]
---             Just (M.NodeTimex _) -> Html.sub [] [Html.text "TX"]
         ]
+
+    nodeDiv =
+      Html.div
+        [ nodeMouseDown cfg.focus (M.Node node)
+        , Atts.class "noselect"
+        , Atts.style <| auxStyle ++
+            [ "cursor" :> "pointer"
+            -- , "opacity" :> "1.0"
+
+            , "width" :> px width
+            , "height" :> px height
+            , "border-radius" :> "40%" -- "4px"
+            , "position" :> "absolute"
+
+            , "left" :> px (at.x - width // 2)
+            , "top" :> px (at.y - height // 2)
+
+            , "color" :> "white"
+            , "display" :> "flex"
+            , "align-items" :> "center"
+            , "justify-content" :> "center"
+            ]
+        ]
+        [Html.p [] htmlLeaf]
+
+    defCircleCfg = Circle.defCircleCfg
+    circleCfg = { defCircleCfg
+      | opacity = Cfg.relMarkerOpacity
+      , width = Cfg.relMarkerSize
+      , height = Cfg.relMarkerSize }
+    circUp =
+      { x = at.x - round (toFloat width / Cfg.relMarkerDist)
+      , y = at.y - round (toFloat height / Cfg.relMarkerDist) }
+    circDown =
+      { x = at.x - round (toFloat width / Cfg.relMarkerDist)
+      , y = at.y + round (toFloat height / Cfg.relMarkerDist) }
+    relDivUp =
+      if S.member node.nodeId cfg.linkIn
+      then [Circle.drawCircle circleCfg circUp]
+      else []
+    relDivDown =
+      if S.member node.nodeId cfg.linkOut
+      then [Circle.drawCircle circleCfg circDown]
+      else []
   in
-    Html.div
-      [ nodeMouseDown focus intNode
-      , Atts.class "noselect"
-      , Atts.style <| auxStyle ++
-          [ "cursor" :> "pointer"
-          -- , "opacity" :> "1.0"
-
-          , "width" :> px width
-          , "height" :> px height
-          , "border-radius" :> "40%" -- "4px"
-          , "position" :> "absolute"
-          -- , "left" :> px (at.x - nodeWidth // 2)
-          -- , "top" :> px (at.y - nodeHeight // 2)
-          , "left" :> px (at.x - width // 2)
-          , "top" :> px (at.y - height // 2)
-
-          , "color" :> "white"
-          , "display" :> "flex"
-          , "align-items" :> "center"
-          , "justify-content" :> "center"
-          ]
-      ]
-      [Html.p [] htmlLeaf]
-      -- htmlLeaf
---       [ Html.div
---           [ Atts.attribute "contenteditable" "true" ]
---           [ Html.text node.nodeVal ]
---       ]
+    Html.div [] (nodeDiv :: relDivUp ++ relDivDown)
 
 
 -- | Draw a leaf tree node.
 drawLeaf
-   : M.LeafNode
-  -> Maybe C.NodeId
-  -> S.Set C.NodeId
-  -> C.Focus
+   : TreeCfg
+  -> M.LeafNode
   -> Position
   -> NodeTyp -- ^ Should be marked as misplaced?
   -> Html.Html Msg
-drawLeaf node selMain selAux focus at mark =
+drawLeaf cfg node at mark =
   let
-    -- width = nodeWidth
-    leafNode = M.Leaf node
-    width = stdWidth leafNode
+    width = stdWidth (M.Leaf node)
     height = Cfg.nodeHeight
     nodeId = node.nodeId
     auxStyle =
-      ( if S.member nodeId selAux || Just nodeId == selMain
+      ( if S.member nodeId cfg.selAux || Just nodeId == cfg.selMain
         then ["background-color" :> "#BC0000"]
         else if mark == Misplaced
         then ["background-color" :> "#EF597B"]
         else ["background-color" :> "#1F5C9A"] ) -- "#1F9A6D"
       ++
-      ( if Just nodeId == selMain
+      ( if Just nodeId == cfg.selMain
           then ["border" :> "solid", "border-color" :> "black"]
           else ["border" :> "none"] )
     htmlLeaf =
         [ Html.text node.nodeVal
-        -- [ Html.text (sent node.leafPos).orth
         , Html.sub [] [Html.text <| toString node.leafPos] ]
   in
     Html.div
-      [ nodeMouseDown focus leafNode
+      [ nodeMouseDown cfg.focus (M.Leaf node)
       , Atts.class "noselect"
       , Atts.style <| auxStyle ++
           [ "cursor" :> "pointer"
@@ -227,11 +261,6 @@ drawLeaf node selMain selAux focus at mark =
           ]
       ]
       [Html.p [] htmlLeaf]
-      -- htmlLeaf
---       [ Html.div
---           [ Atts.attribute "contenteditable" "true" ]
---           [ Html.text node.nodeVal ]
---       ]
 
 
 ---------------------------------------------------

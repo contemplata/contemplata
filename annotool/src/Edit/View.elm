@@ -31,6 +31,7 @@ import Edit.Popup as Popup
 import Server
 import Server.Core as Server
 
+import Edit.View.Circle as Circle
 import Edit.View.Tree as Tree
 
 
@@ -1413,13 +1414,10 @@ viewLink_
   -> List (Html.Html Msg)
 viewLink_ model ((from, to), linkData) =
   let
-    -- top = model.top
     top = Lens.get (M.windowLens C.Top) model
-    -- bot = model.bot
     bot = Lens.get (M.windowLens C.Bot) model
     dim = model.dim
 
-    -- mainWidth = (dim.width * (100 - Cfg.sideSpace)) // 100
     mainWidth = (dim.width * dim.widthProp) // 100
     topHeight = (dim.height * dim.heightProp) // 100
     botHeight = dim.height - topHeight
@@ -1503,6 +1501,7 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
       , strokeWidth = Cfg.linkWidth
       , opacity = Cfg.linkOpacity }
 
+    defCircleCfg = Circle.defCircleCfg
     circleCfg = { defCircleCfg
       | opacity = Cfg.linkOpacity
       , width = Cfg.linkHeadSize
@@ -1524,7 +1523,7 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
         in
           [ Tree.viewLine lineCfg lin1.beg lin1.end
           , Tree.viewLine lineCfg lin2.beg lin2.end
-          , drawCircle circleCfg endCirc
+          , Circle.drawCircle circleCfg endCirc
           , drawLinkCircle model (from, to) midCirc ]
           ++ case lin3May of
                Nothing -> []
@@ -1540,6 +1539,7 @@ drawLinkCircle
     -> Html.Html Msg
 drawLinkCircle model link at =
   let
+    defCircleCfg = Circle.defCircleCfg
     cfg0 = { defCircleCfg
       | opacity = Cfg.linkCircleOpacity
       , color = Cfg.linkCircleColor
@@ -1550,52 +1550,13 @@ drawLinkCircle model link at =
       else cfg0
   in
     Html.div
-      [ circleStyle cfg at
+      [ Circle.circleStyle cfg at
       , Events.onClick (SelectLink link)
 
       -- @tabindex required to make the div register keyboard events
       -- , Atts.attribute "tabindex" "1"
       ]
       []
-
-
----------------------------------------------------
--- Circles
----------------------------------------------------
-
-
-type alias CircleCfg =
-  { color : String
-  , opacity : String
-  , height : Int
-  , width : Int
-  }
-
-
-defCircleCfg : CircleCfg
-defCircleCfg =
-  { color = "black"
-  , opacity = "1"
-  , height = 10
-  , width = 10
-  }
-
-
-drawCircle : CircleCfg -> Position -> Html.Html msg
-drawCircle cfg at = Html.div [circleStyle cfg at] []
-
-
-circleStyle : CircleCfg -> Position -> Html.Attribute msg
-circleStyle cfg at = Atts.style
-  [ "background-color" :> cfg.color
-  , "opacity" :> cfg.opacity
-  , "width" :> px cfg.width
-  , "height" :> px cfg.height
-  , "border-radius" :> "50%"
-  , "position" :> "absolute"
-  , "left" :> px (at.x - cfg.width // 2)
-  , "top" :> px (at.y - cfg.height // 2)
-  ]
 
 
 ---------------------------------------------------

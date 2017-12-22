@@ -15,6 +15,11 @@ module Config exposing
   , menuHelpMaxWidth
   , menuPadding
   , menuHelpMargin
+
+  -- Relation markers
+  , relMarkerOpacity
+  , relMarkerSize
+  , relMarkerDist
   )
 
 
@@ -191,6 +196,24 @@ linkCircleSelectColor = "#BC0000"
 
 linkCircleRadius : Int
 linkCircleRadius = 25
+
+
+---------------------------------------------------
+-- Relation markers
+---------------------------------------------------
+
+
+relMarkerOpacity : String
+relMarkerOpacity = "0.4"
+
+
+relMarkerSize : Int
+relMarkerSize = 10
+
+
+-- | Distance from the node, relative to its width and height
+relMarkerDist : Float
+relMarkerDist = 1.5
 
 
 ---------------------------------------------------
