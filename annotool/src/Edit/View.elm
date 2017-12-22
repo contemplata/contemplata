@@ -1514,16 +1514,17 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
         let
           trimLine = trimBeg Cfg.linkTailDist << trimEnd Cfg.linkHeadDist
           midCirc = {x = (p.x + q.x) // 2, y = (p.y + q.y) // 2}
-          endCirc = (trimEnd Cfg.linkHeadDist2 {beg=p, end=q}).end
+          -- endCirc = (trimEnd Cfg.linkHeadDist2 {beg=p, end=q}).end
           lin1 = trimLine <| {beg=p, end=midCirc}
-          lin2 = trimLine <| {beg=midCirc, end=endCirc}
+          -- lin2 = trimLine <| {beg=midCirc, end=endCirc}
+          lin2 = trimLine <| {beg=midCirc, end=q}
           lin3May = case signPos of
             Nothing -> Nothing
             Just z -> Just <| trimLine <| {beg=midCirc, end=z}
         in
           [ Tree.viewLine lineCfg lin1.beg lin1.end
           , Tree.viewLine lineCfg lin2.beg lin2.end
-          , Circle.drawCircle circleCfg endCirc
+          -- , Circle.drawCircle circleCfg endCirc
           , drawLinkCircle model (from, to) midCirc ]
           ++ case lin3May of
                Nothing -> []

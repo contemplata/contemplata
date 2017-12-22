@@ -207,8 +207,12 @@ relMarkerOpacity : String
 relMarkerOpacity = "0.4"
 
 
-relMarkerSize : Int
-relMarkerSize = 10
+-- Argument tells whether it's the main marker or not.
+relMarkerSize : Bool -> Int
+relMarkerSize isMain =
+    if isMain
+    then 15
+    else 10
 
 
 -- | Distance from the node, relative to its width and height

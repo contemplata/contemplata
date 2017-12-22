@@ -190,10 +190,11 @@ drawInternal cfg node at mark =
         [Html.p [] htmlLeaf]
 
     defCircleCfg = Circle.defCircleCfg
-    circleCfg = { defCircleCfg
+    circleCfg isMain =
+      { defCircleCfg
       | opacity = Cfg.relMarkerOpacity
-      , width = Cfg.relMarkerSize
-      , height = Cfg.relMarkerSize }
+      , width = Cfg.relMarkerSize isMain
+      , height = Cfg.relMarkerSize isMain }
     circUp =
       { x = at.x - round (toFloat width / Cfg.relMarkerDist)
       , y = at.y - round (toFloat height / Cfg.relMarkerDist) }
@@ -202,11 +203,11 @@ drawInternal cfg node at mark =
       , y = at.y + round (toFloat height / Cfg.relMarkerDist) }
     relDivUp =
       if S.member node.nodeId cfg.linkIn
-      then [Circle.drawCircle circleCfg circUp]
+      then [Circle.drawCircle (circleCfg (cfg.focus == C.Bot)) circUp]
       else []
     relDivDown =
       if S.member node.nodeId cfg.linkOut
-      then [Circle.drawCircle circleCfg circDown]
+      then [Circle.drawCircle (circleCfg (cfg.focus == C.Top)) circDown]
       else []
   in
     Html.div [] (nodeDiv :: relDivUp ++ relDivDown)
