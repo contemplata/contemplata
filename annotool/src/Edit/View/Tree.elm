@@ -148,12 +148,22 @@ drawInternal cfg node at mark =
     height = Cfg.nodeHeight
     -- nodeId = Lens.get M.nodeId node
     nodeId = node.nodeId
-    auxStyle =
-      ( if S.member nodeId cfg.selAux || Just nodeId == cfg.selMain
-        then ["background-color" :> "#BC0000"]
+
+    hasType x =
+        case x.nodeTyp of
+            Nothing -> False
+            _ -> True
+    nodeColor =
+        if S.member nodeId cfg.selAux || Just nodeId == cfg.selMain
+        then Cfg.nodeSelectColor
+        else if hasType node
+        then Cfg.nodeColor (Maybe.map .name node.nodeTyp)
         else if mark == Misplaced
-        then ["background-color" :> "#EF597B"]
-        else ["background-color" :> "#3C8D2F"] )
+        then Cfg.nodeMisplacedColor
+        else Cfg.nodeRegularColor
+
+    auxStyle =
+      [ "background-color" :> nodeColor ]
       ++
       ( if Just nodeId == cfg.selMain
           then ["border" :> "solid", "border-color" :> "black"]

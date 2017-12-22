@@ -20,6 +20,13 @@ module Config exposing
   , relMarkerOpacity
   , relMarkerSize
   , relMarkerDist
+
+  -- Node colors
+  , nodeColor
+  , nodeRegularColor
+  , nodeTypedColor
+  , nodeSelectColor
+  , nodeMisplacedColor
   )
 
 
@@ -218,6 +225,39 @@ relMarkerSize isMain =
 -- | Distance from the node, relative to its width and height
 relMarkerDist : Float
 relMarkerDist = 1.5
+
+
+---------------------------------------------------
+-- Node colors
+---------------------------------------------------
+
+
+nodeRegularColor : String
+nodeRegularColor = "#3C8D2F"
+
+
+nodeSelectColor : String
+nodeSelectColor = "#BC0000"
+
+
+nodeMisplacedColor : String
+nodeMisplacedColor = "#EF597B"
+
+
+nodeTypedColor : String -> String
+nodeTypedColor typ = "#E17000"
+--     case typ of
+--         "Event"  -> "#CC6600"
+--         "Timex"  -> "#18B500"
+--         "Signal" -> "#5C00E5"
+--         _ -> nodeRegularColor
+
+
+-- | Node color, based on its type
+nodeColor : Maybe String -> String
+nodeColor mayTyp =
+    Maybe.withDefault nodeRegularColor
+        (Maybe.map nodeTypedColor mayTyp)
 
 
 ---------------------------------------------------
