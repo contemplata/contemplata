@@ -144,7 +144,7 @@ drawInternal
   -> Html.Html Msg
 drawInternal cfg node at mark =
   let
-    width = stdWidth (M.Node node)
+    width = intWidth node
     height = Cfg.nodeHeight
     -- nodeId = Lens.get M.nodeId node
     nodeId = node.nodeId
@@ -239,7 +239,7 @@ drawLeaf
   -> Html.Html Msg
 drawLeaf cfg node at mark =
   let
-    width = stdWidth (M.Leaf node)
+    width = leafWidth node
     height = Cfg.nodeHeight
     nodeId = node.nodeId
     auxStyle =
@@ -382,15 +382,34 @@ viewLine cfg beg end =
 ---------------------------------------------------
 
 
+-- | Width of an internal node.
+intWidth : M.InternalNode -> Int
+intWidth r =
+  let
+    sub =
+      case r.nodeTyp of
+        Nothing -> ""
+        Just en -> String.left 2 en.name
+    (txt, ix) = (r.nodeVal, sub)
+  in
+    max 30 <| String.length txt * 11 + String.length ix * 7
+
+
+-- | Width of a leaf node.
+leafWidth : M.LeafNode -> Int
+leafWidth r =
+  let
+    (txt, ix) = (r.nodeVal, toString r.leafPos)
+  in
+    max 30 <| String.length txt * 10 + String.length ix * 7
+
+
 -- | Width of a node.
 stdWidth : M.Node -> Int
 stdWidth x =
-  let
-    (txt, ix) = case x of
-      M.Node r -> (r.nodeVal, "")
-      M.Leaf r -> (r.nodeVal, toString r.leafPos)
-  in
-    max 30 <| String.length txt * 10 + String.length ix * 6
+  case x of
+    M.Node r -> intWidth r
+    M.Leaf r -> leafWidth r
 
 
 ---------------------------------------------------
