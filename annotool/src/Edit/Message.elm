@@ -139,6 +139,17 @@ update msg model =
             (Dom.focus target)
         )
 
+    FocusLink link ->
+        let
+            treeTop = Tuple.first <| Tuple.first link
+            treeBot = Tuple.first <| Tuple.second link
+            task = Task.succeed <| Many
+                   [ SelectTree C.Top treeTop
+                   , SelectTree C.Bot treeBot
+                   ]
+        in
+            (model, Task.perform identity task)
+
     Next -> (M.moveCursor True model, focusOnTurn model.focus)
 
     Previous -> (M.moveCursor False model, focusOnTurn model.focus)

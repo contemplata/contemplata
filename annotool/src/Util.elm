@@ -3,11 +3,14 @@ module Util exposing
     , intercalate, mapAccumL, average, single, px, isJust, unions
     -- * JSON
     , encodeMaybe
+    -- * Dict
+    , fromListWith
     )
 
 
 import List as L
 import Set as S
+import Dict as D
 import Json.Encode as Encode
 
 
@@ -151,3 +154,25 @@ encodeMaybe enc may =
     case may of
         Nothing -> Encode.null
         Just x -> enc x
+
+
+---------------------------------------------------
+-- Dict
+---------------------------------------------------
+
+
+fromListWith
+     : (a -> a -> a)
+    -> List (comparable, a)
+    -> D.Dict comparable a
+fromListWith f xs =
+    let
+        update newVal mayOldVal =
+            case mayOldVal of
+                Nothing -> Just <| newVal
+                Just oldVal -> Just <| f oldVal newVal
+    in
+        case xs of
+            [] -> D.empty
+            (key, val) :: tl ->
+                D.update key (update val) (fromListWith f tl)

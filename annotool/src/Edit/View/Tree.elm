@@ -53,14 +53,14 @@ viewTree focus model =
     tree = M.getTree focus treeId model
     file = Lens.get (M.fileLens focus) model
 
-    inTree treeId0 (treeId1, nodeId) =
+    inTree treeId0 ((treeId1, nodeId), link) =
       if treeId0 == treeId1
-      then Just nodeId
+      then Just (nodeId, S.singleton link)
       else Nothing
     getLinkNodes select =
-      S.fromList <|
+      Util.fromListWith S.union <|
       L.filterMap (inTree treeId) <|
-      L.map select <|
+      L.map (\link -> (select link, link)) <|
       D.keys file.linkSet
 
     config =
@@ -91,9 +91,9 @@ type alias TreeCfg =
     -- ^ Selected main
   , selAux : S.Set C.NodeId
     -- ^ Selected auxiliary
-  , linkIn : S.Set C.NodeId
+  , linkIn : D.Dict C.NodeId (S.Set C.Link)
     -- ^ The set of node IDs with an in-going relation
-  , linkOut : S.Set C.NodeId
+  , linkOut : D.Dict C.NodeId (S.Set C.Link)
     -- ^ The set of node IDs with an out-going relation
   }
 
@@ -195,6 +195,8 @@ drawInternal cfg node at mark =
       | opacity = Cfg.relMarkerOpacity
       , width = Cfg.relMarkerSize isMain
       , height = Cfg.relMarkerSize isMain }
+    circCfgUp = circleCfg (cfg.focus == C.Bot)
+    circCfgDown = circleCfg (cfg.focus == C.Top)
     circUp =
       { x = at.x - round (toFloat width / Cfg.relMarkerDist)
       , y = at.y - round (toFloat height / Cfg.relMarkerDist) }
@@ -202,12 +204,12 @@ drawInternal cfg node at mark =
       { x = at.x - round (toFloat width / Cfg.relMarkerDist)
       , y = at.y + round (toFloat height / Cfg.relMarkerDist) }
     relDivUp =
-      if S.member node.nodeId cfg.linkIn
-      then [Circle.drawCircle (circleCfg (cfg.focus == C.Bot)) circUp]
+      if D.member node.nodeId cfg.linkIn
+      then [Circle.drawCircle circCfgUp circUp]
       else []
     relDivDown =
-      if S.member node.nodeId cfg.linkOut
-      then [Circle.drawCircle (circleCfg (cfg.focus == C.Top)) circDown]
+      if D.member node.nodeId cfg.linkOut
+      then [Circle.drawCircle circCfgDown circDown]
       else []
   in
     Html.div [] (nodeDiv :: relDivUp ++ relDivDown)

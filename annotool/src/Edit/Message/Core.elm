@@ -29,6 +29,7 @@ type Msg
     -- ^ Select tree (or join if with CTRL);
   | SelectToken C.Focus C.PartId Int
     -- ^ Select token; the last argument represents the token ID.
+  | FocusLink C.Link
   | SelectLink C.Link
   | Focus C.Focus
   | Resize Window.Size -- ^ The height and width of the entire window
