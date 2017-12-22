@@ -519,6 +519,8 @@ update msg model =
         ( M.moveToFile model.focus fid model
         , focusOnTurn C.Top )
 
+    SwapWorkspaces -> idle <| M.swapWorkspaces model
+
     Compare ->
         ( compare model
         , Cmd.batch [focusOnTurn C.Top, focusOnTurn C.Bot]

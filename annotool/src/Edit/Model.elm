@@ -85,7 +85,7 @@ module Edit.Model exposing
   , getFileId
   -- Various:
   , setTreeCheck, setForestCheck, setSentCheck, getWords, subTreeAt, nodesIn
-  , swapFile, moveToFirst, moveToTree, moveToFile
+  , swapFile, swapWorkspaces, moveToFirst, moveToTree, moveToFile
   -- JSON decoding:
   , treeMapDecoder, fileDecoder, treeDecoder, sentDecoder, nodeDecoder
   -- JSON encoding:
@@ -1506,6 +1506,19 @@ swapFile focus model =
     in
         let files = model.fileList ++ model.fileList
         in  moveToFile focus (findNext files) model
+
+
+-- | Swap the top and bottom workspaces
+swapWorkspaces : Model -> Model
+swapWorkspaces =
+    let
+        swap x = {x | top = x.bot, bot = x.top}
+        swapInfos model =
+            let newFileList = L.map (onSecond swap) model.fileList
+            in  {model | fileList = newFileList}
+        onSecond f (x, y) = (x, f y)
+    in
+        swapInfos << swap
 
 
 ---------------------------------------------------

@@ -26,12 +26,22 @@ in
     , _2 = simple {name = "Add"}
     }
   , { _1 =
-      { keyCmd = [{keyCode=83, char="s"}] : Optional ./KeyboardShortcut.typ
+      -- { keyCmd = [{keyCode=83, char="s"}] : Optional ./KeyboardShortcut.typ
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
       , lineCmd = ["save"] : Optional Text
       , menuCmd = ["Save"] : Optional Text
-      , withCtrl = [True] : Optional Bool
+      -- , withCtrl = [True] : Optional Bool
+      , withCtrl = [] : Optional Bool
       , help = ["Save the file(s)"] : Optional Text }
     , _2 = simple {name = "SaveFile"}
+    }
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = [] : Optional Text
+      , menuCmd = ["Menu"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Go to the main menu"] : Optional Text }
+    , _2 = simple {name = "Quit"}
     }
   , { _1 =
       { keyCmd = [] : Optional ./KeyboardShortcut.typ
@@ -168,5 +178,13 @@ in
       , withCtrl = [] : Optional Bool
       , help = ["Mark the selected node as event"] : Optional Text }
     , _2 = simple {name = "MkEvent"}
+    }
+  , { _1 =
+      { keyCmd = [{keyCode=87, char="w"}] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["swap"] : Optional Text
+      , menuCmd = ["Swap"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Swap the workspaces"] : Optional Text }
+    , _2 = simple {name = "SwapWorkspaces"}
     }
   ]

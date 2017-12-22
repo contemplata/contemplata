@@ -107,6 +107,7 @@ type Msg
   | ChangeAnnoLevelTo C.AnnoLevel
   | SwapFile
   | SwapFileTo C.FileId
+  | SwapWorkspaces
   | Compare
   | Dummy
   -- -- | Goto C.Addr -- ^ Move to a given node in the focused window
@@ -139,6 +140,7 @@ msgDecoder =
         , simple DeleteTree "DeleteTree"
         , simple Add "Add"
         , simple SaveFile "SaveFile"
+        , simple Quit "Quit"
         , simple (ParseRaw False) "ParseRaw"
         , simple (ParseRaw True) "ParseRawPreproc"
         , simple (ParseSent Server.Stanford) "ParseSentStanford"
@@ -156,6 +158,7 @@ msgDecoder =
         , simple (MkEntity "Signal") "MkSignal"
         , simple (MkEntity "Timex") "MkTimex"
         , simple (MkEntity "Event") "MkEvent"
+        , simple SwapWorkspaces "SwapWorkspaces"
         , Decode.value |> Decode.andThen
             ( \val ->
                   let msg = "Unknown message: " ++ Encode.encode 0 val

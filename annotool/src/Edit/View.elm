@@ -667,18 +667,19 @@ viewMenu model = -- fileName =
 --       , (emphasize 0 "Timex", MkTimex, Just "Mark (or unmark) the selected node as timex") ]
 
     mkMenuElem = Cmd.mkMenuElem model.annoConfig model.ctrl
-    segmentationCommands = Util.catMaybes <| List.map mkMenuElem
+    mkMenuCommands = Util.catMaybes << List.map mkMenuElem
+    segmentationCommands =
         [ ParseRaw False, ParseRaw True
         , SplitTree, SplitBegin
         , ConcatWords
         ]
-    syntaxCommands = Util.catMaybes <| List.map mkMenuElem
+    syntaxCommands =
         [ Dummy
         , ParseSent Server.Stanford
         , ParseSentPos Server.Stanford
         , Delete, DeleteTree, Add
         ]
-    temporalCommands = Util.catMaybes <| List.map mkMenuElem
+    temporalCommands =
         [ MkEntity "Event"
         , MkEntity "Signal"
         , MkEntity "Timex"
@@ -693,7 +694,6 @@ viewMenu model = -- fileName =
           else Html.span [Atts.style ["color" :> "gray"]] [Html.text (toString level)]
         ]
     levelPart = Html.span [] <|
-        -- Util.intercalate (Html.text " ")
         [ Html.text "|"
         , levelElem C.Segmentation
         , levelElem C.Syntax
@@ -711,26 +711,8 @@ viewMenu model = -- fileName =
         , "left" :> px 5
         ]
       ] <|
-        [ Cmd.mkMenuItem Quit
-              (Just "Go to the main menu")
-              (plainText "Menu")
---         , Html.div
---               [ Atts.style Cmd.menuItemStyle
---               , Atts.title "Go to the main menu" ]
---               [ Html.a
---                     [Atts.attribute "href" "."]
---                     [plainText "Menu"]
---               ]
-        , Cmd.mkMenuItem
-              SaveFile
-              (Just "Save the entire current file")
-              (plainText "Save")
-        , levelPart
---         , Cmd.mkMenuItem
---               ChangeAnnoLevel
---               (Just "Click to change the annotation level")
---               (plainText <| "| " ++ annoLevel ++ " |")
-        ] ++
+        mkMenuCommands [Quit, SaveFile, SwapWorkspaces] ++
+        [levelPart] ++ mkMenuCommands
         ( if model.annoLevel == C.Temporal
           then temporalCommands
           else if model.annoLevel == C.Segmentation
