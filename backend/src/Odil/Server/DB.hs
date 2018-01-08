@@ -267,7 +267,7 @@ saveFile fid meta file = do
   storeSaveFile fid file
 
 
--- | Resave file. Metadata is copied if the file already exited, otherwise an
+-- | Resave file. Metadata is copied if the file already existed, otherwise an
 -- exception is raised.
 reSaveFile :: FileId -> File -> DBT ()
 reSaveFile fid file = do
@@ -328,6 +328,7 @@ removeFile fileId = do
 --
 -- Meta-related
 ---------------------------------------
+
 
 -- | Load a file from a DB.
 loadMeta :: FileId -> DBT FileMeta

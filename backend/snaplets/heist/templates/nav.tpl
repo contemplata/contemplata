@@ -19,6 +19,9 @@
             <a href="admin/files">Files</a>
           </li>
           <li>
+            <a href="admin/upload">Upload</a>
+          </li>
+          <li>
             <a href="admin/users">Users</a>
           </li>
         </ifAdmin>

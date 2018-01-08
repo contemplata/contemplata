@@ -14,6 +14,7 @@ module Handler.Admin
 , fileChangeAccessAnnoHandler
 , fileChangeStatusHandler
 , fileRemoveHandler
+, fileUploadHandler
 
 -- * Users
 , usersHandler
@@ -28,19 +29,23 @@ module Handler.Admin
 
 import           Control.Monad.IO.Class (liftIO, MonadIO)
 import           Control.Monad.Trans.Class (lift)
-import           Control.Monad (guard, (<=<))
+import           Control.Monad (when, guard, (<=<))
+-- import qualified Control.Error as Err
 
+import qualified Data.Maybe as Maybe
 import qualified Data.Set as S
 import qualified Data.List as L
 import qualified Data.Vector as V
 import qualified Data.Map.Strict as M
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BLS
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Encoding as T
 import qualified Data.Configurator as Cfg
 import           Data.Map.Syntax ((##))
+import qualified Data.Aeson as JSON
 
 
 import qualified Snap as Snap
@@ -56,6 +61,7 @@ import           Text.Digestive.Heist (bindDigestiveSplices)
 import qualified Text.Digestive.Heist as H
 import qualified Text.Digestive.View as D
 import qualified Text.Digestive.Snap as D
+import qualified Text.Digestive.Types as DT
 
 import qualified Dhall as Dhall
 
@@ -255,6 +261,98 @@ copyFileForm levels = FileId
 
 
 ---------------------------------------
+-- File removal handler
+---------------------------------------
+
+
+fileRemoveHandler :: AppHandler ()
+fileRemoveHandler = ifAdmin $ do
+
+  Just fileIdBS <- Snap.getParam "filename"
+  let fileIdTxt = T.decodeUtf8 fileIdBS
+  Just fileId <- return $ decodeFileId fileIdTxt
+
+  (rmView, rmData) <- D.runForm "remove-file-form" removeFileForm
+
+  case rmData of
+    Nothing -> return ()
+    Just () -> do
+      liftDB $ DB.removeFile fileId
+      redirectToFiles
+
+  let localSplices = do
+        "fileName" ## return
+          [X.TextNode fileIdTxt]
+
+  Heist.heistLocal
+    ( bindDigestiveSplices rmView
+    . bindSplices localSplices )
+    (Heist.render "admin/remove")
+
+
+-- | File removal form.  Nothing there for the moment.
+removeFileForm :: Form T.Text AppHandler ()
+removeFileForm = pure ()
+
+
+---------------------------------------
+-- File upload handler
+---------------------------------------
+
+
+fileUploadHandler :: AppHandler ()
+fileUploadHandler = ifAdmin $ do
+
+  -- TODO: the fragment of code below is also in the `fileHandler`
+  snapCfg <- Snap.getSnapletUserConfig
+  levels <- liftIO $ do
+    Just cfgPath <- Cfg.lookup snapCfg "anno-config"
+    cfg <- Dhall.input Dhall.auto cfgPath
+    return . map TL.toStrict . V.toList . AnnoCfg.annoLevels $ cfg
+
+  (uploadView, uploadData) <- D.runForm
+    "upload-file-form"
+    (uploadFileForm levels)
+
+  case uploadData of
+    Just (fileId, file) -> liftDB $ do
+      DB.saveFile fileId defaultMeta file
+    _ -> return ()
+
+--   let localSplices = do
+--         "fileName" ## return
+--           [X.TextNode fileIdTxt]
+
+  Heist.heistLocal
+    ( bindDigestiveSplices uploadView )
+    -- . bindSplices localSplices )
+    (Heist.render "admin/upload")
+
+
+-- data Upload = Upload
+--   { filePath :: }
+
+
+-- | Upload file form.
+uploadFileForm :: [T.Text] -> Form T.Text AppHandler (FileId, File)
+uploadFileForm levels = (,)
+  <$> D.validateM checkNewFileId (copyFileForm levels)
+  <*> "file-path" .: D.validateM checkFile D.file
+  where
+    checkFile = \case
+      Nothing -> return $ DT.Error "You must specify a file to upload"
+      Just filePath -> liftDB $ do
+        cts <- liftIO $ BLS.readFile filePath
+        return $ case JSON.eitherDecode' cts of
+          Left err -> DT.Error . T.pack $ "Invalid file format: " ++ err
+          Right file -> DT.Success file
+    checkNewFileId fileId = liftDB $ do
+      DB.hasFile fileId >>= return . \case
+        True -> DT.Error "File ID already exists in the database"
+        False -> DT.Success fileId
+
+
+---------------------------------------
 -- File modification handlers
 ---------------------------------------
 
@@ -328,41 +426,6 @@ redirectToFiles = do
   Snap.redirect $ BS.concat
     [ hrefBase
     , middlePath ]
-
-
----------------------------------------
--- File removal handler
----------------------------------------
-
-
-fileRemoveHandler :: AppHandler ()
-fileRemoveHandler = ifAdmin $ do
-
-  Just fileIdBS <- Snap.getParam "filename"
-  let fileIdTxt = T.decodeUtf8 fileIdBS
-  Just fileId <- return $ decodeFileId fileIdTxt
-
-  (rmView, rmData) <- D.runForm "remove-file-form" removeFileForm
-
-  case rmData of
-    Nothing -> return ()
-    Just () -> do
-      liftDB $ DB.removeFile fileId
-      redirectToFiles
-
-  let localSplices = do
-        "fileName" ## return
-          [X.TextNode fileIdTxt]
-
-  Heist.heistLocal
-    ( bindDigestiveSplices rmView
-    . bindSplices localSplices )
-    (Heist.render "admin/remove")
-
-
--- | File removal form.  Nothing there for the moment.
-removeFileForm :: Form T.Text AppHandler ()
-removeFileForm = pure ()
 
 
 ---------------------------------------
