@@ -29,6 +29,7 @@ module Odil.Server.DB
 , loadFile
 , copyFile
 , renameFile
+, removeFile
 -- ** Meta-related
 , defaultMeta
 , loadMeta
@@ -312,6 +313,16 @@ copyFile from to = do
   storeCopyFile from to
 
 
+-- | Remove a DB file.
+removeFile :: FileId -> DBT ()
+removeFile fileId = do
+  reg <- readReg
+  unless (regHasFile fileId reg)
+    (Err.throwE "removeFile: file ID does not exist")
+  writeReg . regRemFile fileId $ reg
+  storeRemoveFile fileId
+
+
 ---------------------------------------
 -- Top-level contd.
 --
@@ -481,6 +492,13 @@ storeCopyFile from to = do
   pathFrom <- storeFilePath from
   pathTo <- storeFilePath to
   liftIO $ Dir.copyFile pathFrom pathTo
+
+
+-- | Remove a given file from the store.
+storeRemoveFile :: FileId -> DBT ()
+storeRemoveFile fileId = do
+  path <- storeFilePath fileId
+  liftIO $ Dir.removeFile path
 
 
 storeFilePath :: FileId -> DBT FilePath

@@ -5,6 +5,7 @@
     <div class="panel-body">
        <p>File ID: <fileName/></p>
        <p>Status: <fileStatus/></p>
+       <p><removeFile/></p>
     </div>
   </div>
 

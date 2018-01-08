@@ -13,6 +13,7 @@ module Handler.Admin
 , fileRemoveAnnoHandler
 , fileChangeAccessAnnoHandler
 , fileChangeStatusHandler
+, fileRemoveHandler
 
 -- * Users
 , usersHandler
@@ -192,6 +193,13 @@ fileHandler = ifAdmin $ do
             , ("title", "Click to change") ]
             [X.TextNode (T.pack . show $ fileStatus metaInfo)]
           ]
+        "removeFile" ## return
+          [ X.Element "a"
+            [ ("href",
+               T.intercalate "/" ["admin", "file", fileIdTxt, "remove"])
+            , ("title", "Click to remove the file from the database") ]
+            [X.TextNode "Remove"]
+          ]
         "currentAnnotators" ## return
           (map (mkElem fileIdTxt) annotations)
 
@@ -306,6 +314,55 @@ redirectToFile fileNameBS = do
     [ hrefBase
     , middlePath
     , fileNameBS ]
+
+
+redirectToFiles :: AppHandler ()
+redirectToFiles = do
+  hrefBase <- do
+    cfg <- Snap.getSnapletUserConfig
+    liftIO $ MyCfg.fromCfg' cfg "href-base"
+  let middlePath =
+        ( if "/" `BS.isSuffixOf` hrefBase
+          then "" else "/" )
+        `BS.append` "admin/files"
+  Snap.redirect $ BS.concat
+    [ hrefBase
+    , middlePath ]
+
+
+---------------------------------------
+-- File removal handler
+---------------------------------------
+
+
+fileRemoveHandler :: AppHandler ()
+fileRemoveHandler = ifAdmin $ do
+
+  Just fileIdBS <- Snap.getParam "filename"
+  let fileIdTxt = T.decodeUtf8 fileIdBS
+  Just fileId <- return $ decodeFileId fileIdTxt
+
+  (rmView, rmData) <- D.runForm "remove-file-form" removeFileForm
+
+  case rmData of
+    Nothing -> return ()
+    Just () -> do
+      liftDB $ DB.removeFile fileId
+      redirectToFiles
+
+  let localSplices = do
+        "fileName" ## return
+          [X.TextNode fileIdTxt]
+
+  Heist.heistLocal
+    ( bindDigestiveSplices rmView
+    . bindSplices localSplices )
+    (Heist.render "admin/remove")
+
+
+-- | File removal form.  Nothing there for the moment.
+removeFileForm :: Form T.Text AppHandler ()
+removeFileForm = pure ()
 
 
 ---------------------------------------
