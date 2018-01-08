@@ -68,6 +68,7 @@ import qualified Auth as MyAuth
 import qualified Config as MyCfg
 import           Application
 import           Handler.Utils (liftDB)
+import           Util.Digestive (runForm)
 
 
 ---------------------------------------
@@ -148,8 +149,9 @@ fileHandler = ifAdmin $ do
     Just cfgPath <- Cfg.lookup snapCfg "anno-config"
     cfg <- Dhall.input Dhall.auto cfgPath
     return . map TL.toStrict . V.toList . AnnoCfg.annoLevels $ cfg
-  (copyView, copyName) <- D.runForm
+  (copyView, copyName) <- runForm
     "copy-file-form"
+    "copy_button"
     (copyFileForm levels)
 
   case copyName of
@@ -168,8 +170,9 @@ fileHandler = ifAdmin $ do
     cfg <- Snap.getSnapletUserConfig
     passPath <- liftIO $ MyCfg.fromCfg' cfg "password" -- "pass.json"
     liftIO $ Users.listUsers passPath
-  (annoView, annoName) <- D.runForm
+  (annoView, annoName) <- runForm
     "add-anno-form"
+    "add_button"
     (addAnnoForm allAnnotators)
 
   case annoName of

@@ -32,7 +32,7 @@
 
       <annoForm id="add-anno-form" class="navbar-form navbar-left">
         <!--annoInputSubmit class="btn btn-primary btn-block" value="Add"/-->
-        <annoInputSubmit class="btn btn-primary" value="Add"/>
+        <annoInputSubmit class="btn btn-primary" name="add_button" value="Add"/>
         <annoInputSelect ref="anno-name" class="form-control" required autofocus/>
       </annoForm>
 
@@ -64,7 +64,7 @@
           <copyInputText ref="file-id" id="file-id" class="form-control" required/>
         </div>
 
-        <copyInputSubmit class="btn btn-primary" value="Create copy"/>
+        <copyInputSubmit class="btn btn-primary" name="copy_button" value="Create copy"/>
       </copyForm>
     </div>
   </div>
