@@ -48,6 +48,7 @@ module Odil.Server.DB
 , Register
 , saveJSON
 , loadJSON
+, storeFilePath
 ) where
 
 

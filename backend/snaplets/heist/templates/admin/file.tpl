@@ -6,6 +6,7 @@
        <p>File ID: <fileName/></p>
        <p>Status: <fileStatus/></p>
        <p><removeFile/></p>
+       <p><downloadFile/></p>
     </div>
   </div>
 

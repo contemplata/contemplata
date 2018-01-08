@@ -15,6 +15,7 @@ module Handler.Admin
 , fileChangeStatusHandler
 , fileRemoveHandler
 , fileUploadHandler
+, fileDownloadHandler
 
 -- * Users
 , usersHandler
@@ -51,6 +52,7 @@ import qualified Data.Aeson as JSON
 import qualified Snap as Snap
 import qualified Snap.Snaplet.Auth as Auth
 import qualified Snap.Snaplet.Heist as Heist
+import qualified Snap.Util.FileServe as FileServe
 import           Heist.Interpreted (bindSplices, Splice)
 import           Heist (getParamNode, Splices)
 import qualified Text.XmlHtml as X
@@ -206,6 +208,13 @@ fileHandler = ifAdmin $ do
             , ("title", "Click to remove the file from the database") ]
             [X.TextNode "Remove"]
           ]
+        "downloadFile" ## return
+          [ X.Element "a"
+            [ ("href",
+               T.intercalate "/" ["admin", "file", "download", fileIdTxt])
+            , ("title", "Click to see the raw JSON file") ]
+            [X.TextNode "Show JSON"]
+          ]
         "currentAnnotators" ## return
           (map (mkElem fileIdTxt) annotations)
 
@@ -293,6 +302,19 @@ fileRemoveHandler = ifAdmin $ do
 -- | File removal form.  Nothing there for the moment.
 removeFileForm :: Form T.Text AppHandler ()
 removeFileForm = pure ()
+
+
+---------------------------------------
+-- File dowload handler
+---------------------------------------
+
+
+fileDownloadHandler :: AppHandler ()
+fileDownloadHandler = ifAdmin $ do
+  Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
+  Just fileId <- return $ decodeFileId fileIdTxt
+  filePath <- liftDB $ DB.storeFilePath fileId
+  FileServe.serveFileAs "text/json" filePath
 
 
 ---------------------------------------
