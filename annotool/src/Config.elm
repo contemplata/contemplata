@@ -6,7 +6,8 @@ module Config exposing
   , sideDivName
   , popupDivTemp
   , dmzSize, linkDasharray, linkWidth, linkOpacity
-  , linkCircleOpacity, linkCircleColor, linkCircleRadius, linkCircleSelectColor
+  , linkCircleOpacity, linkCircleColor, linkCircleRadius
+  , linkCircleSelectColor, linkSelectWidth
   , linkHeadSize, linkHeadDist, linkHeadDist2, linkTailDist
   -- , socketServer, socketServerAlt
   -- Main menu
@@ -199,6 +200,10 @@ linkCircleColor = "grey"
 
 linkCircleSelectColor : String
 linkCircleSelectColor = "#BC0000"
+
+
+linkSelectWidth : Int
+linkSelectWidth = 3
 
 
 linkCircleRadius : Int

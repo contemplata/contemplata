@@ -157,10 +157,18 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
         else posIn addr C.Top top shiftTop
 
     defLineCfg = Tree.defLineCfg
-    lineCfg = { defLineCfg
+    lineCfg0 = { defLineCfg
       | strokeDasharray = Just Cfg.linkDasharray
       , strokeWidth = Cfg.linkWidth
       , opacity = Cfg.linkOpacity }
+    lineCfg =
+        if model.selLink == Just (from, to)
+        then
+            { lineCfg0
+                | color = Cfg.linkCircleSelectColor
+                , strokeWidth = Cfg.linkSelectWidth
+            }
+        else lineCfg0
 
     defCircleCfg = Circle.defCircleCfg
     circleCfg = { defCircleCfg
