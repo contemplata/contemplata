@@ -1,5 +1,5 @@
 module Util exposing
-    ( split, splitAt, catMaybes, find, at, unless, mappend, guard, check, and
+    ( split, splitAt, catMaybes, find, at, unless, mappend, mconcat, guard, check, and
     , intercalate, mapAccumL, average, single, px, isJust, unions
     -- * JSON
     , encodeMaybe
@@ -105,6 +105,12 @@ mappend : Maybe a -> Maybe a -> Maybe a
 mappend x y = case (x, y) of
   (Just v, _)  -> Just v
   (Nothing, v) -> v
+
+
+mconcat : List (Maybe a) -> Maybe a
+mconcat xs = case xs of
+  hd :: tl -> mappend hd (mconcat tl)
+  [] -> Nothing
 
 
 guard : Bool -> Maybe ()

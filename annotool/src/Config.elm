@@ -17,6 +17,9 @@ module Config exposing
   , menuPadding
   , menuHelpMargin
 
+  -- Root marker
+  , rootMarkerSize
+
   -- Relation markers
   , relMarkerOpacity
   , relMarkerSize
@@ -208,6 +211,16 @@ linkSelectWidth = 3
 
 linkCircleRadius : Int
 linkCircleRadius = 25
+
+
+---------------------------------------------------
+-- Root marker
+---------------------------------------------------
+
+
+-- | Size of the root marker, usefule when the tree is outside of the view.
+rootMarkerSize : Int
+rootMarkerSize = 15
 
 
 ---------------------------------------------------

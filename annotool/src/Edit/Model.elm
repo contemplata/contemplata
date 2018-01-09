@@ -1362,6 +1362,8 @@ treeNum win model = D.size (Lens.get (fileLens win) model).treeMap
 --     Nothing -> win.pos
 
 
+-- | The position of the root node of the tree in the workspaces determined by
+-- the given focus value.
 getPosition : Focus -> Model -> Position
 getPosition foc model =
     let

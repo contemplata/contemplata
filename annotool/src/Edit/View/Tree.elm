@@ -35,6 +35,7 @@ import Edit.Core as C
 import Edit.Model as M
 import Edit.Message.Core exposing (Msg(..))
 import Edit.View.Circle as Circle
+import Edit.View.Box as Box
 
 
 ---------------------------------------------------
@@ -71,13 +72,73 @@ viewTree focus model =
       , linkOut = getLinkNodes first
       , selLink = model.selLink
       }
+    positionedTree =
+      positionTree (M.getPosition focus model)
+        <| R.withWidth stdWidth Cfg.stdMargin tree
+    treeCanvas =
+      drawTree config
+        <| markMisplaced first
+        <| positionedTree
+    rootMarkerCanvas =
+        drawRootMarker focus model
+            <| Tuple.second
+            <| R.label positionedTree
 
   in
 
-    drawTree config
-      <| markMisplaced first
-      <| positionTree (M.getPosition focus model)
-      <| R.withWidth stdWidth Cfg.stdMargin tree
+    Html.div []
+        [ treeCanvas
+        , rootMarkerCanvas
+        ]
+
+
+---------------------------------------------------
+-- Drawing root marker
+---------------------------------------------------
+
+
+drawRootMarker
+   : C.Focus
+  -> M.Model
+  -> Position -- ^ Position or the root
+  -> Html.Html Msg
+drawRootMarker focus model rootPos =
+  let
+    dim = model.dim
+
+    width = ((dim.width * dim.widthProp) // 100)
+            -- - Cfg.dmzSize
+    topHeight = (dim.height * dim.heightProp) // 100
+    botHeight = dim.height - topHeight
+    height = -- (\h -> h - Cfg.dmzSize) <|
+      case focus of
+        C.Top -> topHeight
+        C.Bot -> botHeight
+
+    center =
+        { x = width // 2
+        , y = height // 2
+        }
+    lineToRoot = {beg = center, end = rootPos}
+    box =
+        { leftTop =
+              {x = 0, y = 0}
+        , rightBot =
+              { x = width
+              , y = height
+              }
+        }
+    defCircleCfg = Circle.defCircleCfg
+    circleCfg =
+      { defCircleCfg
+      | width = Cfg.rootMarkerSize
+      , height = Cfg.rootMarkerSize }
+  in
+    case Box.boxLineIntersection box lineToRoot of
+      Nothing ->
+        Html.div [] []
+      Just markerPos ->
+        Html.div [] [Circle.drawCircle circleCfg markerPos]
 
 
 ---------------------------------------------------
