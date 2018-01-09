@@ -1167,7 +1167,8 @@ viewSideContext visible foc model =
     viewSpkHead spk =
         let color = backColor foc model in
         Html.th
-            [Atts.style ["border-bottom" :> ("2px solid " ++ color)]]
+            [ Atts.class "noselect"
+            , Atts.style ["border-bottom" :> ("2px solid " ++ color)] ]
             [Html.text spk]
 
     viewTurnAlt : D.Dict String C.TreeId -> Html.Html Msg
