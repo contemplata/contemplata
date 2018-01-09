@@ -28,6 +28,18 @@
           </label>
         </div>
         <div class="form-group">
+          <label for="ancor">
+            <dfInputCheckbox ref="ancor" id="ancor"/>
+            Upload a file in the ANCOR format
+          </label>
+        </div>
+        <div class="form-group">
+          <label for="rmPhatics">
+            <dfInputCheckbox ref="rmPhatics" id="rmPhatics"/>
+            Remove phatic (social obligations-related) expressions when uploading an ANCOR file 
+          </label>
+        </div>
+        <div class="form-group">
           <label for="file-path">File:</label>
           <dfInputFile ref="file-path" id="file-path" required/>
         </div>

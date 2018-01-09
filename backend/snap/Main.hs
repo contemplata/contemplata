@@ -91,7 +91,7 @@ routes =
   , ("/admin/file/:filename/changeaccess/:annoname", Admin.fileChangeAccessAnnoHandler)
   , ("/admin/file/:filename/changestatus", Admin.fileChangeStatusHandler)
   , ("/admin/file/:filename/remove", Admin.fileRemoveHandler)
-  , ("/admin/file/json/:filename", Admin.fileDownloadHandler)
+  , ("/admin/json/:filename", Admin.fileDownloadHandler)
   , ("/admin/upload", Admin.fileUploadHandler)
   , ("", Snap.ifTop rootHandler)
   ]

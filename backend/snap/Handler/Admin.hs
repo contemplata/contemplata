@@ -29,10 +29,14 @@ module Handler.Admin
 ) where
 
 
+import           Control.Monad (when, guard, forM, (<=<))
 import           Control.Monad.IO.Class (liftIO, MonadIO)
 import           Control.Monad.Trans.Class (lift)
-import           Control.Monad (when, guard, (<=<))
--- import qualified Control.Error as Err
+import qualified Control.Monad.Trans.State as State
+import           Control.Monad.Trans.Maybe (runMaybeT, MaybeT(..))
+
+import qualified Control.Error as Err
+import qualified Control.Exception as Exc
 
 import qualified Data.Maybe as Maybe
 import qualified Data.Set as S
@@ -68,11 +72,16 @@ import qualified Text.Digestive.Types as DT
 
 import qualified Dhall as Dhall
 
-
 import qualified Odil.Config as AnnoCfg
+import qualified Odil.Server as Server
 import           Odil.Server.Types
 import qualified Odil.Server.DB as DB
 import qualified Odil.Server.Users as Users
+
+import qualified Odil.Ancor.Types as Ancor
+import qualified Odil.Ancor.IO.Parse as Parse
+import qualified Odil.Ancor.IO.Show as Show
+import qualified Odil.Ancor.Preprocess.Token as Pre
 
 import qualified Auth as MyAuth
 import qualified Config as MyCfg
@@ -214,7 +223,7 @@ fileHandler = ifAdmin $ do
         "downloadFile" ## return
           [ X.Element "a"
             [ ("href",
-               T.intercalate "/" ["admin", "file", "download", fileIdTxt])
+               T.intercalate "/" ["admin", "json", fileIdTxt])
             , ("title", "Click to see the raw JSON file") ]
             [X.TextNode "Show JSON"]
           ]
@@ -317,7 +326,8 @@ fileDownloadHandler = ifAdmin $ do
   Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
   Just fileId <- return $ decodeFileId fileIdTxt
   filePath <- liftDB $ DB.storeFilePath fileId
-  FileServe.serveFileAs "text/json" filePath
+  -- FileServe.serveFileAs "application/json" filePath
+  FileServe.serveFile filePath
 
 
 ---------------------------------------
@@ -357,35 +367,92 @@ fileUploadHandler = ifAdmin $ do
 
 
 -- | The upload form.
-data Upload = Upload
+data Upload a = Upload
   { fileId :: FileId
-  , fileToUpload :: File
+  , fileToUpload :: a
   , forceUpload :: Bool
+  , ancorFormat :: Bool
+  , removePhatics :: Bool
   }
 
 
 -- | Upload file form.
 uploadFileForm
   :: [T.Text]
-  -> Form T.Text AppHandler Upload -- (FileId, File)
-uploadFileForm levels = D.validateM checkNewFileId $ Upload
-  <$> copyFileForm levels
-  <*> "file-path" .: D.validateM checkFile D.file
-  <*> "enforce"   .: D.bool (Just False)
+  -> Form T.Text AppHandler (Upload File)
+uploadFileForm levels =
+  finalize $ Upload
+    <$> copyFileForm levels
+    <*> "file-path" .: D.validate checkFile D.file
+    <*> "enforce" .: D.bool (Just False)
+    <*> "ancor" .: D.bool (Just False)
+    <*> "rmPhatics" .: D.bool (Just True)
   where
+    finalize
+      = D.validateM decodeFile
+      . D.validateM checkNewFileId
     checkFile = \case
-      Nothing -> return $ DT.Error "You must specify a file to upload"
-      Just filePath -> liftDB $ do
-        cts <- liftIO $ BLS.readFile filePath
-        return $ case JSON.eitherDecode' cts of
-          Left err -> DT.Error . T.pack $ "Invalid file format: " ++ err
-          Right file -> DT.Success file
+      Nothing -> DT.Error "You must specify a file to upload"
+      Just filePath -> DT.Success filePath
     checkNewFileId upl@Upload{..}
       | forceUpload = return $ DT.Success upl
       | otherwise = liftDB $ do
           DB.hasFile fileId >>= return . \case
             True -> DT.Error "File ID already exists in the database"
             False -> DT.Success upl
+    decodeFile upl@Upload{..}
+      | ancorFormat = do
+          rmPath <- case removePhatics of
+            False -> return Nothing
+            True -> do
+              snapCfg <- Snap.getSnapletUserConfig
+              liftIO $ Cfg.lookup snapCfg "remove"
+          liftIO (processAncor rmPath fileToUpload) >>= return . \case
+            Left err -> DT.Error err
+            Right file -> DT.Success $ upl {fileToUpload = file}
+      | otherwise = liftDB $ do
+          cts <- liftIO $ BLS.readFile fileToUpload
+          return $ case JSON.eitherDecode' cts of
+            Left err -> DT.Error . T.pack $ "Invalid file format: " ++ err
+            Right file -> DT.Success $ upl {fileToUpload = file}
+
+
+-- | Process the given ancor file.
+processAncor
+  :: Maybe FilePath  -- ^ File with the expressions to remove
+  -> FilePath        -- ^ The input ANCOR file
+  -> IO (Either T.Text File)
+processAncor rmFile ancorPath = fmap finalize . Exc.try . Err.runExceptT $ do
+  ancor <- Parse.parseTrans <$> liftIO (T.readFile ancorPath)
+  (turns2, treeMap) <- flip State.runStateT M.empty $ do
+    forM ancor $ \section -> do
+      forM section $ \turn -> do
+        treeList <- forM (Ancor.elems turn) $ \(mayWho, elem) -> do
+          prepare <- Pre.prepare <$> case rmFile of
+            Nothing -> pure []
+            Just path -> liftIO $ Pre.readConfig path
+          -- let sent = Show.showElem elem
+          let sent0 = Show.elem2sent elem
+              prepSent = prepare sent0
+          (sent, odil) <- liftIO (Server.parseRetokFR prepSent) >>= \case
+            Nothing -> lift $
+              Err.throwE "Tokenization with Stanford failed"
+            Just x -> return x
+          k <- State.gets $ (+1) . M.size
+          State.modify' $ M.insert k (sent, odil)
+          return (k, fmap Ancor.unWho mayWho)
+        return $ Turn
+          { speaker = Ancor.speaker turn
+          , trees = M.fromList treeList }
+  return $ mkNewFile treeMap (concat turns2)
+  -- LBS.putStr (JSON.encode file)
+  where
+    finalize x =
+      case x of
+        Left err -> Left . displayException $ err
+        Right errVal -> errVal -- error or value
+    displayException :: Exc.SomeException -> T.Text
+    displayException = T.pack . Exc.displayException
 
 
 ---------------------------------------
