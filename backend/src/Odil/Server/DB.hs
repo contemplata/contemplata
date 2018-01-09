@@ -30,6 +30,7 @@ module Odil.Server.DB
 , copyFile
 , renameFile
 , removeFile
+, fileModifDate
 -- ** Meta-related
 , defaultMeta
 , loadMeta
@@ -65,6 +66,7 @@ import qualified Data.Set as S
 import qualified Data.Map.Strict as M
 import qualified Data.ByteString.Lazy as BLS
 import qualified Data.Text as T
+import qualified Data.Time as Time
 import qualified System.Directory as Dir
 import System.FilePath ((</>), (<.>))
 
@@ -324,6 +326,15 @@ removeFile fileId = do
   storeRemoveFile fileId
 
 
+-- | The last file modification date.
+fileModifDate :: FileId -> DBT T.Text
+fileModifDate fileId = do
+  reg <- readReg
+  unless (regHasFile fileId reg)
+    (Err.throwE "removeFile: file ID does not exist")
+  storeFileModifDate fileId
+
+
 ---------------------------------------
 -- Top-level contd.
 --
@@ -501,6 +512,20 @@ storeRemoveFile :: FileId -> DBT ()
 storeRemoveFile fileId = do
   path <- storeFilePath fileId
   liftIO $ Dir.removeFile path
+
+
+-- | Remove a given file from the store.
+storeFileModifDate :: FileId -> DBT T.Text
+storeFileModifDate fileId = do
+  path <- storeFilePath fileId
+  liftIO $ do
+    time <- Dir.getModificationTime path
+    zone <- Time.getCurrentTimeZone
+    let strTimeRaw
+          = Time.formatTime Time.defaultTimeLocale "%c"
+          -- . Time.localTimeOfDay
+          $ Time.utcToLocalTime zone time
+    return $ T.pack strTimeRaw
 
 
 storeFilePath :: FileId -> DBT FilePath

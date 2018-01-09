@@ -202,6 +202,7 @@ fileHandler = ifAdmin $ do
     Just an -> liftDB $ DB.addAnnotator fileId an Read
 
   metaInfo <- liftDB $ DB.loadMeta fileId
+  modifDate <- liftDB $ DB.fileModifDate fileId
   let annotations = M.toList . annoMap $ metaInfo
       localSplices = do
         "fileName" ## return
@@ -213,6 +214,9 @@ fileHandler = ifAdmin $ do
             , ("title", "Click to change") ]
             [X.TextNode (T.pack . show $ fileStatus metaInfo)]
           ]
+        "modifDate" ## return
+          -- [X.TextNode $ "??? " `T.append` modifDate]
+          [X.TextNode modifDate]
         "removeFile" ## return
           [ X.Element "a"
             [ ("href",
