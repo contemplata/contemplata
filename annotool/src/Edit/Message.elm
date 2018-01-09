@@ -521,6 +521,8 @@ update msg model =
 
     SwapWorkspaces -> idle <| M.swapWorkspaces model
 
+    SwapFiles -> idle <| M.swapFiles model
+
     Compare ->
         ( compare model
         , Cmd.batch [focusOnTurn C.Top, focusOnTurn C.Bot]

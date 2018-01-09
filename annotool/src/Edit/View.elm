@@ -711,7 +711,7 @@ viewMenu model = -- fileName =
         , "left" :> px 5
         ]
       ] <|
-        mkMenuCommands [Quit, SaveFile, SwapWorkspaces] ++
+        mkMenuCommands [Quit, SaveFile, SwapWorkspaces, SwapFiles] ++
         [levelPart] ++ mkMenuCommands
         ( if model.annoLevel == C.Temporal
           then temporalCommands

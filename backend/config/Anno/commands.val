@@ -183,8 +183,16 @@ in
       { keyCmd = [{keyCode=87, char="w"}] : Optional ./KeyboardShortcut.typ
       , lineCmd = ["swap"] : Optional Text
       , menuCmd = ["Swap"] : Optional Text
-      , withCtrl = [] : Optional Bool
+      , withCtrl = [False] : Optional Bool
       , help = ["Swap the workspaces"] : Optional Text }
     , _2 = simple {name = "SwapWorkspaces"}
+    }
+  , { _1 =
+      { keyCmd = [{keyCode=87, char="w"}] : Optional ./KeyboardShortcut.typ
+      , lineCmd = [] : Optional Text
+      , menuCmd = ["Swap"] : Optional Text
+      , withCtrl = [True] : Optional Bool
+      , help = ["Swap the files in both workspaces (adjudication mode)"] : Optional Text }
+    , _2 = simple {name = "SwapFiles"}
     }
   ]

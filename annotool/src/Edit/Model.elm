@@ -86,6 +86,7 @@ module Edit.Model exposing
   -- Various:
   , setTreeCheck, setForestCheck, setSentCheck, getWords, subTreeAt, nodesIn
   , swapFile, swapWorkspaces, moveToFirst, moveToTree, moveToFile
+  , swapFiles
   -- JSON decoding:
   , treeMapDecoder, fileDecoder, treeDecoder, sentDecoder, nodeDecoder
   -- JSON encoding:
@@ -1157,6 +1158,24 @@ getReprId win (TreeId treeId) model =
             else getReprId win (TreeId bareId) model
 
 
+-- | Get the ID of the k-th partition.
+-- For a reversed version, see `treePos`.
+getPartId : Focus -> Int -> Model -> PartId
+getPartId win ix0 model =
+    let
+        pmap = Lens.get (fileLens win => partMap) model
+        go ix ps =
+            case ps of
+                [] -> Debug.crash "Model.getPartId: empty partition map"
+                partId :: [] -> partId
+                partId :: partRest ->
+                    if ix <= 0
+                    then partId
+                    else go (ix-1) partRest
+    in
+        go ix0 (D.keys pmap)
+
+
 -- | Get a tree under a given ID.
 getTree : Focus -> PartId -> Model -> R.Tree Node
 getTree win treeId model =
@@ -1447,7 +1466,7 @@ moveCursorTo focus treeId model =
     Lens.update (windowLens focus) alter model
 
 
--- | Move the given workspace to the given file and tree.
+-- | Move the given workspace to the given file.
 moveToFile : Focus -> FileId -> Model -> Model
 moveToFile focus fileId model =
   let
@@ -1491,7 +1510,29 @@ moveToFirst focus fileId model =
             (partId, tree_) :: _ -> moveToTree focus fileId partId model
 
 
--- | Swap the file in the given workspace.
+-- | A version of `moveToTree` which tries to move to the tree (partition) under
+-- the given index.
+moveToTreeIx : Focus -> FileId -> Int -> Model -> Model
+moveToTreeIx focus fileId partIx model0 =
+  let
+    model = moveToFile focus fileId model0
+    partId = getPartId focus partIx model
+    alterWin win =
+      { win
+          | tree = TreeId partId
+          , selMain = Nothing
+          , selAux = S.empty
+      }
+  in
+    Lens.update (windowLens focus) alterWin model
+
+
+---------------------------------------------------
+-- Swapping
+---------------------------------------------------
+
+
+-- | Swap to the next file in the given workspace.
 swapFile : Focus -> Model -> Model
 swapFile focus model =
     let
@@ -1521,6 +1562,41 @@ swapWorkspaces =
         onSecond f (x, y) = (x, f y)
     in
         swapInfos << swap
+
+
+-- | In each workspace, move to the next file and try to focus on the current
+-- tree (i.e., the one in the current file). The command should be especially
+-- useful in the adjudication mode, when relations are to be compared.
+swapFiles : Model -> Model
+swapFiles =
+    swapFileSaveTree Top <<
+    swapFileSaveTree Bot
+
+
+-- | A version of `swapFile` which tries to stay focus on the same tree, even
+-- though the file is changed. Useful for `swapFiles`.
+swapFileSaveTree : Focus -> Model -> Model
+swapFileSaveTree focus model =
+    let
+
+        fileId = getFileId focus model
+        findNext xs = case xs of
+            [] -> Debug.crash "swapFile: empty fileList"
+            (fid, _) :: rest ->
+                if fileId == fid
+                then takeFirst rest
+                else findNext rest
+        takeFirst xs = case xs of
+            [] -> Debug.crash "swapFile.takeFirst: empty list"
+            (newFid, _) :: _ -> newFid
+
+        partId = getReprId focus (selectWin focus model).tree model
+        partIx = treePos focus model - 1
+
+    in
+
+        let files = model.fileList ++ model.fileList
+        in  moveToTreeIx focus (findNext files) partIx model
 
 
 ---------------------------------------------------
@@ -3313,7 +3389,6 @@ fileLensAlt fileId =
         Lens.create get update
 
 
--- | Not really a lens, just a getter...
 getFileId : Focus -> Model -> FileId
 getFileId win =
     Lens.get (workspaceLens win => fileId)

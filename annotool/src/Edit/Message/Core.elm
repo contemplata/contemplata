@@ -108,6 +108,7 @@ type Msg
   | SwapFile
   | SwapFileTo C.FileId
   | SwapWorkspaces
+  | SwapFiles
   | Compare
   | Dummy
   -- -- | Goto C.Addr -- ^ Move to a given node in the focused window
@@ -159,6 +160,7 @@ msgDecoder =
         , simple (MkEntity "Timex") "MkTimex"
         , simple (MkEntity "Event") "MkEvent"
         , simple SwapWorkspaces "SwapWorkspaces"
+        , simple SwapFiles "SwapFiles"
         , Decode.value |> Decode.andThen
             ( \val ->
                   let msg = "Unknown message: " ++ Encode.encode 0 val
