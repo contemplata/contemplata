@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RecordWildCards #-}
 
 
 module Handler.Admin
@@ -119,7 +120,9 @@ passwordHandler = ifAdmin $ do
 filesHandler :: AppHandler ()
 filesHandler = ifAdmin $ do
   fileSet <- liftDB DB.fileSet
-  Heist.heistLocal (bindSplices $ localSplices fileSet) (Heist.render "admin/files")
+  Heist.heistLocal
+    (bindSplices $ localSplices fileSet)
+    (Heist.render "admin/files")
   where
     localSplices fileSet = do
       "fileList" ## fileList (S.toList fileSet)
@@ -336,30 +339,39 @@ fileUploadHandler = ifAdmin $ do
     "upload-file-form"
     (uploadFileForm levels)
 
-  case uploadData of
-    Just (fileId, file) -> liftDB $ do
-      DB.saveFile fileId defaultMeta file
-    _ -> return ()
-
---   let localSplices = do
---         "fileName" ## return
---           [X.TextNode fileIdTxt]
+  localSplices <- case uploadData of
+    Just Upload{..} -> do
+      liftDB $ do
+        DB.saveFile fileId defaultMeta fileToUpload
+      return $ do
+        "successMessage" ## return
+          [ X.Element "div" [("class", "alert alert-success")]
+            [X.TextNode "File successfully uploaded"]
+          ]
+    _ -> return $ "successMessage" ## return []
 
   Heist.heistLocal
-    ( bindDigestiveSplices uploadView )
-    -- . bindSplices localSplices )
+    ( bindDigestiveSplices uploadView
+    . bindSplices localSplices )
     (Heist.render "admin/upload")
 
 
--- data Upload = Upload
---   { filePath :: }
+-- | The upload form.
+data Upload = Upload
+  { fileId :: FileId
+  , fileToUpload :: File
+  , forceUpload :: Bool
+  }
 
 
 -- | Upload file form.
-uploadFileForm :: [T.Text] -> Form T.Text AppHandler (FileId, File)
-uploadFileForm levels = (,)
-  <$> D.validateM checkNewFileId (copyFileForm levels)
+uploadFileForm
+  :: [T.Text]
+  -> Form T.Text AppHandler Upload -- (FileId, File)
+uploadFileForm levels = D.validateM checkNewFileId $ Upload
+  <$> copyFileForm levels
   <*> "file-path" .: D.validateM checkFile D.file
+  <*> "enforce"   .: D.bool (Just False)
   where
     checkFile = \case
       Nothing -> return $ DT.Error "You must specify a file to upload"
@@ -368,10 +380,12 @@ uploadFileForm levels = (,)
         return $ case JSON.eitherDecode' cts of
           Left err -> DT.Error . T.pack $ "Invalid file format: " ++ err
           Right file -> DT.Success file
-    checkNewFileId fileId = liftDB $ do
-      DB.hasFile fileId >>= return . \case
-        True -> DT.Error "File ID already exists in the database"
-        False -> DT.Success fileId
+    checkNewFileId upl@Upload{..}
+      | forceUpload = return $ DT.Success upl
+      | otherwise = liftDB $ do
+          DB.hasFile fileId >>= return . \case
+            True -> DT.Error "File ID already exists in the database"
+            False -> DT.Success upl
 
 
 ---------------------------------------

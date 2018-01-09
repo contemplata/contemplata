@@ -22,9 +22,16 @@
           <dfInputText ref="file-id" id="file-id" class="form-control" required/>
         </div>
         <div class="form-group">
+          <label for="enforce">
+            <dfInputCheckbox ref="enforce" id="enforce"/>
+            Enforce upload if a file with the given name already exists
+          </label>
+        </div>
+        <div class="form-group">
           <label for="file-path">File:</label>
           <dfInputFile ref="file-path" id="file-path" required/>
         </div>
+        <successMessage/>
         <dfChildErrorList class="alert alert-danger"/>
         <dfInputSubmit class="btn btn-primary" value="Upload"/>
       </dfForm>
