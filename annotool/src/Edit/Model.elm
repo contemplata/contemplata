@@ -288,6 +288,13 @@ type alias FileInfo =
     -- ^ Its view in the top window
     , bot  : Window
     -- ^ Its view in the bottom window
+
+    -- Editing history
+    , undoHist : List HistElem
+    , redoHist : List HistElem
+
+    -- Last, incomplete element of the undo history
+    , undoLast : List HistAtom
     }
 
 
@@ -304,7 +311,7 @@ type alias Model =
   -- ^ The list of annotated files, together with their IDs. The file IDs are
   -- guaranteed to be distinct (we don't use a map because `FileId` cannot be a
   -- key in Elm, only its encoded version, but the latter would be
-  -- invonvenient).
+  -- inconvenient).
 
   , top : Workspace
   , bot : Workspace
@@ -328,13 +335,6 @@ type alias Model =
   -- , testInput : String
 
   , messages : List String
-
-  -- edit history
-  , undoHist : List HistElem
-  , redoHist : List HistElem
-
-  -- last, incomplete element of the undo history
-  , undoLast : List HistAtom
 
   -- scripting window
   , command : Maybe String
@@ -414,7 +414,6 @@ type HistAtom
   = TreeModif -- ^ Modified a tree
     { treeId : PartId
       -- ^ To which tree ID does it refer
-    , fileId : FileId
     , restoreTree : Maybe (R.Tree Node)
       -- ^ The tree to restore (or remove, if `Nothing`)
     }
@@ -423,37 +422,41 @@ type HistAtom
       -- ^ The links to add
     , delLinkSet : D.Dict Link LinkData
       -- ^ The links to remove
-    , fileId : FileId
     }
   | PartModif -- ^ Modified a partition
     { treeId : PartId
       -- ^ To which partition ID does it refer
-    , fileId : FileId
     , restorePart : Maybe (S.Set TreeIdBare)
       -- ^ The partition to restore (or remove, if `Nothing`)
     }
   | ReprModif -- ^ Modified a partition
     { treeId : TreeIdBare
       -- ^ To which tree ID does it refer
-    , fileId : FileId
     , restoreRepr : TreeIdBare
       -- ^ The representative to restore
     }
   | SentModif -- ^ Modified a sentence
     { treeId : TreeIdBare
       -- ^ To which tree ID does it refer
-    , fileId : FileId
     , restoreSent : Sent
       -- ^ The sentel to restore
     }
 
 
 -- | Save the given atomic modification in the editing history.
-saveModif : HistAtom -> Model -> Model
-saveModif atom model =
-  { model
-      | undoLast = atom :: model.undoLast
-      , redoHist = [] }
+saveModif : FileId -> HistAtom -> Model -> Model
+saveModif fileId atom model =
+    let
+        update info =
+            { info
+                | undoLast = atom :: info.undoLast
+                , redoHist = []
+            }
+    in
+        Lens.update (fileInfoLensAlt fileId) update model
+--   { model
+--       | undoLast = atom :: model.undoLast
+--       , redoHist = [] }
 
 
 -- | Freeze the current (last) sequence of history modifications.
@@ -463,31 +466,38 @@ saveModif atom model =
 -- the current atomic modifications are put in a transaction.
 freezeHist : Model -> Model
 freezeHist model =
-  let
-    histSize = 250 -- should be in Config, but Config relies on the model...
-    newHist = L.take histSize (model.undoLast :: model.undoHist)
-  in case model.undoLast of
-    [] -> model
-    _  -> { model
-              | undoHist = newHist
-              , undoLast = [] }
+    let
+        histSize = 250 -- should be in Config, but Config relies on the model...
+        fileId = getFileId model.focus model
+        update info =
+            let
+                newHist = L.take histSize (info.undoLast :: info.undoHist)
+            in
+                case info.undoLast of
+                    [] -> info
+                    _  -> { info
+                              | undoHist = newHist
+                              , undoLast = []
+                          }
+    in
+        Lens.update (fileInfoLensAlt fileId) update model
 
 
 -- | Apply a given history atomic element.
-applyAtom : HistAtom -> Model -> (Model, HistAtom)
-applyAtom histAtom model =
+applyAtom : FileId -> HistAtom -> Model -> (Model, HistAtom)
+applyAtom fileId histAtom model =
   case histAtom of
     TreeModif r ->
       let
-        oldTree = getTreeMayAlt r.fileId r.treeId model
-        tmpModel = setTreeAlt_ r.fileId r.treeId r.restoreTree model
-        newModel = focusOnTree model.focus r.fileId r.treeId tmpModel
+        oldTree = getTreeMayAlt fileId r.treeId model
+        tmpModel = setTreeAlt_ fileId r.treeId r.restoreTree model
+        newModel = focusOnTree model.focus fileId r.treeId tmpModel
         newAtom = TreeModif {r | restoreTree = oldTree}
       in
         (newModel, newAtom)
     LinkModif r ->
       let
-        lens = fileLensAlt r.fileId => linkSet
+        lens = fileLensAlt fileId => linkSet
         newLinks = D.union r.addLinkSet <| D.diff (Lens.get lens model) r.delLinkSet
         chooseTree xs =
             case xs of
@@ -504,39 +514,38 @@ applyAtom histAtom model =
                 Just arg -> f arg x
                 Nothing  -> x
         newModel =
-            maybe (focusOnTree Top r.fileId) topTreeId <|
-            maybe (focusOnTree Bot r.fileId) botTreeId <|
+            maybe (focusOnTree Top fileId) topTreeId <|
+            maybe (focusOnTree Bot fileId) botTreeId <|
             Lens.set lens newLinks model
         newAtom = LinkModif
                   { addLinkSet = r.delLinkSet
-                  , delLinkSet = r.addLinkSet
-                  , fileId = r.fileId }
+                  , delLinkSet = r.addLinkSet }
       in
         (newModel, newAtom)
     PartModif r ->
       let
-        oldPart = getPartAlt r.fileId r.treeId model
+        oldPart = getPartAlt fileId r.treeId model
         -- NOTE: we could simply use `setPart`, but we need to return a `newAtom`...
-        tmpModel = setPartAlt_ r.fileId r.treeId r.restorePart model
-        newModel = focusOnTree model.focus r.fileId r.treeId tmpModel
+        tmpModel = setPartAlt_ fileId r.treeId r.restorePart model
+        newModel = focusOnTree model.focus fileId r.treeId tmpModel
         newAtom = PartModif {r | restorePart = oldPart}
       in
         (newModel, newAtom)
     ReprModif r ->
       let
-        oldRepr = getReprAlt r.fileId r.treeId model
+        oldRepr = getReprAlt fileId r.treeId model
         tmpModel = Lens.update
-                   (fileLensAlt r.fileId => reprMap)
+                   (fileLensAlt fileId => reprMap)
                    (D.insert r.treeId r.restoreRepr) model
-        newModel = focusOnTree model.focus r.fileId r.treeId tmpModel
+        newModel = focusOnTree model.focus fileId r.treeId tmpModel
         newAtom = ReprModif {r | restoreRepr = oldRepr}
       in
         (newModel, newAtom)
     SentModif r ->
       let
-        oldSent = getSentAlt_ r.fileId r.treeId model
+        oldSent = getSentAlt_ fileId r.treeId model
         newModel = Lens.update
-                   (fileLensAlt r.fileId => sentMap)
+                   (fileLensAlt fileId => sentMap)
                    (D.insert r.treeId r.restoreSent) model
         newAtom = SentModif {r | restoreSent = oldSent}
       in
@@ -563,62 +572,60 @@ focusOnTree focus fileId treeId model =
                 else moveToTree focus fileId treeId model
 
 
--- -- | Focus on the given tree if needed.
--- focusOnTree : Focus -> PartId -> Model -> Model
--- focusOnTree focus treeId model =
---     let
---         topTree = Lens.get (windowLens Top => tree) model
---         botTree = Lens.get (windowLens Bot => tree) model
---     in
---         case focus of
---             Top ->
---                 -- if getReprId focus model.top.tree model == treeId
---                 if getReprId focus topTree model == treeId
---                 then model
---                 else moveCursorTo focus treeId model
---             Bot ->
---                 -- if getReprId focus model.bot.tree model == treeId
---                 if getReprId focus botTree model == treeId
---                 then model
---                 else moveCursorTo focus treeId model
-
-
 -- | Apply a given history element.
-applyElem : HistElem -> Model -> (Model, HistElem)
-applyElem elem =
+applyElem : FileId -> HistElem -> Model -> (Model, HistElem)
+applyElem fileId elem =
   let
     apply xs model histAcc = case xs of
       [] -> (model, histAcc)
       hd :: tl ->
-        let (newModel, newAtom) = applyAtom hd model
+        let (newModel, newAtom) = applyAtom fileId hd model
         in  apply tl newModel (newAtom :: histAcc)
   in
     -- \model -> Debug.log (toString elem) <| apply elem model []
     \model -> apply elem model []
 
 
--- | Perform undo.
+-- | Perform undo in the active workspace.
 undo : Model -> Model
 undo model =
-  case model.undoHist of
-    [] -> model
-    histElem :: histRest ->
-      let (newModel, newElem) = applyElem histElem model
-      in  { newModel
-            | undoHist = histRest
-            , redoHist = newElem :: newModel.redoHist }
+  let
+      fileId = getFileId model.focus model
+      info = Lens.get (fileInfoLensAlt fileId) model
+  in
+      case info.undoHist of
+        [] -> model
+        histElem :: histRest ->
+          let
+              (newModel, newElem) = applyElem fileId histElem model
+              update info =
+                  { info
+                      | undoHist = histRest
+                      , redoHist = newElem :: info.redoHist
+                  }
+          in
+              Lens.update (fileInfoLensAlt fileId) update newModel
 
 
--- | Perform redo.
+-- | Perform redo in the active workspace.
 redo : Model -> Model
 redo model =
-  case model.redoHist of
-    [] -> model
-    histElem :: histRest ->
-      let (newModel, newElem) = applyElem histElem model
-      in  { newModel
-            | redoHist = histRest
-            , undoHist = newElem :: newModel.undoHist }
+  let
+      fileId = getFileId model.focus model
+      info = Lens.get (fileInfoLensAlt fileId) model
+  in
+      case info.redoHist of
+        [] -> model
+        histElem :: histRest ->
+          let
+              (newModel, newElem) = applyElem fileId histElem model
+              update info =
+                  { info
+                      | redoHist = histRest
+                      , undoHist = newElem :: info.undoHist
+                  }
+          in
+              Lens.update (fileInfoLensAlt fileId) update newModel
 
 
 ---------------------------------------------------
@@ -672,11 +679,10 @@ setSent_ focus treeId sent model =
         newModel = Lens.update (fileLens focus => sentMap) (D.insert treeId sent) model
     in
         newModel
-            |> saveModif
+            |> saveModif (getFileId focus model)
                ( SentModif
                  { treeId = treeId
-                 , restoreSent = oldSent
-                 , fileId = getFileId focus model }
+                 , restoreSent = oldSent }
                )
 
 
@@ -781,11 +787,10 @@ setTree win treeId newTree model =
 
      newModel
        |> linkModif
-       |> saveModif
+       |> saveModif fileId
           ( TreeModif
             { treeId = treeId
-            , restoreTree = oldTree
-            , fileId = fileId }
+            , restoreTree = oldTree }
           )
 
 
@@ -818,11 +823,10 @@ updateTree win treeId update model =
 
      newModel
        |> linkModif
-       |> saveModif
+       |> saveModif (getFileId win model)
           ( TreeModif
             { treeId = treeId
-            , restoreTree = Just oldTree
-            , fileId = getFileId win model }
+            , restoreTree = Just oldTree }
           )
 
 
@@ -900,11 +904,10 @@ deleteLinks win delLinks model =
     if S.isEmpty delLinks
     then model
     else Lens.update linksLens (\s -> D.diff s oldLinks) model
-      |> saveModif
+      |> saveModif (getFileId win model)
          ( LinkModif
            { addLinkSet = oldLinks
-           , delLinkSet = D.empty
-           , fileId = getFileId win model }
+           , delLinkSet = D.empty }
          )
 
 
@@ -963,19 +966,18 @@ connectHelp {nodeFrom, nodeTo, focusTo} model =
               ( D.insert link linkDataDefault
               , LinkModif
                     { addLinkSet = D.empty
-                    , delLinkSet = D.singleton link linkDataDefault
-                    , fileId = fileFrom }
+                    , delLinkSet = D.singleton link linkDataDefault }
               )
             Just linkData ->
               ( D.remove link
               , LinkModif
                     { delLinkSet = D.empty
-                    , addLinkSet = D.singleton link linkData
-                    , fileId = fileFrom }
+                    , addLinkSet = D.singleton link linkData }
               )
   in
       if fileFrom == fileTo
-      then Lens.update (fileLens Top => linkSet) alter model |> saveModif modif
+      then Lens.update (fileLens Top => linkSet) alter model
+          |> saveModif fileTo modif
       else model
 
 
@@ -1016,12 +1018,11 @@ addSignal link focus signal model =
           ( D.insert link newData
           , LinkModif
               { delLinkSet = D.singleton link newData
-              , addLinkSet = D.singleton link oldData
-              , fileId = fileFrom }
+              , addLinkSet = D.singleton link oldData }
           )
   in
     if fileFrom == fileTo
-    then Lens.update (fileLens Top => linkSet) alter model |> saveModif modif
+    then Lens.update (fileLens Top => linkSet) alter model |> saveModif fileTo modif
     else model
 
 ---------------------------------------------------
@@ -2746,11 +2747,10 @@ setPart win treeId newPartMay model =
         oldPart = getPart win treeId model
     in
         setPart_ win treeId newPartMay model
-            |> saveModif
+            |> saveModif (getFileId win model)
                ( PartModif
                  { treeId = treeId
-                 , restorePart = oldPart
-                 , fileId = getFileId win model }
+                 , restorePart = oldPart }
                )
 
 
@@ -2800,11 +2800,10 @@ setRepr win treeId newRepr model =
         newModel = Lens.update (fileLens win => reprMap) (D.insert treeId newRepr) model
     in
         newModel
-            |> saveModif
+            |> saveModif (getFileId win model)
                ( ReprModif
                  { treeId = treeId
-                 , restoreRepr = oldRepr
-                 , fileId = getFileId win model }
+                 , restoreRepr = oldRepr }
                )
 
 
