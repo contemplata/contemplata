@@ -188,7 +188,8 @@ in
     , _2 = simple {name = "SwapWorkspaces"}
     }
   , { _1 =
-      { keyCmd = [{keyCode=87, char="w"}] : Optional ./KeyboardShortcut.typ
+      -- { keyCmd = [{keyCode=87, char="w"}] : Optional ./KeyboardShortcut.typ
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
       , lineCmd = [] : Optional Text
       , menuCmd = ["Swap"] : Optional Text
       , withCtrl = [True] : Optional Bool
