@@ -13,6 +13,7 @@ import Maybe as Maybe
 import Mouse exposing (Position)
 import Focus as Lens
 import Focus exposing ((=>))
+import Either as Either
 
 import Rose as R
 import Util as Util
@@ -1260,12 +1261,18 @@ viewSentAlt foc treeId spk model =
       else []
     visible = M.visiblePositions tree
     isVisible tokID = S.member tokID visible
+    unpack =
+        Either.unpack
+            (viewVisibleToken << M.concatToks)
+            (\(tokID, tok) -> viewInvisibleToken foc partId tokID tok)
     para =
+--         Html.span paraAtts [Html.text <| M.sentToString sent]
         Html.span paraAtts <|
-            L.map (\(tokID, tok) -> viewToken foc partId (isVisible tokID) tokID tok) <|
-                   L.map2 (,)
-                       (L.map (\x -> x + firstTokId) <| L.range 0 (L.length sent - 1))
-                       sent
+          -- L.map (\(tokID, tok) -> viewToken foc partId (isVisible tokID) tokID tok) <|
+          L.map unpack <|
+              groupByVisiblity isVisible <| L.map2 (,)
+                (L.map (\x -> x + firstTokId) <| L.range 0 (L.length sent - 1))
+                sent
     div =
       Html.div (
         [ Atts.class "noselect"
@@ -1283,27 +1290,77 @@ viewSentAlt foc treeId spk model =
     div
 
 
+-- -- | View token.
+-- viewToken
+--     : C.Focus     -- ^ Model focus
+--     -> C.PartId   -- ^ Partition ID
+--     -> Bool       -- ^ Is it visible?
+--     -> Int        -- ^ Token ID
+--     -> M.Token
+--     -> Html.Html Msg
+-- viewToken focus partId isVisible tokID tok =
+--     let
+--         orth = (if tok.afterSpace then " " else "") ++ tok.orth
+--         color = if isVisible then "black" else "grey"
+--         styleAtts = [Atts.style ["cursor" :> "pointer", "color" :> color]]
+--         eventAtts = [Events.onClick (SelectToken focus partId tokID)]
+--         atts = styleAtts ++ eventAtts
+--     in
+--         Html.span
+--             atts
+--             [ Html.text orth ]
+
+
+-- | Group tokens by their visibility (visible ones on the left)
+groupByVisiblity
+    :  (Int -> Bool)          -- ^ Visibility check for a given tok ID
+    -> List (Int, M.Token)    -- ^ List of tok IDs and tokens
+    -> List (Either.Either (List M.Token) (Int, M.Token))
+groupByVisiblity isVisible sent =
+    let
+        go toks =
+            case toks of
+                [] -> []
+                (tokID, tok) :: rest ->
+                    if isVisible tokID
+                    then consVisible tok (go rest)
+                    else Either.Right (tokID, tok) :: go rest
+        consVisible tok xs =
+            case xs of
+                Either.Left toks :: rest ->
+                    Either.Left (tok :: toks) :: rest
+                _ ->
+                    Either.Left [tok] :: xs
+    in
+        go sent
+
+
 -- | View token.
-viewToken
+viewVisibleToken : M.Token -> Html.Html Msg
+viewVisibleToken tok =
+    let
+        orth = (if tok.afterSpace then " " else "") ++ tok.orth
+        -- atts = [Atts.style ["color" :> "black"]]
+    in
+        -- Html.span atts [Html.text orth]
+        Html.text orth
+
+
+-- | View token.
+viewInvisibleToken
     : C.Focus     -- ^ Model focus
     -> C.PartId   -- ^ Partition ID
-    -> Bool       -- ^ Is it visible?
     -> Int        -- ^ Token ID
     -> M.Token
     -> Html.Html Msg
-viewToken focus partId isVisible tokID tok =
+viewInvisibleToken focus partId tokID tok =
     let
         orth = (if tok.afterSpace then " " else "") ++ tok.orth
-        color = if isVisible then "black" else "grey"
-        styleAtts = [Atts.style ["cursor" :> "pointer", "color" :> color]]
-        eventAtts =
-            [ Events.onClick (SelectToken focus partId tokID)
-            ]
+        styleAtts = [Atts.style ["cursor" :> "pointer", "color" :> "grey"]]
+        eventAtts = [Events.onClick (SelectToken focus partId tokID)]
         atts = styleAtts ++ eventAtts
     in
-        Html.span
-            atts
-            [ Html.text orth ]
+        Html.span atts [Html.text orth]
 
 
 ---------------------------------------------------

@@ -6,7 +6,7 @@ module Edit.Model exposing
   , InternalNode, LeafNode
   , LinkData
   , isNode, isLeaf
-  , sentToString, emptyToken
+  , concatToks, sentToString, emptyToken
   -- Model types:
   , Model, Dim, Window, SideWindow(..), Drag
   , Workspace
