@@ -2,7 +2,7 @@ let
   simple = ./Message/simple.fun
 in
   [ { _1 =
-      { keyCmd = [{keyCode=68, char="d"}] : Optional ./KeyboardShortcut.typ
+      { keyCmd = [{char="d"}] : Optional ./KeyboardShortcut.typ
       , lineCmd = ["delnode"] : Optional Text
       , menuCmd = ["Delete"] : Optional Text
       , withCtrl = [False] : Optional Bool
@@ -10,7 +10,7 @@ in
     , _2 = simple {name = "Delete"}
     }
   , { _1 =
-      { keyCmd = [{keyCode=68, char="d"}] : Optional ./KeyboardShortcut.typ
+      { keyCmd = [{char="d"}] : Optional ./KeyboardShortcut.typ
       , lineCmd = ["deltree"] : Optional Text
       , menuCmd = ["Delete"] : Optional Text
       , withCtrl = [True] : Optional Bool
@@ -18,7 +18,7 @@ in
     , _2 = simple {name = "DeleteTree"}
     }
   , { _1 =
-      { keyCmd = [{keyCode=65, char="a"}] : Optional ./KeyboardShortcut.typ
+      { keyCmd = [{char="a"}] : Optional ./KeyboardShortcut.typ
       , lineCmd = [] : Optional Text
       , menuCmd = ["Add"] : Optional Text
       , withCtrl = [] : Optional Bool
@@ -26,7 +26,7 @@ in
     , _2 = simple {name = "Add"}
     }
   , { _1 =
-      -- { keyCmd = [{keyCode=83, char="s"}] : Optional ./KeyboardShortcut.typ
+      -- { keyCmd = [{char="s"}] : Optional ./KeyboardShortcut.typ
       { keyCmd = [] : Optional ./KeyboardShortcut.typ
       , lineCmd = ["save"] : Optional Text
       , menuCmd = ["Save"] : Optional Text
@@ -60,7 +60,7 @@ in
     , _2 = simple {name = "ParseRawPreproc"}
     }
   , { _1 =
-      { keyCmd = [{keyCode=80, char="p"}] : Optional ./KeyboardShortcut.typ
+      { keyCmd = [{char="p"}] : Optional ./KeyboardShortcut.typ
       , lineCmd = ["parse"] : Optional Text
       , menuCmd = ["Parse"] : Optional Text
       , withCtrl = [False] : Optional Bool
@@ -68,7 +68,7 @@ in
     , _2 = simple {name = "ParseSentStanford"}
     }
   , { _1 =
-      { keyCmd = [{keyCode=80, char="p"}] : Optional ./KeyboardShortcut.typ
+      { keyCmd = [{char="p"}] : Optional ./KeyboardShortcut.typ
       , lineCmd = ["parsepos"] : Optional Text
       , menuCmd = ["Parse"] : Optional Text
       , withCtrl = [True] : Optional Bool
@@ -156,7 +156,7 @@ in
     , _2 = simple {name = "Dummy"}
     }
   , { _1 =
-      { keyCmd = [{keyCode=83, char="s"}] : Optional ./KeyboardShortcut.typ
+      { keyCmd = [{char="s"}] : Optional ./KeyboardShortcut.typ
       , lineCmd = [] : Optional Text
       , menuCmd = ["Signal"] : Optional Text
       , withCtrl = [] : Optional Bool
@@ -164,7 +164,7 @@ in
     , _2 = simple {name = "MkSignal"}
     }
   , { _1 =
-      { keyCmd = [{keyCode=84, char="t"}] : Optional ./KeyboardShortcut.typ
+      { keyCmd = [{char="t"}] : Optional ./KeyboardShortcut.typ
       , lineCmd = [] : Optional Text
       , menuCmd = ["Timex"] : Optional Text
       , withCtrl = [] : Optional Bool
@@ -172,7 +172,7 @@ in
     , _2 = simple {name = "MkTimex"}
     }
   , { _1 =
-      { keyCmd = [{keyCode=86, char="v"}] : Optional ./KeyboardShortcut.typ
+      { keyCmd = [{char="v"}] : Optional ./KeyboardShortcut.typ
       , lineCmd = [] : Optional Text
       , menuCmd = ["Event"] : Optional Text
       , withCtrl = [] : Optional Bool
@@ -180,7 +180,7 @@ in
     , _2 = simple {name = "MkEvent"}
     }
   , { _1 =
-      { keyCmd = [{keyCode=87, char="w"}] : Optional ./KeyboardShortcut.typ
+      { keyCmd = [{char="w"}] : Optional ./KeyboardShortcut.typ
       , lineCmd = ["swap"] : Optional Text
       , menuCmd = ["Swap"] : Optional Text
       , withCtrl = [False] : Optional Bool
@@ -188,7 +188,7 @@ in
     , _2 = simple {name = "SwapWorkspaces"}
     }
   , { _1 =
-      -- { keyCmd = [{keyCode=87, char="w"}] : Optional ./KeyboardShortcut.typ
+      -- { keyCmd = [{char="w"}] : Optional ./KeyboardShortcut.typ
       { keyCmd = [] : Optional ./KeyboardShortcut.typ
       , lineCmd = [] : Optional Text
       , menuCmd = ["Swap"] : Optional Text

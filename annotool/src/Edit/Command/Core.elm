@@ -26,10 +26,12 @@ import Util
 
 -- | Command invocation by a keyboard shortcut
 type alias KeyboardShortcut =
-    { keyCode : Int
-      -- ^ Key code corresponding to the `char`
-    , char : Char
-      -- ^ The character of the shortcut
+--     { keyCode : Int
+--       -- ^ Key code corresponding to the `char`
+    { char : Char
+      -- ^ The character of the shortcut; must be lowercase, since in Elm we
+      -- cannot immediately check if the pressed character is lowercase or not
+      -- (that would require manual handling of the Shift key).
     }
 
 
@@ -83,8 +85,10 @@ void =
 
 keyboardShortcutDecoder : Decode.Decoder KeyboardShortcut
 keyboardShortcutDecoder =
-    Decode.map2 (\keyCode char -> {keyCode=keyCode, char=char})
-      (Decode.field "keyCode" Decode.int)
+--     Decode.map2 (\keyCode char -> {keyCode=keyCode, char=char})
+--       (Decode.field "keyCode" Decode.int)
+--       (Decode.field "char" charDecoder)
+    Decode.map (\char -> {char=char})
       (Decode.field "char" charDecoder)
 
 

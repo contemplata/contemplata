@@ -22,9 +22,9 @@ import qualified Dhall.Core
 
 -- | Command invocation via a keyboard shortcut
 data KeyboardShortcut = KeyboardShortcut
-  { keyCode :: Int
-    -- ^ Key code corresponding to the `char`
-  , char :: Char
+--   { keyCode :: Int
+--     -- ^ Key code corresponding to the `char`
+  { char :: Char
     -- ^ The character of the shortcut
   } deriving (Generic, Show, Eq, Ord)
 

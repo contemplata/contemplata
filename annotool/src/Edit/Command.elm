@@ -161,19 +161,23 @@ msgFromKeyCode
     -> Maybe Msg
 msgFromKeyCode cfg isCtrl code =
     let
+        -- the character corresponding to the code
+        char = Char.toLower <| Char.fromCode code
         -- NOTE: we assume that at most one relevant element should be retrieved
         isRelevant cmd =
             case cmd.keyCmd of
                 Nothing -> False
                 Just key ->
-                    key.keyCode == code &&
+                    -- key.keyCode == code &&
+                    key.char == char &&
                         (
                          cmd.withCtrl == Nothing ||
                          cmd.withCtrl == Just isCtrl
                         )
         relevant =
             List.filter
-                (isRelevant << Tuple.first) cfg.commands
+                (isRelevant << Tuple.first)
+                cfg.commands
                 -- globalCommands
     in
         case relevant  of
