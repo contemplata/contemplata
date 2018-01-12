@@ -10,6 +10,7 @@ module Edit.Config exposing
   , FreeRec
   , configDecoder
   , entityConfig
+  , relationConfig
   -- , attrConfig
   )
 
@@ -112,7 +113,8 @@ entityConfig
     -> Entity
 entityConfig name cfg =
     case Util.find (\x -> x.name == name) cfg.entities of
-        Nothing -> Debug.crash "Config.entityConfig: unknown entity name"
+        Nothing -> Debug.crash
+            <| "Config.entityConfig: unknown entity name (" ++ name ++ ")"
         Just en -> en
 
 
@@ -122,8 +124,9 @@ relationConfig
     -> Config -- ^ Config
     -> Entity
 relationConfig name cfg =
-    case Util.find (\x -> x.name == name) cfg.entities of
-        Nothing -> Debug.crash "Config.entityConfig: unknown entity name"
+    case Util.find (\x -> x.name == name) cfg.relations of
+        Nothing -> Debug.crash
+            <| "Config.relationConfig: unknown relation name (" ++ name ++ ")"
         Just en -> en
 
 

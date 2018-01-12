@@ -684,6 +684,8 @@ viewMenu model = -- fileName =
         [ MkEntity "Event"
         , MkEntity "Signal"
         , MkEntity "Timex"
+        , MkRelation "SLink"
+        , MkRelation "TLink"
         ]
 
     levelElem level = Html.div
@@ -1082,7 +1084,7 @@ viewSideEntity model focus nodeId node ent =
       (Maybe.withDefault [] <| D.get ent.typ entCfg.attributesOnType)
   in
       [ Html.hr [] []
-      , Html.text <| ent.name ++ ":"
+      , Html.span [Atts.class "noselect"] [Html.text <| ent.name ++ ":"]
       , Html.table [] <| inputType :: (inputCoreAtts ++ inputDepAtts)
       ]
 
@@ -1091,20 +1093,21 @@ viewSideEntity model focus nodeId node ent =
 -- relation rather than a node entity.
 viewSideRelation
      : M.Model
-    -- -> C.Focus     <- Focus not important in this case
+    -> C.Focus
+      -- ^ Focus useful to know when anchoring
     -- -> C.NodeId    <- We need the relation ID instead
     -> C.Link
       -- ^ The relation (ID)
     -> Anno.Entity
       -- ^ The corresponding annotation (type, attributes)
     -> List (Html.Html Msg)
-viewSideRelation model link ent =
+viewSideRelation model focus link ent =
   let
-    entCfg = AnnoCfg.entityConfig ent.name model.annoConfig
+    entCfg = AnnoCfg.relationConfig ent.name model.annoConfig
 
     setAnchor attrName create =
         if create
-        then SetRelationAnchor link attrName
+        then SetRelationAnchor link focus attrName
         else SetRelationAttr link attrName Nothing
 
     inputAttr attrName attrCfg =
@@ -1124,58 +1127,37 @@ viewSideRelation model link ent =
       (Maybe.withDefault [] <| D.get ent.typ entCfg.attributesOnType)
   in
       [ Html.hr [] []
-      , Html.text <| ent.name ++ ":"
+      , Html.span [Atts.class "noselect"] [Html.text <| ent.name ++ ":"]
       , Html.table [] <| inputType :: (inputCoreAtts ++ inputDepAtts)
       ]
 
 
--- | The view of a side window.
+-- | The view of the side window. Draws the entity assigned to the selected
+-- relation (if there is one) or the selected node, otherwise.
 viewSideEdit : Bool -> C.Focus -> M.Model -> Html.Html Msg
 viewSideEdit visible win model =
-  let
-
-    selected = (Lens.get (M.windowLens win) model).selMain
-
-    divMain = case selected of
-      Nothing -> []
-      Just nodeId -> case M.getNode nodeId win model of
-        M.Leaf r -> [viewSideEditLabel win model]
-        M.Node r ->
-            let
-                -- TEMP 28/11: seems OK
-                partId = M.getReprId win (M.selectWin win model).tree model
-                tree = M.getTree win partId model
-                nodeTyp = Maybe.withDefault M.Internal <| M.getNodeTyp nodeId tree
-            in
-                viewSideEditInternal model win nodeId nodeTyp r
-
-    divChildren = case selected of
-      Nothing -> []
-      Just nodeId -> case M.getNode nodeId win model of
-        M.Leaf r -> []
-        M.Node r -> case r.nodeTyp of
-          Nothing -> []
-          Just en -> viewSideEntity model win nodeId r en
-
-    div = Html.div
-      [ Atts.style
-        [ "position" :> "absolute"
-        -- , "width" :> "50%"
-        , "top" :> px Cfg.sideMenuHeight
-        , "margin" :> px 5
-        ]
-      ]
-      (divMain ++ divChildren)
-    top = viewSideDiv visible win model [div]
-  in
-    top
+    let
+        rawSelectedLink =
+            case model.selLink of
+                Nothing -> Nothing
+                Just link ->
+                    Maybe.map (\ent -> (link, ent))
+                        <| D.get link (Lens.get (M.fileLens win => M.linkMap) model)
+        selectedLink =
+            Util.guard (win == model.focus) |>
+            Maybe.andThen (always rawSelectedLink)
+    in
+        case selectedLink of
+            Nothing ->
+                viewSideEditEntity visible win model
+            Just (link, ent) ->
+                viewSideEditRelation visible win link ent model
 
 
 -- | The view of a side window.
 viewSideEditEntity : Bool -> C.Focus -> M.Model -> Html.Html Msg
 viewSideEditEntity visible win model =
   let
-
     selected = (Lens.get (M.windowLens win) model).selMain
 
     divMain = case selected of
@@ -1218,18 +1200,12 @@ viewSideEditRelation
     : Bool      -- ^ Visible?
     -> C.Focus  -- ^ Show where?
     -> C.Link   -- ^ The relation to show
+    -> Anno.Entity   -- ^ The corresponding entity
     -> M.Model
     -> Html.Html Msg
-viewSideEditRelation visible win link model =
+viewSideEditRelation visible win link en model =
   let
-
-    -- selected = (Lens.get (M.windowLens win) model).selMain
-
-    divChildren =
-      case D.get link (Lens.get (M.fileLens win => M.linkMap) model) of
-        Nothing -> []
-        Just en -> viewSideRelation model link en
-
+    divChildren = viewSideRelation model win link en
     div = Html.div
       [ Atts.style
         [ "position" :> "absolute"
@@ -1239,9 +1215,8 @@ viewSideEditRelation visible win link model =
         ]
       ]
       divChildren
-    top = viewSideDiv visible win model [div]
   in
-    top
+    viewSideDiv visible win model [div]
 
 
 ---------------------------------------------------

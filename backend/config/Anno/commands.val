@@ -180,6 +180,22 @@ in
     , _2 = simple {name = "MkEvent"}
     }
   , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["slink"] : Optional Text
+      , menuCmd = ["SLink"] : Optional Text
+      , withCtrl = [True] : Optional Bool
+      , help = ["Mark the selected relation as slink"] : Optional Text }
+    , _2 = simple {name = "MkSLink"}
+    }
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["tlink"] : Optional Text
+      , menuCmd = ["TLink"] : Optional Text
+      , withCtrl = [True] : Optional Bool
+      , help = ["Mark the selected relation as tlink"] : Optional Text }
+    , _2 = simple {name = "MkTLink"}
+    }
+  , { _1 =
       { keyCmd = [{char="w"}] : Optional ./KeyboardShortcut.typ
       , lineCmd = ["swap"] : Optional Text
       , menuCmd = ["Swap"] : Optional Text

@@ -35,7 +35,7 @@ module Odil.Server.Types
 , File (..)
 , Turn (..)
 , Link (..)
-, LinkData (..)
+-- , LinkData (..)
 
 -- * Utils
 , mkNewFile
@@ -181,7 +181,8 @@ data File = File
     -- ^ The list of turns in the file (we don't preserve the division on
     -- episodes and sections)
 
-  , linkSet :: M.Map Link LinkData
+  -- , linkMap :: M.Map Link LinkData
+  , linkMap :: M.Map Link E.Entity
 
   } deriving (Generic, Show, Eq)
 
@@ -196,7 +197,7 @@ mkNewFile treeMap0 turns =
     , partMap = singPartMap
     , reprMap = singReprMap
     , turns = turns
-    , linkSet = M.empty
+    , linkMap = M.empty
     }
   where
     singPartMap = M.fromList
@@ -226,10 +227,10 @@ data Link = Link
   deriving (Generic, Show, Eq, Ord)
 
 
--- | Additional data assigned to a link.
-data LinkData = LinkData
-  { signalAddr :: Maybe Addr
-  } deriving (Generic, Show, Eq)
+-- -- | Additional data assigned to a link.
+-- data LinkData = LinkData
+--   { signalAddr :: Maybe Addr
+--   } deriving (Generic, Show, Eq)
 
 
 -----------
@@ -264,9 +265,9 @@ instance JSON.ToJSON Link where
 instance JSON.FromJSONKey Link
 instance JSON.ToJSONKey Link
 
-instance JSON.FromJSON LinkData
-instance JSON.ToJSON LinkData where
-  toEncoding = JSON.genericToEncoding JSON.defaultOptions
+-- instance JSON.FromJSON LinkData
+-- instance JSON.ToJSON LinkData where
+--   toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
 instance JSON.FromJSON Token
 instance JSON.ToJSON Token where

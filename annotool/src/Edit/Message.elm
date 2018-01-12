@@ -196,7 +196,10 @@ update msg model =
     CtrlDown -> idle <| {model | ctrl=True}
     CtrlUp -> idle <| {model | ctrl=False}
 
-    Connect -> idle <| M.connect model
+    -- Connect -> idle <|
+    MkRelation name ->  idle <|
+      let en = AnnoCfg.relationConfig name model.annoConfig
+      in  M.mkRelationSel en model
 
     Attach -> idle <| M.attachSel model
 
@@ -371,18 +374,18 @@ update msg model =
               in  (model, firePopup popup Nothing)
           Right model -> idle model
 
-    SetRelationType link newTyp -> idle <| model
-      -- M.setEntityType nodeId focus newTyp model
+    SetRelationType link newTyp -> idle <|
+      M.setRelationType link newTyp model
 
-    SetRelationAttr link attr val -> idle <| model
-      -- M.setEntityAttr (Anno.entityAttr attr) nodeId focus val model
+    SetRelationAttr link attr val -> idle <|
+      M.setRelationAttr (Anno.entityAttr attr) link val model
 
-    SetRelationAnchor link attr -> idle model
---       case M.setEntityAnchor (Anno.entityAttr attr) nodeId focus model of
---           Left err ->
---               let popup = Popup.Info err
---               in  (model, firePopup popup Nothing)
---           Right model -> idle model
+    SetRelationAnchor link focus attr ->
+      case M.setRelationAnchor (Anno.entityAttr attr) link focus model of
+          Left err ->
+              let popup = Popup.Info err
+              in  (model, firePopup popup Nothing)
+          Right model -> idle model
 
 --     SetEventAttr nodeId focus attr -> idle <|
 --       case attr of

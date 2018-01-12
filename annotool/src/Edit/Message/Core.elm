@@ -57,7 +57,8 @@ type Msg
   | ApplyRules -- ^ Apply the (flattening) rules
   | CtrlDown
   | CtrlUp
-  | Connect
+  -- | Connect
+  | MkRelation String -- ^ Create relation of the given name
   | Attach
   | Swap Bool
   | Files -- ^ Go back to files menu
@@ -99,6 +100,7 @@ type Msg
     (Maybe Anno.Attr) -- ^ Attribute value
   | SetRelationAnchor
     C.Link
+    C.Focus
     String            -- ^ Anchor name
 
   | CommandStart
@@ -164,7 +166,9 @@ msgDecoder =
         , simple ApplyRules "ApplyRules"
         , simple SplitTree "SplitTree"
         , simple SplitBegin "SplitBegin"
-        , simple Connect "Connect"
+        -- , simple Connect "Connect"
+        , simple (MkRelation "SLink") "MkSLink"
+        , simple (MkRelation "TLink") "MkTLink"
         , simple Compare "Compare"
         , simple Join "Join"
         , simple ConcatWords "ConcatWords"

@@ -46,6 +46,11 @@ module Edit.Model exposing
   , setEntityAttr
   , setEntityAnchor
 
+  -- Relation modification:
+  , setRelationType
+  , setRelationAttr
+  , setRelationAnchor
+
   -- -- Event modification:
   -- , setEventAttr
   -- -- Signal modification:
@@ -67,7 +72,8 @@ module Edit.Model exposing
   -- Node selection:
   , selectNode, selectNodeAux
   -- Links
-  , connect -- LinkInfo
+  , mkRelationSel
+  -- , connect -- LinkInfo
   -- Tree modifications:
   , attachSel, deleteSel, deleteSelTree, addSel, swapSel
   -- Node annotation:
@@ -916,41 +922,49 @@ deleteLinks win delLinks model =
 -- connect model = model |>
 --   case (model.focus, model.top.selMain, model.bot.selMain) of
 --     (Top, Just topNode, Just botNode) ->
---       connectHelp {nodeFrom = botNode, nodeTo = topNode, focusTo = Top}
+--       connectHelp {nodeFrom = botNode, nodeTo = topNode, focusTo = Top}
 --     (Bot, Just topNode, Just botNode) ->
 --       connectHelp {nodeFrom = topNode, nodeTo = botNode, focusTo = Bot}
 --     _ -> identity
 --     -- _ -> Debug.crash "ALALALAL"
 
 
--- | Add links.
-connect : Model -> Model
-connect model =
+-- | Make relation.
+mkRelationSel : AnnoCfg.Entity -> Model -> Model
+mkRelationSel entCfg model =
   case model.selLink of
-    Nothing -> connectNodes model
-    Just link -> connectSignal link model.focus model
+    Nothing ->
+        connectNodes entCfg model
+    Just link -> model
+        -- connectLink link entCfg model
+        -- -- connectSignal link model.focus model
 
 
 -- | Add links.
-connectNodes : Model -> Model
-connectNodes model = model |>
+connectNodes : AnnoCfg.Entity -> Model -> Model
+connectNodes entCfg model = model |>
   case ( Lens.get (windowLens Top => selMain) model
        , Lens.get (windowLens Bot => selMain) model ) of
-  -- case (model.top.selMain, model.bot.selMain) of
     (Just topNode, Just botNode) ->
-      connectHelp {nodeFrom = topNode, nodeTo = botNode, focusTo = Bot}
+      connectHelp
+      { nodeFrom = topNode
+      , nodeTo = botNode
+      , focusTo = Bot
+      , entCfg = entCfg }
     _ -> identity
 
 
 type alias LinkInfo =
   { nodeFrom : NodeId
   , nodeTo : NodeId
-  , focusTo : Focus }
+  , focusTo : Focus
+  , entCfg : AnnoCfg.Entity
+  }
 
 
 -- | The operation works only in single annotation mode.
 connectHelp : LinkInfo -> Model -> Model
-connectHelp {nodeFrom, nodeTo, focusTo} model =
+connectHelp {nodeFrom, nodeTo, focusTo, entCfg} model =
   let
     focusFrom = case focusTo of
       Top -> Bot
@@ -960,25 +974,21 @@ connectHelp {nodeFrom, nodeTo, focusTo} model =
     treeFrom = getReprId Top (selectWin focusFrom model).tree model
     treeTo   = getReprId Top (selectWin focusTo model).tree model
     link = ((treeFrom, nodeFrom), (treeTo, nodeTo))
-    -- TODO: THE CODE BELOW HAS TO CHANGE!
     (alter, modif) =
-      ( identity
-      , LinkModif
-            { delLinkSet = D.empty
-            , addLinkSet = D.empty }
-      )
---             Nothing ->
---               ( D.insert link linkDataDefault
---               , LinkModif
---                     { addLinkSet = D.empty
---                     , delLinkSet = D.singleton link linkDataDefault }
---               )
---             Just linkData ->
---               ( D.remove link
---               , LinkModif
---                     { delLinkSet = D.empty
---                     , addLinkSet = D.singleton link linkData }
---               )
+        case D.get link (Lens.get (fileLens Top => linkMap) model) of
+            Nothing ->
+              let linkDataDefault = Anno.defaultEntity entCfg in
+              ( D.insert link linkDataDefault
+              , LinkModif
+                    { addLinkSet = D.empty
+                    , delLinkSet = D.singleton link linkDataDefault }
+              )
+            Just linkData ->
+              ( D.remove link
+              , LinkModif
+                    { delLinkSet = D.empty
+                    , addLinkSet = D.singleton link linkData }
+              )
   in
       if fileFrom == fileTo
       then Lens.update (fileLens Top => linkMap) alter model
@@ -986,50 +996,51 @@ connectHelp {nodeFrom, nodeTo, focusTo} model =
       else model
 
 
--- | Connect a link to a signal.
-connectSignal
-  : Link   -- ^ The link to connect with a signal
-  -> Focus -- ^ Focus on the window with the signal
-  -> Model
-  -> Model
-connectSignal link focus model =
-  let
-    win = selectWin focus model
-    treeId = getReprId focus win.tree model
-  in
-    case win.selMain of
-      Nothing -> model
-      Just nodeId -> addSignal link focus (treeId, nodeId) model
+-- -- | Connect a link to a signal.
+-- connectSignal
+--   : Link   -- ^ The link to connect with a signal
+--   -> Focus -- ^ Focus on the window with the signal
+--   -> Model
+--   -> Model
+-- connectSignal link focus model =
+--   let
+--     win = selectWin focus model
+--     treeId = getReprId focus win.tree model
+--   in
+--     case win.selMain of
+--       Nothing -> model
+--       Just nodeId -> addSignal link focus (treeId, nodeId) model
+--
+--
+-- -- | Connect a link to a signal.
+-- addSignal
+--   : Link   -- ^ The link to connect with the signal
+--   -> Focus
+--   -> Addr  -- ^ The address of the signal
+--   -> Model
+--   -> Model
+-- addSignal link focus signal model =
+--   let
+--     fileFrom = Lens.get (top => fileId) model
+--     fileTo   = Lens.get (bot => fileId) model
+--     (alter, modif) = case D.get link (Lens.get (fileLens Top => linkMap) model) of
+--       _ -> Debug.crash "addSignal: implement!"
+-- --       Nothing ->
+-- --         Debug.crash "addSignal: should never happen!"
+-- --       Just oldData ->
+-- --         let
+-- --           newData = switchSignal signal oldData
+-- --         in
+-- --           ( D.insert link newData
+-- --           , LinkModif
+-- --               { delLinkSet = D.singleton link newData
+-- --               , addLinkSet = D.singleton link oldData }
+-- --           )
+--   in
+--     if fileFrom == fileTo
+--     then Lens.update (fileLens Top => linkMap) alter model |> saveModif fileTo modif
+--     else model
 
-
--- | Connect a link to a signal.
-addSignal
-  : Link   -- ^ The link to connect with the signal
-  -> Focus
-  -> Addr  -- ^ The address of the signal
-  -> Model
-  -> Model
-addSignal link focus signal model =
-  let
-    fileFrom = Lens.get (top => fileId) model
-    fileTo   = Lens.get (bot => fileId) model
-    (alter, modif) = case D.get link (Lens.get (fileLens Top => linkMap) model) of
-      _ -> Debug.crash "addSignal: implement!"
---       Nothing ->
---         Debug.crash "addSignal: should never happen!"
---       Just oldData ->
---         let
---           newData = switchSignal signal oldData
---         in
---           ( D.insert link newData
---           , LinkModif
---               { delLinkSet = D.singleton link newData
---               , addLinkSet = D.singleton link oldData }
---           )
-  in
-    if fileFrom == fileTo
-    then Lens.update (fileLens Top => linkMap) alter model |> saveModif fileTo modif
-    else model
 
 ---------------------------------------------------
 -- Selection-wise?
@@ -1925,6 +1936,131 @@ setEntityAnchor attLens id focus model =
 --     in  setTimexAnchorGen lens
 
 
+---------------------------------------------------
+-- Relations: attribute and type modification
+--
+-- TODO: High code duplication with, e.g., `setEntityType`
+---------------------------------------------------
+
+
+-- | Update the relation's annotation.
+updateRelation
+    :  Link
+    -> (Anno.Entity -> Anno.Entity)
+    -> Model
+    -> Model
+updateRelation link updEnt model =
+    let
+        fileId = getFileId model.focus model
+        links = Lens.get (fileLensAlt fileId => linkMap) model
+        oldEnt =
+            case D.get link links of
+                Just en -> en
+                Nothing -> Debug.crash <|
+                           "Model.updateRelation: relation does not exist"
+                           ++ " (" ++ toString link ++ ")"
+        newEnt = updEnt oldEnt
+        update = D.insert link newEnt
+        linkModif = LinkModif
+            { addLinkSet = D.singleton link oldEnt
+            , delLinkSet = D.singleton link newEnt }
+    in
+        Lens.update (fileLensAlt fileId => linkMap) update model
+            |> saveModif fileId linkModif
+
+
+-- | Not only sets the type of the selected relation, but also clears the
+-- attributes inconsistent with the new type.
+setRelationType : Link -> String -> Model -> Model
+setRelationType link newTyp model =
+    let
+        update ent =
+            let
+                -- Relation configuration
+                cfg = AnnoCfg.relationConfig ent.name model.annoConfig
+                -- Old and new type-dependent attributes
+                getAtts typ =
+                    D.fromList <|
+                    Maybe.withDefault [] <|
+                    D.get typ cfg.attributesOnType
+                oldAtts = getAtts ent.typ
+                newAtts = getAtts newTyp
+                -- High-level update functions
+                updateType = Lens.set Anno.entityType newTyp
+                remAtts ent0 = List.foldl
+                    (\attr -> Lens.set (Anno.entityAttr attr) Nothing)
+                    ent0 (D.keys <| D.diff oldAtts newAtts)
+                addAtts ent0 = List.foldl
+                    (\(attr, attrCfg) ->
+                         Lens.set (Anno.entityAttr attr) (Anno.defaultAttr attrCfg))
+                    ent0 (D.toList <| D.diff newAtts oldAtts)
+            in
+                updateType << addAtts << remAtts <| ent
+    in
+        updateRelation link update model
+
+
+setRelationAttr : (Lens.Focus Anno.Entity a) -> Link -> a -> Model -> Model
+setRelationAttr attLens link newVal model =
+    let update = Lens.set attLens newVal
+    in  updateRelation link update model
+
+
+-- | Set the anchor attribute for the selected relation.
+--
+-- The process of deciding which node should be considered as the anchor
+-- is as follows:
+--
+-- 1. If there is a main node selected in focus, choose it
+-- 2. Otherwise, choose the main selected node in the other window
+-- 3. Otherwise, do nothing (but return the error message)
+setRelationAnchor
+    : (Lens.Focus Anno.Entity (Maybe Anno.Attr))
+    -> Link
+    -> Focus
+    -> Model
+    -> Either String Model
+setRelationAnchor lens link focus model =
+    let
+        update newVal = Lens.set lens (Maybe.map Anno.Anchor newVal)
+        anchorMaybe = or anchorInFocus anchorNoFocus
+        or x y = case x of
+            Nothing -> y
+            _ -> x
+        win = selectWin focus model
+        anchorInFocus =
+            case win.selMain of
+                Just x -> Just (getReprId focus win.tree model, x)
+                _ -> Nothing
+        anchorNoFocus =
+            let
+                otherFocus = case focus of
+                    Top -> Bot
+                    Bot -> Top
+                otherWin = selectWin otherFocus model
+            in
+                Util.guard (model.top.fileId == model.bot.fileId)
+                  |> Maybe.andThen (\_ ->
+                    case otherWin.selMain of
+                      Just x  -> Just
+                        (getReprId otherFocus otherWin.tree model, x)
+                      Nothing -> Nothing
+                                   )
+        isTyped addr =
+            case R.label (subTreeAt addr focus model) of
+                Leaf _ -> False
+                Node r -> case r.nodeTyp of
+                  Just _  -> True
+                  Nothing -> False
+    in
+        case anchorMaybe of
+            Nothing -> Left "To perform anchoring, you have to first either: (i) select an additional node in focus, or (ii) select a node in the other window. Note also that nodes from two different files cannot be linked."
+            Just anchor ->
+                if isTyped anchor
+                then Right <| updateRelation link (update anchorMaybe) model
+                else Left "The selected node is untyped (not a TIMEX, EVENT, ...)"
+
+
 -- ---------------------------------------------------
 -- -- Event modification
 -- ---------------------------------------------------
@@ -2335,7 +2471,10 @@ reID =
 
 
 -- | Change the type of a given node.
--- changeTypeWith : NodeId -> R.Tree Node -> R.Tree Node
+-- changeTypeWith
+--     : (NodeId -> R.Tree Node -> R.Tree Node)
+--     -> NodeId
+--     ->
 changeTypeWith shiftTyp id =
   let
     update x =
@@ -2384,56 +2523,6 @@ mkEntitySel entCfg =
       else Nothing
   in
     changeWith (changeTypeWith mkTyp)
-
-
--- ---------------------------------------------------
--- -- Create signal
--- ---------------------------------------------------
---
---
--- mkSignalSel : Focus -> Model -> Model
--- mkSignalSel = changeWith mkSignal
---
---
--- -- | Mark a signal.
--- mkSignal : NodeId -> R.Tree Node -> R.Tree Node
--- mkSignal =
---   let
---     mkTyp x = case x of
---       Just (NodeSignal _) -> Nothing
---       _ -> Just <| NodeSignal Anno.signalDefault
---   in
---     changeTypeWith mkTyp
---
---
--- ---------------------------------------------------
--- -- Create event
--- ---------------------------------------------------
---
---
--- mkEventSel : Focus -> Model -> Model
--- mkEventSel =
---   let
---     mkTyp x = case x of
---       Just (NodeEvent _) -> Nothing
---       _ -> Just <| NodeEvent Anno.eventDefault
---   in
---     changeWith (changeTypeWith mkTyp)
---
---
--- ---------------------------------------------------
--- -- Create timex
--- ---------------------------------------------------
---
---
--- mkTimexSel : Focus -> Model -> Model
--- mkTimexSel =
---   let
---     mkTyp x = case x of
---       Just (NodeTimex _) -> Nothing
---       _ -> Just <| NodeTimex Anno.timexDefault
---   in
---     changeWith (changeTypeWith mkTyp)
 
 
 ---------------------------------------------------
