@@ -62,7 +62,7 @@ viewTree focus model =
       Util.fromListWith S.union <|
       L.filterMap (inTree treeId) <|
       L.map (\link -> (select link, link)) <|
-      D.keys file.linkSet
+      D.keys file.linkMap
 
     config =
       { focus = focus

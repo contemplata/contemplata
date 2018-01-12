@@ -17,6 +17,8 @@ import Rose as R
 import Config as Cfg
 import Edit.Core as C
 import Edit.Model as M
+import Edit.Anno as Anno
+import Edit.Anno.Core as Anno
 import Edit.Message.Core exposing (Msg(..))
 import Edit.View.Circle as Circle
 import Edit.View.Tree as Tree
@@ -35,25 +37,19 @@ viewLinks model =
     let
         fileTop = Lens.get (M.top => M.fileId) model
         fileBot = Lens.get (M.bot => M.fileId) model
-        linkSet = Lens.get (M.fileLens C.Top => M.linkSet) model
+        linkMap = Lens.get (M.fileLens C.Top => M.linkMap) model
     in
         if fileTop == fileBot
         then L.concatMap
             (viewLink model)
-            (D.toList linkSet)
+            (D.toList linkMap)
         else []
---     case model.cmpFile of
---         Just _  -> []
---         Nothing ->
---             L.concatMap
---                 (viewLink model)
---                 (D.toList model.mainFile.linkSet)
 
 
 -- | View the link only if not in the adjudication mode.
 viewLink
    : M.Model
-  -> (C.Link, M.LinkData)
+  -> (C.Link, Anno.Entity)
   -> List (Html.Html Msg)
 viewLink model link =
     let
@@ -69,9 +65,9 @@ viewLink model link =
 -- adjudication mode.
 viewLink_
    : M.Model
-  -> (C.Link, M.LinkData)
+  -> (C.Link, Anno.Entity)
   -> List (Html.Html Msg)
-viewLink_ model ((from, to), linkData) =
+viewLink_ model ((from, to), ent) =
   let
     top = Lens.get (M.windowLens C.Top) model
     bot = Lens.get (M.windowLens C.Bot) model
@@ -106,7 +102,9 @@ viewLink_ model ((from, to), linkData) =
       getReprId top.tree model == Tuple.first from &&
       getReprId bot.tree model == Tuple.first to
     then
-      viewLinkDir model (top, bot) (trimTop, trimBot) (from, to, linkData.signalAddr)
+      -- viewLinkDir model (top, bot) (trimTop, trimBot) (from, to, linkData.signalAddr)
+      viewLinkDir model (top, bot) (trimTop, trimBot) (from, to, Nothing)
+
 --     -- NOTE: The code below is commented out because we want to only draw
 --     -- links from the top workspace to the bottom one
 --     else if

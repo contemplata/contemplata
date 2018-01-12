@@ -842,9 +842,6 @@ viewSideEditLabel : C.Focus -> M.Model -> Html.Html Msg
 viewSideEditLabel win model =
   let
     selected = (Lens.get (M.windowLens win) model).selMain
---     selected = case win of
---       C.Top -> model.top.selMain
---       C.Bot -> model.bot.selMain
     (condAtts, event) = case selected of
       Just nodeId ->
         ( [Atts.value (M.getLabel nodeId win model)]
@@ -896,7 +893,7 @@ viewSideEditLeaf model focus nodeId node =
       ]
 
 
--- | The view of the side edit window -- the label.
+-- | The view of the side edit window -- node's label and attributes.
 viewSideEditInternal
     : M.Model
     -> C.Focus
@@ -1056,7 +1053,7 @@ viewSideEntity
      : M.Model
     -> C.Focus
     -> C.NodeId
-    -> M.InternalNode
+    -> M.InternalNode -- TODO: not used!?
     -> Anno.Entity
     -> List (Html.Html Msg)
 viewSideEntity model focus nodeId node ent =
@@ -1090,15 +1087,54 @@ viewSideEntity model focus nodeId node ent =
       ]
 
 
+-- | Similar to `viewSideEntity`, but serves to show the attributes of a
+-- relation rather than a node entity.
+viewSideRelation
+     : M.Model
+    -- -> C.Focus     <- Focus not important in this case
+    -- -> C.NodeId    <- We need the relation ID instead
+    -> C.Link
+      -- ^ The relation (ID)
+    -> Anno.Entity
+      -- ^ The corresponding annotation (type, attributes)
+    -> List (Html.Html Msg)
+viewSideRelation model link ent =
+  let
+    entCfg = AnnoCfg.entityConfig ent.name model.annoConfig
+
+    setAnchor attrName create =
+        if create
+        then SetRelationAnchor link attrName
+        else SetRelationAttr link attrName Nothing
+
+    inputAttr attrName attrCfg =
+      case attrCfg of
+        AnnoCfg.Anchor ->
+            inputAnchor (setAnchor attrName) attrName model
+        AnnoCfg.Closed r ->
+            inputClosed (SetRelationAttr link attrName) attrName r
+        AnnoCfg.Free r ->
+            inputFree (SetRelationAttr link attrName) attrName r
+
+    inputType = inputTypeGen (SetRelationType link) entCfg.typ ent.typ
+    procAtts (attrName, attrCfg) =
+        inputAttr attrName attrCfg (D.get attrName ent.attributes)
+    inputCoreAtts = L.map procAtts entCfg.attributes
+    inputDepAtts = L.map procAtts
+      (Maybe.withDefault [] <| D.get ent.typ entCfg.attributesOnType)
+  in
+      [ Html.hr [] []
+      , Html.text <| ent.name ++ ":"
+      , Html.table [] <| inputType :: (inputCoreAtts ++ inputDepAtts)
+      ]
+
+
 -- | The view of a side window.
 viewSideEdit : Bool -> C.Focus -> M.Model -> Html.Html Msg
 viewSideEdit visible win model =
   let
 
     selected = (Lens.get (M.windowLens win) model).selMain
---     selected = case win of
---       C.Top -> model.top.selMain
---       C.Bot -> model.bot.selMain
 
     divMain = case selected of
       Nothing -> []
@@ -1120,9 +1156,6 @@ viewSideEdit visible win model =
         M.Node r -> case r.nodeTyp of
           Nothing -> []
           Just en -> viewSideEntity model win nodeId r en
---           Just (M.NodeTimex ti) -> viewSideTimex model win nodeId r ti
---           Just (M.NodeSignal si) -> viewSideSignal win nodeId si
---           Just (M.NodeEvent ev) -> viewSideEvent win nodeId ev
 
     div = Html.div
       [ Atts.style
@@ -1133,6 +1166,79 @@ viewSideEdit visible win model =
         ]
       ]
       (divMain ++ divChildren)
+    top = viewSideDiv visible win model [div]
+  in
+    top
+
+
+-- | The view of a side window.
+viewSideEditEntity : Bool -> C.Focus -> M.Model -> Html.Html Msg
+viewSideEditEntity visible win model =
+  let
+
+    selected = (Lens.get (M.windowLens win) model).selMain
+
+    divMain = case selected of
+      Nothing -> []
+      Just nodeId -> case M.getNode nodeId win model of
+        M.Leaf r -> [viewSideEditLabel win model]
+        M.Node r ->
+            let
+                -- TEMP 28/11: seems OK
+                partId = M.getReprId win (M.selectWin win model).tree model
+                tree = M.getTree win partId model
+                nodeTyp = Maybe.withDefault M.Internal <| M.getNodeTyp nodeId tree
+            in
+                viewSideEditInternal model win nodeId nodeTyp r
+
+    divChildren = case selected of
+      Nothing -> []
+      Just nodeId -> case M.getNode nodeId win model of
+        M.Leaf r -> []
+        M.Node r -> case r.nodeTyp of
+          Nothing -> []
+          Just en -> viewSideEntity model win nodeId r en
+
+    div = Html.div
+      [ Atts.style
+        [ "position" :> "absolute"
+        -- , "width" :> "50%"
+        , "top" :> px Cfg.sideMenuHeight
+        , "margin" :> px 5
+        ]
+      ]
+      (divMain ++ divChildren)
+    top = viewSideDiv visible win model [div]
+  in
+    top
+
+
+-- | The view of a side window.
+viewSideEditRelation
+    : Bool      -- ^ Visible?
+    -> C.Focus  -- ^ Show where?
+    -> C.Link   -- ^ The relation to show
+    -> M.Model
+    -> Html.Html Msg
+viewSideEditRelation visible win link model =
+  let
+
+    -- selected = (Lens.get (M.windowLens win) model).selMain
+
+    divChildren =
+      case D.get link (Lens.get (M.fileLens win => M.linkMap) model) of
+        Nothing -> []
+        Just en -> viewSideRelation model link en
+
+    div = Html.div
+      [ Atts.style
+        [ "position" :> "absolute"
+        -- , "width" :> "50%"
+        , "top" :> px Cfg.sideMenuHeight
+        , "margin" :> px 5
+        ]
+      ]
+      divChildren
     top = viewSideDiv visible win model [div]
   in
     top

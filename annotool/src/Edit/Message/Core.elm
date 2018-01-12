@@ -88,6 +88,19 @@ type Msg
     C.NodeId
     C.Focus
     String            -- ^ Anchor name
+
+  -- * Relation modification event
+  | SetRelationType
+    C.Link
+    String            -- ^ New type value
+  | SetRelationAttr
+    C.Link
+    String            -- ^ Attribute name
+    (Maybe Anno.Attr) -- ^ Attribute value
+  | SetRelationAnchor
+    C.Link
+    String            -- ^ Anchor name
+
   | CommandStart
   | CommandEnter
   | CommandEscape

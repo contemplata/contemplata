@@ -4,7 +4,7 @@ module Edit.Model exposing
     TreeMap, Sent, Token, File, Turn
   , Node(..), NodeAnnoTyp
   , InternalNode, LeafNode
-  , LinkData
+  -- , LinkData
   , isNode, isLeaf
   , concatToks, sentToString, emptyToken
   -- Model types:
@@ -79,7 +79,7 @@ module Edit.Model exposing
   -- Lenses:
   , top, bot, dim, drag, side, pos, height, widthProp, heightProp
   , nodeId, nodeVal, treeMap, sentMap, partMap, reprMap, trees, fileLens
-  , workspaceLens, windowLens, fileId, selMain, linkSet
+  , workspaceLens, windowLens, fileId, selMain, linkMap
   -- Pseudo-lenses:
   -- , setTrees
   , getFileId
@@ -132,7 +132,7 @@ type alias File =
   , reprMap : D.Dict TreeIdBare TreeIdBare
     -- ^ Direct representatives
   , turns : List Turn
-  , linkSet : D.Dict Link LinkData }
+  , linkMap : D.Dict Link Anno.Entity }
 
 
 -- | An original sentence: a list of tokens
@@ -243,35 +243,35 @@ wellFormed (R.Node x ts) =
     _  -> isNode x && Util.and (L.map wellFormed ts)
 
 
----------------------------------------------------
--- LinkData
----------------------------------------------------
-
-
--- | Data related to a link.
-type alias LinkData =
-  { signalAddr : Maybe Addr
-    -- ^ Address of the corresponding signal, if any
-  }
-
-
--- | The default link data value.
-linkDataDefault : LinkData
-linkDataDefault =
-  { signalAddr = Nothing
-  }
-
-
--- | Switch the signal:
+-- ---------------------------------------------------
+-- -- LinkData
+-- ---------------------------------------------------
 --
--- * If the same signal is already assigned to the link, switch it off
--- * Otherwise, add the new signal to the link (even if another signal
---   was previously set)
-switchSignal : Addr -> LinkData -> LinkData
-switchSignal signal r =
-  if Just signal == r.signalAddr
-  then {r | signalAddr = Nothing}
-  else {r | signalAddr = Just signal}
+--
+-- -- | Data related to a link.
+-- type alias LinkData =
+--   { signalAddr : Maybe Addr
+--     -- ^ Address of the corresponding signal, if any
+--   }
+--
+--
+-- -- | The default link data value.
+-- linkDataDefault : LinkData
+-- linkDataDefault =
+--   { signalAddr = Nothing
+--   }
+--
+--
+-- -- | Switch the signal:
+-- --
+-- -- * If the same signal is already assigned to the link, switch it off
+-- -- * Otherwise, add the new signal to the link (even if another signal
+-- --   was previously set)
+-- switchSignal : Addr -> LinkData -> LinkData
+-- switchSignal signal r =
+--   if Just signal == r.signalAddr
+--   then {r | signalAddr = Nothing}
+--   else {r | signalAddr = Just signal}
 
 
 ---------------------------------------------------
@@ -418,9 +418,9 @@ type HistAtom
       -- ^ The tree to restore (or remove, if `Nothing`)
     }
   | LinkModif
-    { addLinkSet : D.Dict Link LinkData
+    { addLinkSet : D.Dict Link Anno.Entity
       -- ^ The links to add
-    , delLinkSet : D.Dict Link LinkData
+    , delLinkSet : D.Dict Link Anno.Entity
       -- ^ The links to remove
     }
   | PartModif -- ^ Modified a partition
@@ -497,7 +497,7 @@ applyAtom fileId histAtom model =
         (newModel, newAtom)
     LinkModif r ->
       let
-        lens = fileLensAlt fileId => linkSet
+        lens = fileLensAlt fileId => linkMap
         newLinks = D.union r.addLinkSet <| D.diff (Lens.get lens model) r.delLinkSet
         chooseTree xs =
             case xs of
@@ -779,8 +779,8 @@ setTree win treeId newTree model =
     isToDelete ((from, to), linkData_) =
       let toDel (trId, ndId_) = trId == treeId
       in  toDel from || toDel to
-    -- delLinks = L.filter isToDelete <| D.toList model.file.linkSet
-    delLinks = L.filter isToDelete <| D.toList (Lens.get (fileLens win) model).linkSet
+    -- delLinks = L.filter isToDelete <| D.toList model.file.linkMap
+    delLinks = L.filter isToDelete <| D.toList (Lens.get (fileLens win) model).linkMap
     linkModif = deleteLinks win (S.fromList <| L.map Tuple.first delLinks)
 
   in
@@ -815,8 +815,8 @@ updateTree win treeId update model =
     isToDelete ((from, to), linkData_) =
       let toDel (trId, ndId) = trId == treeId && S.member ndId delNodes
       in  toDel from || toDel to
-    -- delLinks = L.filter isToDelete <| D.toList model.file.linkSet
-    delLinks = L.filter isToDelete <| D.toList (Lens.get (fileLens win) model).linkSet
+    -- delLinks = L.filter isToDelete <| D.toList model.file.linkMap
+    delLinks = L.filter isToDelete <| D.toList (Lens.get (fileLens win) model).linkMap
     linkModif = deleteLinks win (S.fromList <| L.map Tuple.first delLinks)
 
   in
@@ -895,7 +895,7 @@ removeTree win treeId = setTree win treeId Nothing
 deleteLinks : Focus -> S.Set Link -> Model -> Model
 deleteLinks win delLinks model =
   let
-    linksLens = fileLens win => linkSet
+    linksLens = fileLens win => linkMap
     linkData link = case D.get link (Lens.get linksLens model) of
       Nothing -> Nothing
       Just data -> Just (link, data)
@@ -960,23 +960,28 @@ connectHelp {nodeFrom, nodeTo, focusTo} model =
     treeFrom = getReprId Top (selectWin focusFrom model).tree model
     treeTo   = getReprId Top (selectWin focusTo model).tree model
     link = ((treeFrom, nodeFrom), (treeTo, nodeTo))
+    -- TODO: THE CODE BELOW HAS TO CHANGE!
     (alter, modif) =
-        case D.get link (Lens.get (fileLens Top => linkSet) model) of
-            Nothing ->
-              ( D.insert link linkDataDefault
-              , LinkModif
-                    { addLinkSet = D.empty
-                    , delLinkSet = D.singleton link linkDataDefault }
-              )
-            Just linkData ->
-              ( D.remove link
-              , LinkModif
-                    { delLinkSet = D.empty
-                    , addLinkSet = D.singleton link linkData }
-              )
+      ( identity
+      , LinkModif
+            { delLinkSet = D.empty
+            , addLinkSet = D.empty }
+      )
+--             Nothing ->
+--               ( D.insert link linkDataDefault
+--               , LinkModif
+--                     { addLinkSet = D.empty
+--                     , delLinkSet = D.singleton link linkDataDefault }
+--               )
+--             Just linkData ->
+--               ( D.remove link
+--               , LinkModif
+--                     { delLinkSet = D.empty
+--                     , addLinkSet = D.singleton link linkData }
+--               )
   in
       if fileFrom == fileTo
-      then Lens.update (fileLens Top => linkSet) alter model
+      then Lens.update (fileLens Top => linkMap) alter model
           |> saveModif fileTo modif
       else model
 
@@ -1008,21 +1013,22 @@ addSignal link focus signal model =
   let
     fileFrom = Lens.get (top => fileId) model
     fileTo   = Lens.get (bot => fileId) model
-    (alter, modif) = case D.get link (Lens.get (fileLens Top => linkSet) model) of
-      Nothing ->
-        Debug.crash "addSignal: should never happen!"
-      Just oldData ->
-        let
-          newData = switchSignal signal oldData
-        in
-          ( D.insert link newData
-          , LinkModif
-              { delLinkSet = D.singleton link newData
-              , addLinkSet = D.singleton link oldData }
-          )
+    (alter, modif) = case D.get link (Lens.get (fileLens Top => linkMap) model) of
+      _ -> Debug.crash "addSignal: implement!"
+--       Nothing ->
+--         Debug.crash "addSignal: should never happen!"
+--       Just oldData ->
+--         let
+--           newData = switchSignal signal oldData
+--         in
+--           ( D.insert link newData
+--           , LinkModif
+--               { delLinkSet = D.singleton link newData
+--               , addLinkSet = D.singleton link oldData }
+--           )
   in
     if fileFrom == fileTo
-    then Lens.update (fileLens Top => linkSet) alter model |> saveModif fileTo modif
+    then Lens.update (fileLens Top => linkMap) alter model |> saveModif fileTo modif
     else model
 
 ---------------------------------------------------
@@ -3423,10 +3429,10 @@ reprMap = Lens.create
   (\fn model -> {model | reprMap = fn model.reprMap})
 
 
-linkSet : Lens.Focus { record | linkSet : a } a
-linkSet = Lens.create
-  .linkSet
-  (\fn model -> {model | linkSet = fn model.linkSet})
+linkMap : Lens.Focus { record | linkMap : a } a
+linkMap = Lens.create
+  .linkMap
+  (\fn model -> {model | linkMap = fn model.linkMap})
 
 
 turns : Lens.Focus { record | turns : a } a
@@ -3942,7 +3948,7 @@ fileDecoder =
     (Decode.field "partMap" partMapDecoder)
     (Decode.field "reprMap" reprMapDecoder)
     (Decode.field "turns" (Decode.list turnDecoder))
-    (Decode.field "linkSet" linkSetDecoder)
+    (Decode.field "linkMap" linkMapDecoder)
 
 
 turnDecoder : Decode.Decoder Turn
@@ -3956,14 +3962,15 @@ turnDecoder =
       (Decode.field "trees" treesDecoder)
 
 
--- linkSetDecoder : Decode.Decoder (D.Dict Link LinkData)
--- linkSetDecoder = Decode.map D.fromList <| Decode.list linkDecoder
-linkSetDecoder : Decode.Decoder (D.Dict Link LinkData)
-linkSetDecoder =
+-- linkMapDecoder : Decode.Decoder (D.Dict Link LinkData)
+-- linkMapDecoder = Decode.map D.fromList <| Decode.list linkDecoder
+linkMapDecoder : Decode.Decoder (D.Dict Link Anno.Entity)
+linkMapDecoder =
   let
-    pairDecoder = Decode.map2 (\link linkData -> (link, linkData))
+    pairDecoder = Decode.map2 (\link ent -> (link, ent))
       (Decode.index 0 linkDecoder)
-      (Decode.index 1 linkDataDecoder)
+      -- (Decode.index 1 linkDataDecoder)
+      (Decode.index 1 Anno.entityDecoder)
   in
     Decode.map D.fromList <| Decode.list pairDecoder
 
@@ -3975,10 +3982,10 @@ linkDecoder =
     (Decode.field "to" Anno.addrDecoder)
 
 
-linkDataDecoder : Decode.Decoder LinkData
-linkDataDecoder =
-  Decode.map (\x -> {signalAddr=x})
-    (Decode.field "signalAddr" (Decode.nullable Anno.addrDecoder))
+-- linkDataDecoder : Decode.Decoder LinkData
+-- linkDataDecoder =
+--   Decode.map (\x -> {signalAddr=x})
+--     (Decode.field "signalAddr" (Decode.nullable Anno.addrDecoder))
 
 
 -- treeMapDecoder : Decode.Decoder TreeMap
@@ -4085,7 +4092,7 @@ encodeFile file =
     , ("partMap", encodePartMap file.partMap)
     , ("reprMap", encodeReprMap file.reprMap)
     , ("turns", Encode.list (L.map encodeTurn file.turns))
-    , ("linkSet", encodeLinkSet file.linkSet)
+    , ("linkMap", encodeLinkMap file.linkMap)
     ]
 
 
@@ -4108,12 +4115,13 @@ encodeTurn turn =
 
 -- encodeLinkSet : D.Dict Link LinkData -> Encode.Value
 -- encodeLinkSet = Encode.list << L.map encodeLink << S.toList
-encodeLinkSet : D.Dict Link LinkData -> Encode.Value
-encodeLinkSet =
+encodeLinkMap : D.Dict Link Anno.Entity -> Encode.Value
+encodeLinkMap =
   let
-    encodePair (link, linkData) = Encode.list
+    encodePair (link, ent) = Encode.list
       [ encodeLink link
-      , encodeLinkData linkData ]
+      -- , encodeLinkData linkData ]
+      , Anno.encodeEntity ent ]
       -- (encodeLink link, encodeLinkData linkData)
   in
     Encode.list << L.map encodePair << D.toList
@@ -4128,11 +4136,11 @@ encodeLink (from, to) =
     ]
 
 
-encodeLinkData : LinkData -> Encode.Value
-encodeLinkData x = Encode.object
-  [ ("tag", Encode.string "LinkData")
-  , ("signalAddr", Util.encodeMaybe Anno.encodeAddr x.signalAddr)
-  ]
+-- encodeLinkData : LinkData -> Encode.Value
+-- encodeLinkData x = Encode.object
+--   [ ("tag", Encode.string "LinkData")
+--   , ("signalAddr", Util.encodeMaybe Anno.encodeAddr x.signalAddr)
+--   ]
 
 
 -- encodeTreeMap : TreeMap -> Encode.Value

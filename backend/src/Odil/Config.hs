@@ -23,6 +23,7 @@ import qualified Odil.Config.Command as Cmd
 -- | A closed attribute.
 data Config = Config
   { entities :: Vector E.Entity
+  , relations :: Vector E.Entity
   , nonTerminals :: Vector Text
   , preTerminals :: Vector Text
   , annoLevels :: Vector Text

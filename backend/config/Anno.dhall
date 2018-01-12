@@ -5,6 +5,11 @@
     , ./Anno/event.val
     , ./Anno/signal.val
     ] : List ./Anno/Entity.typ
+-- Allowed types of relation annotations
+, relations =
+    [ ./Anno/slink.val
+    , ./Anno/tlink.val
+    ] : List ./Anno/Entity.typ
 
 -- Phrasal and part-of-speech tags
 , nonTerminals = ./Anno/nonTerminals.val

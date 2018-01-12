@@ -371,6 +371,19 @@ update msg model =
               in  (model, firePopup popup Nothing)
           Right model -> idle model
 
+    SetRelationType link newTyp -> idle <| model
+      -- M.setEntityType nodeId focus newTyp model
+
+    SetRelationAttr link attr val -> idle <| model
+      -- M.setEntityAttr (Anno.entityAttr attr) nodeId focus val model
+
+    SetRelationAnchor link attr -> idle model
+--       case M.setEntityAnchor (Anno.entityAttr attr) nodeId focus model of
+--           Left err ->
+--               let popup = Popup.Info err
+--               in  (model, firePopup popup Nothing)
+--           Right model -> idle model
+
 --     SetEventAttr nodeId focus attr -> idle <|
 --       case attr of
 --         Anno.ClassAttr x -> M.setEventAttr M.eventClass nodeId focus x model

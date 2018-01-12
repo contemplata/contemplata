@@ -33,6 +33,8 @@ import Edit.Message.Core as Msg
 type alias Config =
   { entities : List Entity
     -- ^ TODO: This could be a map!
+  , relations : List Entity
+    -- ^ TODO: This could be a map as well!
   , nonTerminals : List String
   , preTerminals : List String
   , annoLevels : List String
@@ -114,6 +116,17 @@ entityConfig name cfg =
         Just en -> en
 
 
+-- | Get the configuration for a given entity name.
+relationConfig
+    :  String -- ^ Relation name
+    -> Config -- ^ Config
+    -> Entity
+relationConfig name cfg =
+    case Util.find (\x -> x.name == name) cfg.entities of
+        Nothing -> Debug.crash "Config.entityConfig: unknown entity name"
+        Just en -> en
+
+
 ---------------------------------------------------
 -- JSON
 ---------------------------------------------------
@@ -121,15 +134,17 @@ entityConfig name cfg =
 
 configDecoder : Decode.Decoder Config
 configDecoder =
-  let mkConfig ents nons pres lvs cmds =
+  let mkConfig ents rels nons pres lvs cmds =
         { entities = ents
+        , relations = rels
         , nonTerminals = nons
         , preTerminals = pres
         , annoLevels = lvs
         , commands = cmds
         }
-  in  Decode.map5 mkConfig
+  in  Decode.map6 mkConfig
         (Decode.field "entities" (Decode.list entityDecoder))
+        (Decode.field "relations" (Decode.list entityDecoder))
         (Decode.field "nonTerminals" (Decode.list Decode.string))
         (Decode.field "preTerminals" (Decode.list Decode.string))
         (Decode.field "annoLevels" (Decode.list Decode.string))
