@@ -48,3 +48,30 @@ for more information about the front-end.
 
 
 # Installation
+
+First clone the Contemplata's repository into a local directory. Then proceed
+with the installation of the back-end server, the front-end annotation tool, and
+(optionally) the third-party syntactic analysis tools.
+
+## Web-server
+
+It is recommanded to install the back-end server using the
+[Haskell Tool Stack][stack], which you will need to download and install on your
+machine beforehand.
+
+Then, move to the `backend` directory in the local copy of the repository and
+run:
+
+    stack install 
+ 
+Under linux, this command will by default install the `odil-snap` command-line
+tool in the `~/.local/bin` directory. You can either add this directory to your
+`$PATH`, or use the full path to run `odil-snap`:
+
+    $ ~/.local/bin/odil-snap --help
+    
+    
+
+
+[this]: https://github.com/kawu/contemplata
+[stack]: http://docs.haskellstack.org "Haskell Tool Stack"
