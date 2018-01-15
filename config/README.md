@@ -1,9 +1,12 @@
 # Configuration
 
+This directory contains several configuration files which allow to control
+Contemplata's behavior.
+
 
 ## devel.cfg
 
-There is a couple of top-level variables defiend in the `devel.cfg` file. Below
+There is a couple of top-level variables defined in the `devel.cfg` file. Below
 you can see the list of the more important ones.
 
 ### DB 
@@ -43,7 +46,8 @@ file. It contains, notably:
 * Definitions of the annotation *relations* and the corresponding attributes,
   i.e., the objects which can connect two different nodes belonging to two
   different syntactic trees.
-
+* Definitions of annotation command invocations: the corresponding menu items,
+  command-line instructions, keyboard shortcutes, help messages, and so on.
 
 ## User accounts and passwords
 
