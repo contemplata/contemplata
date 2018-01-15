@@ -1,16 +1,66 @@
-TODO: change the description below.
+# Configuration
 
-The above command copies the initial password file (`pass.json`), where the
-passwords of the website administrator and the guest user are set (initially to
-`admin` and `guest`, respectively -- TODO: check). It also copies the high-level
-configuration file `devel.cfg`, in which the following variables are set:
 
-* `DB` -- path to the database directory 
-* `href-base` -- the base URL of the website
-* `password` -- password file
-* `websocket-server` -- address of the websocket server (TODO: should be simply
-  set to `$href-base/ws`?)
-* `anno-config` -- top-level Dhall configuration file (TODO: send to a section
-  about the Dhall configuration)
+## devel.cfg
 
-The values of the remaining variables can be normally left as they are.
+There is a couple of top-level variables defiend in the `devel.cfg` file. Below
+you can see the list of the more important ones.
+
+### DB 
+
+Path to the database directory.
+
+### href-base
+
+The base URL of the website. The default URL address is fine for development,
+i.e., when you run your own local instance with the default parameters (e.g. the
+port number) and plan to access the annotation tool on your local machine only.
+
+### password
+
+Points to the file with user accounts and passwords (see
+[pass.json](#pass.json)).
+
+### websocket-server 
+
+Address of the websocket server (TODO: should be simply set to `$href-base/ws`?)
+
+### anno-config 
+
+Top-level Dhall configuration file.  See also the [dhall](#dhall) section.
+
+
+## Dhall
+
+A more fine-grained configuration is stored in the form of a [Dhall][dhall]
+file. It contains, notably:
+
+* A list of non-terminal and terminal categories which can be assigned to
+  syntactic nodes.
+* Definitions of the annotation *entities*, i.e., the objects with which the nodes
+  in syntactic trees can be marked. The corresponding attributes, the
+  attributes' types, and potential values, are also defined via Dhall.
+* Definitions of the annotation *relations* and the corresponding attributes,
+  i.e., the objects which can connect two different nodes belonging to two
+  different syntactic trees.
+
+
+## User accounts and passwords
+
+The `pass.json` file keeps information about the annotation users and their
+passwords.  The initial `pass.json` file defines two users:
+
+* Admin: login = `admin`, password = `admin`,
+* Guest: login = `guest`, password = `guest`.
+
+Of course you should change the administrator's password immediately after
+setting up your own instance. Both the `admin` and the `guest` accounts are
+special and contain the corresponding entries in the top-level
+[devel.cfg](#devel.cfg) configuration file.
+
+New accounts can be added via the web interface, once you log in as the
+website's administrator.
+
+
+
+[dhall]: https://github.com/dhall-lang/dhall-lang "Dhall"

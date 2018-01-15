@@ -89,14 +89,19 @@ file into a directory in which the web-server is run, as explained in the
 TODO
 
 
+# Running
+
+Before you can start the Contemplata application, you will need to set up an
+instance with its own dedicated database and configuration files.
+
 ## Setup
 
 You will need to prepare a dedicated enviroment to run Contemplata, i.e., a
-directory where the database and all the high-level configuration files are
+dedicated directory where the database and all the configuration files are
 stored. Under linux, assuming that `$odil` is the path to the dedicated
 directory, and that `$contemplata` is the path to the Contemplata's repository,
-you can run the following commands to create an empty database in the `DB`
-subdirectory.
+you can run the following commands to create an empty database in `$odil`'s'
+`DB` subdirectory.
 
     mkdir $odil
     cd $odil
@@ -104,14 +109,14 @@ subdirectory.
 
 Then you can copy the (a) initial configuration files, (b) webserver templates,
 and (c) the JavaScript file generated with Elm (see the [front-end](#front-end)
-section), as follows:
+section), using the following commands:
 
     cp -r $contemplata/config/* ./
     cp -r $contemplata/backend/snaplets ./
     cp -r $contemplata/annotool/main.js resources/public/
     
-You can read more about the configuration files in the corresponding
-[README](config/README.md).
+You can read more about configuration in the corresponding
+[README](config/README.md) file.
 
 
 [this]: https://github.com/kawu/contemplata
