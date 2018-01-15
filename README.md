@@ -94,21 +94,22 @@ TODO
 You will need to prepare a dedicated enviroment to run Contemplata, i.e., a
 directory where the database of the annotated files and all the high-level
 configuration files are stored. Under linux, you can run the following commands
-(replacing `ODIL` with the directory of your choice):
+(replacing `ODIL` with a directory of your choice):
 
     mkdir ODIL 
     cd ODIL
-    odil createdb -d DB # creates an empty database in the DB subdirectory
+    odil createdb -d DB
 
-Then you can copy the initial configuration files from the `config` directory of
-the repository to `ODIL`.
+The last command above creates an empty database in the `DB` subdirectory. Then
+you can copy the initial configuration files from the `config` directory of the
+repository to `ODIL`.
 
-    cp <config>/* ./
+    cp -r <config>/* ./
 
 The above command copies the initial password file (`pass.json`), where the
-password of the website administrator is set (initially to `admin` -- TODO:
-check). It also copies the high-level configuration file `devel.cfg`, in which
-the following variables need to be set:
+passwords of the website administrator and the guest user are set (initially to
+`admin` and `guest`, respectively -- TODO: check). It also copies the high-level
+configuration file `devel.cfg`, in which the following variables are set:
 
 * `DB` -- path to the database directory 
 * `href-base` -- the base URL of the website
@@ -116,9 +117,14 @@ the following variables need to be set:
 * `websocket-server` -- address of the websocket server (TODO: should be simply
   set to `$href-base/ws`?)
 * `anno-config` -- top-level Dhall configuration file (TODO: send to a section
-  about Dhall configuration)
+  about the Dhall configuration)
 
 The values of the remaining variables can be normally left as they are.
+
+To finally finish the setup, you need to link the webserver templates from the
+backend's directory in the local repository to the `ODIL` directory:
+
+    cp -r <backend>/snaplets ./
 
 
 [this]: https://github.com/kawu/contemplata
