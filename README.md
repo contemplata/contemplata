@@ -30,8 +30,7 @@ be allowed to store the changes you made, but you will have access to the
 be able to play with the tool's functionality.
   
 On the server side, the tool uses a simple file-based storage for the annotated
-files. All the files are stored in the dedicated JSON format. See **TODO** for
-more information about the format.
+files. All the files are kept in the [dedicated JSON format](#format).
 
 The web-server is implemented in [Snap](http://snapframework.com/), a
 [Haskell](https://www.haskell.org/) web framework. It handles regular HTTP
@@ -115,6 +114,28 @@ section), using the following commands:
     
 You can read more about configuration in the corresponding
 [README](config/README.md) file.
+
+
+# Format
+
+All the files in the database are stored in a dedicated JSON format. This format
+is
+[determined automatically](https://github.com/kawu/contemplata/blob/dev/backend/src/Odil/Server/Types.hs#L258-L282)
+on the basis of the corresponding
+[File](https://github.com/kawu/contemplata/blob/dev/backend/src/Odil/Server/Types.hs#L151-L187)
+data type.
+
+You can think of the File type as a definition of the structure against which
+the JSON files can be validated. You can perform the validation programatically.
+First run `stack ghci` within the `backend` source directory and then:
+
+```Haskell
+import qualified Data.Aeson as JSON
+import qualified Data.ByteString as BS
+JSON.decodeStrict <$> BS.readFile <path-to-json> :: IO (Maybe File)
+```
+
+
 
 
 [this]: https://github.com/kawu/contemplata
