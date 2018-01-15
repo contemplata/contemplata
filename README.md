@@ -130,9 +130,9 @@ the JSON files can be validated. You can perform the validation programatically.
 First run `stack ghci` within the `backend` source directory and then:
 
 ```Haskell
-import qualified Data.Aeson as JSON
-import qualified Data.ByteString as BS
-JSON.decodeStrict <$> BS.readFile <path-to-json> :: IO (Maybe File)
+> import qualified Data.Aeson as JSON
+> import qualified Data.ByteString as BS
+> JSON.decodeStrict <$> BS.readFile "<path-to-json>" :: IO (Maybe File)
 ```
 
 
