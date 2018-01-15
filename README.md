@@ -92,39 +92,32 @@ TODO
 ## Setup
 
 You will need to prepare a dedicated enviroment to run Contemplata, i.e., a
-directory where the database of the annotated files and all the high-level
-configuration files are stored. Under linux, you can run the following commands
-(replacing `ODIL` with a directory of your choice):
+directory where the database and all the high-level configuration files are
+stored. Under linux, assuming that `$odil` is the path to the new directory, and
+that `$contemplata` is the path to the local copy of the Contemplata's
+repository, you can run the following commands:
 
-    mkdir ODIL 
-    cd ODIL
+    mkdir $odil
+    cd $odil
     odil createdb -d DB
 
 The last command above creates an empty database in the `DB` subdirectory. Then
-you can copy the initial configuration files from the `config` directory of the
-repository to `ODIL`.
+you can copy the initial configuration files from the repository's `config`
+subdirectory.
 
     cp -r $contemplata/config/* ./
+    
+You can read more about the configuration files in the corresponding
+[README](config/README).
 
-The above command copies the initial password file (`pass.json`), where the
-passwords of the website administrator and the guest user are set (initially to
-`admin` and `guest`, respectively -- TODO: check). It also copies the high-level
-configuration file `devel.cfg`, in which the following variables are set:
-
-* `DB` -- path to the database directory 
-* `href-base` -- the base URL of the website
-* `password` -- password file
-* `websocket-server` -- address of the websocket server (TODO: should be simply
-  set to `$href-base/ws`?)
-* `anno-config` -- top-level Dhall configuration file (TODO: send to a section
-  about the Dhall configuration)
-
-The values of the remaining variables can be normally left as they are.
-
-To finally finish the setup, you need to link the webserver templates from the
-backend's directory to the `ODIL` directory:
+You also need to copy the webserver templates:
 
     cp -r $contemplata/backend/snaplets ./
+    
+To finish the setup, copy the JavaScript file generated with Elm (see the
+[front-end](#front-end) section):
+
+    cp -r $contemplata/annotool/main.js resources/public/
 
 
 [this]: https://github.com/kawu/contemplata
