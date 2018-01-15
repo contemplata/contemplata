@@ -38,13 +38,11 @@ The web-server is implemented in [Snap](http://snapframework.com/), a
 requests (used to list the files, general administration work, etc.) and
 [WebSocket](https://en.wikipedia.org/wiki/WebSocket) requests, the latter used
 to communicate with the front-end annotation application.
-See **TODO** for more information about the back-end.
 
 The front-end is implemented in [Elm][elm], a Haskell-like
 language which compiles to javascript. It allows the actual annotation of the
 files in the dababase. Being a high-level language, Elm allows to implement
-sophisticated annotation-related functionality relatively quickly. See **TODO**
-for more information about the front-end.
+sophisticated annotation-related functionality relatively quickly.
 
 
 # Installation

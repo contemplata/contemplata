@@ -15,22 +15,23 @@ Path to the database directory.
 
 ### href-base
 
-The base URL of the website. The default URL address is fine for development,
-i.e., when you run your own local instance with the default parameters (e.g. the
-port number) and plan to access the annotation tool on your local machine only.
+The `href-base` variable, based on `base`, defines the base URL of the website.
+The default URL address is fine for development, i.e., when you run your own
+local instance with the default parameters (e.g. the port number) and want to
+access the annotation tool on your local machine only.
+
+A related variable is `websocket-server`, which defines the address of the
+websocket server. You should change neither `websocket-server` nor `href-base`,
+just the underlying `base`.
 
 ### password
 
 Points to the file with user accounts and passwords (see
 [pass.json](#pass.json)).
 
-### websocket-server 
-
-Address of the websocket server (TODO: should be simply set to `$href-base/ws`?)
-
 ### anno-config 
 
-Top-level Dhall configuration file.  See also the [dhall](#dhall) section.
+Top-level Dhall configuration file. See also the [dhall](#dhall) section.
 
 
 ## Dhall
