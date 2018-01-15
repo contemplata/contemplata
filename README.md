@@ -104,7 +104,7 @@ The last command above creates an empty database in the `DB` subdirectory. Then
 you can copy the initial configuration files from the `config` directory of the
 repository to `ODIL`.
 
-    cp -r <config>/* ./
+    cp -r $contemplata/config/* ./
 
 The above command copies the initial password file (`pass.json`), where the
 passwords of the website administrator and the guest user are set (initially to
@@ -122,9 +122,9 @@ configuration file `devel.cfg`, in which the following variables are set:
 The values of the remaining variables can be normally left as they are.
 
 To finally finish the setup, you need to link the webserver templates from the
-backend's directory in the local repository to the `ODIL` directory:
+backend's directory to the `ODIL` directory:
 
-    cp -r <backend>/snaplets ./
+    cp -r $contemplata/backend/snaplets ./
 
 
 [this]: https://github.com/kawu/contemplata
