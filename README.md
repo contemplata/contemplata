@@ -40,7 +40,7 @@ requests (used to list the files, general administration work, etc.) and
 to communicate with the front-end annotation application.
 See **TODO** for more information about the back-end.
 
-The front-end is implemented in [Elm](http://elm-lang.org/), a Haskell-like
+The front-end is implemented in [Elm][elm], a Haskell-like
 language which compiles to javascript. It allows the actual annotation of the
 files in the dababase. Being a high-level language, Elm allows to implement
 sophisticated annotation-related functionality relatively quickly. See **TODO**
@@ -70,8 +70,57 @@ tool in the `~/.local/bin` directory. You can either add this directory to your
 
     $ ~/.local/bin/odil-snap --help
     
+
+## Front-end
+
+To install the front-end application, you will need to install [Elm][elm]
+beforehand. Then, move to the `annotool` directory and run:
+
+    elm-make src/Main.elm --output=main.js
     
+The `--output` option tells the compiler to generate a `main.js` JavaScript file
+rather than a stand-alone HTML file. You will then need to put the `main.js`
+file into a directory in which the web-server is run, as explained in the
+[setup](#setup) section below.
+
+
+## Third-party
+
+TODO
+
+
+## Setup
+
+You will need to prepare a dedicated enviroment to run Contemplata, i.e., a
+directory where the database of the annotated files and all the high-level
+configuration files are stored. Under linux, you can run the following commands
+(replacing `ODIL` with the directory of your choice):
+
+    mkdir ODIL 
+    cd ODIL
+    odil createdb -d DB # creates an empty database in the DB subdirectory
+
+Then you can copy the initial configuration files from the `config` directory of
+the repository to `ODIL`.
+
+    cp <config>/* ./
+
+The above command copies the initial password file (`pass.json`), where the
+password of the website administrator is set (initially to `admin` -- TODO:
+check). It also copies the high-level configuration file `devel.cfg`, in which
+the following variables need to be set:
+
+* `DB` -- path to the database directory 
+* `href-base` -- the base URL of the website
+* `password` -- password file
+* `websocket-server` -- address of the websocket server (TODO: should be simply
+  set to `$href-base/ws`?)
+* `anno-config` -- top-level Dhall configuration file (TODO: send to a section
+  about Dhall configuration)
+
+The values of the remaining variables can be normally left as they are.
 
 
 [this]: https://github.com/kawu/contemplata
 [stack]: http://docs.haskellstack.org "Haskell Tool Stack"
+[elm]: http://elm-lang.org
