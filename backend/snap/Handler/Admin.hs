@@ -58,6 +58,7 @@ import qualified Snap as Snap
 import qualified Snap.Snaplet.Auth as Auth
 import qualified Snap.Snaplet.Heist as Heist
 import qualified Snap.Util.FileServe as FileServe
+import qualified Snap.Util.FileUploads as Upload
 import           Heist.Interpreted (bindSplices, Splice)
 import           Heist (getParamNode, Splices)
 import qualified Text.XmlHtml as X
@@ -349,7 +350,16 @@ fileUploadHandler = ifAdmin $ do
     cfg <- Dhall.input Dhall.auto cfgPath
     return . map TL.toStrict . V.toList . AnnoCfg.annoLevels $ cfg
 
-  (uploadView, uploadData) <- D.runForm
+  let mb32 = (2 ^ (20::Int)) * 32 -- 32 MB
+  (uploadView, uploadData) <- D.runFormWith
+    ( D.defaultSnapFormConfig
+      { D.uploadPolicy =
+          Upload.setMaximumFormInputSize mb32
+          Upload.defaultUploadPolicy
+      , D.partPolicy = const $
+          Upload.allowWithMaximumSize mb32
+      }
+    )
     "upload-file-form"
     (uploadFileForm levels)
 
@@ -396,7 +406,7 @@ uploadFileForm levels =
       = D.validateM decodeFile
       . D.validateM checkNewFileId
     checkFile = \case
-      Nothing -> DT.Error "You must specify a file to upload"
+      Nothing -> DT.Error "You must specify a file to upload (size limit = 32MB)"
       Just filePath -> DT.Success filePath
     checkNewFileId upl@Upload{..}
       | forceUpload = return $ DT.Success upl
