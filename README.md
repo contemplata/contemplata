@@ -233,9 +233,16 @@ import qualified Data.ByteString as BS
 JSON.decodeStrict <$> BS.readFile "<path-to-json>" :: IO (Maybe File)
 ```
 
-## French Treebank
+### JSON from PTB
 
-TODO: how to obtain JSON file from a French Treebank XML file
+Contemplata provides a command-line tool which allows to convert a file in the
+PTB bracketed format to the dedicated JSON format. So if you want upload a file
+for annotation, it might be more convenient to prepare it in the PTB format,
+covert as shown below, and upload via the web-interface afterwards.
+
+```bash
+odil penn2json < <file.ptb> > <file.json>
+```
 
 
 
