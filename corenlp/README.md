@@ -22,11 +22,11 @@ where:
 * `FTB-XML-FILE` is a file with constituency trees stored in the FTB specific
   XML format and encoded in UTF-8.
 
-This will produce a file in the PTB format, i.e., with lines similar to the one
+This will produce output in the PTB format, i.e., with lines similar to the one
 below.
 
 ```
-(ROOT (SENT (ADV Ailleurs) (NP (DET l') (NC année) (NC record) (PP (P de) (NP (DET la) (NC sécheresse)))) (VN (V reste)) (ADV souvent) (NP (NC 1921))))
+(SENT (ADV Ailleurs) (NP (DET l') (NC année) (NC record) (PP (P de) (NP (DET la) (NC sécheresse)))) (VN (V reste)) (ADV souvent) (NP (NC 1921)))
 ```
   
 Run `odil ftb2penn --help` to see more conversion option.
@@ -64,11 +64,12 @@ you the `new-stanford-odil-models.jar` file with the update lexicalized parsing
 model, without changing the other (tokenization, POS tagging) models.
 
 ```bash
-unzip stanford-french-models.jar
+unzip stanford-french-models.jar -d stanford-french-models
 cp model.gz ./stanford-french-models/edu/stanford/nlp/models/lexparser/frenchFactored.ser.gz
 cd stanford-french-models
 zip -r ../new-stanford-odil-models.jar *
 cd ..
+rm -r stanford-french-models
 ```
 
 **WARNING**: be aware that the lexicalized syntactic parser should be trained on

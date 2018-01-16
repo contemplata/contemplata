@@ -119,11 +119,6 @@ cd $contemplata/corenlp
 See also the [README](corenlp/README.md) file for information about the CoreNLP
 French parsing model prepared within the context of the Temporal@ODIL project.
 
-TODOs:
-
-* Which port is used by default. By the way, it should be possible to configure
-  such things.
-
 
 ### DiscoDOP
 
