@@ -115,6 +115,29 @@ cp -r $contemplata/annotool/main.js resources/public/
 You can read more about configuration in the corresponding
 [README](config/README.md) file.
 
+## Running
+
+Use the following command to run the web-server in the `$contemplata` directory.
+
+```bash
+odil-snap
+```
+
+By default, the application uses the port `8000`. You can change it using the
+`-p` option.
+
+```bash
+odil-snap -p 8000
+```
+
+At this point, you can access the annotation tool via
+[http://localhost:8000](http://localhost:8000) (assuming that you performed the
+steps described in the [setup](#setup) section).
+
+To start annotating, you will have to log in as an administrator (login =
+`admin`, password = `admin`), create annotator accounts, upload files, and
+assign the files to the individual annotators.
+
 
 # Architecture
 
@@ -142,10 +165,10 @@ annotation-related functionality relatively quickly.
 
 An Temporal@ODIL-dedicated instance of the tool can be found at
 [http://vega.info.univ-tours.fr/odil/current](http://vega.info.univ-tours.fr/odil/current).
-Log in as a *guest* (password=*guest*) to have a look. As a guest, you will not
-be allowed to store any changes you made, but you will have access to the
-[user's guide](http://vega.info.univ-tours.fr/odil/current/user/guide) and will
-be able to play with the tool's functionality.
+You can log in as a *guest* (password *guest*) to have a look. As a guest, you
+will not be allowed to store any changes you made, but you will have access to
+the [user's guide](http://vega.info.univ-tours.fr/odil/current/user/guide) and
+will be able to play with the tool's functionality.
   
 
 # Format
