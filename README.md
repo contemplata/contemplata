@@ -79,6 +79,52 @@ file into a directory in which the web-server is run, as explained in the
 
 ## Third-party
 
+You can optionally install one or both constituency parsers supported by
+Contemplata. This will allow the annotators to run these parsers directly via
+the annotation interface.
+<!---(e.g., after changes in segmentation or POS tags).--->
+
+### Stanford
+
+Let `$corenlp` be the directory in which you wish to put the Stanford CoreNLP
+tool. You can download it from
+[CoreNLP's webpage][corenlp], or use the following commands (which download
+CoreNLP `3.8.0`, a version against which Contemplata has been tested).
+
+```bash
+cd $corenlp
+wget http://nlp.stanford.edu/software/stanford-corenlp-full-2017-06-09.zip
+unzip stanford-corenlp-full-2017-06-09.zip
+```
+
+Next, you will need to obtain an appropriate parsing model. Currently,
+Contemplata is configured to work with the French models only (we plan to allow
+other languages in future versions). You can download the official CoreNLP
+French models from the [CoreNLP's website][corenlp], or use the following
+command:
+
+```bash
+cd $corenlp
+wget http://nlp.stanford.edu/software/stanford-french-corenlp-2017-06-09-models.jar
+```
+
+Finally, you can run the CoreNLP server, supplying it with the path to the
+CoreNLP's source code and the French models:
+
+```bash
+cd $contemplata/corenlp
+./stanford-server-fr.sh $corenlp/stanford-corenlp-full-2017-06-09 $corenlp/stanford-french-corenlp-2017-06-09-models.jar
+```
+
+TODOs:
+
+* Alternative French models, developed within ODIL.
+* Which port is used by default. By the way, it should be possible to configure
+  such things.
+
+
+### DiscoDOP
+
 TODO
 
 
@@ -134,9 +180,9 @@ At this point, you can access the annotation tool via
 [http://localhost:8000](http://localhost:8000) (assuming that you performed the
 steps described in the [setup](#setup) section).
 
-To start annotating, you will have to log in as an administrator (login =
-`admin`, password = `admin`), create annotator accounts, upload files, and
-assign the files to the individual annotators.
+To start annotating, you will have to log in as administrator (login = `admin`,
+password = `admin`), change the password, create annotator accounts, upload
+files, and assign the files to the individual annotators.
 
 
 # Architecture
@@ -198,3 +244,4 @@ JSON.decodeStrict <$> BS.readFile "<path-to-json>" :: IO (Maybe File)
 [elm]: http://elm-lang.org
 [temporal-odil]: https://hal.archives-ouvertes.fr/hal-01627261 "Temporal@ODIL"
 [ancor]: https://hal.archives-ouvertes.fr/hal-01075679 "ANCOR"
+[corenlp]: https://stanfordnlp.github.io/CoreNLP/ "CoreNLP"
