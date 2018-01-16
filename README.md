@@ -1,18 +1,107 @@
 # Contemplata
 
-*Contemplata* is an annotation tool created with the rather specific needs of
-the ODIL project in mind, namely:
+*Contemplata* is an annotation tool developed with the
+[Temporal@ODIL][temporal-odil] project. The ultimate goal of this project is to
+annotate a portion of the [Ancor][ancor] spoken French corpus with semantic
+(more precisely, temporal) information. To this end, Contemplata allows:
 
-* Correction of constituency trees, obtained with a syntactic parser plugged
-  into Contemplata,
-* Annotation of temporal entities on top of the syntactic structures,
+* Merging/splitting speech turns into syntactically coherent units,
+* Removing (either automatically or manually) selected expressions,
+  uninteresting from the semantic point of view (e.g., social
+  obligations-related expressions)
+* Correcting constituency trees, obtained with a syntactic parser plugged into
+  Contemplata,
+* Annotating temporal entities on top of the syntactic structures,
 * Linking the entities with temporal relations.
 
+<!---
 Contemplata is particularly adapted to spoken (transcribed) dialoges. In
 particular, it allows to (either automatically or manually) remove selected
 expressions (which is useful when these are deemed uninteresting from the
 temporal annotation point of view), and to merge several speech turns into one
 syntactic unit (so that it is analyzed with a single syntactic tree).
+--->
+
+
+# Installation
+
+First clone the Contemplata's repository into a local directory.
+
+    git clone https://github.com/kawu/contemplata.git
+    cd contemplata
+
+Then proceed with the installation of the back-end server, the front-end
+annotation tool, and (optionally) the third-party syntactic analysis tools, as
+explained below.
+
+## Back-end
+
+To install the back-end, you will need to download and install the
+[Haskell Tool Stack][stack] on your machine beforehand.
+
+Then, move to the `backend` directory and run the installation process with
+`stack`.
+
+    cd backend
+    stack install
+    cd ..
+ 
+Under linux, this command will (by default) install the `odil-snap` command-line
+tool in the `~/.local/bin` directory. You can either add this directory to your
+`$PATH`, or use the full path to run `odil-snap`:
+
+    $ ~/.local/bin/odil-snap --help
+    
+
+## Front-end
+
+To install the front-end application, you will need to install [Elm][elm]
+beforehand. Then, move to the `annotool` directory and generate the JavaScript
+application file.
+
+    cd annotool
+    elm-make src/Main.elm --output=main.js
+    cd ..
+    
+The `--output` option tells the compiler to generate a `main.js` JavaScript file
+rather than a stand-alone HTML file. You will then need to put the `main.js`
+file into a directory in which the web-server is run, as explained in the
+[setup](#setup) section below.
+
+
+## Third-party
+
+TODO
+
+
+# Usage
+
+Before you can start the Contemplata application, you will need to set up an
+instance with its own dedicated database and configuration files.
+
+## Setup
+
+You will need to prepare a dedicated enviroment to run Contemplata, i.e., a
+dedicated directory where the database and all the configuration files are
+stored. Under linux, assuming that `$odil` is the path to the dedicated
+directory, and that `$contemplata` is the path to the Contemplata's repository,
+you can run the following commands to create an empty database in `$odil`'s'
+`DB` subdirectory.
+
+    mkdir $odil
+    cd $odil
+    odil createdb -d DB
+
+Then you can copy the (a) initial configuration files, (b) webserver templates,
+and (c) the JavaScript file generated with Elm (see the [front-end](#front-end)
+section), using the following commands:
+
+    cp -r $contemplata/config/* ./
+    cp -r $contemplata/backend/snaplets ./
+    cp -r $contemplata/annotool/main.js resources/public/
+    
+You can read more about configuration in the corresponding
+[README](config/README.md) file.
 
 
 # Architecture
@@ -44,79 +133,7 @@ dababase. Being a high-level language, Elm allows to implement sophisticated
 annotation-related functionality relatively quickly.
 
 
-# Installation
-
-First clone the Contemplata's repository into a local directory. Then proceed
-with the installation of the back-end server, the front-end annotation tool, and
-(optionally) the third-party syntactic analysis tools.
-
-## Web-server
-
-It is recommanded to install the back-end server using the
-[Haskell Tool Stack][stack], which you will need to download and install on your
-machine beforehand.
-
-Then, move to the `backend` directory in the local copy of the repository and
-run:
-
-    stack install 
- 
-Under linux, this command will by default install the `odil-snap` command-line
-tool in the `~/.local/bin` directory. You can either add this directory to your
-`$PATH`, or use the full path to run `odil-snap`:
-
-    $ ~/.local/bin/odil-snap --help
-    
-
-## Front-end
-
-To install the front-end application, you will need to install [Elm][elm]
-beforehand. Then, move to the `annotool` directory and run:
-
-    elm-make src/Main.elm --output=main.js
-    
-The `--output` option tells the compiler to generate a `main.js` JavaScript file
-rather than a stand-alone HTML file. You will then need to put the `main.js`
-file into a directory in which the web-server is run, as explained in the
-[setup](#setup) section below.
-
-
-## Third-party
-
-TODO
-
-
-# Running
-
-Before you can start the Contemplata application, you will need to set up an
-instance with its own dedicated database and configuration files.
-
-## Setup
-
-You will need to prepare a dedicated enviroment to run Contemplata, i.e., a
-dedicated directory where the database and all the configuration files are
-stored. Under linux, assuming that `$odil` is the path to the dedicated
-directory, and that `$contemplata` is the path to the Contemplata's repository,
-you can run the following commands to create an empty database in `$odil`'s'
-`DB` subdirectory.
-
-    mkdir $odil
-    cd $odil
-    odil createdb -d DB
-
-Then you can copy the (a) initial configuration files, (b) webserver templates,
-and (c) the JavaScript file generated with Elm (see the [front-end](#front-end)
-section), using the following commands:
-
-    cp -r $contemplata/config/* ./
-    cp -r $contemplata/backend/snaplets ./
-    cp -r $contemplata/annotool/main.js resources/public/
-    
-You can read more about configuration in the corresponding
-[README](config/README.md) file.
-
-
-# Format
+## Format
 
 All the files in the database are stored in a dedicated JSON format. This format
 is
@@ -141,3 +158,5 @@ First run `stack ghci` within the `backend` source directory and then:
 [this]: https://github.com/kawu/contemplata
 [stack]: http://docs.haskellstack.org "Haskell Tool Stack"
 [elm]: http://elm-lang.org
+[temporal-odil]: https://hal.archives-ouvertes.fr/hal-01627261 "Temporal@ODIL"
+[ancor]: https://hal.archives-ouvertes.fr/hal-01075679 "Ancor"
