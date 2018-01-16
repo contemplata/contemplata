@@ -19,7 +19,7 @@ where:
 
 * `odil` is a tool installed together with Contemplata; it can be found in
   `~/.local/bin`,
-* `<FTB-XML-FILE>` is a file with constituency trees stored in the FTB specific
+* `FTB-XML-FILE` is a file with constituency trees stored in the FTB specific
   XML format and encoded in UTF-8.
 
 This will produce a file in the PTB format, i.e., with lines similar to the one
@@ -42,7 +42,7 @@ Once you have data in the PTB format, you can use the `stanford-train-fr.sh`
 script to train a Stanford lexicalised parsing model on top of it:
 
 ```bash
-./stanford-train-fr.sh stanford-corenlp train.ptb eval.ptb model.gz
+./stanford-train-fr.sh <stanford-corenlp> <train.ptb> <eval.ptb> <model.gz>
 ```
 
 where:
