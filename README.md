@@ -1,8 +1,8 @@
 # Contemplata
 
-*Contemplata* is an annotation tool developed with the
-[Temporal@ODIL][temporal-odil] project. The ultimate goal of this project is to
-annotate a portion of the [Ancor][ancor] spoken French corpus with semantic
+*Contemplata* is an annotation tool developed specifically for the purpose of
+the [Temporal@ODIL][temporal-odil] project. The ultimate goal of this project is
+to annotate a portion of the [ANCOR][ancor] spoken French corpus with semantic
 (more precisely, temporal) information. To this end, Contemplata allows:
 
 * Merging/splitting speech turns into syntactically coherent units,
@@ -27,8 +27,10 @@ syntactic unit (so that it is analyzed with a single syntactic tree).
 
 First clone the Contemplata's repository into a local directory.
 
-    git clone https://github.com/kawu/contemplata.git
-    cd contemplata
+```bash
+git clone https://github.com/kawu/contemplata.git
+cd contemplata
+```
 
 Then proceed with the installation of the back-end server, the front-end
 annotation tool, and (optionally) the third-party syntactic analysis tools, as
@@ -42,15 +44,19 @@ To install the back-end, you will need to download and install the
 Then, move to the `backend` directory and run the installation process with
 `stack`.
 
-    cd backend
-    stack install
-    cd ..
+```bash
+cd backend
+stack install
+cd ..
+```
  
 Under linux, this command will (by default) install the `odil-snap` command-line
 tool in the `~/.local/bin` directory. You can either add this directory to your
 `$PATH`, or use the full path to run `odil-snap`:
 
-    $ ~/.local/bin/odil-snap --help
+```bash
+~/.local/bin/odil-snap --help
+```
     
 
 ## Front-end
@@ -59,9 +65,11 @@ To install the front-end application, you will need to install [Elm][elm]
 beforehand. Then, move to the `annotool` directory and generate the JavaScript
 application file.
 
-    cd annotool
-    elm-make src/Main.elm --output=main.js
-    cd ..
+```bash
+cd annotool
+elm-make src/Main.elm --output=main.js
+cd ..
+```
     
 The `--output` option tells the compiler to generate a `main.js` JavaScript file
 rather than a stand-alone HTML file. You will then need to put the `main.js`
@@ -84,21 +92,25 @@ instance with its own dedicated database and configuration files.
 You will need to prepare a dedicated enviroment to run Contemplata, i.e., a
 dedicated directory where the database and all the configuration files are
 stored. Under linux, assuming that `$odil` is the path to the dedicated
-directory, and that `$contemplata` is the path to the Contemplata's repository,
-you can run the following commands to create an empty database in `$odil`'s'
-`DB` subdirectory.
+directory, and that `$contemplata` is the path to the cloned Contemplata's
+repository, you can run the following commands to create an empty database in
+`$odil`'s' `DB` subdirectory.
 
-    mkdir $odil
-    cd $odil
-    odil createdb -d DB
+```bash
+mkdir $odil
+cd $odil
+odil createdb -d DB
+```
 
 Then you can copy the (a) initial configuration files, (b) webserver templates,
 and (c) the JavaScript file generated with Elm (see the [front-end](#front-end)
 section), using the following commands:
 
-    cp -r $contemplata/config/* ./
-    cp -r $contemplata/backend/snaplets ./
-    cp -r $contemplata/annotool/main.js resources/public/
+```bash
+cp -r $contemplata/config/* ./
+cp -r $contemplata/backend/snaplets ./
+cp -r $contemplata/annotool/main.js resources/public/
+```
     
 You can read more about configuration in the corresponding
 [README](config/README.md) file.
@@ -106,20 +118,16 @@ You can read more about configuration in the corresponding
 
 # Architecture
 
-Contemplata is a web-based tool. Once it is installed on a server machine and
-made publicly available, it can be used by the annotators without the need to
-install any specific tools on their local machines (apart form a compatible
-browser).
+Contemplata is implemented in a client/server architecture, with the advantage
+that the annotator does not have to install anything locally, and the server can
+provide the user with more advanced functionality. For instance, the server can
+be requested to syntactically re-analyze a given sentence in a way which takes
+the constraints specified directly by the annotator (e.g. a particular
+tokenization) into account. In the long run, the client/server architecture
+should also allow a more collaborative annotation style.
 
-An ODIL-dedicated instance of the tool can be found at
-[http://vega.info.univ-tours.fr/odil/current](http://vega.info.univ-tours.fr/odil/current).
-Log in as a *guest* (password=*guest*) to have a look. As a guest, you will not
-be allowed to store any changes you made, but you will have access to the
-[user's guide](http://vega.info.univ-tours.fr/odil/current/user/guide) and will
-be able to play with the tool's functionality.
-  
-On the server side, the tool uses a simple file-based storage for the annotated
-files. All the files are kept in the [dedicated JSON format](#format).
+On the server-side, Contemplata tool uses a simple file-based storage for the
+annotated files. All the files are kept in the [dedicated JSON format](#format).
 
 The web-server is implemented in [Snap](http://snapframework.com/), a
 [Haskell](https://www.haskell.org/) web framework. It handles regular HTTP
@@ -128,12 +136,19 @@ requests (used to list the files, general administration work, etc.) as well as
 to communicate with the front-end annotation application.
 
 The front-end is implemented in [Elm][elm], a Haskell-like language which
-compiles to JavaScript. It allows the actual annotation of the files in the
-dababase. Being a high-level language, Elm allows to implement sophisticated
+compiles to JavaScript, thus the tool can be used in any modern internet
+browser. Being a high-level language, Elm allows to implement sophisticated
 annotation-related functionality relatively quickly.
 
+An Temporal@ODIL-dedicated instance of the tool can be found at
+[http://vega.info.univ-tours.fr/odil/current](http://vega.info.univ-tours.fr/odil/current).
+Log in as a *guest* (password=*guest*) to have a look. As a guest, you will not
+be allowed to store any changes you made, but you will have access to the
+[user's guide](http://vega.info.univ-tours.fr/odil/current/user/guide) and will
+be able to play with the tool's functionality.
+  
 
-## Format
+# Format
 
 All the files in the database are stored in a dedicated JSON format. This format
 is
@@ -147,9 +162,9 @@ the JSON files can be validated. You can perform the validation programatically.
 First run `stack ghci` within the `backend` source directory and then:
 
 ```Haskell
-> import qualified Data.Aeson as JSON
-> import qualified Data.ByteString as BS
-> JSON.decodeStrict <$> BS.readFile "<path-to-json>" :: IO (Maybe File)
+import qualified Data.Aeson as JSON
+import qualified Data.ByteString as BS
+JSON.decodeStrict <$> BS.readFile "<path-to-json>" :: IO (Maybe File)
 ```
 
 
@@ -159,4 +174,4 @@ First run `stack ghci` within the `backend` source directory and then:
 [stack]: http://docs.haskellstack.org "Haskell Tool Stack"
 [elm]: http://elm-lang.org
 [temporal-odil]: https://hal.archives-ouvertes.fr/hal-01627261 "Temporal@ODIL"
-[ancor]: https://hal.archives-ouvertes.fr/hal-01075679 "Ancor"
+[ancor]: https://hal.archives-ouvertes.fr/hal-01075679 "ANCOR"
