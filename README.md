@@ -105,12 +105,11 @@ other languages in future versions). These models are also available at the
 [CoreNLP's website][corenlp], or use the following command:--->
 
 ```bash
-cd $corenlp
 wget http://nlp.stanford.edu/software/stanford-french-corenlp-2017-06-09-models.jar
 ```
 
-Finally, you can run the CoreNLP server, supplying it with (i) the path to the
-CoreNLP's source code and (ii) the French models:
+Finally, you can run the CoreNLP server, supplying it with (i) the path to
+CoreNLP (ii) the French models:
 
 ```bash
 cd $contemplata/corenlp
