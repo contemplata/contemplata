@@ -12,7 +12,7 @@ import qualified Control.Concurrent as C
 
 import qualified Data.Text as T
 
-import qualified Odil.Server.DB as DB
+import qualified Contemplata.Server.DB as DB
 import           Application
 
 

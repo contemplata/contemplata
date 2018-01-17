@@ -43,9 +43,9 @@ import           Text.Digestive.Heist (bindDigestiveSplices)
 import qualified Text.Digestive.View as D
 import qualified Text.Digestive.Snap as D
 
-import qualified Odil.Server.Types as Odil
-import qualified Odil.Server.DB as DB
--- import qualified Odil.Server.Users as Users
+import qualified Contemplata.Server.Types as Contemplata
+import qualified Contemplata.Server.DB as DB
+-- import qualified Contemplata.Server.Users as Users
 
 import qualified Auth as MyAuth
 import qualified Config as MyCfg
@@ -63,18 +63,18 @@ filesHandler = do
   -- retrieve the set of files to compare
   compSet <-
     maybe S.empty
-      (S.fromList . mapMaybe (Odil.decodeFileId . T.decodeUtf8))
+      (S.fromList . mapMaybe (Contemplata.decodeFileId . T.decodeUtf8))
     . M.lookup "compare"
     . Snap.rqQueryParams
     <$> Snap.getRequest
-  writeList <- filterM (hasAccess Odil.Write login)
+  writeList <- filterM (hasAccess Contemplata.Write login)
     . M.toList =<< liftDB DB.fileMap
-  readList <- filterM (hasAccess Odil.Read login)
+  readList <- filterM (hasAccess Contemplata.Read login)
     . M.toList =<< liftDB DB.fileMap
   Heist.heistLocal
     ( bindSplices $
-      localSplices Odil.Write login compSet writeList >>
-      localSplices Odil.Read login compSet readList >>
+      localSplices Contemplata.Write login compSet writeList >>
+      localSplices Contemplata.Read login compSet readList >>
       compareSplices compSet
     )
     (Heist.render "user/files")
@@ -85,16 +85,16 @@ filesHandler = do
       let withStatus val = map fst . filter (hasStatus val)
           accLevelStr = T.pack (show accLevel)
       ("newList" `T.append` accLevelStr) ##
-        mkFileTable login compSet (withStatus Odil.New fileList)
+        mkFileTable login compSet (withStatus Contemplata.New fileList)
       ("touchedList" `T.append` accLevelStr) ##
-        mkTouchedTable accLevel login compSet (withStatus Odil.Touched fileList)
+        mkTouchedTable accLevel login compSet (withStatus Contemplata.Touched fileList)
       ("doneList" `T.append` accLevelStr) ##
-        mkFileTable login compSet (withStatus Odil.Done fileList)
-    hasStatus val (_, Odil.FileMeta{..}) = fileStatus == val
+        mkFileTable login compSet (withStatus Contemplata.Done fileList)
+    hasStatus val (_, Contemplata.FileMeta{..}) = fileStatus == val
 
     compareSplices compSet = do
       let body = T.intercalate ", "
-            [ Odil.encodeFileId fileIdTxt
+            [ Contemplata.encodeFileId fileIdTxt
             | fileIdTxt <- S.toList compSet ]
       "compareBody" ## return
         [ mkLink "Compare" "Compare the selected files" $ T.concat
@@ -110,9 +110,9 @@ filesHandler = do
 
 -- | A list of members.
 mkFileTable
-  :: Odil.AnnoName
-  -> S.Set Odil.FileId -- ^ The list of files to compare
-  -> [Odil.FileId]
+  :: Contemplata.AnnoName
+  -> S.Set Contemplata.FileId -- ^ The list of files to compare
+  -> [Contemplata.FileId]
   -> Splice AppHandler
 mkFileTable annoName compSet =
   mapM mkElem
@@ -122,13 +122,13 @@ mkFileTable annoName compSet =
       file <- lift . liftDB $ DB.loadFile fileId
 --       Just access <- lift . liftDB $ DB.accessLevel fileId annoName
       let version = T.concat
-            [ T.pack . show $ Odil.annoLevel fileId
-            , " (", Odil.copyId fileId, ")" ]
+            [ T.pack . show $ Contemplata.annoLevel fileId
+            , " (", Contemplata.copyId fileId, ")" ]
       return $ X.Element "tr" []
         [ X.Element "td" []
-          [ mkLink (Odil.fileName fileId) "Annotate the file" $ T.concat
+          [ mkLink (Contemplata.fileName fileId) "Annotate the file" $ T.concat
             ["annotate?", annoParams (S.singleton fileId)]
-            -- T.intercalate "/" ["annotate", Odil.encodeFileId fileId]
+            -- T.intercalate "/" ["annotate", Contemplata.encodeFileId fileId]
           , X.TextNode " ("
           , mkLink "select" "Select for comparison" $ T.concat
             [ "user/files?"
@@ -136,16 +136,16 @@ mkFileTable annoName compSet =
           , X.TextNode ")"
           ]
         , mkText version
-        , mkText (T.pack . show $ Odil.numberOfTokens file)
+        , mkText (T.pack . show $ Contemplata.numberOfTokens file)
         ]
 
 
 -- | A list of members.
 mkTouchedTable
-  :: Odil.AccessLevel
-  -> Odil.AnnoName
-  -> S.Set Odil.FileId -- ^ The list of files to compare
-  -> [Odil.FileId]
+  :: Contemplata.AccessLevel
+  -> Contemplata.AnnoName
+  -> S.Set Contemplata.FileId -- ^ The list of files to compare
+  -> [Contemplata.FileId]
   -> Splice AppHandler
 mkTouchedTable access annoName compSet =
   mapM mkElem
@@ -153,22 +153,22 @@ mkTouchedTable access annoName compSet =
     mkElem fileId = do
       file <- lift . liftDB $ DB.loadFile fileId
       let modifLinks =
-            if access < Odil.Write
+            if access < Contemplata.Write
             then []
             else
               [ mkLinkTD "postpone" "Click to postpone the annotation of the file" $
-                T.intercalate "/" ["user", "file", Odil.encodeFileId fileId, "postpone"]
+                T.intercalate "/" ["user", "file", Contemplata.encodeFileId fileId, "postpone"]
               , mkLinkTD "finish" "Click to finish the annotation of the file" $
-                T.intercalate "/" ["user", "file", Odil.encodeFileId fileId, "finish"]
+                T.intercalate "/" ["user", "file", Contemplata.encodeFileId fileId, "finish"]
               ]
           version = T.concat
-            [ T.pack . show $ Odil.annoLevel fileId
-            , " (", Odil.copyId fileId, ")" ]
+            [ T.pack . show $ Contemplata.annoLevel fileId
+            , " (", Contemplata.copyId fileId, ")" ]
       return $ X.Element "tr" [] $
         [ X.Element "td" []
-          [ mkLink (Odil.fileName fileId) "Annotate the file" $ T.concat
+          [ mkLink (Contemplata.fileName fileId) "Annotate the file" $ T.concat
             ["annotate?", annoParams (S.singleton fileId)]
-            -- T.intercalate "/" ["annotate", Odil.encodeFileId fileId]
+            -- T.intercalate "/" ["annotate", Contemplata.encodeFileId fileId]
           , X.TextNode " ("
           , mkLink "select" "Select for comparison" $ T.concat
             [ "user/files?"
@@ -176,7 +176,7 @@ mkTouchedTable access annoName compSet =
           , X.TextNode ")"
           ]
         , mkText version
-        , mkText (T.pack . show $ Odil.numberOfTokens file)
+        , mkText (T.pack . show $ Contemplata.numberOfTokens file)
         ] ++ modifLinks
 
 
@@ -188,7 +188,7 @@ mkTouchedTable access annoName compSet =
 postponeHandler :: AppHandler ()
 postponeHandler = do
   Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
-  Just fileId <- return $ Odil.decodeFileId fileIdTxt
+  Just fileId <- return $ Contemplata.decodeFileId fileIdTxt
   liftDB $ DB.postponeAnnotating fileId
   redirectToTop
 
@@ -196,10 +196,10 @@ postponeHandler = do
 finishHandler :: AppHandler ()
 finishHandler = do
   Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
-  Just fileId <- return $ Odil.decodeFileId fileIdTxt
+  Just fileId <- return $ Contemplata.decodeFileId fileIdTxt
   login <- userName
   Just access <- liftDB (DB.accessLevel fileId login)
-  guard $ access >= Odil.Write
+  guard $ access >= Contemplata.Write
   liftDB $ DB.finishAnnotating fileId
   redirectToTop
 
@@ -333,7 +333,7 @@ guideHandler = do
 
 
 -- | Get the current user name.
-userName :: AppHandler Odil.AnnoName
+userName :: AppHandler Contemplata.AnnoName
 userName = do
   Just current <- Snap.with auth Auth.currentUser
   return $ Auth.userLogin current
@@ -347,15 +347,15 @@ mkLink x tip href = X.Element "a"
   [X.TextNode x]
 
 
-compareParams :: S.Set Odil.FileId -> T.Text
+compareParams :: S.Set Contemplata.FileId -> T.Text
 compareParams compSet = T.intercalate "&"
-  [ "compare=" `T.append` Odil.encodeFileId fileId
+  [ "compare=" `T.append` Contemplata.encodeFileId fileId
   | fileId <- S.toList compSet ]
 
 
-annoParams :: S.Set Odil.FileId -> T.Text
+annoParams :: S.Set Contemplata.FileId -> T.Text
 annoParams fileSet = T.intercalate "&"
-  [ "filename=" `T.append` Odil.encodeFileId fileId
+  [ "filename=" `T.append` Contemplata.encodeFileId fileId
   | fileId <- S.toList fileSet ]
 
 

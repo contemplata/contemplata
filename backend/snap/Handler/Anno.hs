@@ -26,8 +26,8 @@ import qualified Snap.Snaplet.Auth as Auth
 import           Heist.Interpreted (bindSplices, Splice)
 import qualified Text.XmlHtml as X
 
-import qualified Odil.Server.Types as Odil
-import qualified Odil.Server.DB as DB
+import qualified Contemplata.Server.Types as Contemplata
+import qualified Contemplata.Server.DB as DB
 -- import qualified Config as Cfg
 import           Application
 import           Handler.Utils (liftDB)
@@ -50,11 +50,11 @@ annoBodySplice :: Splice AppHandler
 annoBodySplice = do
 
 --   Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "filename"
---   Just fileId <- return $ Odil.decodeFileId fileIdTxt
+--   Just fileId <- return $ Contemplata.decodeFileId fileIdTxt
 
   fileSet <-
     maybe S.empty
-      (S.fromList . mapMaybe (Odil.decodeFileId . T.decodeUtf8))
+      (S.fromList . mapMaybe (Contemplata.decodeFileId . T.decodeUtf8))
     . M.lookup "filename"
     . Snap.rqQueryParams
     <$> Snap.getRequest
@@ -76,7 +76,7 @@ annoBodySplice = do
         forM_ (S.toList fileSet) $ \fileId -> do
           DB.accessLevel fileId login >>= \case
             Just acc -> when
-              (acc >= Odil.Write)
+              (acc >= Contemplata.Write)
               (DB.startAnnotating fileId)
             _ -> return ()
       let html = X.Element "body" [] [script]
@@ -89,11 +89,11 @@ annoBodySplice = do
             [ "Elm.Main.fullscreen({"
             , T.intercalate ", "
               [ mkArg "userName" login
-              -- , ("fileId", Odil.encodeFileId . head $ S.toList fileSet)
+              -- , ("fileId", Contemplata.encodeFileId . head $ S.toList fileSet)
               , T.concat
                 [ "fileIds: "
                 , between "[" "]" $ T.intercalate ","
-                  (map (mkVal . Odil.encodeFileId) (S.toList fileSet))
+                  (map (mkVal . Contemplata.encodeFileId) (S.toList fileSet))
                 ]
               , mkArg "websocketServer" serverPath
               , mkArg "websocketServerAlt" serverPathAlt
@@ -124,10 +124,10 @@ adjuBodySplice :: Splice AppHandler
 adjuBodySplice = do
   -- The main file
   Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "main"
-  Just mainId <- return $ Odil.decodeFileId fileIdTxt
+  Just mainId <- return $ Contemplata.decodeFileId fileIdTxt
   -- The other file, for comparison
   Just fileIdTxt <- fmap T.decodeUtf8 <$> Snap.getParam "comp"
-  Just compId <- return $ Odil.decodeFileId fileIdTxt
+  Just compId <- return $ Contemplata.decodeFileId fileIdTxt
   mbUser <- lift $ Snap.with auth Auth.currentUser
   case mbUser of
     Nothing -> return [X.TextNode "access not authorized"]
@@ -140,7 +140,7 @@ adjuBodySplice = do
 --       lift . liftDB $ do
 --         DB.accessLevel fileId login >>= \case
 --           Just acc -> when
---             (acc >= Odil.Write)
+--             (acc >= Contemplata.Write)
 --             (DB.startAnnotating fileId)
 --           _ -> return ()
       let html = X.Element "body" [] [script]
@@ -151,8 +151,8 @@ adjuBodySplice = do
             [ "Elm.Main.fullscreen({"
             , mkArgs
               [ ("userName", login)
-              , ("fileId", Odil.encodeFileId mainId)
-              , ("compId", Odil.encodeFileId compId)
+              , ("fileId", Contemplata.encodeFileId mainId)
+              , ("compId", Contemplata.encodeFileId compId)
               , ("websocketServer", serverPath)
               , ("websocketServerAlt", serverPathAlt)
               ]

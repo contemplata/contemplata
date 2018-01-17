@@ -23,9 +23,9 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 -- import           Data.Monoid ((<>))
 
-import qualified Odil.Server.DB as DB
-import qualified Odil.Server as Server
-import qualified Odil.Server.Config as ServerCfg
+import qualified Contemplata.Server.DB as DB
+import qualified Contemplata.Server as Server
+import qualified Contemplata.Server.Config as ServerCfg
 
 import qualified Snap as Snap
 import qualified Snap.Snaplet.Auth as Auth

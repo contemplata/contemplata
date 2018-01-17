@@ -73,16 +73,16 @@ import qualified Text.Digestive.Types as DT
 
 import qualified Dhall as Dhall
 
-import qualified Odil.Config as AnnoCfg
-import qualified Odil.Server as Server
-import           Odil.Server.Types
-import qualified Odil.Server.DB as DB
-import qualified Odil.Server.Users as Users
+import qualified Contemplata.Config as AnnoCfg
+import qualified Contemplata.Server as Server
+import           Contemplata.Server.Types
+import qualified Contemplata.Server.DB as DB
+import qualified Contemplata.Server.Users as Users
 
-import qualified Odil.Ancor.Types as Ancor
-import qualified Odil.Ancor.IO.Parse as Parse
-import qualified Odil.Ancor.IO.Show as Show
-import qualified Odil.Ancor.Preprocess.Token as Pre
+import qualified Contemplata.Ancor.Types as Ancor
+import qualified Contemplata.Ancor.IO.Parse as Parse
+import qualified Contemplata.Ancor.IO.Show as Show
+import qualified Contemplata.Ancor.Preprocess.Token as Pre
 
 import qualified Auth as MyAuth
 import qualified Config as MyCfg

@@ -50,12 +50,12 @@ stack install
 cd ..
 ```
  
-Under linux, this command will (by default) install the `odil-snap` command-line
-tool in the `~/.local/bin` directory. You can either add this directory to your
-`$PATH`, or use the full path to run `odil-snap`:
+Under linux, this command will (by default) install the `contemplata-server`
+command-line tool in the `~/.local/bin` directory. You can either add this
+directory to your `$PATH`, or use the full path to run `contemplata-server`:
 
 ```bash
-~/.local/bin/odil-snap --help
+~/.local/bin/contemplata-server --help
 ```
     
 
@@ -163,14 +163,14 @@ You can read more about configuration in the corresponding
 Use the following command to run the web-server in the `$contemplata` directory.
 
 ```bash
-odil-snap
+contemplata-server
 ```
 
 By default, the application uses the port `8000`. You can change it using the
 `-p` option.
 
 ```bash
-odil-snap -p 8000
+contemplata-server -p 8000
 ```
 
 At this point, you can access the annotation tool via
@@ -218,9 +218,9 @@ will be able to play with the tool's functionality.
 
 All the files in the database are stored in a dedicated JSON format. This format
 is
-[determined automatically](https://github.com/kawu/contemplata/blob/dev/backend/src/Odil/Server/Types.hs#L258-L282)
+[determined automatically](https://github.com/kawu/contemplata/blob/dev/backend/src/Contemplata/Server/Types.hs#L258-L282)
 on the basis of the corresponding
-[File](https://github.com/kawu/contemplata/blob/dev/backend/src/Odil/Server/Types.hs#L151-L187)
+[File](https://github.com/kawu/contemplata/blob/dev/backend/src/Contemplata/Server/Types.hs#L151-L187)
 data type.
 
 You can think of the File type as a definition of the structure against which
@@ -241,7 +241,7 @@ for annotation, it might be more convenient to prepare it in the PTB format,
 covert as shown below, and upload via the web-interface afterwards.
 
 ```bash
-odil penn2json < <file.ptb> > <file.json>
+contemplata penn2json < <file.ptb> > <file.json>
 ```
 
 

@@ -31,18 +31,18 @@ import qualified Data.Set as S
 import qualified Data.Tree as R
 import Options.Applicative
 
-import qualified Odil.Ancor.Types as Ancor
-import qualified Odil.Ancor.IO.Parse as Parse
-import qualified Odil.Ancor.IO.Show as Show
-import qualified Odil.Ancor.Preprocess.Token as Pre
-import qualified Odil.Server.Types as Odil
-import qualified Odil.Server.Config as ServerCfg
-import qualified Odil.Server.DB as DB
-import qualified Odil.Server as Server
-import qualified Odil.Penn as Penn
-import qualified Odil.FTB as FTB
-import qualified Odil.Stanford as Stanford
-import qualified Odil.DiscoDOP as DiscoDOP
+import qualified Contemplata.Ancor.Types as Ancor
+import qualified Contemplata.Ancor.IO.Parse as Parse
+import qualified Contemplata.Ancor.IO.Show as Show
+import qualified Contemplata.Ancor.Preprocess.Token as Pre
+import qualified Contemplata.Server.Types as Contemplata
+import qualified Contemplata.Server.Config as ServerCfg
+import qualified Contemplata.Server.DB as DB
+import qualified Contemplata.Server as Server
+import qualified Contemplata.Penn as Penn
+import qualified Contemplata.FTB as FTB
+import qualified Contemplata.Stanford as Stanford
+import qualified Contemplata.DiscoDOP as DiscoDOP
 
 
 --------------------------------------------------
@@ -63,7 +63,7 @@ data Command
       -- ^ Ancor file -> ODIL (in JSON); the optional argument specifies the
       -- path to the external file with sentences to be removed
 
---     | Penn2Odil
+--     | Penn2Contemplata
 --         FilePath -- ^ Penn file
 --         FilePath -- ^ File with original sentences
 --       -- ^ Convert a Penn file to a JSON file
@@ -136,7 +136,7 @@ penn2jsonOptions = pure Penn2JSON
 
 
 -- penn2odilOptions :: Parser Command
--- penn2odilOptions = Penn2Odil
+-- penn2odilOptions = Penn2Contemplata
 --   <$> strOption
 --         ( long "penn"
 --        <> short 'p'
@@ -303,7 +303,7 @@ opts = subparser
     )
 --   <> command "penn2odil"
 --     (info (helper <*> penn2odilOptions)
---       (progDesc "Convert Penn trees to Odil trees in JSON")
+--       (progDesc "Convert Penn trees to Contemplata trees in JSON")
 --     )
 --   <> command "server"
 --     (info (helper <*> serverOptions)
@@ -363,7 +363,7 @@ run cmd =
 --         Nothing -> pure []
 --         Just path -> Pre.readConfig path
 --       T.putStr . T.unlines . map prepare $ sentences
--- --     Penn2Odil pennPath origPath -> do
+-- --     Penn2Contemplata pennPath origPath -> do
 -- --       penn <- Penn.parseForest <$> T.readFile pennPath
 -- --       orig <- T.lines <$> T.readFile origPath
 -- --       let file = Penn.convertPennFile (zip orig penn)
@@ -390,10 +390,10 @@ run cmd =
               k <- State.gets $ (+1) . M.size
               State.modify' $ M.insert k (sent, odil)
               return (k, fmap Ancor.unWho mayWho)
-            return $ Odil.Turn
+            return $ Contemplata.Turn
               { speaker = Ancor.speaker turn
               , trees = M.fromList treeList }
-      let file = Odil.mkNewFile treeMap (concat turns2)
+      let file = Contemplata.mkNewFile treeMap (concat turns2)
       LBS.putStr (JSON.encode file)
 
     -- Read the ancor file from stdin and output the resulting
@@ -403,15 +403,15 @@ run cmd =
       pennForest <- map Penn.parseTree . T.lines <$> T.getContents
 --       (turns, treeMap) <- flip State.runStateT M.empty $ do
 --         forM pennForest $ \penn -> do
---           let odil = Penn.toOdilTree penn
+--           let odil = Penn.toContemplataTree penn
 --               sent = ""
 --           k <- State.gets $ (+1) . M.size
 --           State.modify' $ M.insert k (sent, odil)
 --           -- return (k, Nothing) -- speaker N/A
---           return $ Odil.Turn
+--           return $ Contemplata.Turn
 --             { speaker = []      -- speakers N/A
 --             , trees = M.singleton k Nothing } -- speaker N/A
---       let file = Odil.File
+--       let file = Contemplata.File
 --             { treeMap = treeMap
 --             , turns = turns -- concat turns
 --             , linkSet = M.empty
@@ -435,7 +435,7 @@ run cmd =
       let dbConf = DB.defaultConf dbPath
       res <- DB.runDBT dbConf $ do
         let fileIdTxt = T.pack (FilePath.takeBaseName jsonPath)
-        fileId <- case Odil.decodeFileId fileIdTxt of
+        fileId <- case Contemplata.decodeFileId fileIdTxt of
           Nothing -> Err.throwE $ "cannote decode fileId: " `T.append` fileIdTxt
           Just x  -> return x
         when (not force) $ DB.hasFile fileId >>= \case
@@ -444,7 +444,7 @@ run cmd =
         cs <- liftIO $ LBS.readFile jsonPath
         case JSON.eitherDecode cs of
           Left err -> Err.throwE "JSON decoding failed"
-          Right json -> DB.saveFile fileId Odil.defaultMeta json
+          Right json -> DB.saveFile fileId Contemplata.defaultMeta json
       case res of
         Left err -> T.putStrLn $ "Operation failed: " `T.append` err
         Right _  -> return ()
@@ -473,7 +473,7 @@ run cmd =
         forM_ ids $ \fileId -> do
           file <- DB.loadFile fileId
           liftIO . T.putStrLn . T.concat $
-            [ Odil.encodeFileId fileId
+            [ Contemplata.encodeFileId fileId
             , " => "
             , T.pack (show $ numberOfLeavesF file) ]
       case res of
@@ -525,11 +525,11 @@ run cmd =
       res <- DB.runDBT dbConf . flip State.execStateT S.empty $ do
         ids <- S.toList <$> lift DB.fileSet
         forM_ ids $ \fileId -> do
-          Odil.File{..} <- lift $ DB.loadFile fileId
+          Contemplata.File{..} <- lift $ DB.loadFile fileId
           forM_ (M.toList treeMap) $ \(_treeId, tree) -> do
             let
-              getNodeVal Odil.Node{..} = Just nodeVal
-              getNodeVal Odil.Leaf{..} = Nothing
+              getNodeVal Contemplata.Node{..} = Just nodeVal
+              getNodeVal Contemplata.Leaf{..} = Nothing
               labels = mapMaybe getNodeVal (R.flatten tree)
             -- liftIO . T.putStrLn . T.unwords $ labels
             forM_ labels $ \x -> State.modify' (S.insert x)
@@ -544,7 +544,7 @@ run cmd =
         let path = DB.dbPath dbConf </> DB.regPath dbConf
         oldReg <- DB.loadJSON path
         let newReg = M.fromList
-              [ (x, Odil.defaultMeta)
+              [ (x, Contemplata.defaultMeta)
               | x <- S.toList oldReg ]
         DB.saveJSON path (newReg :: DB.Register)
       case res of
@@ -571,26 +571,26 @@ main =
 
 
 -- | Number of leaves in a given file.
-numberOfLeavesF :: Odil.File -> Int
-numberOfLeavesF Odil.File{..} = sum
+numberOfLeavesF :: Contemplata.File -> Int
+numberOfLeavesF Contemplata.File{..} = sum
   [ numberOfLeavesT tree
   | (treeId, tree) <- M.toList treeMap ]
 
 
 -- | Number of leaves in a given tree.
-numberOfLeavesT :: Odil.Tree -> Int
+numberOfLeavesT :: Contemplata.Tree -> Int
 numberOfLeavesT
   = length
   . filter isLeaf
   . R.flatten
   where
     isLeaf x = case x of
-      Odil.Leaf{} -> True
+      Contemplata.Leaf{} -> True
       _ -> False
 
 
 -- | Decode the file ID in the DBT monad.
-decodeFileId :: T.Text -> DB.DBT Odil.FileId
+decodeFileId :: T.Text -> DB.DBT Contemplata.FileId
 decodeFileId x =
   let err = Err.throwE $ "cannote decode fileId: " `T.append` x
-  in  maybe err return $ Odil.decodeFileId x
+  in  maybe err return $ Contemplata.decodeFileId x
