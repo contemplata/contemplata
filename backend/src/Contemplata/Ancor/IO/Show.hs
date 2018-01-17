@@ -17,7 +17,7 @@ module Contemplata.Ancor.IO.Show
 import qualified Data.Text as T
 
 import Contemplata.Ancor.Types
-import qualified Contemplata.Server.Types as Contemplata
+import qualified Contemplata.Types as Contemplata
 
 
 showAncor :: Episode -> T.Text

@@ -45,7 +45,7 @@ import qualified Data.List as L
 import Debug.Trace (trace)
 
 
-import qualified Contemplata.Server.Types as Contemplata
+import qualified Contemplata.Types as Contemplata
 
 
 ---------------------------------------------------

@@ -10,7 +10,7 @@
 module Contemplata.Server
 (
 -- * Types
-  module Contemplata.Server.Types
+  module Contemplata.Types
 
 -- * Messages
 , ParserTyp (..)
@@ -57,7 +57,7 @@ import qualified Dhall as Dhall
 
 import qualified Network.WebSockets as WS
 
-import Contemplata.Server.Types
+import Contemplata.Types
 -- import qualified Contemplata.Server.Config as Cfg
 import qualified Contemplata.Server.DB as DB
 import qualified Contemplata.Config as AnnoConfig

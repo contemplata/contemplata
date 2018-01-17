@@ -10,7 +10,7 @@ import GHC.Generics (Generic)
 import qualified Data.Aeson as JSON
 import Data.Text (Text)
 
-import Contemplata.CoreTypes (Addr)
+import Contemplata.Types.Core (Addr)
 
 
 -- | Corresponding to `Contemplata.Config.Attr`.

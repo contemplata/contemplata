@@ -70,8 +70,8 @@ import qualified Data.Time as Time
 import qualified System.Directory as Dir
 import System.FilePath ((</>), (<.>))
 
-import Contemplata.Server.Types -- hiding (annoMap)
--- import qualified Contemplata.Server.Types as Types
+import Contemplata.Types -- hiding (annoMap)
+-- import qualified Contemplata.Types as Types
 import qualified Contemplata.Server.Config as Cfg
 import qualified Data.Aeson as JSON
 

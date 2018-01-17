@@ -6,7 +6,7 @@
 -- | Types of the annotation server.
 
 
-module Contemplata.Server.Types
+module Contemplata.Types
 (
 -- * Core Types
   FileId(..)
@@ -31,7 +31,6 @@ module Contemplata.Server.Types
 , Token (..)
 , Tree
 , Node (..)
-, NodeTyp (..)
 , File (..)
 , Turn (..)
 , Link (..)
@@ -44,8 +43,6 @@ module Contemplata.Server.Types
 -- , emptyTok
 -- , mergeToks
 -- , concatToks
-
--- * JSON
 ) where
 
 
@@ -60,7 +57,7 @@ import qualified Data.Aeson as JSON
 
 -- import qualified Contemplata.AnnoTypes as Anno
 import qualified Contemplata.Anno.Entity as E
-import Contemplata.CoreTypes
+import Contemplata.Types.Core
 
 
 -----------
@@ -127,7 +124,7 @@ data Node
   = Node
     { nodeId :: NodeId
     , nodeVal :: T.Text
-    , nodeTyp :: Maybe NodeTyp
+    , nodeTyp :: Maybe E.Entity
     , nodeComment :: T.Text }
   | Leaf
     { leafId :: NodeId
@@ -137,15 +134,6 @@ data Node
     , leafPos :: Int
     , leafComment :: T.Text }
   deriving (Generic, Show, Eq, Ord)
-
-
--- | Type of the node, together with the corresponding annotation.
--- data NodeTyp
---   = NodeEvent Anno.Event
---   | NodeSignal Anno.Signal
---   | NodeTimex Anno.Timex
---   deriving (Generic, Show, Eq, Ord)
-type NodeTyp = E.Entity
 
 
 -- | A file.
@@ -251,8 +239,8 @@ numberOfTokens File{..} = sum
 -----------
 
 
--- instance JSON.FromJSON NodeTyp
--- instance JSON.ToJSON NodeTyp where
+-- instance JSON.FromJSON E.Entity
+-- instance JSON.ToJSON E.Entity where
 --   toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
 instance JSON.FromJSON Node

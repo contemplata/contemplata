@@ -18,10 +18,10 @@ custom-setup
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Contemplata.CoreTypes
-                     , Contemplata.AnnoTypes
+  exposed-modules:     Contemplata.Types
+                     , Contemplata.Types.Core
+
                      , Contemplata.Server
-                     , Contemplata.Server.Types
                      , Contemplata.Server.DB
                      , Contemplata.Server.Users
                      , Contemplata.Server.Config

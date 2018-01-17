@@ -35,7 +35,7 @@ import qualified Contemplata.Ancor.Types as Ancor
 import qualified Contemplata.Ancor.IO.Parse as Parse
 import qualified Contemplata.Ancor.IO.Show as Show
 import qualified Contemplata.Ancor.Preprocess.Token as Pre
-import qualified Contemplata.Server.Types as Contemplata
+import qualified Contemplata.Types as Contemplata
 import qualified Contemplata.Server.Config as ServerCfg
 import qualified Contemplata.Server.DB as DB
 import qualified Contemplata.Server as Server

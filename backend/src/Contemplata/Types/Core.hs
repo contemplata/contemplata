@@ -3,10 +3,8 @@
 {-# LANGUAGE RecordWildCards #-}
 
 
-module Contemplata.CoreTypes
+module Contemplata.Types.Core
 (
-
--- * File ID
   FileId(..)
 , FileName
 , AnnoLevel(..)
@@ -192,7 +190,7 @@ instance JSON.ToJSON FileMeta where
 instance JSON.FromJSON FileId
 instance JSON.FromJSONKey FileId where
   fromJSONKey = JSON.FromJSONKeyText $ \enc -> do
-    let err = "CoreTypes.decodeFileId: cannot decode \""
+    let err = "Types.Core.decodeFileId: cannot decode \""
               ++ T.unpack enc ++ "\""
     maybe (error err) id $ decodeFileId enc
 instance JSON.ToJSON FileId where

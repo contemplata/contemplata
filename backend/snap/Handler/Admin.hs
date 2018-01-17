@@ -75,7 +75,7 @@ import qualified Dhall as Dhall
 
 import qualified Contemplata.Config as AnnoCfg
 import qualified Contemplata.Server as Server
-import           Contemplata.Server.Types
+import           Contemplata.Types
 import qualified Contemplata.Server.DB as DB
 import qualified Contemplata.Server.Users as Users
 

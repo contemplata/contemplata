@@ -33,7 +33,7 @@ import Contemplata.Ancor.Types
 import qualified Contemplata.Ancor.IO.Parse as P
 import qualified Contemplata.Ancor.IO.Show as S
 
-import qualified Contemplata.Server.Types as Contemplata
+import qualified Contemplata.Types as Contemplata
 -- import qualified Contemplata.Ancor.Preprocess as Pre
 
 
