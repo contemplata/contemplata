@@ -3,7 +3,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 
 
--- | Attribute.
+-- | Annotation configuration: attributes
 
 
 module Contemplata.Config.Attr

@@ -1,6 +1,9 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 
+-- | Annotation: entities
+
+
 module Contemplata.Anno.Entity
 ( Entity(..)
 ) where
@@ -16,10 +19,12 @@ import Data.Text (Text)
 import qualified Contemplata.Anno.Attr as A
 
 
--- | Corresponding to `Contemplata.Config.Entity`.
+-- | An annotation entity, corresponding to `Contemplata.Config.Entity`
 data Entity = Entity
   { name :: Text
+    -- ^ A name of the entitu
   , typ :: Text
+    -- ^ Its type
   , attributes :: M.Map Text A.Attr
     -- ^ The value of optional attributes does not have to be specified in the
     -- map above.

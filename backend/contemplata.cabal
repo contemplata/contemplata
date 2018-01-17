@@ -21,19 +21,8 @@ library
   exposed-modules:     Contemplata.Types
                      , Contemplata.Types.Core
 
-                     , Contemplata.Server
-                     , Contemplata.Server.DB
-                     , Contemplata.Server.Users
-                     , Contemplata.Server.Config
-                     , Contemplata.Ancor.Types
-                     , Contemplata.Ancor.IO.Parse
-                     , Contemplata.Ancor.IO.Show
-                     , Contemplata.Ancor.Preprocess
-                     , Contemplata.Ancor.Preprocess.Token
-                     , Contemplata.Stanford
-                     , Contemplata.DiscoDOP
-                     , Contemplata.Penn
-                     , Contemplata.FTB
+                     , Contemplata.Anno.Attr
+                     , Contemplata.Anno.Entity
 
                      , Contemplata.Config
                      , Contemplata.Config.Attr
@@ -42,8 +31,21 @@ library
                      , Contemplata.Config.Message
                      , Contemplata.Config.Command
 
-                     , Contemplata.Anno.Attr
-                     , Contemplata.Anno.Entity
+                     , Contemplata.Server
+                     , Contemplata.Server.DB
+                     , Contemplata.Server.Users
+                     , Contemplata.Server.Config
+
+                     , Contemplata.Ancor.Types
+                     , Contemplata.Ancor.IO.Parse
+                     , Contemplata.Ancor.IO.Show
+                     , Contemplata.Ancor.Preprocess
+                     , Contemplata.Ancor.Preprocess.Token
+
+                     , Contemplata.Stanford
+                     , Contemplata.DiscoDOP
+                     , Contemplata.Penn
+                     , Contemplata.FTB
 
   other-modules:       Proto.Contemplata.Stanford.CoreNLP
   build-depends:       base >= 4.7 && < 5

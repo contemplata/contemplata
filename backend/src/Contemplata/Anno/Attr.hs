@@ -1,6 +1,9 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 
+-- | Annotation: attributes
+
+
 module Contemplata.Anno.Attr
 ( Attr(..)
 ) where
@@ -13,11 +16,12 @@ import Data.Text (Text)
 import Contemplata.Types.Core (Addr)
 
 
--- | Corresponding to `Contemplata.Config.Attr`.
+-- | An attribute value, consistent with `Contemplata.Config.Attr`
 data Attr
   = Attr Text
     -- ^ A closed or free attribute.
   | Anchor Addr
+    -- ^ An anchor (pointer to a tree node)
   deriving (Generic, Show, Eq, Ord)
 
 
