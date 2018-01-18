@@ -57,7 +57,34 @@ directory to your `$PATH`, or use the full path to run `contemplata-server`:
 ```bash
 ~/.local/bin/contemplata-server --help
 ```
-    
+
+#### Avoid recompilation of protocol buffer files
+
+By default, the setup tool will generate Haskell files from the protocol buffer
+files (responsible for communication with the Stanford parser) each time you run
+`stack install`. However, this step needs to be performed only once. In order to
+skip it for subsequent builds, replace:
+
+```Haskell
+buildProtos :: Bool
+buildProtos = True
+```
+
+with:
+
+```Haskell
+buildProtos :: Bool
+buildProtos = False
+```
+
+in the `Setup.hs` file.
+
+<!--
+It would be nice to obtain this effect without using hard-coded parameters but,
+for the moment, one cannot define CPP flags in the `custom-setup` section of the
+`contemplata.cabal` file. Thus, there seems to be no straightforward way to
+obtain this behavior.
+--->
 
 ## Front-end
 
@@ -208,7 +235,7 @@ annotation-related functionality relatively quickly.
 
 An Temporal@ODIL-dedicated instance of the tool can be found at
 [http://vega.info.univ-tours.fr/odil/current](http://vega.info.univ-tours.fr/odil/current).
-You can log in as a *guest* (password *guest*) to have a look. As a guest, you
+You can log in as a `guest` (password `guest`) to have a look. As a guest, you
 will not be allowed to store any changes you made, but you will have access to
 the [user's guide](http://vega.info.univ-tours.fr/odil/current/user/guide) and
 will be able to play with the tool's functionality.

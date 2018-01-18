@@ -14,7 +14,9 @@ extra-source-files:  README.md, src/Contemplata/Stanford/CoreNLP.proto
 cabal-version:       >=1.10
 
 custom-setup
-  setup-depends: base, Cabal, proto-lens-protoc
+  setup-depends:       base
+                     , Cabal
+                     , proto-lens-protoc
 
 library
   hs-source-dirs:      src
