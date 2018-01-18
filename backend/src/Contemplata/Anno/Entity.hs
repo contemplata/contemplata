@@ -22,9 +22,9 @@ import qualified Contemplata.Anno.Attr as A
 -- | An annotation entity, corresponding to `Contemplata.Config.Entity`
 data Entity = Entity
   { name :: Text
-    -- ^ A name of the entitu
+    -- ^ A name of the entity
   , typ :: Text
-    -- ^ Its type
+    -- ^ Entity's type
   , attributes :: M.Map Text A.Attr
     -- ^ The value of optional attributes does not have to be specified in the
     -- map above.

@@ -6,9 +6,6 @@ module Contemplata.Config.Message
 ) where
 
 
--- import qualified Data.Map.Strict as M
--- import qualified Data.Vector as V
-
 import Dhall
 import qualified Data.Aeson as JSON
 

@@ -19,12 +19,18 @@ import qualified Contemplata.Config.Attr as A
 import qualified Contemplata.Config.Entity.Type as E
 
 
+-- | Configuration of an entity annotation, which can be assigned to a syntactic
+-- node, to a relation between nodes, etc.
 data Entity = Entity
   { name :: Text
+    -- ^ Name of the annotation entity (e.g., Timex, Event, etc.)
   , typ :: E.EntityType
-  -- , attributes :: M.Map Text A.Attr
+    -- ^ Entity's type: its possible values, default value, etc.
   , attributes :: [(Text, A.Attr)]
+    -- ^ General attributes: their names and the configurations of their values
+    -- (closed, free, anchors, ...)
   , attributesOnType :: M.Map Text [(Text, A.Attr)]
+    -- ^ Type-dependent attributes
   } deriving (Generic, Show)
 
 instance Interpret Entity

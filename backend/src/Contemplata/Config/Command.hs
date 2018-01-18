@@ -22,8 +22,6 @@ import qualified Dhall.Core
 
 -- | Command invocation via a keyboard shortcut
 data KeyboardShortcut = KeyboardShortcut
---   { keyCode :: Int
---     -- ^ Key code corresponding to the `char`
   { char :: Char
     -- ^ The character of the shortcut
   } deriving (Generic, Show, Eq, Ord)
@@ -34,25 +32,26 @@ instance JSON.ToJSON KeyboardShortcut where
   toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
 
--- | A command in the command line mode
+-- | Command invocation via the command-line
 type LineCommand = Text
 
 
--- | A menu command
+-- | Command invocation via menu item
 type MenuCommand = Text
 
 
--- | A specification of a menu command, which can be used to invoke a particular message.
+-- | A specification of a Contemplata command, which can be used to invoke a
+-- particular `Contemplata.Config.Message`.
 data Command = Command
   { keyCmd :: Maybe KeyboardShortcut
   , lineCmd :: Maybe LineCommand
   , menuCmd :: Maybe MenuCommand
   , withCtrl :: Maybe Bool
-    -- ^ If the command has to be invoked with CTRL pressed; if `Nothing`, it
-    -- can be invoked whether CTRl is pressed or not; applies to `keyCmd` and
-    -- `menuCmd`
+    -- ^ If the command has to be invoked with CTRL pressed. Relates to `keyCmd`
+    -- and `menuCmd`, but not to `lineCmd`. If `Nothing`, the command can be
+    -- invoked whether CTRl is pressed or not; applies to `keyCmd` and `menuCmd`
   , help :: Maybe Text
-    -- ^ Just a help string
+    -- ^ The corresponding help message
   } deriving (Generic, Show, Eq, Ord)
 
 instance Interpret Command
