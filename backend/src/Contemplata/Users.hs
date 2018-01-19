@@ -5,7 +5,7 @@
 -- Snap Auth JSON-based backend.
 
 
-module Contemplata.Server.Users
+module Contemplata.Users
 ( listUsers
 ) where
 
@@ -20,7 +20,7 @@ import qualified Data.Aeson.Lens as Lens
 import Contemplata.Types
 
 
--- | List the users present in the given JSON file.
+-- | List the users present in the given Snap Auth JSON file.
 listUsers
   :: FilePath -- ^ The path to the JSON password file
   -> IO [AnnoName]

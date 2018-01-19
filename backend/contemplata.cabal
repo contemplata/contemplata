@@ -34,16 +34,13 @@ library
                      , Contemplata.Config.Command
 
                      , Contemplata.DB
-
-                     , Contemplata.Server
-                     , Contemplata.Server.Users
-                     , Contemplata.Server.Config
+                     , Contemplata.WebSocketServer
+                     , Contemplata.Users
 
                      , Contemplata.Ancor.Types
                      , Contemplata.Ancor.IO.Parse
                      , Contemplata.Ancor.IO.Show
                      , Contemplata.Ancor.Preprocess
-                     , Contemplata.Ancor.Preprocess.Token
 
                      , Contemplata.Stanford
                      , Contemplata.DiscoDOP

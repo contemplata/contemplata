@@ -78,7 +78,6 @@ import System.FilePath ((</>), (<.>))
 
 import Contemplata.Types -- hiding (annoMap)
 -- import qualified Contemplata.Types as Types
-import qualified Contemplata.Server.Config as Cfg
 import qualified Data.Aeson as JSON
 
 
@@ -100,13 +99,16 @@ data DB = DB
   }
 
 
--- | A default config given a `dbPath`.
+-- | A default config given a `dbPath`:
+-- * `regPath` = "reg.json"
+-- * `storePath` = "store"
+-- * `authPath` = "auth.json"
 defaultConf :: FilePath -> DB
 defaultConf dbPath = DB
   { dbPath = dbPath
-  , regPath = Cfg.dbRegPath
-  , storePath = Cfg.dbStorePath
-  , authPath = Cfg.dbAuthPath
+  , regPath = "reg.json"
+  , storePath = "store"
+  , authPath = "auth.json"
   }
 
 

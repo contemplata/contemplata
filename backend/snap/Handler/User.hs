@@ -45,7 +45,6 @@ import qualified Text.Digestive.Snap as D
 
 import qualified Contemplata.Types as Contemplata
 import qualified Contemplata.DB as DB
--- import qualified Contemplata.Server.Users as Users
 
 import qualified Auth as MyAuth
 import qualified Config as MyCfg

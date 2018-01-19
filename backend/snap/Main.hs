@@ -24,8 +24,7 @@ import qualified Data.Text.Encoding as T
 -- import           Data.Monoid ((<>))
 
 import qualified Contemplata.DB as DB
-import qualified Contemplata.Server as Server
-import qualified Contemplata.Server.Config as ServerCfg
+import qualified Contemplata.WebSocketServer as Server
 
 import qualified Snap as Snap
 import qualified Snap.Snaplet.Auth as Auth
@@ -43,7 +42,6 @@ import           Heist.Interpreted (Splice, bindSplices, bindAttributeSplices)
 import           Data.Map.Syntax ((##))
 import qualified Text.XmlHtml as X
 
--- import qualified Snap.Http.Server as Server
 import qualified Network.WebSockets as WS
 import qualified Network.WebSockets.Snap as SnapWS
 

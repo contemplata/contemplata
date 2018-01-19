@@ -1,31 +1,29 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RecordWildCards #-}
 
 
--- | Pre-processing ancor file for parsing.
+-- | Token-level ANCOR preprocessing, with parsing in mind. See the `prepare`
+-- function.
 
 
 module Contemplata.Ancor.Preprocess
 (
 -- * Top-level
   prepare
+, prepareDummy
 
 -- * External
-, Sym (..)
-, RE
-, mkRegexG
--- , mkRegex
-, replace
--- ** High-level
 , ExtConfig
-, compile
+, Expr (..)
 , readConfig
 ) where
 
 
 import Control.Monad (guard)
 import Control.Applicative ((<|>))
+import qualified Control.Arrow as Arr
 
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, isNothing)
 import qualified Data.Text as T
 import qualified Data.List as L
 import qualified Data.Char as C
@@ -36,44 +34,51 @@ import Contemplata.Ancor.Types
 import qualified Contemplata.Ancor.IO.Parse as P
 import qualified Contemplata.Ancor.IO.Show as S
 
+import qualified Contemplata.Types as Contemplata
+
 
 ---------------------------------------------------
 -- Top-level preprocessing
 ---------------------------------------------------
 
 
-prepare :: ExtConfig -> T.Text -> T.Text
-prepare ext =
-  backup . remove . prepareBase
+-- | Perform pre-processing so as to:
+-- * Join tokens (e.g. those which represent acronyms)
+-- * Remove tokens irrelevant for parsing (represented as `Nothing` values in
+--   the resulting list)
+prepare
+  :: ExtConfig
+  -> [Contemplata.Token]
+  -> [(Contemplata.Token, Maybe T.Text)]
+prepare ext toks =
+  remove . prepareBase $ toks
   where
-    remove = T.pack . compile ext . T.unpack
-    backup x
-      | T.null x = "DUMMY"
-      | otherwise = x
+    remove = compile ext
 
 
 -- | Prepare a given sentence for parsing.
-prepareBase :: T.Text -> T.Text
 prepareBase
-  = T.unwords
-  . map S.showToken
+  :: [Contemplata.Token]
+  -> [(Contemplata.Token, Maybe T.Text)]
+prepareBase
+  = map (Arr.second $ fmap S.showToken)
   . retokenize
-  . map P.parseToken
-  . T.words
+  . map (Arr.second Just)
+  . map (Arr.second P.parseToken)
+  . map (\x -> (x, Contemplata.orth x))
   where
-    retokenize sent
-      -- = backup sent
-      = map complete
+    retokenize
+      = map (Arr.second $ fmap complete)
       . rmBruit
       . rmPause
       . rmInaudible
       . rmPronounce
       . joinAcronyms
-      $ sent
-    backup sent xs =
-      if null xs
-      then sent
-      else xs
+
+
+-- | A dummy preparation function which does nothing, really.
+prepareDummy :: [Contemplata.Token] -> [(Contemplata.Token, Maybe T.Text)]
+prepareDummy = map $ \x -> (x, Just $ Contemplata.orth x)
 
 
 ---------------------------------------------------
@@ -82,32 +87,29 @@ prepareBase
 
 
 -- | A single re-tokenization strategy.
-type Retok = [Token] -> [Token]
-
-
--- -- | Combine several re-tokenization strategies.
--- retokenize :: [Retok] -> [Token] -> [Token]
--- retokenize = foldl (.) id
+type Retok
+  =  [(Contemplata.Token, Maybe Token)]
+  -> [(Contemplata.Token, Maybe Token)]
 
 
 -- | Remove bruits.
 rmBruit :: Retok
-rmBruit = filter (not . isBruit)
+rmBruit = remove isBruit
 
 
 -- | Remove bruits.
 rmPause :: Retok
-rmPause = filter (not . isPause)
+rmPause = remove isPause
 
 
 -- | Remove inaudible parts.
 rmInaudible :: Retok
-rmInaudible = filter (not . isInaudible)
+rmInaudible = remove isInaudible
 
 
 -- | Remove "pronounce"(?) parts.
 rmPronounce :: Retok
-rmPronounce = filter (not . isPronounce)
+rmPronounce = remove isPronounce
 
 
 joinAcronyms :: Retok
@@ -117,22 +119,148 @@ joinAcronyms lst =
         [] -> onTail joinAcronyms ys
         _  -> mkAcro xs : joinAcronyms ys
   where
-    onTail f xs = case xs of
-      hd : tl -> hd : f tl
-      [] -> []
-    acroElem tok = maybe False id $ do
+    acroElem (odilTok, mayTok) = maybe False id $ do
+      tok <- mayTok
       Plain x <- pure tok
       [c] <- pure (T.unpack x)
       guard $ C.isUpper c
       return True
-    mkAcro = Plain . T.concat . mapMaybe extract
+    onTail f xs = case xs of
+      hd : tl -> hd : f tl
+      [] -> []
+    mkAcro =
+      let onSecond = Just . Plain . T.concat . mapMaybe extract
+      in  Arr.first mconcat . Arr.second onSecond . unzip
     extract tok = case tok of
-      Plain x -> Just x
+      Just (Plain x) -> Just x
       _ -> Nothing
 
 
 ---------------------------------------------------
+---------------------------------------------------
+-- Removing expressions by parsing
+---------------------------------------------------
+---------------------------------------------------
+
+
+-- | An expression to match (and remove)
+data Expr = Expr
+  { exprStr :: T.Text
+    -- ^ The actual expression
+  , onBeg :: Bool
+    -- ^ Matches only at the beginning of a sentence
+  }
+
+
+-- | Remove the given expression from the list of tokens.
+removeExpr
+  :: Expr
+  -> [(Contemplata.Token, Maybe T.Text)]
+  -> [(Contemplata.Token, Maybe T.Text)]
+removeExpr Expr{..} =
+  if onBeg
+  then uncurry (++)
+    . Arr.second (removeOne exprStr)
+    . L.span (isNothing . snd)
+  else removeAll exprStr
+
+
+-- | Remove the expression *only* from the beginning of the list of tokens.
+removeOne
+  :: T.Text
+  -> [(Contemplata.Token, Maybe T.Text)]
+  -> [(Contemplata.Token, Maybe T.Text)]
+removeOne str0 lst =
+
+  let (strRest, (xs, ys)) = spanAcc exprElem str0 lst
+  in  case xs of
+        [] -> ys
+        _ | not (T.null strRest) -> xs ++ ys
+        _  -> remExpr xs ++ ys
+
+  where
+
+    exprElem :: T.Text -> (Contemplata.Token, Maybe T.Text) -> (T.Text, Bool)
+    exprElem str (odilTok, mayTok) = maybe (str, False) id $ do
+      tok <- mayTok
+      Just suff <- pure $ T.stripPrefix tok str
+      return (T.strip suff, True)
+
+    remExpr :: [(Contemplata.Token, Maybe T.Text)] -> [(Contemplata.Token, Maybe T.Text)]
+    remExpr = map $ Arr.second (const Nothing)
+
+
+-- | Remove the expression starting from all positions in the list of tokens.
+-- TODO: It seems to work incorrectly when the expressions to remove are
+-- adjacent!
+removeAll
+  :: T.Text
+  -> [(Contemplata.Token, Maybe T.Text)]
+  -> [(Contemplata.Token, Maybe T.Text)]
+removeAll str = onTail (removeAll str) . removeOne str
+
+
+---------------------------------------------------
+-- External configuration
+---------------------------------------------------
+
+
+-- | Parse the expression from its string representation.
+parseExpr :: String -> Expr
+parseExpr str = case str of
+  '^' : rest -> Expr (T.pack rest) True
+  _ -> Expr (T.pack str) False
+
+
+-- | An external configuration is just a list of strings to be removed.
+type ExtConfig = [Expr]
+
+
+-- | Read configuration from the given file.
+readConfig :: FilePath -> IO ExtConfig
+readConfig path = do
+  xs <- map trim . lines <$> readFile path
+  return . map parseExpr . filter (not . irrelevant) $ xs
+  where
+    trim = f . f
+      where f = reverse . dropWhile C.isSpace
+    irrelevant x = empty x || comment x
+    empty = (=="")
+    comment ('#' : _) = True
+    comment _ = False
+
+
+-- | Compile the configuration into a removal function (`step` as long as the
+-- result differs from the input).
+compile
+  :: ExtConfig
+  -> [(Contemplata.Token, Maybe T.Text)]
+  -> [(Contemplata.Token, Maybe T.Text)]
+compile cfg =
+  let
+    once = step cfg
+    go toks =
+      let toks' = once toks
+      in  if toks == toks'
+          then toks
+          else go toks'
+  in
+    go
+
+
+-- | Compile the configuration into a removal function (one-step).
+step
+  :: ExtConfig
+  -> [(Contemplata.Token, Maybe T.Text)]
+  -> [(Contemplata.Token, Maybe T.Text)]
+step [] = id
+step (x:xs) = step xs . removeExpr x
+
+
+---------------------------------------------------
+---------------------------------------------------
 -- Utils
+---------------------------------------------------
 ---------------------------------------------------
 
 
@@ -167,119 +295,35 @@ isPronounce x = case x of
   _ -> False
 
 
----------------------------------------------------
--- External configuration: core
----------------------------------------------------
-
-
--- | A symbol for regex processing.
-data Sym
-  = Char Char
-    -- ^ Just a regular character
-  | Beg
-    -- ^ Sentence beginning
-  | End
-    -- ^ Sentence ending
-  deriving (Show, Eq, Ord)
-
-
--- | Retrieve the underlying character.
-unChar :: Sym -> Maybe Char
-unChar (Char x) = Just x
-unChar _ = Nothing
-
-
--- | A regular expression.
-type RE = RE.RE Sym [Sym]
-
-
--- | Replace (similar to `RE.replace`) the given RE (use `mkRegex` to construct
--- it) in the given string.
-replace :: RE -> String -> String
-replace re
-  = mapMaybe unChar
-  . RE.replace re
-  . (Beg:) . (++[End])
-  . map Char
-
-
--- | A version of `mkRegex` which deals with the surrounding spaces and the
--- special '^' character.
-mkRegexG :: String -> RE
-mkRegexG [] = pure []
-mkRegexG (x : xs)
-  | x == '^'  = glue <$> RE.sym Beg <*> (mkRegex xs *> break)
-  | otherwise = glue <$> break <*> (mkRegex (x : xs) *> break)
+-- | Replace elements which satisfy the predicate with `Nothing.`
+remove :: (a -> Bool) -> [(b, Maybe a)] -> [(b, Maybe a)]
+remove p =
+  map (Arr.second f)
   where
-    break = RE.psym isSpace <|> RE.psym (`elem` [Beg, End])
-    -- `glue` guarantees that an appropriate number of spaces is left in the
-    -- resulting string
-    glue (Char _) (Char _) = [Char ' ']
-    glue _ _ = []
+    f Nothing = Nothing
+    f (Just x) =
+      if p x
+      then Nothing
+      else Just x
 
 
--- | Create a regular expression from a given string. The resulting value is
--- always an empty list (string), which corresponds to the fact that we want to
--- remove the recognized strings.
-mkRegex :: String -> RE
-mkRegex [] = pure []
-mkRegex (x : xs)
-  | C.isSpace x =
-      RE.some (RE.psym isSpace) *> mkRegex xs
-  | otherwise =
-      RE.psym (char x) *> mkRegex xs
-
-
--- | `C.isSpace` lifted to symbols.
-isSpace :: Sym -> Bool
-isSpace (Char c) = C.isSpace c
-isSpace _ = False
-
-
--- | Is the symbol equal (case insensitivelly) to the given character?
-char :: Char -> Sym -> Bool
-char x (Char c) = C.toLower x == C.toLower c
-char _ _ = False
-
-
----------------------------------------------------
--- External configuration: high-level
----------------------------------------------------
-
-
--- | An external configuration is just a list of strings to be removed.
-type ExtConfig = [String]
-
-
--- | Compile the configuration into a removal function.
--- Applies `_compile` as long as any new expressions are removed.
-compile :: ExtConfig -> String -> String
-compile ext = _compile ext
---   loop
---   where
---     step = compile ext
---     loop x =
---       let x' = step x
---       in  if x == x' then x' else loop x'
-
-
--- | Compile the configuration into a removal function (one-step).
-_compile :: ExtConfig -> String -> String
-_compile [] = id
-_compile (x:xs) =
-  let re = mkRegexG x
-  in  _compile xs . replace re
-
-
--- | Read configuration from the given file.
-readConfig :: FilePath -> IO ExtConfig
-readConfig path = do
-  xs <- map trim . lines <$> readFile path
-  return $ filter (not . irrelevant) xs
+-- | A bit like `List.span` but with an accumulator.
+spanAcc :: (acc -> a -> (acc, Bool)) -> acc -> [a] -> (acc, ([a], [a]))
+spanAcc f =
+  go
   where
-    trim = f . f
-      where f = reverse . dropWhile C.isSpace
-    irrelevant x = empty x || comment x
-    empty = (=="")
-    comment ('#' : _) = True
-    comment _ = False
+    go acc xs = case xs of
+      [] -> (acc, ([], []))
+      hd : tl ->
+        let (newAcc, sat) = f acc hd
+        in
+          if sat
+          then Arr.second (Arr.first (hd:)) (go newAcc tl)
+          else (acc, ([], xs))
+
+
+-- | Apply the function on tail.
+onTail :: ([a] -> [a]) -> [a] -> [a]
+onTail f = \case
+  [] -> []
+  x : xs -> x : f xs

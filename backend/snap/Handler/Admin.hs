@@ -74,15 +74,15 @@ import qualified Text.Digestive.Types as DT
 import qualified Dhall as Dhall
 
 import qualified Contemplata.Config as AnnoCfg
-import qualified Contemplata.Server as Server
+import qualified Contemplata.WebSocketServer as Server
 import           Contemplata.Types
 import qualified Contemplata.DB as DB
-import qualified Contemplata.Server.Users as Users
+import qualified Contemplata.Users as Users
 
 import qualified Contemplata.Ancor.Types as Ancor
 import qualified Contemplata.Ancor.IO.Parse as Parse
 import qualified Contemplata.Ancor.IO.Show as Show
-import qualified Contemplata.Ancor.Preprocess.Token as Pre
+import qualified Contemplata.Ancor.Preprocess as Pre
 
 import qualified Auth as MyAuth
 import qualified Config as MyCfg

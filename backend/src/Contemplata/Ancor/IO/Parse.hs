@@ -1,7 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 
-module Contemplata.Ancor.IO.Parse (parseAncor, parseTrans, parseToken) where
+-- | Parsing ANCOR files
+
+
+module Contemplata.Ancor.IO.Parse
+  ( parseAncor
+  , parseTrans
+  , parseToken
+  ) where
 
 
 import Control.Monad (void, guard)
@@ -110,18 +117,6 @@ syncQ =
   fmap (const []) . node $ named "Sync"
 
 
--- elemQ :: Q Elem
--- elemQ = anchorQ <|> regularQ
---
---
--- anchorQ :: Q Elem
--- anchorQ = Anchor <$> named "anchor" `joinR` first (node text)
---
---
--- regularQ :: Q Elem
--- regularQ = Regular <$> node text
-
-
 ---------------------------------------------------
 -- Parsing elements
 ---------------------------------------------------
@@ -193,10 +188,6 @@ plainP = do
 ---------------------------------------------------
 -- Higher-level API
 ---------------------------------------------------
-
-
--- parseEpi :: T.Text -> Maybe Episode
--- parseEpi = runQ episodeQ . parseTree . TagSoup.parseTags
 
 
 -- | Parse an entire Ancor file.

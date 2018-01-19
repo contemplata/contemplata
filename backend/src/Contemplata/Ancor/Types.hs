@@ -1,22 +1,31 @@
 -- {-# LANGUAGE DeriveFunctor #-}
 
 
+-- | The ANCOR format-related types.
+
+
 module Contemplata.Ancor.Types
-       (Episode, Section, Turn(..), Elem(..), Who(..), Token(..)) where
+( Episode
+, Section
+, Turn(..)
+, Elem(..)
+, Who(..)
+, Token(..)
+) where
 
 
 import qualified Data.Text as T
 
 
--- | The biggest dialog unit in Ancor (there is one episode per file).
+-- | The biggest dialogue unit in Ancor (there is one episode per file).
 type Episode = [Section]
 
 
--- | A section of a dialog.
+-- | A section of a dialogue.
 type Section = [Turn]
 
 
--- | A turn -- the smallest unit of a dialog.
+-- | A turn -- the smallest unit of a dialogue.
 data Turn = Turn
     { speaker :: [T.Text]
       -- ^ Possibly several speakers
@@ -49,16 +58,4 @@ data Token
     -- ^ [pi]
   | Pronounce T.Text
     -- ^ ???
-  deriving (Show, Eq, Ord) --, Functor)
-
-
--- -- | An element of a turn.
--- data Elem
---     = Anchor T.Text
---     | Regular T.Text
---     deriving (Show, Eq, Ord)
---
---
--- unElem :: Elem -> T.Text
--- unElem (Anchor x) = x
--- unElem (Regular x) = x
+  deriving (Show, Eq, Ord)

@@ -34,11 +34,10 @@ import Options.Applicative
 import qualified Contemplata.Ancor.Types as Ancor
 import qualified Contemplata.Ancor.IO.Parse as Parse
 import qualified Contemplata.Ancor.IO.Show as Show
-import qualified Contemplata.Ancor.Preprocess.Token as Pre
+import qualified Contemplata.Ancor.Preprocess as Pre
 import qualified Contemplata.Types as Contemplata
-import qualified Contemplata.Server.Config as ServerCfg
 import qualified Contemplata.DB as DB
-import qualified Contemplata.Server as Server
+import qualified Contemplata.WebSocketServer as Server
 import qualified Contemplata.Penn as Penn
 import qualified Contemplata.FTB as FTB
 import qualified Contemplata.Stanford as Stanford
@@ -147,27 +146,6 @@ penn2jsonOptions = pure Penn2JSON
 --        <> short 'o'
 --        <> metavar "FILE"
 --        <> help "File with original sentences" )
-
-
--- serverOptions :: Parser Command
--- serverOptions = Server
---   <$> strOption
---         ( long "dbdir"
---        <> short 'd'
---        <> metavar "DIR"
---        <> help "DB directory" )
---   <*> strOption
---         ( long "url"
---        <> short 'u'
---        <> metavar "URL"
---        <> value ServerCfg.serverAddr
---        <> help "Address to bind (WebSocket server)" )
---   <*> option auto
---         ( long "port"
---        <> short 'p'
---        <> metavar "INT"
---        <> value ServerCfg.serverPort
---        <> help "Port to listen to (WebSocket server)" )
 
 
 newDbOptions :: Parser Command

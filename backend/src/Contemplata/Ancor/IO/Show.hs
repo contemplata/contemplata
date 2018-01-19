@@ -3,13 +3,19 @@
 {-# LANGUAGE LambdaCase #-}
 
 
+-- | Showing ANCOR files
+
+
 module Contemplata.Ancor.IO.Show
-  ( showTurn
+  (
+    -- * Showing
+    showTurn
   , showSection
   , showAncor
   , showToken
   , showElem
 
+    -- * Conversion
   , elem2sent
   ) where
 
@@ -21,14 +27,12 @@ import qualified Contemplata.Types as Contemplata
 
 
 showAncor :: Episode -> T.Text
--- showAncor = T.intercalate "\n\n" . map showSection
 showAncor = T.intercalate "\n" . filter (not . T.null . T.strip) . map showSection
 
 
 -- | Show a given section.
 showSection :: Section -> T.Text
 showSection = T.intercalate "\n" . map showTurn
--- showSection = T.intercalate "\n" . filter (not . T.null . T.strip) . map showTurn
 
 
 -- | Show a given turn.

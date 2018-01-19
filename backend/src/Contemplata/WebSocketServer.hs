@@ -8,7 +8,7 @@
 -- frontend annotation tool.
 
 
-module Contemplata.Server
+module Contemplata.WebSocketServer
 (
 -- * Types
   module Contemplata.Types
@@ -57,13 +57,12 @@ import qualified Dhall as Dhall
 import qualified Network.WebSockets as WS
 
 import Contemplata.Types
--- import qualified Contemplata.Server.Config as Cfg
 import qualified Contemplata.DB as DB
 import qualified Contemplata.Config as AnnoConfig
 import qualified Contemplata.Stanford as Stanford
 import qualified Contemplata.DiscoDOP as DiscoDOP
 import qualified Contemplata.Penn as Penn
-import qualified Contemplata.Ancor.Preprocess.Token as Pre
+import qualified Contemplata.Ancor.Preprocess as Pre
 
 
 -----------
