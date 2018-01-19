@@ -208,6 +208,19 @@ To start annotating, you will have to log in as administrator (login = `admin`,
 password = `admin`), change the password, create annotator accounts, upload
 files, and assign the files to the individual annotators.
 
+## Command-line tool
+
+The Contemplata application suite provides the `contemplata` command-line tool,
+by default installed in the `~/.local/bin` directory. It can be used to create a
+new database, add new files to the database, convert an FTB file to the PTB
+format, etc. Run:
+
+```bash
+contemplata -h
+```
+
+to see the tool's available options.
+
 
 # Architecture
 

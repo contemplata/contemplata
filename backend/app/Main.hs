@@ -54,21 +54,9 @@ data Command
     = Simplify FilePath
       -- ^ Parse and show the sentences in the Ancor XML file
 
-    | Preprocess (Maybe FilePath)
-      -- ^ Preprocess the sentence for parsing; the optional argument specifies
-      -- the path to the external file with sentences to be removed
-
     | Process (Maybe FilePath)
-      -- ^ Ancor file -> ODIL (in JSON); the optional argument specifies the
+      -- ^ Ancor file -> Contemplata (in JSON); the optional argument specifies the
       -- path to the external file with sentences to be removed
-
---     | Penn2Contemplata
---         FilePath -- ^ Penn file
---         FilePath -- ^ File with original sentences
---       -- ^ Convert a Penn file to a JSON file
-
---     | Server FilePath String Int
---       -- ^ Run the backend annotation server
 
     | NewDB FilePath
       -- ^ Create a new DB under a given path
@@ -94,9 +82,6 @@ data Command
     | GetLabels FilePath
       -- ^ Get the list of (non-terminal) node labels in the DB
 
-    | UpdateMeta1 FilePath
-      -- ^ Update meta information in the given DB (in-place)
-
 
 --------------------------------------------------
 -- Options
@@ -112,15 +97,6 @@ simplifyOptions = Simplify
        <> help "Ancor .xml file" )
 
 
-preprocessOptions :: Parser Command
-preprocessOptions = Preprocess
-  <$> (optional . strOption)
-        ( long "remove"
-       <> short 'r'
-       <> metavar "FILE"
-       <> help "" )
-
-
 processOptions :: Parser Command
 processOptions = Process
   <$> (optional . strOption)
@@ -132,20 +108,6 @@ processOptions = Process
 
 penn2jsonOptions :: Parser Command
 penn2jsonOptions = pure Penn2JSON
-
-
--- penn2odilOptions :: Parser Command
--- penn2odilOptions = Penn2Contemplata
---   <$> strOption
---         ( long "penn"
---        <> short 'p'
---        <> metavar "FILE"
---        <> help "Penn file" )
---   <*> strOption
---         ( long "orig"
---        <> short 'o'
---        <> metavar "FILE"
---        <> help "File with original sentences" )
 
 
 newDbOptions :: Parser Command
@@ -271,22 +233,10 @@ opts = subparser
     (info (helper <*> simplifyOptions)
       (progDesc "Parse and show the sentences in the Ancor XML file")
     )
-  <> command "preprocess"
-    (info (helper <*> preprocessOptions)
-      (progDesc "Prepare sentences (one per line on <stdin>) for parsing")
-    )
   <> command "process"
     (info (helper <*> processOptions)
-      (progDesc "Full processing pipeline (Ancor file -> ODIL JSON)")
+      (progDesc "Full processing pipeline (Ancor file -> Contemplata JSON)")
     )
---   <> command "penn2odil"
---     (info (helper <*> penn2odilOptions)
---       (progDesc "Convert Penn trees to Contemplata trees in JSON")
---     )
---   <> command "server"
---     (info (helper <*> serverOptions)
---       (progDesc "Run the backed annotation server")
---     )
   <> command "createdb"
     (info (helper <*> newDbOptions)
       (progDesc "Create a new DB under a given path")
@@ -319,10 +269,6 @@ opts = subparser
     (info (helper <*> getLabelsOptions)
       (progDesc "Retrieve non-terminal labels")
     )
-  <> command "updatemeta1"
-    (info (helper <*> updateMetaOptions UpdateMeta1)
-      (progDesc "Update files' metadata information")
-    )
   )
 
 
@@ -335,20 +281,9 @@ run cmd =
     Simplify ancorFile -> do
       file <- T.readFile ancorFile
       T.putStrLn . Show.showAncor . Parse.parseTrans $ file
---     Preprocess rmFile -> do
---       sentences <- T.lines <$> T.getContents
---       prepare <- Pre.prepare <$> case rmFile of
---         Nothing -> pure []
---         Just path -> Pre.readConfig path
---       T.putStr . T.unlines . map prepare $ sentences
--- --     Penn2Contemplata pennPath origPath -> do
--- --       penn <- Penn.parseForest <$> T.readFile pennPath
--- --       orig <- T.lines <$> T.readFile origPath
--- --       let file = Penn.convertPennFile (zip orig penn)
--- --       LBS.putStr (JSON.encode file)
 
     -- Read the ancor file from stdin and output the resulting
-    -- ODIL file in the JSON format
+    -- Contemplata file in the JSON format
     Process rmFile -> do
       ancorFile <- T.getContents
       let ancor = Parse.parseTrans ancorFile
@@ -362,12 +297,12 @@ run cmd =
               -- let sent = Show.showElem elem
               let sent0 = Show.elem2sent elem
                   prepSent = prepare sent0
-              (sent, odil) <- liftIO (Server.parseRetokFR prepSent) >>= \case
+              (sent, cont) <- liftIO (Server.parseRetokFR prepSent) >>= \case
                 Nothing -> error
-                  "Managed to neither parse not even tokenize with Stanford"
+                  "Managed to neither parse nor tokenize with Stanford"
                 Just x -> return x
               k <- State.gets $ (+1) . M.size
-              State.modify' $ M.insert k (sent, odil)
+              State.modify' $ M.insert k (sent, cont)
               return (k, fmap Ancor.unWho mayWho)
             return $ Contemplata.Turn
               { speaker = Ancor.speaker turn
@@ -376,31 +311,11 @@ run cmd =
       LBS.putStr (JSON.encode file)
 
     -- Read the ancor file from stdin and output the resulting
-    -- ODIL file in the JSON format
+    -- Contemplata file in the JSON format
     Penn2JSON -> do
-      -- pennForest <- Penn.parseForest <$> T.getContents
       pennForest <- map Penn.parseTree . T.lines <$> T.getContents
---       (turns, treeMap) <- flip State.runStateT M.empty $ do
---         forM pennForest $ \penn -> do
---           let odil = Penn.toContemplataTree penn
---               sent = ""
---           k <- State.gets $ (+1) . M.size
---           State.modify' $ M.insert k (sent, odil)
---           -- return (k, Nothing) -- speaker N/A
---           return $ Contemplata.Turn
---             { speaker = []      -- speakers N/A
---             , trees = M.singleton k Nothing } -- speaker N/A
---       let file = Contemplata.File
---             { treeMap = treeMap
---             , turns = turns -- concat turns
---             , linkSet = M.empty
---             }
-      let odil = Penn.convertPennFile pennForest
-      LBS.putStr (JSON.encode odil)
-
-
-    -- -- Server-related
-    -- Server dbPath addr port -> Server.runServer dbPath addr port
+      let cont = Penn.convertPennFile pennForest
+      LBS.putStr (JSON.encode cont)
 
     -- DB-related
     NewDB dbPath -> do
@@ -516,23 +431,6 @@ run cmd =
         Left err -> T.putStrLn $ "Operation failed: " `T.append` err
         Right xs  -> forM_ (S.toList xs) T.putStrLn
 
-    UpdateMeta1 dbPath -> do
-      let dbConf = DB.defaultConf dbPath
-      res <- DB.runDBT dbConf $ do
-        -- manaully loading the old version of the database
-        let path = DB.dbPath dbConf </> DB.regPath dbConf
-        oldReg <- DB.loadJSON path
-        let newReg = M.fromList
-              [ (x, Contemplata.defaultMeta)
-              | x <- S.toList oldReg ]
-        DB.saveJSON path (newReg :: DB.Register)
-      case res of
-        Left err -> T.putStrLn $ "Operation failed: " `T.append` err
-        Right _  -> return ()
-
-
--- saveFile :: FileId -> File -> DBT ()
-
 
 main :: IO ()
 main =
@@ -540,8 +438,8 @@ main =
   where
     optsExt = info (helper <*> opts)
        ( fullDesc
-      <> progDesc "Working with ODIL files"
-      <> header "odil" )
+      <> progDesc "Working with Contempata database files"
+      <> header "contemplata" )
 
 
 -------------------------------------------------------
