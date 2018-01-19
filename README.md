@@ -245,9 +245,9 @@ will be able to play with the tool's functionality.
 
 All the files in the database are stored in a dedicated JSON format. This format
 is
-[determined automatically](https://github.com/kawu/contemplata/blob/dev/backend/src/Contemplata/Server/Types.hs#L258-L282)
+[determined automatically](https://github.com/kawu/contemplata/blob/master/backend/src/Contemplata/Types.hs#L265-L285)
 on the basis of the corresponding
-[File](https://github.com/kawu/contemplata/blob/dev/backend/src/Contemplata/Server/Types.hs#L151-L187)
+[File](https://github.com/kawu/contemplata/blob/master/backend/src/Contemplata/Types.hs#L176-L211)
 data type.
 
 You can think of the File type as a definition of the structure against which
