@@ -23,7 +23,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 -- import           Data.Monoid ((<>))
 
-import qualified Contemplata.Server.DB as DB
+import qualified Contemplata.DB as DB
 import qualified Contemplata.Server as Server
 import qualified Contemplata.Server.Config as ServerCfg
 

@@ -27,7 +27,7 @@ import           Heist.Interpreted (bindSplices, Splice)
 import qualified Text.XmlHtml as X
 
 import qualified Contemplata.Types as Contemplata
-import qualified Contemplata.Server.DB as DB
+import qualified Contemplata.DB as DB
 -- import qualified Config as Cfg
 import           Application
 import           Handler.Utils (liftDB)

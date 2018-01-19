@@ -33,8 +33,9 @@ library
                      , Contemplata.Config.Message
                      , Contemplata.Config.Command
 
+                     , Contemplata.DB
+
                      , Contemplata.Server
-                     , Contemplata.Server.DB
                      , Contemplata.Server.Users
                      , Contemplata.Server.Config
 

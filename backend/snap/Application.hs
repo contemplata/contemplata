@@ -15,7 +15,7 @@ module Application
 
 import qualified Control.Concurrent as C
 
-import qualified Contemplata.Server.DB as DB
+import qualified Contemplata.DB as DB
 
 import qualified Snap as Snap
 import qualified Snap.Snaplet.Auth as Auth

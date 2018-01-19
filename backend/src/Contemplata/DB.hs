@@ -3,10 +3,11 @@
 {-# LANGUAGE LambdaCase #-}
 
 
--- | Annotation server database.
+-- | Contemplata database, in which all the annotated files and their
+-- corresponding metadata are stored.
 
 
-module Contemplata.Server.DB
+module Contemplata.DB
 (
 -- * Configuration
   DB (..)
@@ -16,22 +17,26 @@ module Contemplata.Server.DB
 , DBT
 , runDBT
 
--- * DB top-level
+-- * DB manipulation
+-- ** Initialization
 , createDB
+-- ** Query
 , fileNum
 , fileMap
 , fileSet
+, hasFile
+, loadFile
+, fileModifDate
+-- *** Per Annotator
 , fileSetFor
 , accessLevel
-, hasFile
+-- ** Modification
 , saveFile
 , reSaveFile
-, loadFile
 , copyFile
 , renameFile
 , removeFile
-, fileModifDate
--- ** Meta-related
+-- ** Metadata
 , defaultMeta
 , loadMeta
 , saveMeta
@@ -43,7 +48,6 @@ module Contemplata.Server.DB
 , startAnnotating
 , postponeAnnotating
 , finishAnnotating
--- , annoMap
 
 -- * Low-level
 , Register
@@ -100,20 +104,17 @@ defaultConf dbPath = DB
   { dbPath = dbPath
   , regPath = Cfg.dbRegPath
   , storePath = Cfg.dbStorePath
-  , authPath = Cfg.dbAuthPath }
+  , authPath = Cfg.dbAuthPath
+  }
 
 
 ---------------------------------------
----------------------------------------
--- DB objects: pure functions only
----------------------------------------
+-- DB register
 ---------------------------------------
 
 
-  -- | DB register. For the moment, the only meta-data that we need to know about
--- the files stored in the DB is... none. Actually, we just store a set of files
--- to annotate, we don't even know if some of them were already annotated or
--- not.
+-- | Database register: a map from file IDs to the corresponding metadata
+-- information.
 type Register = M.Map FileId FileMeta
 
 
@@ -137,38 +138,20 @@ regGetMeta :: FileId -> Register -> Maybe FileMeta
 regGetMeta = M.lookup
 
 
--- -- | Update metadata.
--- regUpdateMeta :: FileId -> (FileMeta -> FileMeta) -> Register -> Register
--- regUpdateMeta = undefined
-
-
 -- | Size of the register.
 regSize :: Register -> Int
 regSize = M.size
 
 
--- ---------------------------------------
--- -- Auth-related: pure functions only
--- ---------------------------------------
---
---
--- -- | DB register. For the moment, the only meta-data that we need to know about
--- -- the files stored in the DB is... none. Actually, we just store a set of files
--- -- to annotate, we don't even know if some of them were already annotated or
--- -- not.
--- type Register = S.Set FileId
-
-
----------------------------------------
 ---------------------------------------
 -- DB monad
 ---------------------------------------
----------------------------------------
 
 
--- | DB monad transformer.
+-- | DB monad, which allows to:
+-- * access the database files
+-- * raise exceptions/errors
 type DBT = Err.ExceptT Err (R.ReaderT DB IO)
--- type DBT = Err.ExceptT Err IO
 
 
 -- | An error message.
@@ -176,7 +159,7 @@ type Err = T.Text
 
 
 -- | Run a given DBT computation. Try to catch any exceptions that might happen
--- along the way and return them as errors (`Left`).
+-- along the way (including IO exceptions) and return them as errors (`Left`).
 runDBT :: DB -> DBT a -> IO (Either Err a)
 runDBT db dbt = do
   x <- Exc.try . flip R.runReaderT db . Err.runExceptT $ dbt
@@ -188,11 +171,6 @@ runDBT db dbt = do
 -- | Get the DB configuration.
 dbConf :: DBT DB
 dbConf = lift R.ask
-
-
--- -- | Get the DB configuration.
--- dbConfOn :: (DB -> a) ->  DBT a
--- dbConfOn f = lift (R.asks f)
 
 
 ---------------------------------------

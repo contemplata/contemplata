@@ -59,7 +59,7 @@ import qualified Network.WebSockets as WS
 
 import Contemplata.Types
 -- import qualified Contemplata.Server.Config as Cfg
-import qualified Contemplata.Server.DB as DB
+import qualified Contemplata.DB as DB
 import qualified Contemplata.Config as AnnoConfig
 import qualified Contemplata.Stanford as Stanford
 import qualified Contemplata.DiscoDOP as DiscoDOP
