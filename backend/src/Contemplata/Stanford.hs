@@ -5,43 +5,41 @@
 
 -- | A simple Stanford parser client (for French). Relies on the standard
 -- CoreNLP server (see "edu.stanford.nlp.pipeline.StanfordCoreNLPServer"),
--- tested with version 3.7.0.
+-- tested with CoreNLP versions `3.7.0` and `3.8.0`.
 
 
 module Contemplata.Stanford
-( Orth
-, Pos
-, parseFR
-, parseTokenizedFR
-, parsePosFR
-, parseConsFR
--- * POS tagging
-, posTagFR
--- , docFromPos
--- , parseProto
+(
+  -- * Basic types
+    Orth
+  , Pos
 
--- * Utils
-, joinSentences
-) where
+  -- * Parsing
+  , parseFR
+  , parseTokenizedFR
+  , parsePosFR
+  -- , parseConsFR
+
+  -- * POS tagging
+  , posTagFR
+
+  -- * Utils
+  , joinSentences
+  ) where
 
 
 import Control.Monad (guard, (<=<))
 import Control.Arrow (second)
--- import Control.Monad.IO.Class (liftIO)
--- import Control.Monad.Trans.Maybe (MaybeT(..))
 import qualified Control.Monad.Trans.State as State
 
 import qualified Control.Exception as Exc
 
-import           Data.Maybe (catMaybes, maybeToList, mapMaybe)
--- import Data.Word (Word8, Word16)
--- import Data.Bits ((.&.), shiftR)
+import           Data.Maybe (mapMaybe)
 import qualified Data.List as L
 import qualified Data.Char as C
 import qualified Data.Text as T
 import qualified Data.Tree as R
 import qualified Data.HashMap.Strict as H
--- import qualified Data.Map.Strict as H
 import qualified Data.Text.Encoding as T
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
@@ -51,7 +49,6 @@ import qualified Data.Bytes.Serial as Byte
 import qualified Data.Bytes.Put as Byte
 import qualified Data.Bytes.Get as Byte
 
--- import qualified Network.URI as URI
 import qualified Network.Wreq as Wreq
 import Control.Lens ((^?), (^..))
 import qualified Data.Aeson as Aeson
@@ -77,21 +74,13 @@ type Pos = T.Text
 
 
 ----------------------------------------------
--- Calling Stanford
+-- Regular Stanford parsing
 ----------------------------------------------
 
 
 -- | The address to make the POST request.
 serverCfg :: String
 serverCfg = "http://localhost:9000/?properties={\"annotators\":\"tokenize,ssplit,pos,parse\",\"parse.model\":\"edu/stanford/nlp/models/lexparser/frenchFactored.ser.gz\",\"pos.model\":\"edu/stanford/nlp/models/pos-tagger/french/french.tagger\",\"tokenize.language\":\"fr\",\"outputFormat\":\"json\"}"
-
-
--- -- | Parse a given sentence (in French).
--- parseFR :: T.Text -> IO (Maybe Penn.Tree)
--- parseFR x = Exc.handle ignoreException $ do
---   r <- Wreq.post serverCfg (T.encodeUtf8 x)
---   let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "parse" . _String
---   return $ parse >>= Penn.parseTree'
 
 
 -- | Parse a given sentence (in French).
@@ -102,30 +91,13 @@ parseFR x = Exc.handle ignoreException $ do
   return . joinSentences $ map Penn.parseTree parse
 
 
--- | The alternative server configuration where the tokenization has been already performed.
+-- | The alternative server configuration, where tokenization has been already performed.
 tokenizedServerCfg :: String
 tokenizedServerCfg = "http://localhost:9000/?properties={\"annotators\":\"pos,parse\",\"tokenize.whitespace\":\"true\",\"parse.model\":\"edu/stanford/nlp/models/lexparser/frenchFactored.ser.gz\",\"pos.model\":\"edu/stanford/nlp/models/pos-tagger/french/french.tagger\",\"tokenize.language\":\"fr\",\"outputFormat\":\"json\"}"
 
 
--- -- | Parse a given sentence (in French).
--- --
--- -- Note that input words are not allowed to contain whitespaces (otherwise, the
--- -- parser fails and returns `Nothing`).
--- parseTokenizedFR :: [Orth] -> IO (Maybe Penn.Tree)
--- parseTokenizedFR xs = Exc.handle ignoreException  $ do
---   guard . all noSpace $ xs
---   r <- Wreq.post tokenizedServerCfg . T.encodeUtf8 . T.unwords $ xs
---   let parse = r ^.. Wreq.responseBody . key "sentences" . values . key "parse" . _String
---   -- return $ parse >>= Penn.parseTree'
---   return . joinSentences $ map Penn.parseTree parse
---   where
---     noSpace = T.all (not . C.isSpace)
-
-
--- | Parse a given sentence (in French).
---
--- Note that input words are not allowed to contain whitespaces (otherwise, the
--- parser fails and returns `Nothing`).
+-- | Parse a given sentence (in French), without changing the given
+-- tokenization.
 parseTokenizedFR :: [Orth] -> IO (Maybe Penn.Tree)
 parseTokenizedFR xs0 = Exc.handle ignoreException  $ do
   let (xs, signatures) = unzip $ map unSpace xs0
@@ -134,12 +106,13 @@ parseTokenizedFR xs0 = Exc.handle ignoreException  $ do
   return $ postProcess signatures parse
 
 
--- -- | Parse a given sentence (in French).
--- parseTokenizedFR :: [Orth] -> IO (Maybe Penn.Tree)
--- parseTokenizedFR xs = parsePosFR' . zip xs $ repeat Nothing
-
-
-postProcess :: [SpaceSignature] -> [T.Text] -> Maybe Penn.Tree
+-- | Parse the given trees encoded in the Penn format and restore spaces.
+postProcess
+  :: [SpaceSignature]
+     -- ^ Spaces to restore
+  -> [T.Text]
+     -- ^ A list of trees encoded in the Penn format
+  -> Maybe Penn.Tree
 postProcess signatures parse
   = fmap (restoreSpaces signatures)
   . joinSentences
@@ -156,20 +129,27 @@ posCfg = "http://localhost:9000/?properties={\"annotators\":\"parse\",\"parse.mo
 
 
 -- | Parse a given sentence, tokenized and with pre-computed POS tags.
-parsePosFR :: [(Orth, Pos)] -> IO (Maybe Penn.Tree)
+parsePosFR
+  :: [(Orth, Pos)] -- ^ The list of tokens with the corresponding POS tags
+  -> IO (Maybe Penn.Tree)
 parsePosFR = parsePosFR' . map (second Just)
 
 
 -- | Parse a given sentence, tokenized and with pre-computed POS tags.
-parsePosFR' :: [(Orth, Maybe Pos)] -> IO (Maybe Penn.Tree)
+parsePosFR'
+  :: [(Orth, Maybe Pos)]
+     -- ^ The list of tokens with the corresponding POS tags. Not all POS tags
+     -- are required to be known.
+  -> IO (Maybe Penn.Tree)
 parsePosFR' orthPos = Exc.handle ignoreException $ do
   let (docBS, signatures) = preProcess orthPos
   r <- Wreq.post posCfg docBS
   let parse = r ^.. Wreq.responseBody . key "sentences" . values . key "parse" . _String
-  -- return . joinSentences $ map Penn.parseTree parse
   return $ postProcess signatures parse
 
 
+-- | Compute the signatures for the given sentence and create a Stanford
+-- document to be sent to the CoreNLP server.
 preProcess :: [(Orth, Maybe Pos)] -> (BL.ByteString, [SpaceSignature])
 preProcess orthPos0 =
   let (orth0, pos) = unzip orthPos0
@@ -184,40 +164,36 @@ preProcess orthPos0 =
 ----------------------------------------------
 
 
-consCfg :: [(Int, Int)] -> String
-consCfg cons =
-  "http://localhost:9000/?properties={\"annotators\":\"parse\",\"parse.model\":\"edu/stanford/nlp/models/lexparser/frenchFactored.ser.gz\",\"inputFormat\":\"serialized\",\"outputFormat\":\"json\",\"serializer\":\"edu.stanford.nlp.pipeline.ProtobufAnnotationSerializer\",\"enforceRequirements\": \"false\""
-  ++ ",\"constraints\": " ++ consArgs
-  ++ "}"
-  where
-    consArgs
-      = L.intercalate "+"
-      . map consArg
-      $ cons
-    consArg (x, y) = show x ++ "." ++ show y
+-- consCfg :: [(Int, Int)] -> String
+-- consCfg cons =
+--   "http://localhost:9000/?properties={\"annotators\":\"parse\",\"parse.model\":\"edu/stanford/nlp/models/lexparser/frenchFactored.ser.gz\",\"inputFormat\":\"serialized\",\"outputFormat\":\"json\",\"serializer\":\"edu.stanford.nlp.pipeline.ProtobufAnnotationSerializer\",\"enforceRequirements\": \"false\""
+--   ++ ",\"constraints\": " ++ consArgs
+--   ++ "}"
+--   where
+--     consArgs
+--       = L.intercalate "+"
+--       . map consArg
+--       $ cons
+--     consArg (x, y) = show x ++ "." ++ show y
 
 
--- | Parse a given sentence, tokenized and with pre-computed POS tags.
-parseConsFR :: [(Orth, Pos)] -> [(Int, Int)] -> IO (Maybe Penn.Tree)
-parseConsFR orthPos cons = Exc.handle ignoreException $ do
-  -- let docBS = encodeDoc (docFromPos pos)
-  -- let docBS = encodeDoc . docFromPos $ map (second Just) pos
-  let (docBS, signatures) = preProcess $ map (second Just) orthPos
-  r <- Wreq.post (consCfg cons) docBS
-  -- let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "parse" . _String
-  -- return $ parse >>= Penn.parseTree'
-  let parse = r ^.. Wreq.responseBody . key "sentences" . values . key "parse" . _String
-  -- return . joinSentences $ map Penn.parseTree parse
-  return $ postProcess signatures parse
+-- -- | Parse a given sentence, tokenized and with pre-computed POS tags.
+-- parseConsFR :: [(Orth, Pos)] -> [(Int, Int)] -> IO (Maybe Penn.Tree)
+-- parseConsFR orthPos cons = Exc.handle ignoreException $ do
+--   -- let docBS = encodeDoc (docFromPos pos)
+--   -- let docBS = encodeDoc . docFromPos $ map (second Just) pos
+--   let (docBS, signatures) = preProcess $ map (second Just) orthPos
+--   r <- Wreq.post (consCfg cons) docBS
+--   -- let parse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "parse" . _String
+--   -- return $ parse >>= Penn.parseTree'
+--   let parse = r ^.. Wreq.responseBody . key "sentences" . values . key "parse" . _String
+--   -- return . joinSentences $ map Penn.parseTree parse
+--   return $ postProcess signatures parse
 
 
 ----------------------------------------------
 -- POS tagging
 ----------------------------------------------
-
-
--- taggerCfg :: String
--- taggerCfg = "http://localhost:9000/?properties={\"annotators\":\"tokenize,ssplit,pos\",\"inputFormat\":\"serialized\",\"outputFormat\":\"json\",\"serializer\":\"edu.stanford.nlp.pipeline.ProtobufAnnotationSerializer\",\"enforceRequirements\": \"false\"}"
 
 
 taggerCfg :: String
@@ -229,11 +205,8 @@ posTagFR :: T.Text -> IO (Maybe [(Orth, Pos)])
 posTagFR sent = Exc.handle ignoreException $ do
   let docBS = encodeDoc (docFromRaw sent)
   r <- Wreq.post taggerCfg docBS
-  -- let mayParse = r ^? Wreq.responseBody . key "sentences" . nth 0 . key "tokens"
-  --     result = (^.. values) <$> mayParse
   let mayParse = r ^.. Wreq.responseBody . key "sentences" . values . key "tokens"
       result = concatMap (^.. values) mayParse
-  -- return (catMaybes . map wordPos <$> result)
   return . Just $ mapMaybe wordPos result
   where
     wordPos (Aeson.Object m) =
@@ -323,7 +296,7 @@ docFromPos xs =
 
 
 -- | Encode the CoreNLP document as a (length-prefixed) bytestring which can be
--- send directly to the Stanford server.
+-- sent directly to the Stanford server.
 encodeDoc :: CoreNLP.Document -> BL.ByteString
 encodeDoc doc =
   let bs = Proto.encodeMessage doc
@@ -409,12 +382,7 @@ ignoreException' :: Exc.SomeException -> IO [a]
 ignoreException' _ = return []
 
 
-----------------------------------------------
--- External Utils
-----------------------------------------------
-
-
--- | Join several sentences.
+-- | Join several ROOT-rooted trees into one tree.
 joinSentences :: [Penn.Tree] -> Maybe Penn.Tree
 joinSentences
   = addRoot

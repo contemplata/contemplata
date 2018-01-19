@@ -441,11 +441,12 @@ talk conn state snapCfg = forever $ do
       Right (ParseSentCons fileId treeId parTyp parseReq) -> do
         putStrLn $ "Parsing tokenized+POSed sentence with constraints..."
         let parser (cons, ws) = case parTyp of
-              Stanford -> Stanford.parseConsFR
-                (mapMaybe snd ws)
-                (map (second (+1) . rmLabel) cons)
-                where
-                  rmLabel (_, p, q) = (p, q)
+              Stanford -> fail "Stanford parsing with constraints not supported!"
+--               Stanford -> Stanford.parseConsFR
+--                 (mapMaybe snd ws)
+--                 (map (second (+1) . rmLabel) cons)
+--                 where
+--                   rmLabel (_, p, q) = (p, q)
               DiscoDOP -> listToMaybe <$> DiscoDOP.newParseDOP cons
                 (mapMaybe snd ws)
             sent = case parseReq of
