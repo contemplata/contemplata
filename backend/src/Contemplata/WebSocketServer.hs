@@ -369,7 +369,7 @@ talk conn state snapCfg = forever $ do
         putStrLn "Parsing tokenized sentence..."
         let parseCore = case parTyp of
               Stanford -> Stanford.parseTokenizedFR . mapMaybe snd
-              DiscoDOP -> DiscoDOP.tagParseDOP Nothing . mapMaybe snd
+              DiscoDOP -> DiscoDOP.tagParseDOP . mapMaybe snd
             parser (parseIt, ws) =
               if parseIt
               then parseCore ws
@@ -403,7 +403,7 @@ talk conn state snapCfg = forever $ do
         putStrLn "Parsing tokenized+POSed sentence..."
         let parseCore = case parTyp of
               Stanford -> Stanford.parsePosFR . mapMaybe snd
-              DiscoDOP -> DiscoDOP.parseDOP Nothing . mapMaybe snd
+              DiscoDOP -> DiscoDOP.parseDOP . mapMaybe snd
             parser (parseIt, ws) =
               if parseIt
               then parseCore ws
@@ -447,7 +447,7 @@ talk conn state snapCfg = forever $ do
 --                 (map (second (+1) . rmLabel) cons)
 --                 where
 --                   rmLabel (_, p, q) = (p, q)
-              DiscoDOP -> listToMaybe <$> DiscoDOP.newParseDOP cons
+              DiscoDOP -> listToMaybe <$> DiscoDOP.parseConsDOP cons
                 (mapMaybe snd ws)
             sent = case parseReq of
               Single (cons, ws) -> ws

@@ -6,36 +6,29 @@
 
 
 module Contemplata.DiscoDOP
-( Orth
--- , Pos
+(
+-- * Types
+  Orth
+, Pos
+
+-- * Parsing
 , parseDOP
 , tagParseDOP
-, parseDOP'
 
--- * New
-, newParseDOP
-, newMkRequest
-
--- * Temp
-, parseDOP''
-, tagParseDOP'
+-- ** Constraints
+, parseConsDOP
+, mkConsRequest
 ) where
 
 
 import Control.Monad (guard)
 import Control.Arrow (second)
--- import Control.Monad.IO.Class (liftIO)
--- import Control.Monad.Trans.Maybe (MaybeT(..))
 import qualified Control.Monad.Trans.State.Strict as ST
+import qualified Control.Exception as Exc
 
 import qualified Data.Char as Char
 import Text.Printf
 
-
-import qualified Control.Exception as Exc
-
--- import Data.Word (Word8, Word16)
--- import Data.Bits ((.&.), shiftR)
 import qualified Data.Maybe as May
 import qualified Data.Char as C
 import qualified Data.Text as T
@@ -51,15 +44,11 @@ import qualified Data.Bytes.Serial as Byte
 import qualified Data.Bytes.Put as Byte
 import qualified Data.Bytes.Get as Byte
 
--- import qualified Network.URI as URI
 import qualified Network.Wreq as Wreq
 import Control.Lens ((^?))
 import Data.Aeson.Lens (key, nth, _String)
 
 import qualified Contemplata.Penn as Penn
-
--- import qualified Data.ProtoLens as Proto
--- import qualified Proto.Contemplata.Stanford.CoreNLP as CoreNLP
 
 
 ----------------------------------------------
@@ -82,65 +71,41 @@ type Pos = T.Text
 
 -- | The address to make the GET request, based on the sentence to parse.
 mkRequest
-  :: Maybe (Int, Int)
-            -- ^ Span constraint (optional)
-  -> Bool   -- ^ Perform POS tagging?
+  :: Bool   -- ^ Perform POS tagging?
   -> Bool   -- ^ Retrieve all parsed trees?
   -> T.Text -- ^ Sentence argument
   -> String
-mkRequest spanConstraint postag getAll sentArg =
+mkRequest postag getAll sentArg =
   base ++ T.unpack sentArg ++ otherArgs
   where
     base = "http://0.0.0.0:5000/parser/parse?sent="
     otherArgs = "&est=rfe&marg=nbest&objfun=mpp&coarse=pcfg" ++
       (if postag then "&postag=True" else "") ++
-      (if getAll then "&allderivs=True" else "") ++
-      case spanConstraint of
-        Nothing -> ""
-        Just (x, y) -> "&constraint=" ++ show x ++ "," ++ show y
+      (if getAll then "&allderivs=True" else "")
 
 
 -- | Parse a given, tokenized sentence (in French) with DiscoDOP.
 tagParseDOP
-  :: Maybe (Int, Int) -- ^ Span constraint
-  -> [Orth]
+  :: [Orth]
   -> IO (Maybe Penn.Tree)
-tagParseDOP spanConstraint xs = Exc.handle ignoreException $ do
-  r <- Wreq.get $ mkRequest spanConstraint True False (sentArg xs)
+tagParseDOP xs = Exc.handle (onException Nothing) $ do
+  r <- Wreq.get $ mkRequest True False (sentArg xs)
   print r
   let parse = fmap
         (T.strip . T.decodeUtf8 . BL.toStrict)
         (r ^? Wreq.responseBody)
   return $ parse >>= Penn.parseTree'
-  where
-    sentArg = T.intercalate "+"
-
-
--- | Temporary.
-tagParseDOP'
-  :: [(Int, Int)] -- ^ Span constraints
-  -> [Orth]
-  -> IO [Penn.Tree]
-tagParseDOP' cons xs = Exc.handle ignoreException' $ do
-  r <- Wreq.get $ mkRequest Nothing True True (sentArg xs)
-  let strParses = fmap
-        (T.strip . T.decodeUtf8 . BL.toStrict)
-        (r ^? Wreq.responseBody)
-  return . maybe [] id $ do
-    parses <- May.mapMaybe Penn.parseTree' . T.lines <$> strParses
-    return $ filter (satisfyAll cons) parses
   where
     sentArg = T.intercalate "+"
 
 
 -- | Parse a given, tokenized and pos-tagged sentence (in French) with DiscoDOP.
 parseDOP
-  :: Maybe (Int, Int) -- ^ Span constraint
-  -> [(Orth, Pos)]
+  :: [(Orth, Pos)]
   -> IO (Maybe Penn.Tree)
-parseDOP spanConstraint xs0 = Exc.handle ignoreException $ do
+parseDOP xs0 = Exc.handle (onException Nothing) $ do
   let xs = map (second unStanfordPOS) xs0
-  r <- Wreq.get $ mkRequest spanConstraint False False (sentArg xs)
+  r <- Wreq.get $ mkRequest False False (sentArg xs)
   print r
   let parse = fmap
         (T.strip . T.decodeUtf8 . BL.toStrict)
@@ -153,51 +118,67 @@ parseDOP spanConstraint xs0 = Exc.handle ignoreException $ do
 
 
 ----------------------------------------------
--- Calling DiscoDOP, several derivations
+-- Constraints
 ----------------------------------------------
 
 
--- | Temporary solution.
-parseDOP''
-  :: [(Int, Int)] -- ^ Span constraints
+-- | The address to make the GET request, based on the sentence to parse.
+mkConsRequest
+  :: [(T.Text, Int, Int)]
+            -- ^ Span constraints
+  -> Bool   -- ^ Perform POS tagging?
+  -> Bool   -- ^ Retrieve all parsed trees?
+  -> T.Text -- ^ Sentence argument
+  -> String
+mkConsRequest spanConstraints postag getAll sentArg =
+  base ++ T.unpack sentArg ++ otherArgs
+  where
+    base = "http://0.0.0.0:5000/parser/parse?sent="
+    otherArgs = "&est=rfe&marg=nbest&objfun=mpp&coarse=pcfg" ++
+      (if postag then "&postag=True" else "") ++
+      (if getAll then "&allderivs=True" else "") ++
+      case spanConstraints of
+        [] -> ""
+        _ -> "&require=" ++
+          (urlEncode . mkList)
+          (map mkCons spanConstraints)
+    mkCons (label, p, q) = mkList $
+      [ quote (T.unpack label)
+      , mkList $ map show [p..q] ]
+    mkList = bracket "[" "]" . L.intercalate ","
+    bracket p q x = p ++ x ++ q
+    quote x = "\"" ++ x ++ "\""
+
+
+-- | Parse a given sentence. All the output trees should satisfy the given
+-- constraints (there can be many trees due to syntactic ambiguity).
+parseConsDOP
+  :: [(T.Text, Int, Int)]
+     -- ^ Label/span constraints
   -> [(Orth, Pos)]
+     -- ^ Tokens and their POS tags
   -> IO [Penn.Tree]
-parseDOP'' cons xs0 = Exc.handle ignoreException' $ do
+parseConsDOP cons xs0 = Exc.handle (onException []) $ do
   let xs = map (second unStanfordPOS) xs0
-  r <- Wreq.get $ mkRequest Nothing False True (sentArg xs)
+      req = mkConsRequest cons False True (sentArg xs)
+  r <- Wreq.get req
   let strParses = fmap
         (T.strip . T.decodeUtf8 . BL.toStrict)
         (r ^? Wreq.responseBody)
   return . maybe [] id $ do
-    parses <- May.mapMaybe Penn.parseTree' . T.lines <$> strParses
-    return $ filter (satisfyAll cons) parses
+    May.mapMaybe Penn.parseTree' . T.lines <$> strParses
   where
     sentArg =
       let mkArg (orth, pos) = T.concat [orth, "/", pos]
       in  T.intercalate "+" . map mkArg
+    simplify (_, i, j) = (i, j)
 
 
--- | Parse a given, tokenized French sentence with DiscoDOP.
--- A version of `tagParseDOP` which enumerates all derivations returned by
--- DiscoDOP and choosing the one which satisfies the given constraint (or the
--- first tree, if none).
-parseDOP'
-  :: [(Int, Int)] -- ^ Span constraints
-  -> [(Orth, Pos)]
-  -> IO (Maybe Penn.Tree)
-parseDOP' cons xs0 = Exc.handle ignoreException $ do
-  let xs = map (second unStanfordPOS) xs0
-  r <- Wreq.get $ mkRequest Nothing False True (sentArg xs)
-  let strParses = fmap
-        (T.strip . T.decodeUtf8 . BL.toStrict)
-        (r ^? Wreq.responseBody)
-  return $ do
-    parses <- May.mapMaybe Penn.parseTree' . T.lines <$> strParses
-    headMay $ filter (satisfyAll cons) parses
-  where
-    sentArg =
-      let mkArg (orth, pos) = T.concat [orth, "/", pos]
-      in  T.intercalate "+" . map mkArg
+----------------------------------------------
+-- Satisfy
+--
+-- (not used now, but might be useful later)
+----------------------------------------------
 
 
 -- | Does the tree satisfy all the given constraints?
@@ -239,82 +220,13 @@ satisfy (x, y) tree0
 
 
 ----------------------------------------------
--- Calling DiscoDOP, the new version!
-----------------------------------------------
-
-
--- | The address to make the GET request, based on the sentence to parse.
-newMkRequest
-  :: [(T.Text, Int, Int)]
-            -- ^ Span constraints
-  -> Bool   -- ^ Perform POS tagging?
-  -> Bool   -- ^ Retrieve all parsed trees?
-  -> T.Text -- ^ Sentence argument
-  -> String
-newMkRequest spanConstraints postag getAll sentArg =
-  base ++ T.unpack sentArg ++ otherArgs
-  where
-    base = "http://0.0.0.0:5000/parser/parse?sent="
-    otherArgs = "&est=rfe&marg=nbest&objfun=mpp&coarse=pcfg" ++
-      (if postag then "&postag=True" else "") ++
-      (if getAll then "&allderivs=True" else "") ++
-      case spanConstraints of
-        [] -> ""
-        _ -> "&require=" ++
-          (urlEncode . mkList)
-          (map mkCons spanConstraints)
-    mkCons (label, p, q) = mkList $
-      [ quote (T.unpack label)
-      , mkList $ map show [p..q] ]
-    mkList = bracket "[" "]" . L.intercalate ","
-    bracket p q x = p ++ x ++ q
-    quote x = "\"" ++ x ++ "\""
-
-
--- | Temporary solution.
-newParseDOP
-  :: [(T.Text, Int, Int)] -- ^ Span constraints and labels
-  -> [(Orth, Pos)]
-  -> IO [Penn.Tree]
-newParseDOP cons xs0 = Exc.handle ignoreException' $ do
-  let xs = map (second unStanfordPOS) xs0
-      req = newMkRequest cons False True (sentArg xs)
-  putStrLn req
-  putStrLn "A"
-  r <- Wreq.get req
-  putStrLn "B"
-  print r
-  let strParses = fmap
-        (T.strip . T.decodeUtf8 . BL.toStrict)
-        (r ^? Wreq.responseBody)
-  print strParses
-  return . maybe [] id $ do
-    parses <- May.mapMaybe Penn.parseTree' . T.lines <$> strParses
-    return parses
-    -- return $ filter (satisfyAll $ map simplify cons) parses
-  where
-    sentArg =
-      let mkArg (orth, pos) = T.concat [orth, "/", pos]
-      in  T.intercalate "+" . map mkArg
-    simplify (_, i, j) = (i, j)
-
-
--- [("Jean", "N"), ("et", "C"), ("Marie", "N"), ("aime", "V"),  ("la", "CL"), ("fille", "N"), ("PUNC", ".")]
-
-
-----------------------------------------------
 -- Utils
 ----------------------------------------------
 
 
--- | Convert any exception to `Nothing`.
-ignoreException :: Exc.SomeException -> IO (Maybe a)
-ignoreException _ = return Nothing
-
-
--- | Convert any exception to [].
-ignoreException' :: Exc.SomeException -> IO [a]
-ignoreException' _ = return []
+-- | Convert any exception to the given default value.
+onException :: a -> Exc.SomeException -> IO a
+onException def _ = return def
 
 
 -- | Simplify the POS tag from the current Stanford tagset to the standard one.
