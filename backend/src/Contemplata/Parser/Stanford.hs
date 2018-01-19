@@ -8,7 +8,7 @@
 -- tested with CoreNLP versions `3.7.0` and `3.8.0`.
 
 
-module Contemplata.Stanford
+module Contemplata.Parser.Stanford
 (
   -- * Basic types
     Orth
@@ -54,10 +54,10 @@ import Control.Lens ((^?), (^..))
 import qualified Data.Aeson as Aeson
 import Data.Aeson.Lens (key, nth, _String, values)
 
-import qualified Contemplata.Penn as Penn
+import qualified Contemplata.Format.Penn as Penn
 
 import qualified Data.ProtoLens as Proto
-import qualified Proto.Contemplata.Stanford.CoreNLP as CoreNLP
+import qualified Proto.Contemplata.Parser.Stanford.CoreNLP as CoreNLP
 
 
 ----------------------------------------------

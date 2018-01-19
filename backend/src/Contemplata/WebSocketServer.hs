@@ -59,9 +59,9 @@ import qualified Network.WebSockets as WS
 import Contemplata.Types
 import qualified Contemplata.DB as DB
 import qualified Contemplata.Config as AnnoConfig
-import qualified Contemplata.Stanford as Stanford
-import qualified Contemplata.DiscoDOP as DiscoDOP
-import qualified Contemplata.Penn as Penn
+import qualified Contemplata.Parser.Stanford as Stanford
+import qualified Contemplata.Parser.DiscoDOP as DiscoDOP
+import qualified Contemplata.Format.Penn as Penn
 import qualified Contemplata.Ancor.Preprocess as Pre
 
 

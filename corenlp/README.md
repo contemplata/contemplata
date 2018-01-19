@@ -31,10 +31,13 @@ below.
   
 Run `odil ftb2penn --help` to see more conversion option.
 
-The option we used in the Temporal@ODIL project to obtain a CoreNLP model better
-adapted to spoken transcribed texts is `-r`, which simply removes punctuation
-from the syntactic trees (as punctuation is not present in the trascribed ANCOR
-texts).
+The options we used in the Temporal@ODIL project to obtain a CoreNLP model
+better adapted to spoken transcribed texts are:
+
+* `-r`, which simply removes punctuation from the syntactic trees (as
+  punctuation is not present in the trascribed ANCOR texts),
+* `-p`, which enriches POS tags with selected subcategories, as in the default
+  tagset of the Stanford parser.
 
 ## Training
 

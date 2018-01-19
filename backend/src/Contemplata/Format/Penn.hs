@@ -6,8 +6,12 @@
 -- | Working with the Penn format.
 
 
-module Contemplata.Penn
-( Tree
+module Contemplata.Format.Penn
+(
+-- * Tree
+  Tree
+
+-- * Parsing
 , parseTree
 , parseTree'
 , parseForest
@@ -19,6 +23,7 @@ module Contemplata.Penn
 
 -- * Conversion
 , toContemplataTree
+-- ** Token-aware
 , toContemplataTree'
 , toContemplataForest
 , convertPennFile
@@ -41,8 +46,6 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Char as C
 import qualified Data.List as L
-
-import Debug.Trace (trace)
 
 
 import qualified Contemplata.Types as Contemplata
@@ -70,7 +73,7 @@ data Conv = Conv
   , posAcc :: Int }
 
 
--- | Conver a given Penn tree to an ODIL tree.
+-- | Convert a given Penn tree to a Contemplata tree.
 toContemplataTree :: Tree -> Contemplata.Tree
 toContemplataTree =
 
@@ -105,7 +108,7 @@ toContemplataTree =
       return $ posAcc conv
 
 
--- | Convert a list of Penn trees to an Contemplata file.
+-- | Convert a list of Penn trees to a Contemplata file.
 convertPennFile :: [Tree] -> Contemplata.File
 convertPennFile pennForest = ID.runIdentity $ do
   (turns, treeMap) <- flip ST.runStateT M.empty $ do
@@ -114,7 +117,6 @@ convertPennFile pennForest = ID.runIdentity $ do
           sent = sentFromTree penn
       k <- ST.gets $ (+1) . M.size
       ST.modify' $ M.insert k (sent, odil)
-      -- return (k, Nothing) -- speaker N/A
       return $ Contemplata.Turn
         { Contemplata.speaker = ["_"]      -- speakers N/A
         , Contemplata.trees = M.singleton k Nothing } -- speaker N/A
@@ -135,69 +137,6 @@ sentFromTree =
       _  -> concatMap getLeaves ts
 
 
--- -- | Make a raw sentence from a tree.
--- sentFromTree :: Tree -> T.Text
--- sentFromTree =
---   runMkSent . getLeaves
---   where
---     getLeaves (R.Node x ts) = case ts of
---       [] -> [x]
---       _  -> concatMap getLeaves ts
---     runMkSent = T.strip . T.intercalate " "
--- --     runMkSent = T.strip .  flip ST.evalState [] . mkSent
--- --     mkSent = \case
--- --       [] -> return ""
--- --       (x : xs) -> do
--- --         case x of
--- --           "," -> do
--- --             sent <- mkSent xs
--- --             return $ T.concat [x, " ", sent]
--- --           ":" -> do
--- --             sent <- mkSent xs
--- --             return $ T.concat [x, " ", sent]
--- --           ";" -> do
--- --             sent <- mkSent xs
--- --             return $ T.concat [x, " ", sent]
--- --           "\"" -> do
--- --             acc <- ST.get
--- --             case acc of
--- --               ("\"" : acc') -> do
--- --                 ST.put acc'
--- --                 sent <- mkSent xs
--- --                 if headPunc sent
--- --                   then return $ T.concat [x, sent]
--- --                   else return $ T.concat [x, " ", sent]
--- --               _ -> do
--- --                 ST.modify' ("\"":)
--- --                 sent <- mkSent xs
--- --                 return $ T.concat [" ", x, sent]
--- --           "(" -> do
--- --             sent <- mkSent xs
--- --             return $ T.concat [" ", x, sent]
--- --           ")" -> do
--- --             sent <- mkSent xs
--- --             if headPunc sent
--- --               then return $ T.concat [x, sent]
--- --               else return $ T.concat [x, " ", sent]
--- --           "%" -> do
--- --             sent <- mkSent xs
--- --             if headPunc sent
--- --               then return $ T.concat [x, sent]
--- --               else return $ T.concat [x, " ", sent]
--- --           _ -> do
--- --             sent <- mkSent xs
--- --             if (tailPunc x || headPunc sent)
--- --               then return $ T.concat [x, sent]
--- --               else return $ T.concat [x, " ", sent]
--- --     headPunc x = case T.findIndex C.isPunctuation x of
--- --       Just 0 -> True
--- --       _ -> False
--- --     tailPunc = headPunc . T.reverse
--- --     headIn xs bl = case xs of
--- --       hd:_ -> hd `elem` bl
--- --       _ -> True
-
-
 ---------------------------------------------------
 -- Conversion with syncronization
 ---------------------------------------------------
@@ -216,17 +155,16 @@ data Sync = Sync
   }
 
 
-
--- | Convert a given Penn tree to an ODIL tree.
+-- | Convert a given Penn tree to a Contemplata tree.
 --
 -- WARNING: the trees in the result are not guaranteed to have different node
--- IDs.  This is because some subtrees are unknown (`Nothing`) and there is no
+-- IDs. This is because some subtrees are unknown (`Nothing`) and there is no
 -- way to take their node IDs into account anyway.
 toContemplataForest
   :: [Maybe Tree]
-     -- ^ The Penn (maybe) forest
+     -- ^ The Penn forest to convert
   -> [SyncStack]
-     -- ^ The list of original tokens and the corresponding, pre-processed
+     -- ^ The list of original tokens and the corresponding, transformed
      -- tokens. The latter align with the corresponding Penn tree.
   -> [Maybe Contemplata.Tree]
 toContemplataForest =
@@ -238,36 +176,36 @@ toContemplataForest =
           Nothing : go (acc + length toks) forestRest tokRest
         (Just tree : forestRest, toks : tokRest) ->
           Just (shift acc newTree) :
-          -- go (acc + length newToks) forestRest tokRest
           go (acc + length toks) forestRest tokRest
           where (_newToks, newTree) = toContemplataTree' tree toks
         _ -> []
     shift k = fmap $ \node -> case node of
       Contemplata.Node{} -> node
-      Contemplata.Leaf{..} -> node {Contemplata.leafPos = leafPos + k}
+      Contemplata.Leaf{..} -> node
+        {Contemplata.leafPos = leafPos + k}
 
 
--- | Convert a given Penn tree to an ODIL tree.
+-- | Convert a given Penn tree to a Contemplata tree.
 toContemplataTree'
   :: Tree
      -- ^ The Penn tree
   -> SyncStack
-     -- ^ The list of original tokens and the corresponding, pre-processed
+     -- ^ The list of original tokens and the corresponding, transformed
      -- words (some of which can be removed, indicated by `Nothing`).
   -> (Contemplata.Sent, Contemplata.Tree)
      -- ^ The result is a pair:
-     --   (i) an ODIL sentence, i.e., a list of tokens which should corresond to
-     --     a prefix of the input `SyncStack` (more precisely, the original
-     --     `Token`s)
-     --   (ii) an ODIL tree, whose leaves align with the `Just` words in the
-     --     input `SyntStack`.
+     --   (i) a Contemplata sentence, i.e., a list of tokens which should
+     --     corresond to a prefix of the input `SyncStack` (more precisely, the
+     --     original `Token`s)
+     --   (ii) a Contemplata tree, whose leaves align with the `Just` words in
+     --     the input `SyntStack`.
 toContemplataTree' tree0 toks0
 
   = finalize
   . flip ST.runState (Sync [] toks0)
   . Trav.traverse f
   . markLeaves
-  . trace (show tree0)
+  -- . trace (show tree0)
   $ tree0
 
   where
@@ -291,9 +229,8 @@ toContemplataTree' tree0 toks0
     -- | Process the leaf of the Penn tree.
     processLeaf :: T.Text -> ST.State Sync ()
     processLeaf leafTxt = do
-      _ <- ST.gets left >>= \x -> trace ("left: " ++ show x) (return x)
-      _ <- ST.gets right >>= \x -> trace ("right: " ++ show x) (return x)
-
+      -- _ <- ST.gets left >>= \x -> trace ("left: " ++ show x) (return x)
+      -- _ <- ST.gets right >>= \x -> trace ("right: " ++ show x) (return x)
       mayHead <- popRight
       case mayHead of
         Nothing -> do
@@ -310,10 +247,6 @@ toContemplataTree' tree0 toks0
               pushRight (tokRight, Just restTxt)
             else
               error "Penn.toContemplataTree'.processLeaf: don't handle this branch yet"
-
---     -- | Shift the top `right` stack element to the `left` stack`.
---     shift :: ST.State Sync ()
---     shift = popRight >>= pushLeft
 
     popRight :: ST.State Sync (Maybe SyncElem)
     popRight = do
@@ -333,16 +266,6 @@ toContemplataTree' tree0 toks0
     pushRight x = do
       sync <- ST.get
       ST.put $ sync {right = x : right sync}
-
---     newId = do
---       conv <- ST.get
---       ST.put $ conv {idAcc = idAcc conv + 1}
---       return $ idAcc conv
---
---     newPos = do
---       conv <- ST.get
---       ST.put $ conv {posAcc = posAcc conv + 1}
---       return $ posAcc conv
 
 
 -- | Split the given (longer) token w.r.t. the given (shorter) leaf text.
@@ -395,13 +318,7 @@ orthCons c tok = tok { Contemplata.orth = T.cons c (Contemplata.orth tok) }
 -- | Strip the token from spaces and update info about `afterSpace`.
 stripTok :: Contemplata.Token -> Contemplata.Token
 stripTok tok = tok
-  { Contemplata.orth = T.strip (Contemplata.orth tok)
---   , Contemplata.afterSpace =
---       -- JW (9/11): isSuffixOf -> isPrefixOf
---       if " " `T.isPrefixOf` Contemplata.orth tok
---       then True
---       else False
-  }
+  { Contemplata.orth = T.strip (Contemplata.orth tok) }
 
 
 -- | Re-identify the nodes in the given tree.
@@ -423,6 +340,8 @@ reID =
 ---------------------------------------------------
 
 
+-- | Parse a tree stored in the Penn format. Raises an error if not possible to
+-- parser the text.
 parseTree :: T.Text -> Tree
 parseTree x =
   case A.parseOnly (treeP <* A.endOfInput) x of
@@ -430,6 +349,7 @@ parseTree x =
     Right t -> t
 
 
+-- | A version of `parseTree` which returns `Nothing` in case of failure.
 parseTree' :: T.Text -> Maybe Tree
 parseTree' x =
   case A.parseOnly (treeP <* A.endOfInput) x of
@@ -437,6 +357,7 @@ parseTree' x =
     Right t -> Just t
 
 
+-- | Parser a Penn forest.
 parseForest :: T.Text -> [Tree]
 parseForest = map parseTree . dividePenn
 
@@ -452,6 +373,7 @@ dividePenn
   . T.lines
 
 
+-- | Parser the forest stored in the given file.
 parseFile :: FilePath -> IO [Tree]
 parseFile filePath = do
   cs <- T.readFile filePath

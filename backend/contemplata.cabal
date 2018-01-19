@@ -10,7 +10,7 @@ maintainer:          waszczuk.kuba@gmail.com
 copyright:           2017-2018 Jakub Waszczuk
 category:            NLP
 build-type:          Custom
-extra-source-files:  README.md, src/Contemplata/Stanford/CoreNLP.proto
+extra-source-files:  README.md, src/Contemplata/Parser/Stanford/CoreNLP.proto
 cabal-version:       >=1.10
 
 custom-setup
@@ -42,12 +42,13 @@ library
                      , Contemplata.Ancor.IO.Show
                      , Contemplata.Ancor.Preprocess
 
-                     , Contemplata.Stanford
-                     , Contemplata.DiscoDOP
-                     , Contemplata.Penn
-                     , Contemplata.FTB
+                     , Contemplata.Parser.Stanford
+                     , Contemplata.Parser.DiscoDOP
 
-  other-modules:       Proto.Contemplata.Stanford.CoreNLP
+                     , Contemplata.Format.Penn
+                     , Contemplata.Format.FTB
+
+  other-modules:       Proto.Contemplata.Parser.Stanford.CoreNLP
   build-depends:       base >= 4.7 && < 5
                      , text >= 1.2 && < 1.3
                      , bytestring >= 0.10 && < 0.11

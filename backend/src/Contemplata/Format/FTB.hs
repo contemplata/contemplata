@@ -6,8 +6,10 @@
 -- | Working with the FTB originXML format.
 
 
-module Contemplata.FTB
-( parseFTB
+module Contemplata.Format.FTB
+(
+-- * Parsing
+  parseFTB
 
 -- * Conversion
 , toPenn
@@ -28,7 +30,7 @@ import qualified Text.HTML.TagSoup   as TagSoup
 import           Text.XML.PolySoup   hiding (P, Q)
 import qualified Text.XML.PolySoup   as PolySoup
 
-import qualified Contemplata.Penn as P
+import qualified Contemplata.Format.Penn as P
 
 
 ---------------------------------------------------
@@ -132,8 +134,6 @@ baseConvert x = case x of
   _ -> x
 
 
-
-
 ---------------------------------------------------
 -- Parsing combinators
 ---------------------------------------------------
@@ -200,16 +200,10 @@ catSubCat = (,,) <$> attr "cat" <*> optional (attr "subcat") <*> optional (attr 
 ---------------------------------------------------
 
 
--- | Parse an entire FTB file.
+-- | Parse the contents of an entire FTB file.
 parseFTB :: T.Text -> [(TextID, Tree)]
 parseFTB =
   parseGen rootQ
-
-
--- -- | Parse an entire Trans file.
--- parseTrans :: T.Text -> Episode
--- parseTrans =
---   parseGen transQ
 
 
 -- | Genering parsing function.

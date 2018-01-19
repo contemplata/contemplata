@@ -5,7 +5,7 @@
 -- | A simple DiscoDOP parser client (for French).
 
 
-module Contemplata.DiscoDOP
+module Contemplata.Parser.DiscoDOP
 (
 -- * Types
   Orth
@@ -48,7 +48,7 @@ import qualified Network.Wreq as Wreq
 import Control.Lens ((^?))
 import Data.Aeson.Lens (key, nth, _String)
 
-import qualified Contemplata.Penn as Penn
+import qualified Contemplata.Format.Penn as Penn
 
 
 ----------------------------------------------
