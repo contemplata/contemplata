@@ -12,6 +12,7 @@ module Contemplata.DB
 -- * Configuration
   DB (..)
 , defaultConf
+, loadDB
 
 -- * DB monad transformer
 , DBT
@@ -70,6 +71,7 @@ import qualified Data.Set as S
 import qualified Data.Map.Strict as M
 import qualified Data.ByteString.Lazy as BLS
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import qualified Data.Time as Time
 import qualified System.Directory as Dir
 import System.FilePath ((</>), (<.>))
@@ -106,6 +108,18 @@ defaultConf dbPath = DB
   , storePath = Cfg.dbStorePath
   , authPath = Cfg.dbAuthPath
   }
+
+
+-- | Load the DB from a given directory. Creates the DB if it does not exist in
+-- the given directory.
+loadDB :: FilePath -> IO DB
+loadDB dbPath = do
+  let db = defaultConf dbPath
+  res <- runDBT db createDB
+  case res of
+    Left err -> T.putStrLn $ "Could not create DB: " `T.append` err
+    Right _  -> return ()
+  return db
 
 
 ---------------------------------------

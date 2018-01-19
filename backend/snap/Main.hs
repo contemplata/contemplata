@@ -183,7 +183,7 @@ appInit :: Snap.SnapletInit App App
 appInit = Snap.makeSnaplet "snap-odil" "ODIL" Nothing $ do
   cfg <- Snap.getSnapletUserConfig
   dbPath <- liftIO $ Cfg.fromCfgDef cfg "DB" "DB"
-  db <- liftIO $ C.newMVar =<< Server.loadDB dbPath
+  db <- liftIO $ C.newMVar =<< DB.loadDB dbPath
   s <- Snap.nestSnaplet "sess" sess $
        Session.initCookieSessionManager "site_key.txt" "_cookie" Nothing Nothing
   passPath <- liftIO $ Cfg.fromCfg' cfg "password" -- "pass.json"

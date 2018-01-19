@@ -4,7 +4,8 @@
 {-# LANGUAGE LambdaCase #-}
 
 
--- | The annotation server.
+-- | Contemplata's WebSocket server, responsible for handling requests from
+-- frontend annotation tool.
 
 
 module Contemplata.Server
@@ -18,9 +19,7 @@ module Contemplata.Server
 , Answer (..)
 
 -- * Server
-, loadDB
 , application
--- , runServer
 
 -- * Utils
 , parseRetokFR
@@ -72,7 +71,7 @@ import qualified Contemplata.Ancor.Preprocess.Token as Pre
 -----------
 
 
--- | The type of parser to use.
+-- | Which syntactic parser to use.
 data ParserTyp
   = Stanford
   | DiscoDOP
@@ -82,6 +81,7 @@ instance JSON.FromJSON ParserTyp
 instance JSON.ToJSON ParserTyp where
   toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
+-- | Two types of parsing requests.  OBSOLETE soon.
 data ParseReq a
   = Single a
   | Batch [a]
@@ -91,40 +91,44 @@ instance JSON.FromJSON a => JSON.FromJSON (ParseReq a)
 instance JSON.ToJSON a => JSON.ToJSON (ParseReq a) where
   toEncoding = JSON.genericToEncoding JSON.defaultOptions
 
--- | Request coming from the client.
+-- | A request coming from the frontend annotation tool.
 data Request
-  -- = GetFiles AnnoName
   = GetFile AnnoName FileId
+    -- ^ Retrieve a file for the given annotator
   | GetFiles AnnoName [FileId]
+    -- ^ Retrieve a list of files for the annotator.  TODO: redundant?
   | GetConfig
+    -- ^ A request for annotation configuration
   | SaveFile AnnoName FileId File
+    -- ^ Store the file in the database
   | CompareFiles [(FileId, File)]
-    -- ^ Compare the file with the file in the DB to see if any modifications
-    -- have been made.
+    -- ^ Compare the given file(s) with the file(s) in the DB to see if any
+    -- modifications have been made.
   | ParseSent FileId TreeId ParserTyp
     [(Bool, [(Token, Maybe Stanford.Orth)])]
-    -- ^ FileId and TreeId are sent there and back so that it can be checked
-    -- that the user did not move elsewhere before he/she got the answer for
-    -- this request. The sentence underlying the request is also sent, which
-    -- allows to correctly handle tokenization.
+    -- ^ FileId and TreeId are sent there and back so that one can check that
+    -- the user did not move elsewhere before he/she got the answer for this
+    -- request. The sentence underlying the request is also sent, which allows
+    -- to correctly handle tokenization. The Bool values represent information
+    -- whether the corresponding sub-sentences should be parsed or not.
   | ParseSentPos FileId TreeId ParserTyp
     [(Bool, [(Token, Maybe (Stanford.Orth, Stanford.Pos))])]
-    -- ^ A version of `ParseSentPos` in which some of the sub-sentences are
-    -- not required to be parsed.  We also don't use `ParseReq` anymore.
-  -- | ParseSentCons FileId TreeId ParserTyp [(Int, Int)] [(Stanford.Orth, Stanford.Pos)]
-  | ParseRaw FileId
+    -- ^ A version of `ParseSent` in which the POS tags assigned to the
+    -- individual tokens should not change.
+  | ParseRaw
+    FileId -- ^ File ID
     TreeId -- ^ Partition ID
     T.Text -- ^ The sentence
-    Bool   -- ^ Perform pre-processing?
-    -- ^ Parse raw sentence
+    Bool   -- ^ Perform pre-processing (phatic expressions removal)?
+    -- ^ Parse raw sentence, including tokeniziation and POS tagging
   | ParseSentCons FileId TreeId ParserTyp
     (ParseReq ([(T.Text, Int, Int)], [(Token, Maybe (Stanford.Orth, Stanford.Pos))]))
     -- ^ Similar to `ParseSentPos`, but with an additional constraint (constituent
     -- with the given pair of positions must exist in the tree)
-  | Break FileId
-    TreeId   -- ^ Partition ID
-    [T.Text] -- ^ The list of sentences to parse
-    -- ^ Break the given partition into its turn components
+--   | Break FileId
+--     TreeId   -- ^ Partition ID
+--     [T.Text] -- ^ The list of sentences to parse
+--     -- ^ Break the given partition into its turn components
   deriving (Generic, Show)
 
 instance JSON.FromJSON Request
@@ -135,35 +139,40 @@ instance JSON.ToJSON Request where
 -- | Answers for the client.
 data Answer
   = Files [FileId]
-    -- ^ The list of files
+    -- ^ The list of file IDs
   | NewFile FileId File
     -- ^ New file to edit
   | NewFiles [(FileId, File)]
-    -- ^ New files to adjudicate
+    -- ^ New files to edit (adjudicate)
   | Config AnnoConfig.Config
-    -- ^ Configuration
+    -- ^ Annotation configuration
   | ParseResult
-    FileId
-    TreeId
+    FileId       -- ^ File ID
+    TreeId       -- ^ Partition ID
     (Maybe Sent) -- ^ The resulting tokenization, if changed
-    Tree -- ^ The resulting tree
-    -- ^ Parsing results
+    Tree         -- ^ The resulting tree
+    -- ^ Parsing result. Response to `ParseSent`, `ParseSentPos`,
+    -- `ParseSentCons`.
   | ParseResultList
-    FileId
-    TreeId
+    FileId       -- ^ File ID
+    TreeId       -- ^ Partition ID
     [Maybe Tree] -- ^ The resulting maybe forest
-    -- ^ Parsing result (list)
+    -- ^ Parsing result list. Response to `ParseSent`, `ParseSentPos`,
+    -- `ParseSentCons`.
     --
     -- WARNING: the trees in the result are not guaranteed to have different
-    -- node IDs. This is because some subtrees are unknown (`Nothing`) and there
+    -- node IDs. More precisely, their node ID sets are not guaranteed to be
+    -- disjoint. This is because some subtrees are unknown (`Nothing`) and there
     -- is no way to take their node IDs into account anyway.
   | DiffFiles [FileId]
-    -- ^ The list of the IDs of the files which differ from their version in the
-    -- database
+    -- ^ The IDs of the files which differ from their version in the database.
+    -- A response to `CompareFiles`
   | Notification T.Text
     -- ^ Notication message
   deriving (Show)
 
+-- We create the instance manually so as to facilitate writing the JSON parser
+-- on the front-end side.
 instance JSON.ToJSON Answer where
   toJSON x = case x of
     Files xs -> JSON.object
@@ -202,54 +211,28 @@ instance JSON.ToJSON Answer where
 
 
 -----------
--- Model
------------
-
-
--- | Load the DB from a given directory.
-loadDB :: FilePath -> IO DB.DB
-loadDB dbPath = do
-  let db = DB.defaultConf dbPath
-  res <- DB.runDBT db DB.createDB
-  case res of
-    Left err -> T.putStrLn $ "Could not create DB: " `T.append` err
-    Right _  -> return ()
-  return db
-
-
------------
--- Main
------------
-
-
--- OBSOLETE: the server is now run from Snap.
--- runServer
---   :: FilePath -- ^ DB path
---   -> String -- ^ Server address
---   -> Int -- ^ Port
---   -> IO ()
--- runServer dbPath serverAddr serverPort = do
---   state <- C.newMVar =<< loadDB dbPath
---   WS.runServer serverAddr serverPort $ application state Cfg.empty
-
-
------------
 -- App
 -----------
 
 
--- | The server application.
-application :: C.MVar DB.DB -> Cfg.Config -> WS.ServerApp
+-- | The WebSocket server application.
+application
+  :: C.MVar DB.DB
+     -- ^ An MVar with the database configuration. We use an MVar so as to
+     -- handle WebSocket requests atomically (i.e., as atomic transactions).
+  -> Cfg.Config
+     -- ^ Web-server's top-level configuration (not to be confused with
+     -- annotation configuration)
+  -> WS.ServerApp
 application state snapCfg pending = do
   putStrLn "WS: waiting for request..."
   conn <- WS.acceptRequest pending
   putStrLn "WS: request obtained"
   WS.forkPingThread conn 30
-  -- msg <- WS.receiveData conn
-  -- clients <- C.readMVar state
   talk conn state snapCfg
 
 
+-- | Handle a WebSocket request from a client.
 talk :: WS.Connection -> C.MVar DB.DB -> Cfg.Config -> IO ()
 talk conn state snapCfg = forever $ do
   putStrLn $ "WS: init talking"
@@ -275,17 +258,6 @@ talk conn state snapCfg = forever $ do
         let msg = T.concat ["JSON decoding error: ", T.pack err]
         T.putStrLn msg
         WS.sendTextData conn . JSON.encode =<< mkNotif msg
-
---       Right (GetFiles anno) -> do
---         DB.runDBT db (DB.fileSetFor anno $ const True) >>= \case
---         -- DB.runDBT db DB.fileSet >>= \case
---           Left err -> do
---             let msg = T.concat ["GetFiles error: ", err]
---             T.putStrLn msg
---             WS.sendTextData conn . JSON.encode =<< mkNotif msg
---           Right fs -> do
---             let ret = Files (S.toList fs)
---             WS.sendTextData conn (JSON.encode ret)
 
       -- TODO: What's the point of sending the annotator name? This should be
       -- immediately accessible at the server side!
@@ -388,89 +360,11 @@ talk conn state snapCfg = forever $ do
             T.putStrLn msg
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
---       Right (ParseRaw fileId treeId txt0 prep) -> do
---
---         txt <-
---           if not prep
---           then do
---             putStrLn "Parsing raw sentence..."
---             return txt0
---           else do
---             putStrLn "Parsing preprocessed sentence..."
---             Just rmPath <- liftIO $ Cfg.lookup snapCfg "remove"
---             extCfg <- liftIO $ Pre.readConfig rmPath
---             return $ Pre.prepare extCfg txt0
---
---         treeMay <- Stanford.parseFR txt
---         case treeMay of
---           Nothing -> do
---             let msg = T.concat ["Could not parse: ", txt]
---             T.putStrLn msg
---             WS.sendTextData conn . JSON.encode =<< mkNotif msg
---           Just t -> do
---             let ret = ParseResult fileId treeId (Penn.toContemplataTree t)
---             WS.sendTextData conn (JSON.encode ret)
---             let msg = T.concat ["Parsed successfully"]
---             T.putStrLn msg
---             WS.sendTextData conn . JSON.encode =<< mkNotif msg
-
-      Right (Break fileId partId txts) -> do
-        putStrLn "Breaking the given partition..."
-        let msg = T.unlines txts
-        T.putStrLn msg
-        WS.sendTextData conn . JSON.encode =<< mkNotif msg
-
---         treeMay <- Stanford.parseFR txt
---         case treeMay of
---           Nothing -> do
---             let msg = T.concat ["Could not parse: ", txt]
---             T.putStrLn msg
---             WS.sendTextData conn . JSON.encode =<< mkNotif msg
---           Just t -> do
---             let ret = ParseResult fileId treeId (Penn.toContemplataTree t)
---             WS.sendTextData conn (JSON.encode ret)
---             let msg = T.concat ["Parsed successfully"]
---             T.putStrLn msg
---             WS.sendTextData conn . JSON.encode =<< mkNotif msg
-
---       Right (ParseSent fileId treeId parTyp parseReq) -> do
---         putStrLn "Parsing tokenized sentence..."
---         let parser = case parTyp of
---               Stanford -> Stanford.parseTokenizedFR . mapMaybe snd
---               DiscoDOP -> DiscoDOP.tagParseDOP Nothing . mapMaybe snd
---             sent = case parseReq of
---               Single ws -> ws
---               Batch wss -> concat wss
---         treeMay <- case parseReq of
---           Single ws -> parser ws
---           Batch wss ->
---             -- make sure that each sentence in the batch was sucessfully parsed
---             -- and join the resulting forest into one tree
---             let process = Stanford.joinSentences <=< allJust
---             in  process <$> mapM parser wss
---         case treeMay of
---           Nothing -> do
---             let ws = mapMaybe snd sent
---                 msg = T.concat ["Could not parse: ", T.unwords ws]
---             T.putStrLn msg
---             WS.sendTextData conn . JSON.encode =<< mkNotif msg
---           Just t -> do
---             -- TODO: should we sent the sentence back, perhaps for additional safety?
---             -- TODO: even more importantly, do we really need to know what are
---             -- the frontiers between the individual sub-sentences? Firstly, we
---             -- seem not to rely on this information. Secondly, at the moment, it
---             -- does not necessarily correspond 100% to the division at the
---             -- front-end side (see the `syncForestWithSent` function in the
---             -- Edit.Model.elm file).
---             --
---             -- Note also that, in general, the frontiers in the tree can differ
---             -- from those stemming from the division into speech turns.
---             let (_, tree) = Penn.toContemplataTree' t sent
---                 ret = ParseResult fileId treeId Nothing tree
---             WS.sendTextData conn (JSON.encode ret)
---             let msg = T.concat ["Parsed successfully"]
---             T.putStrLn msg
---             WS.sendTextData conn . JSON.encode =<< mkNotif msg
+--       Right (Break fileId partId txts) -> do
+--         putStrLn "Breaking the given partition..."
+--         let msg = T.unlines txts
+--         T.putStrLn msg
+--         WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
       Right (ParseSent fileId treeId parTyp wss) -> do
         putStrLn "Parsing tokenized sentence..."
@@ -484,9 +378,6 @@ talk conn state snapCfg = forever $ do
         forest <- mapM parser wss
 
         -- Send what you were able to parse
-        -- let oldForest = zip forest $ map snd wss
-        --     oldTokens = map snd oldForest
-        --     oldTrees = map (fmap removeRoot . fst) oldForest
         let oldTokens = map snd wss
             oldTrees = map (fmap removeRoot) forest
               where removeRoot t = case R.subForest t of
@@ -547,7 +438,6 @@ talk conn state snapCfg = forever $ do
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
 
-
       -- Right (ParseSentCons fileId treeId parTyp cons ws) -> do
       Right (ParseSentCons fileId treeId parTyp parseReq) -> do
         putStrLn $ "Parsing tokenized+POSed sentence with constraints..."
@@ -586,32 +476,12 @@ talk conn state snapCfg = forever $ do
             WS.sendTextData conn . JSON.encode =<< mkNotif msg
 
 
---       Right (ParseSentCons fileId treeId parTyp cons ws) -> do
---         putStrLn $ "Parsing tokenized+POSed sentence with constraints: " ++ show cons
---         -- putStrLn $ show cons
---         treeMay <- case parTyp of
---           Stanford -> Stanford.parseConsFR ws (map (second (+1)) cons)
---           DiscoDOP -> DiscoDOP.parseDOP' cons ws
---         case treeMay of
---           Nothing -> do
---             let ws' = flip map ws $ \(orth, pos) -> T.concat [orth, ":", pos]
---                 msg = T.concat ["Could not parse: ", T.unwords ws']
---             T.putStrLn msg
---             WS.sendTextData conn . JSON.encode =<< mkNotif msg
---           Just t -> do
---             let ret = ParseResult fileId treeId Nothing (Penn.toContemplataTree t)
---             WS.sendTextData conn (JSON.encode ret)
---             let msg = T.concat ["Parsed successfully"]
---             T.putStrLn msg
---             WS.sendTextData conn . JSON.encode =<< mkNotif msg
-
-
 -----------
 -- Utils
 -----------
 
 
--- | Create notification while adding the current time.
+-- | Create notification text, adding the current time.
 mkNotif :: T.Text -> IO Answer
 mkNotif msg = do
   time <- Time.getCurrentTime
@@ -635,14 +505,12 @@ allJust (x : xs) = do
 
 
 -- | Create a trivial tree from a list of words and their POS tags.
--- | TODO: move to a higher-level module (there is a copy in `Server.hs`).
 dummyTree :: Penn.Tree
 dummyTree =
   R.Node "ROOT" [R.Node "" []]
 
 
 -- | Create a trivial tree from a list of words and their POS tags.
--- | TODO: move to a higher-level module (there is a copy in `app/Main.hs`).
 simpleTree :: [(Stanford.Orth, Stanford.Pos)] -> Penn.Tree
 simpleTree sent =
   R.Node "ROOT" [R.Node "SENT" $ map mkLeaf sent]
@@ -668,20 +536,22 @@ parseRetokFR prepSent =
         odil = Penn.toContemplataTree dummyTree
     return $ Just (sent, odil)
   else do
-    liftIO $ parseTextWith Stanford.parseFR prepSent >>= \case
+    liftIO $ parseSentWith Stanford.parseFR prepSent >>= \case
       Just x -> return (Just x)
-      Nothing -> parseTextWith (fmap (fmap simpleTree) . Stanford.posTagFR) prepSent >>= \case
+      Nothing -> parseSentWith (fmap (fmap simpleTree) . Stanford.posTagFR) prepSent >>= \case
         Just x -> return (Just x)
         Nothing -> return Nothing
 
 
-parseTextWith
+-- | Parse the given tokenized sentence using the given raw text parsing
+-- function.
+parseSentWith
   :: (T.Text -> IO (Maybe Penn.Tree))
      -- ^ The parsing function
   -> [(Token, Maybe T.Text)]
      -- ^ The sentence to parse, together with the pre-processing result
   -> IO (Maybe (Sent, Tree))
-parseTextWith parseFun sentPrep = do
+parseSentWith parseFun sentPrep = do
   runMaybeT $ do
     let txt = T.intercalate " " . catMaybes . map snd $ sentPrep
     penn <- MaybeT (parseFun txt)

@@ -385,7 +385,8 @@ run cmd =
               let sent0 = Show.elem2sent elem
                   prepSent = prepare sent0
               (sent, odil) <- liftIO (Server.parseRetokFR prepSent) >>= \case
-                Nothing -> error "Didn't manage to tokenize with Stanford"
+                Nothing -> error
+                  "Managed to neither parse not even tokenize with Stanford"
                 Just x -> return x
               k <- State.gets $ (+1) . M.size
               State.modify' $ M.insert k (sent, odil)
