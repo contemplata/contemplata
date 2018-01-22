@@ -18,7 +18,6 @@
       <div class="panel-body">
         <dfForm id="add-user-form">
     
-          <dfChildErrorList class="alert alert-danger"/>
     
           <div class="form-group">
             <dfLabel for="user-name">Login</dfLabel>
@@ -29,8 +28,17 @@
             <dfLabel for="user-pass">Password</dfLabel>
             <dfInputPassword id="user-pass" ref="user-pass" class="form-control" placeholder="Password" required/>
           </div>
+
+          <div class="form-group">
+            <dfLabel for="update">
+              <dfInputCheckbox ref="update" id="update"/>
+              Update existing user
+            </dfLabel>
+          </div>
     
-          <dfInputSubmit class="btn btn-primary" value="Add new user"/>
+          <successMessage/>
+          <dfChildErrorList class="alert alert-danger"/>
+          <dfInputSubmit class="btn btn-primary" value="Add/update user"/>
     
         </dfForm>
       </div>

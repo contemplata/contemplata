@@ -8,39 +8,40 @@
         Use this form to upload a file.  <b>Only the JSON format is supported for the moment</b>.
       </em></div>
 
+
       <dfForm id="upload-file-form">
         <div class="form-group">
-          <label for="file-name">Name:</label>
+          <dfLabel for="file-name">Name:</dfLabel>
           <dfInputText ref="file-name" id="file-name" class="form-control" required/>
         </div>
         <div class="form-group">
-          <label for="file-level">Level:</label>
+          <dfLabel for="file-level">Level:</dfLabel>
           <dfInputSelect ref="file-level" id="file-level" class="form-control" required/>
         </div>
         <div class="form-group">
-          <label for="file-id">ID:</label>
+          <dfLabel for="file-id">ID:</dfLabel>
           <dfInputText ref="file-id" id="file-id" class="form-control" required/>
         </div>
         <div class="form-group">
-          <label for="enforce">
+          <dfLabel for="enforce">
             <dfInputCheckbox ref="enforce" id="enforce"/>
             Enforce upload if a file with the given name already exists
-          </label>
+          </dfLabel>
         </div>
         <div class="form-group">
-          <label for="ancor">
+          <dfLabel for="ancor">
             <dfInputCheckbox ref="ancor" id="ancor"/>
             Upload a file in the ANCOR format
-          </label>
+          </dfLabel>
         </div>
         <div class="form-group">
-          <label for="rmPhatics">
+          <dfLabel for="rmPhatics">
             <dfInputCheckbox ref="rmPhatics" id="rmPhatics"/>
             Remove phatic (social obligations-related) expressions when uploading an ANCOR file 
-          </label>
+          </dfLabel>
         </div>
         <div class="form-group">
-          <label for="file-path">File:</label>
+          <dfLabel for="file-path">File:</dfLabel>
           <dfInputFile ref="file-path" id="file-path" required/>
         </div>
         <successMessage/>

@@ -520,17 +520,40 @@ usersHandler = ifAdmin $ do
   (userView, userData) <-
     D.runForm "add-user-form" . addUserForm . S.fromList =<< getAnnoList
 
-  case userData of
-    Nothing -> return ()
-    Just (login, pass) -> do
+  successSplice <- case userData of
+    Nothing -> return $ "successMessage" ## return []
+    -- Create new user
+    Just (login, pass, False) -> do
       res <- Snap.with auth $ Auth.createUser login (T.encodeUtf8 pass)
       case res of
-        Left err -> Snap.writeText . T.pack $ show res
-        Right _  -> return () -- Snap.writeText "Success"
+        Left err -> do
+          Snap.writeText . T.pack $ show res
+          return $ "successMessage" ## return []
+        Right _  ->
+          return $ do
+            "successMessage" ## return
+              [ X.Element "div" [("class", "alert alert-success")]
+                [X.TextNode "Success"]
+              ]
+    -- Change the password of an existing user
+    Just (login, pass, True) -> do
+      Just authUser <- MyAuth.authByLogin login
+      newAuthUser <- liftIO $ Auth.setPassword authUser (T.encodeUtf8 pass)
+      res <- Snap.with auth $ Auth.saveUser newAuthUser
+      case res of
+        Left err -> do
+          Snap.writeText . T.pack $ show res
+          return $ "successMessage" ## return []
+        Right _  ->
+          return $ do
+            "successMessage" ## return
+              [ X.Element "div" [("class", "alert alert-success")]
+                [X.TextNode "Success"]
+              ]
 
   annoList <- getAnnoList
   Heist.heistLocal
-    ( bindSplices (localSplices annoList)
+    ( bindSplices (localSplices annoList >> successSplice)
     . bindDigestiveSplices userView )
     (Heist.render "admin/users")
 
@@ -556,13 +579,20 @@ userList =
 
 
 -- | Login form for a user.
-addUserForm :: S.Set AnnoName -> Form T.Text AppHandler (T.Text, T.Text)
-addUserForm annoSet = (,)
-  <$> "user-name" .:
-              D.check "Login already exists"
-              (not . (`S.member` annoSet))
-              (D.text Nothing)
-  <*> "user-pass" .: D.text Nothing
+addUserForm :: S.Set AnnoName -> Form T.Text AppHandler (T.Text, T.Text, Bool)
+addUserForm annoSet =
+  finalize $ (,,)
+    <$> "user-name" .: D.text Nothing
+    <*> "user-pass" .: D.text Nothing
+    <*> "update"    .: D.bool (Just False)
+  where
+    finalize = D.validate isValid
+    isValid triple@(name, pass, update)
+      | update = DT.Success triple
+      | otherwise =
+          if name `S.member` annoSet
+          then DT.Error "Login already exists"
+          else DT.Success triple
 
 
 ---------------------------------------
