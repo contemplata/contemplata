@@ -79,6 +79,7 @@ import           Contemplata.Types
 import qualified Contemplata.DB as DB
 import qualified Contemplata.Users as Users
 
+import qualified Contemplata.Ancor as Ancor
 import qualified Contemplata.Ancor.Types as Ancor
 import qualified Contemplata.Ancor.IO.Parse as Parse
 import qualified Contemplata.Ancor.IO.Show as Show
@@ -421,7 +422,8 @@ uploadFileForm levels =
             True -> do
               snapCfg <- Snap.getSnapletUserConfig
               liftIO $ Cfg.lookup snapCfg "remove"
-          liftIO (processAncor rmPath fileToUpload) >>= return . \case
+          let ioAncor = T.readFile fileToUpload
+          liftIO (Ancor.processAncor rmPath ioAncor) >>= return . \case
             Left err -> DT.Error err
             Right file -> DT.Success $ upl {fileToUpload = file}
       | otherwise = liftDB $ do
@@ -429,44 +431,6 @@ uploadFileForm levels =
           return $ case JSON.eitherDecode' cts of
             Left err -> DT.Error . T.pack $ "Invalid file format: " ++ err
             Right file -> DT.Success $ upl {fileToUpload = file}
-
-
--- | Process the given ancor file.
-processAncor
-  :: Maybe FilePath  -- ^ File with the expressions to remove
-  -> FilePath        -- ^ The input ANCOR file
-  -> IO (Either T.Text File)
-processAncor rmFile ancorPath = fmap finalize . Exc.try . Err.runExceptT $ do
-  ancor <- Parse.parseTrans <$> liftIO (T.readFile ancorPath)
-  (turns2, treeMap) <- flip State.runStateT M.empty $ do
-    forM ancor $ \section -> do
-      forM section $ \turn -> do
-        treeList <- forM (Ancor.elems turn) $ \(mayWho, elem) -> do
-          prepare <- Pre.prepare <$> case rmFile of
-            Nothing -> pure []
-            Just path -> liftIO $ Pre.readConfig path
-          -- let sent = Show.showElem elem
-          let sent0 = Show.elem2sent elem
-              prepSent = prepare sent0
-          (sent, odil) <- liftIO (Server.parseRetokFR prepSent) >>= \case
-            Nothing -> lift $
-              Err.throwE "Tokenization with Stanford failed"
-            Just x -> return x
-          k <- State.gets $ (+1) . M.size
-          State.modify' $ M.insert k (sent, odil)
-          return (k, fmap Ancor.unWho mayWho)
-        return $ Turn
-          { speaker = Ancor.speaker turn
-          , trees = M.fromList treeList }
-  return $ mkNewFile treeMap (concat turns2)
-  -- LBS.putStr (JSON.encode file)
-  where
-    finalize x =
-      case x of
-        Left err -> Left . displayException $ err
-        Right errVal -> errVal -- error or value
-    displayException :: Exc.SomeException -> T.Text
-    displayException = T.pack . Exc.displayException
 
 
 ---------------------------------------

@@ -37,6 +37,7 @@ library
                      , Contemplata.WebSocketServer
                      , Contemplata.Users
 
+                     , Contemplata.Ancor
                      , Contemplata.Ancor.Types
                      , Contemplata.Ancor.IO.Parse
                      , Contemplata.Ancor.IO.Show

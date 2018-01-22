@@ -31,6 +31,7 @@ import qualified Data.Set as S
 import qualified Data.Tree as R
 import Options.Applicative
 
+import qualified Contemplata.Ancor as Ancor
 import qualified Contemplata.Ancor.Types as Ancor
 import qualified Contemplata.Ancor.IO.Parse as Parse
 import qualified Contemplata.Ancor.IO.Show as Show
@@ -54,18 +55,11 @@ data Command
     = Simplify FilePath
       -- ^ Parse and show the sentences in the Ancor XML file
 
-    | Process (Maybe FilePath)
-      -- ^ Ancor file -> Contemplata (in JSON); the optional argument specifies the
-      -- path to the external file with sentences to be removed
-
     | NewDB FilePath
       -- ^ Create a new DB under a given path
 
     | AddFileDB Bool FilePath FilePath
       -- ^ Add a new file to a given DB
-
-    | Penn2JSON
-      -- ^ Convert a PTB-style file to JSON
 
     | RenameFileDB String String FilePath
       -- ^ Rename a file in a given DB
@@ -78,6 +72,13 @@ data Command
 
     | FTB2Penn FilePath Bool Bool (Maybe String) (Maybe FilePath)
       -- ^ Convert a FTB XML file to the Penn format
+
+    | Penn2JSON
+      -- ^ Convert a PTB-style file to JSON
+
+    | Ancor2JSON (Maybe FilePath)
+      -- ^ Ancor file -> Contemplata (in JSON); the optional argument specifies the
+      -- path to the external file with sentences to be removed
 
     | GetLabels FilePath
       -- ^ Get the list of (non-terminal) node labels in the DB
@@ -97,8 +98,8 @@ simplifyOptions = Simplify
        <> help "Ancor .xml file" )
 
 
-processOptions :: Parser Command
-processOptions = Process
+ancor2jsonOptions :: Parser Command
+ancor2jsonOptions = Ancor2JSON
   <$> (optional . strOption)
         ( long "remove"
        <> short 'r'
@@ -233,10 +234,6 @@ opts = subparser
     (info (helper <*> simplifyOptions)
       (progDesc "Parse and show the sentences in the Ancor XML file")
     )
-  <> command "process"
-    (info (helper <*> processOptions)
-      (progDesc "Full processing pipeline (Ancor file -> Contemplata JSON)")
-    )
   <> command "createdb"
     (info (helper <*> newDbOptions)
       (progDesc "Create a new DB under a given path")
@@ -256,6 +253,10 @@ opts = subparser
   <> command "statsdb"
     (info (helper <*> statsDbOptions)
       (progDesc "Print DB-related statistics")
+    )
+  <> command "ancor2json"
+    (info (helper <*> ancor2jsonOptions)
+      (progDesc "Convert an Ancor file (given on stdin) to JSON (given on stdout)")
     )
   <> command "ftb2penn"
     (info (helper <*> ftb2pennOptions)
@@ -284,31 +285,10 @@ run cmd =
 
     -- Read the ancor file from stdin and output the resulting
     -- Contemplata file in the JSON format
-    Process rmFile -> do
-      ancorFile <- T.getContents
-      let ancor = Parse.parseTrans ancorFile
-      (turns2, treeMap) <- flip State.runStateT M.empty $ do
-        forM ancor $ \section -> do
-          forM section $ \turn -> do
-            treeList <- forM (Ancor.elems turn) $ \(mayWho, elem) -> do
-              prepare <- Pre.prepare <$> case rmFile of
-                Nothing -> pure []
-                Just path -> liftIO $ Pre.readConfig path
-              -- let sent = Show.showElem elem
-              let sent0 = Show.elem2sent elem
-                  prepSent = prepare sent0
-              (sent, cont) <- liftIO (Server.parseRetokFR prepSent) >>= \case
-                Nothing -> error
-                  "Managed to neither parse nor tokenize with Stanford"
-                Just x -> return x
-              k <- State.gets $ (+1) . M.size
-              State.modify' $ M.insert k (sent, cont)
-              return (k, fmap Ancor.unWho mayWho)
-            return $ Contemplata.Turn
-              { speaker = Ancor.speaker turn
-              , trees = M.fromList treeList }
-      let file = Contemplata.mkNewFile treeMap (concat turns2)
-      LBS.putStr (JSON.encode file)
+    Ancor2JSON rmFile -> do
+      Ancor.processAncor rmFile T.getContents >>= \case
+        Left err -> error (T.unpack err)
+        Right file -> LBS.putStr (JSON.encode file)
 
     -- Read the ancor file from stdin and output the resulting
     -- Contemplata file in the JSON format

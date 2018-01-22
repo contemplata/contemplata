@@ -8,7 +8,7 @@
 
 module Contemplata.Ancor.Preprocess
 (
--- * Top-level
+-- * Preprocessing
   prepare
 , prepareDummy
 
@@ -38,7 +38,7 @@ import qualified Contemplata.Types as Contemplata
 
 
 ---------------------------------------------------
--- Top-level preprocessing
+-- Preprocessing
 ---------------------------------------------------
 
 
