@@ -5,7 +5,7 @@ module Config exposing
   , increaseSpeed, windowName, editLabelName, selectSentName, splitSelectName
   , sideDivName
   , popupDivTemp
-  , dmzSize, linkDasharray, linkWidth, linkOpacity
+  , dmzSize, linkDasharray, secLinkDasharray, linkWidth, linkOpacity
   , linkCircleOpacity, linkCircleColor, linkCircleRadius
   , linkCircleSelectColor, linkSelectWidth
   , linkHeadSize, linkHeadDist, linkHeadDist2, linkTailDist
@@ -163,6 +163,10 @@ popupDivTemp = "popupDivTemp"
 
 linkDasharray : String
 linkDasharray = "10 10"
+
+
+secLinkDasharray : String
+secLinkDasharray = "1 5"
 
 
 linkWidth : Int

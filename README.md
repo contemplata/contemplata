@@ -169,7 +169,7 @@ repository, you can run the following commands to create an empty database in
 ```bash
 mkdir $odil
 cd $odil
-odil createdb -d DB
+contemplata createdb -d DB
 ```
 
 Then you can copy the (a) initial configuration files, (b) webserver templates,

@@ -103,7 +103,7 @@ viewLink_ model ((from, to), ent) =
       getReprId bot.tree model == Tuple.first to
     then
       -- viewLinkDir model (top, bot) (trimTop, trimBot) (from, to, linkData.signalAddr)
-      viewLinkDir model (top, bot) (trimTop, trimBot) (from, to, Nothing)
+      viewLinkDir model (top, bot) (trimTop, trimBot) (from, to)
 
 --     -- NOTE: The code below is commented out because we want to only draw
 --     -- links from the top workspace to the bottom one
@@ -125,10 +125,10 @@ viewLinkDir
      -- ^ Shifting functions, which calculate the absolute positions for the
      -- corresponding (top/bottom) workspaces (return `Nothing` when they go
      -- beyond their workspaces)
-  -> (C.Addr, C.Addr, Maybe C.Addr)
+  -> (C.Addr, C.Addr)
      -- ^ (from, to, maybe signal) addresses
   -> List (Html.Html Msg)
-viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
+viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to) =
   let
 
     nodePos1 nodeId pos tree = Tree.nodePos nodeId
@@ -147,12 +147,13 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
       if Tuple.first to == M.getReprId C.Top bot.tree model
       then posIn to C.Bot bot shiftBot
       else posIn to C.Top top shiftTop
-    signPos = case signalMay of
-      Nothing -> Nothing
-      Just addr ->
-        if Tuple.first addr == M.getReprId C.Top bot.tree model
-        then posIn addr C.Bot bot shiftBot
-        else posIn addr C.Top top shiftTop
+
+    -- Position of the signal node. TODO: consider the special case when the
+    -- signal is not present in any of the windows!
+    signPos addr =
+      if Tuple.first addr == M.getReprId C.Top bot.tree model
+      then posIn addr C.Bot bot shiftBot
+      else posIn addr C.Top top shiftTop
 
     defLineCfg = Tree.defLineCfg
     lineCfg0 = { defLineCfg
@@ -167,6 +168,8 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
                 , strokeWidth = Cfg.linkSelectWidth
             }
         else lineCfg0
+    secLineCfg =
+        {lineCfg | strokeDasharray = Just Cfg.secLinkDasharray}
 
     defCircleCfg = Circle.defCircleCfg
     circleCfg = { defCircleCfg
@@ -181,22 +184,35 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to, signalMay) =
         let
           trimLine = trimBeg Cfg.linkTailDist << trimEnd Cfg.linkHeadDist
           midCirc = {x = (p.x + q.x) // 2, y = (p.y + q.y) // 2}
-          -- endCirc = (trimEnd Cfg.linkHeadDist2 {beg=p, end=q}).end
           lin1 = trimLine <| {beg=p, end=midCirc}
-          -- lin2 = trimLine <| {beg=midCirc, end=endCirc}
           lin2 = trimLine <| {beg=midCirc, end=q}
-          lin3May = case signPos of
-            Nothing -> Nothing
-            Just z -> Just <| trimLine <| {beg=midCirc, end=z}
+          anchors =
+              let file = Lens.get (M.fileLens C.Top) model in
+              case D.get (from, to) file.linkMap of
+                  Nothing -> []
+                  Just ent -> entityAnchors ent
+          lin3Many =
+              let process z = trimLine <| {beg=midCirc, end=z}
+              in  L.filterMap (Maybe.map process << signPos) anchors
         in
           [ Tree.viewLine lineCfg lin1.beg lin1.end
           , Tree.viewLine lineCfg lin2.beg lin2.end
-          -- , Circle.drawCircle circleCfg endCirc
           , drawLinkCircle model (from, to) midCirc ]
-          ++ case lin3May of
-               Nothing -> []
-               Just lin3 -> [Tree.viewLine lineCfg lin3.beg lin3.end]
+          ++ List.map (\lin3 -> Tree.viewLine secLineCfg lin3.beg lin3.end) lin3Many
       _ -> []
+
+
+-- | Retrieve all the anchors of the given annotation entity.
+entityAnchors : Anno.Entity -> List C.Addr
+entityAnchors ent =
+    let
+        extractAnchor attr =
+            case attr of
+                Anno.Anchor addr -> Just addr
+                _ -> Nothing
+    in
+        L.filterMap extractAnchor
+            <| D.values ent.attributes
 
 
 -- | Draw the circle which represents the relation.
