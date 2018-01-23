@@ -16,14 +16,21 @@ import Edit.Anno.Core as Anno
 import Edit.Anno as Anno
 import Edit.Model as M
 
+import Util as Util
+
 
 ---------------------------------------------------
--- Top-level
+-- Core types
 ---------------------------------------------------
 
 
 -- | Comparison context
 type alias Context = PartId -> R.Tree M.Node
+
+
+---------------------------------------------------
+-- Top-level: syntax
+---------------------------------------------------
 
 
 -- | Compare the basic, syntactic layer of two trees.
@@ -38,16 +45,18 @@ type alias Context = PartId -> R.Tree M.Node
 --
 -- The third one is supposed to account for the potential tree non-projectivity.
 compareSyntax
-    :  (Context, PartId)
-    -- ^ The first context with the selected tree
-    -> (Context, PartId)
-    -- ^ The other context with the selected tree
+    :  (Context, PartId, D.Dict Link Anno.Entity)
+    -- ^ The first context with the selected tree and the corresponding links
+    -> (Context, PartId, D.Dict Link Anno.Entity)
+    -- ^ The other context with the selected tree and the corresponding links
     -> (List NodeId, List NodeId)
-compareSyntax (ctx, ix) (cty, iy) =
-    let tx = ctx ix
-        ty = cty iy
-        infos ct = List.sortWith compNodeInfo << R.flatten << extractNodeInfo ct
-    in  diffNodeInfo (infos ctx tx) (infos cty ty)
+compareSyntax (ctx, ix, linkMapX) (cty, iy, linkMapY) =
+    let infos ct i linkMap =
+            List.sortWith compNodeInfo <<
+            R.flatten <<
+            extractNodeInfoAlt linkMap i ct <|
+            ct i
+    in  diffNodeInfo (infos ctx ix linkMapX) (infos cty iy linkMapY)
 
 
 -- | Compare two, ordered lists of infos.  The resulting pair (xs, ys) contains
@@ -81,6 +90,10 @@ type alias NodeInfo =
     , spans : List (S.Set Int)
     -- ^ The set of positions in the leaves of the subsequent subtrees in the
     -- tree corresponding to the node
+    , ingoing : List LinkInfo
+    -- ^ The list of ingoing relations
+    , outgoing : List LinkInfo
+    -- ^ The list of outgoint relations
     }
 
 
@@ -109,42 +122,101 @@ type alias AnchorInfo =
     }
 
 
--- | Merge the list of span sets.
-merge : List (S.Set Int) -> S.Set Int
-merge xs =
-    case xs of
-        head :: tail -> S.union head (merge tail)
-        [] -> S.empty
+-- | Relation information; an extension of `AnchorInfo` which takes the
+-- relation annotation into account.
+type alias LinkInfo =
+    { label : String
+    -- ^ The label of the target node
+    , span : S.Set Int
+    -- ^ The span of the target node
+    , annoTyp : EntityInfo
+    -- ^ Relation annotation
+    }
 
 
 -- | Extract the node informations from the tree.
-extractNodeInfo
-    : Context
+-- TODO: Perhaps the link map should be already pre-filtered to include only
+-- relevant links!
+extractNodeInfoAlt
+    :  D.Dict Link Anno.Entity
+    -- ^ The map of links IN THE ENTIRE FILE
+    -> PartId
+    -- ^ The partition ID to which the following tree corresponds
+    -> Context
     -- ^ The context to which the following tree belongs
     -> R.Tree M.Node
     -- ^ The tree for which extraction is to be applied
     -> R.Tree NodeInfo
-extractNodeInfo ctx (R.Node x ts) =
-    case x of
-        M.Leaf r -> R.Node
-            { id = r.nodeId
-            , label = r.nodeVal
-            , comment = r.nodeComment
-            , annoTyp = Nothing
-            , spans = [S.singleton r.leafPos] }
-            []
-        M.Node r ->
-            let
-                children = List.map (extractNodeInfo ctx) ts
-                value =
-                    { id = r.nodeId
-                    , comment = r.nodeComment
-                    , annoTyp = Maybe.map (extractEntityInfo ctx) r.nodeTyp
-                    , label = r.nodeVal
-                    , spans = List.map (merge << .spans << R.label) children
-                    }
-            in
-                R.Node value children
+extractNodeInfoAlt linkMap partId ctx (R.Node x ts) =
+    let
+        tryExtractLinkInfo (linkPartId, linkNodeId) ent =
+            if linkPartId == partId && linkNodeId == (Lens.get M.nodeId x)
+            then Just <|
+                let
+                    base = extractAnchorInfo linkNodeId (ctx linkPartId)
+                in
+                    { label = base.label
+                    , span = base.span
+                    , annoTyp = extractEntityInfo ctx ent }
+            else Nothing
+        tryExtractIngoInfo ((from, to), ent) = tryExtractLinkInfo to ent
+        tryExtractOutgoInfo ((from, to), ent) = tryExtractLinkInfo from ent
+        ingo = List.filterMap tryExtractIngoInfo <| D.toList linkMap
+        outgo = List.filterMap tryExtractOutgoInfo <| D.toList linkMap
+    in
+        case x of
+            M.Leaf r -> R.Node
+                { id = r.nodeId
+                , label = r.nodeVal
+                , comment = r.nodeComment
+                , annoTyp = Nothing
+                , spans = [S.singleton r.leafPos]
+                , ingoing = ingo
+                , outgoing = outgo }
+                []
+            M.Node r ->
+                let
+                    children = List.map (extractNodeInfoAlt linkMap partId ctx) ts
+                    value =
+                        { id = r.nodeId
+                        , comment = r.nodeComment
+                        , annoTyp = Maybe.map (extractEntityInfo ctx) r.nodeTyp
+                        , label = r.nodeVal
+                        , spans = List.map (Util.unions << .spans << R.label) children
+                        , ingoing = ingo
+                        , outgoing = outgo }
+                in
+                    R.Node value children
+
+
+-- -- | Extract the node informations from the tree.
+-- extractNodeInfo
+--     : Context
+--     -- ^ The context to which the following tree belongs
+--     -> R.Tree M.Node
+--     -- ^ The tree for which extraction is to be applied
+--     -> R.Tree NodeInfo
+-- extractNodeInfo ctx (R.Node x ts) =
+--     case x of
+--         M.Leaf r -> R.Node
+--             { id = r.nodeId
+--             , label = r.nodeVal
+--             , comment = r.nodeComment
+--             , annoTyp = Nothing
+--             , spans = [S.singleton r.leafPos] }
+--             []
+--         M.Node r ->
+--             let
+--                 children = List.map (extractNodeInfo ctx) ts
+--                 value =
+--                     { id = r.nodeId
+--                     , comment = r.nodeComment
+--                     , annoTyp = Maybe.map (extractEntityInfo ctx) r.nodeTyp
+--                     , label = r.nodeVal
+--                     , spans = List.map (Util.unions << .spans << R.label) children
+--                     }
+--             in
+--                 R.Node value children
 
 
 -- | Extract attribute information.
@@ -210,7 +282,10 @@ compNodeInfo =
         [ Cmp.by .label
         , Cmp.by .comment
         , Cmp.compose .annoTyp (maybe compEntityInfo)
-        , Cmp.compose .spans compSpanList ]
+        , Cmp.compose .spans compSpanList
+        , Cmp.compose .ingoing (lexico compLink)
+        , Cmp.compose .outgoing (lexico compLink)
+        ]
 
 
 compSpanList : Cmp.Comparator (List (S.Set Int))
@@ -256,6 +331,14 @@ compAnchor =
     Cmp.concat
         [ Cmp.by .label
         , Cmp.compose .span compSpanSet ]
+
+
+compLink : Cmp.Comparator LinkInfo
+compLink =
+    Cmp.concat
+        [ Cmp.by .label
+        , Cmp.compose .span compSpanSet
+        , Cmp.compose .annoTyp compEntityInfo ]
 
 
 -- compAnnoTyp : Cmp.Comparator M.NodeAnnoTyp

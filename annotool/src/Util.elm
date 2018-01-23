@@ -88,11 +88,18 @@ intercalate p xs =
         _ -> xs
 
 
+-- unions : List (S.Set comparable) -> S.Set comparable
+-- unions xs =
+--   case xs of
+--     [] -> S.empty
+--     x :: tl -> S.union x (unions tl)
+
+
 unions : List (S.Set comparable) -> S.Set comparable
 unions xs =
-  case xs of
-    [] -> S.empty
-    x :: tl -> S.union x (unions tl)
+    case xs of
+        head :: tail -> S.union head (unions tail)
+        [] -> S.empty
 
 
 unless : Bool -> a -> Maybe a

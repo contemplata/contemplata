@@ -753,8 +753,12 @@ getWords sent tree =
 compare : M.Model -> M.Model
 compare model =
     let
+        getLinks foc = (Lens.get (M.fileLens foc) model).linkMap
         getId foc = M.getReprId foc (M.selectWin foc model).tree model
         getTree foc id = M.getTree foc id model
+
+        topLinks = getLinks C.Top
+        botLinks = getLinks C.Bot
 
         topId = getId C.Top
         botId = getId C.Bot
@@ -762,8 +766,8 @@ compare model =
         topCtx = getTree C.Top
         botCtx = getTree C.Bot
 
-        topInp = (topCtx, topId)
-        botInp = (botCtx, botId)
+        topInp = (topCtx, topId, topLinks)
+        botInp = (botCtx, botId, botLinks)
 
         (topIds, botIds) = Compare.compareSyntax topInp botInp
     in
@@ -792,8 +796,10 @@ compareOne : M.Model -> M.Model
 compareOne model =
     let getId foc = M.getReprId foc (M.selectWin foc model).tree model
         getTree foc id = M.getTree foc id model
-        topInp = (getTree C.Top, getId C.Top)
-        botInp = (getTree C.Bot, getId C.Bot)
+        getLinks foc = (Lens.get (M.fileLens foc) model).linkMap
+        input foc = (getTree foc, getId foc, getLinks foc)
+        topInp = input C.Top
+        botInp = input C.Bot
         (topIds, botIds) = Compare.compareSyntax topInp botInp
     in  M.setSelection (S.fromList topIds) C.Top <|
         M.setSelection (S.fromList botIds) C.Bot <|
