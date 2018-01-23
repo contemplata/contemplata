@@ -29,6 +29,14 @@ import Edit.View.Tree as Tree
 ---------------------------------------------------
 
 
+-- | A link.
+type LinkTyp
+    = Primary
+      -- ^ Primary link, with the corresponding annotation
+    | Secondary
+      -- ^ Secondary link (representing an anchor, for example)
+
+
 -- | Only if not in the adjudication mode.
 viewLinks
     : M.Model
@@ -38,36 +46,17 @@ viewLinks model =
         fileTop = Lens.get (M.top => M.fileId) model
         fileBot = Lens.get (M.bot => M.fileId) model
         linkMap = Lens.get (M.fileLens C.Top => M.linkMap) model
+        primary = L.concatMap (viewLink model Primary) (D.keys linkMap)
+        secondary = L.concatMap (viewLink model Secondary) (getSecondaryLinks model)
     in
         if fileTop == fileBot
-        then L.concatMap
-            (viewLink model)
-            (D.toList linkMap)
+        then primary ++ secondary
         else []
 
 
--- | View the link only if not in the adjudication mode.
-viewLink
-   : M.Model
-  -> (C.Link, Anno.Entity)
-  -> List (Html.Html Msg)
-viewLink model link =
-    let
-        fileTop = Lens.get (M.top => M.fileId) model
-        fileBot = Lens.get (M.bot => M.fileId) model
-    in
-        if fileTop == fileBot
-        then viewLink_ model link
-        else []
-
-
--- | Internal view link, which does not check that we are not in the
--- adjudication mode.
-viewLink_
-   : M.Model
-  -> (C.Link, Anno.Entity)
-  -> List (Html.Html Msg)
-viewLink_ model ((from, to), ent) =
+-- | View the given link (only if not in the adjudication mode).
+viewLink : M.Model -> LinkTyp -> C.Link -> List (Html.Html Msg)
+viewLink model linkTyp (from, to) =
   let
     top = Lens.get (M.windowLens C.Top) model
     bot = Lens.get (M.windowLens C.Bot) model
@@ -84,6 +73,7 @@ viewLink_ model ((from, to), ent) =
          pos.y <= topHeight - Cfg.dmzSize
       then Just pos
       else Nothing
+    posInTop addr = posIn addr C.Top trimTop model
 
     trimBot pos =
       if pos.x >= 0 &&
@@ -92,69 +82,39 @@ viewLink_ model ((from, to), ent) =
          pos.y <= botHeight - Cfg.dmzSize
       then Just {pos | y = pos.y + topHeight}
       else Nothing
+    posInBot addr = posIn addr C.Bot trimBot model
 
     -- Safe because we know we are not in the adjudication mode.
     getReprId = M.getReprId C.Top
 
+    -- Select the link viewing function depending on the link's type
+    doViewLink =
+      case linkTyp of
+        Primary -> viewLinkDir
+        Secondary -> viewSecLink
   in
-
     if
       getReprId top.tree model == Tuple.first from &&
       getReprId bot.tree model == Tuple.first to
     then
-      -- viewLinkDir model (top, bot) (trimTop, trimBot) (from, to, linkData.signalAddr)
-      viewLinkDir model (top, bot) (trimTop, trimBot) (from, to)
-
---     -- NOTE: The code below is commented out because we want to only draw
---     -- links from the top workspace to the bottom one
---     else if
---       getReprId bot.tree model == Tuple.first from &&
---       getReprId top.tree model == Tuple.first to &&
---       getReprId top.tree model /= getReprId bot.tree model
---     then
---       -- viewLinkDir model (top, bot) (trimTop, trimBot) (from, to, linkData.signalAddr)
---       viewLinkDir model (bot, top) (trimBot, trimTop) (from, to, linkData.signalAddr)
+      doViewLink model (posInTop, posInBot) (from, to)
     else
       []
 
 
+-- | View a directed relation, together with the corresponding anchors (i.e.
+-- secondary relations).
 viewLinkDir
    : M.Model
-  -> (M.Window, M.Window)
-  -> (Position -> Maybe Position, Position -> Maybe Position)
+  -> (C.Addr -> Maybe Position, C.Addr -> Maybe Position)
      -- ^ Shifting functions, which calculate the absolute positions for the
-     -- corresponding (top/bottom) workspaces (return `Nothing` when they go
+     -- corresponding (top/bottom) node addresses (return `Nothing` when they go
      -- beyond their workspaces)
   -> (C.Addr, C.Addr)
-     -- ^ (from, to, maybe signal) addresses
+     -- ^ (from, to) addresses
   -> List (Html.Html Msg)
-viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to) =
+viewLinkDir model (posInTop, posInBot) (from, to) =
   let
-
-    nodePos1 nodeId pos tree = Tree.nodePos nodeId
-      <| Tree.positionTree pos
-      <| R.withWidth Tree.stdWidth Cfg.stdMargin tree
-    posIn addr foc win shift = Maybe.andThen shift <| nodePos1
-      (Tuple.second addr)
-      (M.getPosition foc model)
-      (M.getTree foc (M.getReprId foc win.tree model) model)
-
-    fromPos =
-      if Tuple.first from == M.getReprId C.Top top.tree model
-      then posIn from C.Top top shiftTop
-      else posIn from C.Bot bot shiftBot
-    toPos = -- posIn to bot shiftBot
-      if Tuple.first to == M.getReprId C.Top bot.tree model
-      then posIn to C.Bot bot shiftBot
-      else posIn to C.Top top shiftTop
-
-    -- Position of the signal node. TODO: consider the special case when the
-    -- signal is not present in any of the windows!
-    signPos addr =
-      if Tuple.first addr == M.getReprId C.Top bot.tree model
-      then posIn addr C.Bot bot shiftBot
-      else posIn addr C.Top top shiftTop
-
     defLineCfg = Tree.defLineCfg
     lineCfg0 = { defLineCfg
       | strokeDasharray = Just Cfg.linkDasharray
@@ -179,7 +139,7 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to) =
 
   in
 
-    case (fromPos, toPos) of
+    case (posInTop from, posInBot to) of
       (Just p, Just q) ->
         let
           trimLine = trimBeg Cfg.linkTailDist << trimEnd Cfg.linkHeadDist
@@ -193,7 +153,7 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to) =
                   Just ent -> entityAnchors ent
           lin3Many =
               let process z = trimLine <| {beg=midCirc, end=z}
-              in  L.filterMap (Maybe.map process << signPos) anchors
+              in  L.filterMap (Maybe.map process << posInBot) anchors
         in
           [ Tree.viewLine lineCfg lin1.beg lin1.end
           , Tree.viewLine lineCfg lin2.beg lin2.end
@@ -202,17 +162,43 @@ viewLinkDir model (top, bot) (shiftTop, shiftBot) (from, to) =
       _ -> []
 
 
--- | Retrieve all the anchors of the given annotation entity.
-entityAnchors : Anno.Entity -> List C.Addr
-entityAnchors ent =
-    let
-        extractAnchor attr =
-            case attr of
-                Anno.Anchor addr -> Just addr
-                _ -> Nothing
-    in
-        L.filterMap extractAnchor
-            <| D.values ent.attributes
+-- | View a secondary link between two nodes. In terms of code, it's a
+-- simplified version of `viewLinkDir`.
+viewSecLink
+   : M.Model
+  -> (C.Addr -> Maybe Position, C.Addr -> Maybe Position)
+     -- ^ Shifting functions, which calculate the absolute positions for the
+     -- corresponding (top/bottom) node addresses (return `Nothing` when they go
+     -- beyond their workspaces)
+  -> (C.Addr, C.Addr)
+     -- ^ (from, to) addresses
+  -> List (Html.Html Msg)
+viewSecLink model (posInTop, posInBot) (from, to) =
+  let
+    defLineCfg = Tree.defLineCfg
+    lineCfg0 = { defLineCfg
+      | strokeDasharray = Just Cfg.secLinkDasharray
+      , strokeWidth = Cfg.linkWidth
+      , opacity = Cfg.linkOpacity }
+    lineCfg =
+        if model.selLink == Just (from, to)
+        then
+            { lineCfg0
+                | color = Cfg.linkCircleSelectColor
+                , strokeWidth = Cfg.linkSelectWidth
+            }
+        else lineCfg0
+
+    defCircleCfg = Circle.defCircleCfg
+    circleCfg = { defCircleCfg
+      | opacity = Cfg.linkOpacity
+      , width = Cfg.linkHeadSize
+      , height = Cfg.linkHeadSize }
+
+  in
+    case (posInTop from, posInBot to) of
+      (Just p, Just q) -> [Tree.viewLine lineCfg p q]
+      _ -> []
 
 
 -- | Draw the circle which represents the relation.
@@ -241,6 +227,80 @@ drawLinkCircle model link at =
       -- , Atts.attribute "tabindex" "1"
       ]
       []
+
+
+---------------------------------------------------
+-- Link utilities
+---------------------------------------------------
+
+
+-- | The position of the root?
+nodePos1 : C.NodeId -> Position -> R.Tree M.Node -> Maybe Position
+nodePos1 nodeId pos tree = Tree.nodePos nodeId
+  <| Tree.positionTree pos
+  <| R.withWidth Tree.stdWidth Cfg.stdMargin tree
+
+
+-- | Compute the position of the node with the given address.
+posIn
+    :  C.Addr    -- ^ The address in question
+    -> C.Focus   -- ^ The corresponding focus
+    -> (Position -> Maybe Position)
+                 -- ^ The shifting function (see e.g. `viewLinkDir`)
+    -> M.Model   -- ^ The model
+    -> Maybe Position
+posIn addr foc shift model =
+    let
+        win = M.selectWin foc model
+    in
+        Maybe.andThen shift <| nodePos1
+            (Tuple.second addr)
+            (M.getPosition foc model)
+            (M.getTree foc (M.getReprId foc win.tree model) model)
+
+
+---------------------------------------------------
+-- Secondary links
+---------------------------------------------------
+
+
+-- | Obtain the list of secondary (i.e., anchor related) links stretching
+-- between the trees in focus.
+getSecondaryLinks : M.Model -> List C.Link
+getSecondaryLinks model =
+    let
+        getTreeId foc = M.getReprId foc (M.selectWin foc model).tree model
+
+        -- Tree IDs
+        topTreeId = getTreeId C.Top
+        botTreeId = getTreeId C.Bot
+
+        -- The trees themselves
+        topTree = M.getTree C.Top topTreeId model
+        -- botTree = M.getTree C.Bot botTreeId model
+
+        -- Get the list of the attributes of the given node
+        nodeAtts node =
+            let nodeId = Lens.get M.nodeId node in
+            L.map (\atts -> (nodeId, atts)) <|
+                case node of
+                    M.Leaf _ -> []
+                    M.Node r ->
+                        Maybe.withDefault [] <|
+                        Maybe.map (D.values << .attributes) r.nodeTyp
+        getLink (topNodeId, attr) =
+            case attr of
+                Anno.Anchor addr ->
+                    Just ((topTreeId, topNodeId), addr)
+                _ -> Nothing
+
+        -- Does the relation ends in the bottom window?
+        endsOnBottom (_, (toTreeId, _)) = toTreeId == botTreeId
+    in
+        R.flatten topTree |>
+        L.concatMap nodeAtts |>
+        L.filterMap getLink |>
+        L.filter endsOnBottom
 
 
 ---------------------------------------------------
@@ -281,3 +341,21 @@ trimEnd trim ({beg, end} as v) =
 -- | Shorten the beinning of a given vector by a given length.
 trimBeg : Int -> Vect -> Vect
 trimBeg trim v = inverse <| trimEnd trim <| inverse v
+
+
+---------------------------------------------------
+-- Utils
+---------------------------------------------------
+
+
+-- | Retrieve all the anchors of the given annotation entity.
+entityAnchors : Anno.Entity -> List C.Addr
+entityAnchors ent =
+    let
+        extractAnchor attr =
+            case attr of
+                Anno.Anchor addr -> Just addr
+                _ -> Nothing
+    in
+        L.filterMap extractAnchor
+            <| D.values ent.attributes
