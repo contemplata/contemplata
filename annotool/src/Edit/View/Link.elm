@@ -137,8 +137,19 @@ viewLinkDir model (posInTop, posInBot) (from, to) =
       , width = Cfg.linkHeadSize
       , height = Cfg.linkHeadSize }
 
-  in
+    -- Position of an anchor
+    anchorPos addr =
+      let
+        (treeId, _) = addr
+        getTreeId foc = M.getReprId foc (M.selectWin foc model).tree model
+      in
+        if treeId == getTreeId C.Top
+        then posInTop addr
+        else if treeId == getTreeId C.Bot
+             then posInBot addr
+             else Nothing
 
+  in
     case (posInTop from, posInBot to) of
       (Just p, Just q) ->
         let
@@ -153,7 +164,7 @@ viewLinkDir model (posInTop, posInBot) (from, to) =
                   Just ent -> entityAnchors ent
           lin3Many =
               let process z = trimLine <| {beg=midCirc, end=z}
-              in  L.filterMap (Maybe.map process << posInBot) anchors
+              in  L.filterMap (Maybe.map process << anchorPos) anchors
         in
           [ Tree.viewLine lineCfg lin1.beg lin1.end
           , Tree.viewLine lineCfg lin2.beg lin2.end
