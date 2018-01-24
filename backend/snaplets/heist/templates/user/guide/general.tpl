@@ -4,15 +4,15 @@
 
     <h4 id="tableau">Tableau de bord</h4>
     <p>
-      You can find the list of ODIL files at the <a
+      You can find the list of Contemplata files at the <a
       href="user/files">files</a> sub-page (see menu). The files listed in the
       <b>Write</b> section are for you to annotate. They are divided in three
-      categories. The <b>Waiting</b> and <b>In progress</b> files are the
-      files waiting for annotation and the files you started annotating,
-      respectively. When you finish annotating a file, click on <b>finish</b>
-      to move it to the <b>Done</b> section. Files gathered there can no longer
-      be modified. You can also click on <b>postpone</b> to revert the file to
-      the waiting list.
+      categories. The <b>Waiting</b> and <b>In progress</b> files are the files
+      waiting for annotation and the files you started annotating, respectively.
+      When you finish annotating a file, click on <b>finish</b> to move it to
+      the <b>Done</b> section. Files gathered there can no longer be modified.
+      You can also click on <b>postpone</b> to revert the file to the waiting
+      list.
     </p>
 
     <p>
@@ -33,18 +33,24 @@
       <div class="col-sm-1"/>
       <div class="col-sm-10">
         <figure><center>
-          <img src="public/img/guide/general/compare.png" alt="Edit" style="width:100%">
-          <figcaption>Comparing files</figcaption>
+          <img src="public/img/guide/general/compare.png" alt="Edit"
+          style="width:100%"> <figcaption>Comparing files: the selected files
+          (<em>1AP0061:orig:_</em> and <em>1AP0061:orig:copy</em>) are shown
+          in the top-level
+          window.</figcaption>
         </center></figure>
       </div>
       <div class="col-sm-1"/>
     </div>
 
     <p>
-      To each file information about its <b>version</b> is assigned. An
-      original (<b>orig</b>) file is a file that has been originally put in the
-      database. A <b>syntax</b> file is meant for annotation on the syntactic
-      level. Similarly, a <b>temporal</b> or <b>relations</b> file is meant for
+      To each file information about its <b>version</b> is assigned. The set of
+      available versions is specified in Contemplata's configuration.
+
+      Four version values are used in the Temporal@ODIL project. An original
+      (<b>orig</b>) file is a file that has been originally put in the database.
+      A <b>syntax</b> file is meant for annotation on the syntactic level.
+      Similarly, a <b>temporal</b> or <b>relations</b> file is meant for
       annotation on the level of temporal entities or relations, respectively.
     </p>
 
@@ -73,20 +79,33 @@
     <p>
       When you click on a particular file, you will be moved to the annotation
       mode. It consists of two annotation workspaces, top and bottom, each
-      showing a syntactic tree assigned to (a) particular speech turn(s) in
-      the file. The side window, placed on the right, can be switched between:
-      (i) the <b>Context</b>, showing the list of the speech turns in the
-      file, with the turn being annotated marked in bold, (ii) the <b>Edit</b>
-      mode, showing the various attributes which can be annotated for the
-      selected tree node, and (iii) the <b>Messages</b> received from the
-      server.
+      showing a syntactic tree assigned to (a) particular speech turn(s) in the
+      file. The side window, placed on the right, can be switched between:
     </p>
+    <ul>
+      <li>
+        the <b>Context</b>, showing the list of the speech turns in the file,
+        with the turn corresponding to the tree in the main window on the left
+        marked in bold,
+      </li>
+      <li>
+        the <b>Edit</b> mode, showing the various attributes which can be
+        annotated for the selected tree node, and
+        <!--with the turn being annotated marked in bold,-->
+      </li>
+      <li>
+        the <b>Messages</b> received from the server.
+      </li>
+    </ul>
     <div class="row">
       <div class="col-sm-2"/>
       <div class="col-sm-8">
         <figure><center>
-          <img src="public/img/guide/general/workspace.png" alt="Workspace" style="width:100%">
-          <figcaption>Annotation mode</figcaption>
+          <img src="public/img/guide/general/workspace.png" alt="Workspace"
+          style="width:100%"> <figcaption>Annotation mode, with two main (top
+          and bottom) workspaces showing the syntactic trees, and two (top and
+          bottom) corresponding side windows.
+          </figcaption>
         </center></figure>
       </div>
       <div class="col-sm-2"/>
@@ -100,18 +119,18 @@
       file, respectively.
     </p>
     <p>
-      Once you find the sentence you wish to annotate, you can slide the
-      syntactic tree in different directions by left-clicking anywhere in the
-      main workspace and sliding the mouse, while keeping the left mouse
-      button pressed.
+      Once you find the sentence of your choice, you can slide the syntactic
+      tree in different directions by left-clicking anywhere in the main
+      workspace and sliding the mouse, while keeping the left mouse button
+      pressed.
     </p>
 
     <h4>Node selection</h4>
     <p>
-      There are two types of selection: main selection and additional selection.
-      Additional selection allows to select several nodes at the same time. Some
-      operations only take the main selection into account, while others will be
-      applied over all the selected nodes (e.g., the <a
+      There are two types of selection: <b>main selection</b> and <b>additional
+      selection</b>. Additional selection allows to select several nodes at the
+      same time. Some operations only take the main selection into account,
+      while others will be applied over all the selected nodes (e.g., the <a
       href="user/guide#syntax#addnode">Add</a> and <a
       href="user/guide#syntax#delnode">Delete</a> commands).
     </p>
@@ -123,19 +142,36 @@
     </p>
 
     <h4>Commands</h4>
+    <h5><em>Menu commands</em></h5>
     <p>
       Three types of commands are available. The menu commands are visible in
       the top-left corner of the main annotation workspace. The first two
-      commands are generic -- <b>Menu</b> and <b>Save</b>, which allow to go
-      to the main menu and to save the currently annotated file, respectively.
-      Note that, when you annotate several files at the same time, <b>Save</b>
-      only applies to the file in focus.
+      commands are generic -- <b>Menu</b> and <b>Save</b>, which allow to go to
+      the main menu and to save the currently annotated file, respectively. Note
+      that, when you annotate several files at the same time, <b>Save</b> only
+      applies to the file in focus.
     </p>
     <p>
       The other menu commands are divided into three annotation levels:
       <b>Segmentation</b>, <b>Syntax</b>, and <b>Temporal</b>. You can switch to
-      any of these levels by clicking on the corresponding menu item.
+      any of these levels by clicking on the corresponding menu item. On the
+      right of the annotation levels, the commands specific to the selected
+      level are shown, as shown in the figure below.
     </p>
+    <div class="row">
+      <div class="col-sm-2"/>
+      <div class="col-sm-8">
+        <figure><center>
+          <img src="public/img/guide/general/menu.png" alt="Menu commands"
+          style="width:100%"> <figcaption>Menu commands are shown at the top of
+          the main workspace. On the right of the selected <em>Segmentation</em>
+          level, the commands specific to this level -- <em>Restart</em>,
+          <em>Split sentence</em>, <em>Split word</em> etc. -- are
+          shown.</figcaption>
+        </center></figure>
+      </div>
+      <div class="col-sm-2"/>
+    </div>
     <p>
       The command can have two different behaviors, depending on whether CTRL is
       pressed or not. Such commands are marked in italics when the CTRL key is
@@ -146,6 +182,7 @@
       The commands from the other levels can be still used via the command line
       or keyboard shortcuts, though.
     </p-->
+    <h5><em>Keyboard shortcuts</em></h5>
     <p>
       Some commands are available via keyboard shortcuts, which are typically
       indicated in the names of their corresponding menu commands as
@@ -153,6 +190,7 @@
       syntactic annotation level can be run with the <b>p</b> keyboard
       shortcut.
     </p>
+    <h5><em>Command line</em></h5>
     <p>
       The third type of commands can be run via command line. After pressing
       <b>Space</b>, you will see the list of available commands of this type at

@@ -272,15 +272,21 @@ viewPopupFiles maybeFiles =
                 [ ("Cancel", QuitPopup)
                 ] 0
         Just [] ->
-            viewPopupGen 200 125 "All changes saved. Do you wish to exit?"
+            viewPopupGen 200 125 "All modifications saved. Do you wish to exit?"
                 [ ("Yes", Many [QuitPopup, Files])
                 , ("No", QuitPopup)
                 ] 0
         Just xs ->
-            let msg0 = "The following files differ from their versions in the database:"
-                msg1 = String.join ", " <| L.map C.encodeFileId xs
-                msg2 = "Are you sure you want to exit?"
-                msg = msg0 ++ " " ++ msg1 ++ ". " ++ msg2
+            let msg = String.join " "
+                   [ "The local copies of the following files --"
+                   , String.join ", " <| L.map C.encodeFileId xs
+                   , "-- differ from their versions on the server."
+                   , "If you quit now, the local modifications will be lost."
+                   , "Are you sure you want to exit?" ]
+--             let msg0 = "The following files differ from their versions in the database:"
+--                 msg1 = String.join ", " <| L.map C.encodeFileId xs
+--                 msg2 = "Are you sure you want to exit?"
+--                 msg = msg0 ++ " " ++ msg1 ++ ". " ++ msg2
             in  viewPopupGen 200 125  msg
                 [ ("Yes", Many [QuitPopup, Files])
                 , ("No", QuitPopup)
