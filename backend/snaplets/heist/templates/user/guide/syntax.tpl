@@ -22,8 +22,8 @@
     <p>
       The <b>Parse</b> operation takes the list of tokens in the current tree
       and re-analyzes them syntactically using the Stanford parser. It can be
-      useful after <a href=user/guide#preprocessing#word-split>word spitting</a> and other
-      changes in segmentation.
+      useful after <a href=user/guide#preprocessing#word-split>word spitting</a>
+      and other changes in segmentation.
     </p>
     <p>
       To perform the operation, use the <b>Parse</b> menu command (<b>parse</b>
@@ -37,11 +37,15 @@
       structure you have applied so far.
     </p>
 
-    <h4>Edit</h4>
+    <h4 id="edit">Edit</h4>
     <p>
-      The label assigned to the selected node can be changed via the <b>Edit</b>
-      side window, which can be quickly reached via the <b>e</b> keyboard
-      shortcut.
+      The label assigned to the main selected node can be changed via the
+      <b>Edit</b> side window, which can be quickly reached via the <b>e</b>
+      keyboard shortcut.
+
+      Edition can be used, among others, to change the POS tags assigned to the
+      individual words before running the
+      <a href=user/guide#syntax#parsepos>POS-preserving parsing command</a>.
     </p>
     <div class="row">
       <div class="col-sm-3"/>
@@ -54,10 +58,10 @@
       <div class="col-sm-3"/>
     </div>
     <p>
-      Note that there is also a <em>Comment</em> field below the
-      <em>Label</em> field in the <b>Edit</b> side window. You can use it,
-      e.g., to provide information related to the certainty of your annotation
-      of the node or its subtree.
+      Note that there is also a <em>Comment</em> field below the <em>Label</em>
+      field in the <b>Edit</b> side window. You can use it, e.g., to provide
+      information related to the certainty of your annotation of the node or its
+      subtree.
     </p>
 
     <h4 id="parsepos">Parse without changing POS tags</h4>
@@ -70,6 +74,12 @@
     <p>
       The operation can be launched with the <b>CTRL+Parse</b> menu command
       (<b>parsepos</b> from command line).
+    </p>
+    <p>
+      It is adviced to invoke this operation once you have finished to valide
+      all the POS tags of the considered speech turn. Then one can expect the
+      resulting parse tree to be more accurate, as presented in the example
+      below.
     </p>
     <div class="row">
       <div class="col-sm-6">
@@ -91,6 +101,11 @@
     <p>
       <b>WARNING</b>: For this command to work correctly, each pre-terminal node
       has to have a <b>proper POS tag</b> and a <b>single terminal child</b>.
+
+      The latter property is not guaranteed to be preserved by all Contemplata
+      operations. For instance, the <a
+      href=user/guide#preprocessing#word-split>word splitting</a> operation will
+      result in a POS pre-terminal node with several terminal children.
     </p>
     <p>
       <b>WARNING</b>: Just as <a href=user/guide#syntax#parse>Parse</a>, this
@@ -99,9 +114,16 @@
 
     <h4 id="addnode">Add node</h4>
     <p>
-      The <b>Add</b> command (<b>addnode</b> from command line) serves to add
-      a new node over the selected node(s). The label assigned to the new node
-      is <em>?</em> by default and should be changed to respect the tagset.
+      Comtemplata provides several basic tree modification operations: adding a
+      new node, deleting existing nodes or subtrees, re-attaching subtrees, etc.
+      While individually quite simple, together they should provide a
+      sufficiently rich toolset for efficiently correcting syntactic trees.
+    </p>
+    <p>
+      The <b>Add</b> command (<b>addnode</b> from command line) serves to add a
+      new node over the selected node(s). The label assigned to the new node is
+      set to <em>?</em> by default and should be changed (via <a
+      href=user/guide#syntax#edit>Edit</a>) to respect the tagset.
     </p>
     <div class="row">
       <div class="col-sm-6">
@@ -143,7 +165,7 @@
         <figure><center>
           <img src="public/img/guide/syntax/remove-subtree-forbidden.png" alt="Remove subtree forbidden" style="width:100%">
           <figcaption>Removing the subtree of the selected node not allowed,
-          because it would lead would lead to a tree with a non-terminal (I)
+          because it would lead to a tree with a non-terminal (I)
           leaf.</figcaption>
         </center></figure>
       </div>
@@ -151,17 +173,20 @@
         <figure><center>
           <img src="public/img/guide/syntax/remove-subtree-allowed.png" alt="Remove subtree allowed" style="width:100%">
           <figcaption>Removing the selected subtree allowed. The result will
-          contain neither the <em>I</em> non-terminal nor its subtree with the
-          <em>oh</em> terminal.</figcaption>
+          contain neither the non-terminal <em>I</em> nor its subtree consisting
+          of a single terminal <em>oh</em>.</figcaption>
         </center></figure>
       </div>
     </div> 
 
     <h4>Reattach</h4>
     <p>
+      It is possible that the choice of the parent of a particular node (and its
+      subtree) is incorrect, as a result of an erroneous syntactic analysis.
+
       To change the parent of a particular node (and its subtree), (i) select
-      the node which should be displaced, (ii) CTRL+select the new parent
-      node, and (iii) press <b>r</b>.
+      the node which should be displaced, (ii) CTRL+select the new parent node,
+      and (iii) press <b>r</b>.
     </p>
     <div class="row">
       <div class="col-sm-6">
@@ -216,24 +241,43 @@
       See <a href=user/guide#general#tableau>tableau de bord</a> for information
       on how to enter the comparison mode. Once you do that, you will remark
       that the names of all the selected files are shown at the bottom of each
-      workspace. You can click on the name of the file to switch to it. The
-      annotations performed in the previously annotated file are not discarded
-      in this case, but they are not stored in the database either. You might
-      need to switch back to the previous file and <b>Save</b> the changes
-      before you quit annotation.
+      workspace. You can click on the name of the file to switch to it.
     </p>
+    <!--p>
+      The annotations performed in the previously annotated file are not
+      discarded in this case, but they are not stored in the database either.
+      You might need to switch back to the previous file and <b>Save</b> the
+      changes before you quit annotation.
+    </p-->
     <p>
       Contemplata provides a comparison operation (<b>compare</b> from command
-      line) which searches for (segmentation- and syntactic-level) differences
-      between the trees in the top and the bottom workspaces. As a result of the
-      operation, all the nodes that are present in one tree but not the other
-      will be highlighted in red (i.e. selected). If the two trees are
-      identical, it automatically searches for differences in the subsequent
-      trees.
+      line) which searches for differences between the trees in the top and the
+      bottom workspaces. As a result of the operation, all the nodes that are
+      present in one tree but not the other (or have a different set of
+      attributes) will be highlighted in red (i.e. selected), as exemplified
+      below. If the two trees are identical, the tool automatically searches for
+      differences in the subsequent trees.
     </p>
+    <div class="row">
+      <div class="col-sm-3"/>
+      <div class="col-sm-6">
+        <figure><center>
+          <img src="public/img/guide/syntax/comparison.png" alt="Comparison" style="width:100%">
+          <figcaption>The result of the comparison of two syntactic trees. The
+          nodes which do not have a direct counterpart in the alternative tree
+          get marked in red.</figcaption>
+        </center></figure>
+      </div>
+      <div class="col-sm-3"/>
+    </div>
     <p>
-      <b>WARNING</b>: The command does not search for differences at the level
-      of relations.
+      The comparison operation searches for the differences not only at the
+      segmentation and syntactic levels, but also at the level of temporal
+      entities and relations. When two trees are identical at all levels but the
+      level of relations, the nodes with different sets of ingoing and/or
+      outgoint relations will be selected.
+      <!--The attributes assigned to the relations, as well as attributes'
+      values, are also taken into account when searching for differences.-->
     </p>
 
   </div>
