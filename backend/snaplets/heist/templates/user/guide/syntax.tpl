@@ -124,6 +124,39 @@
       (<b>delnode</b> from command line).
     </p>
 
+    <h4 id="deltree">Remove subtree</h4>
+    <p>
+      To remove the subtree of the selected node (including the node itself),
+      use the <b>CTRL+d</b> keyboard shortcut, the <b>CTRL+Delete</b> menu
+      command, or <b>deltree</b> from command line. An important consequence of
+      the operation is that all the tokens corresponding to the terminal nodes
+      in the subtree will be removed.
+
+      Note that a subtree can be only removed if the resulting syntactic tree is
+      well structured. Otherwise, the tree remains unchanged.
+      <!--The figure below on the left shows a situation where performing the
+      command is not allowed, because it . Removing the VN node itself with its
+      subtree is, on the other hand, perfectly fine.-->
+    </p>
+    <div class="row">
+      <div class="col-sm-6">
+        <figure><center>
+          <img src="public/img/guide/syntax/remove-subtree-forbidden.png" alt="Remove subtree forbidden" style="width:100%">
+          <figcaption>Removing the subtree of the selected node not allowed,
+          because it would lead would lead to a tree with a non-terminal (I)
+          leaf.</figcaption>
+        </center></figure>
+      </div>
+      <div class="col-sm-6">
+        <figure><center>
+          <img src="public/img/guide/syntax/remove-subtree-allowed.png" alt="Remove subtree allowed" style="width:100%">
+          <figcaption>Removing the selected subtree allowed. The result will
+          contain neither the <em>I</em> non-terminal nor its subtree with the
+          <em>oh</em> terminal.</figcaption>
+        </center></figure>
+      </div>
+    </div> 
+
     <h4>Reattach</h4>
     <p>
       To change the parent of a particular node (and its subtree), (i) select
