@@ -142,7 +142,7 @@
     </p>
 
     <h4>Commands</h4>
-    <h5><em>Menu commands</em></h5>
+    <h5 id="menu-command"><em>Menu commands</em></h5>
     <p>
       Three types of commands are available. The menu commands are visible in
       the top-left corner of the main annotation workspace. The first two
@@ -182,12 +182,12 @@
       The commands from the other levels can be still used via the command line
       or keyboard shortcuts, though.
     </p-->
-    <h5><em>Keyboard shortcuts</em></h5>
+    <h5 id="keyboard-shortcut"><em>Keyboard shortcuts</em></h5>
     <p>
       Some commands are available via keyboard shortcuts, which are typically
       indicated in the names of their corresponding menu commands as
-      underlined characters. For instance, the <b>Parse</b> command from the
-      syntactic annotation level can be run with the <b>p</b> keyboard
+      underlined characters. For instance, the <b><u>P</u>arse</b> command from
+      the syntactic annotation level can be run with the <b>p</b> keyboard
       shortcut.
     </p>
     <h5><em>Command line</em></h5>
