@@ -183,7 +183,7 @@ in
       { keyCmd = [] : Optional ./KeyboardShortcut.typ
       , lineCmd = ["slink"] : Optional Text
       , menuCmd = ["SLink"] : Optional Text
-      , withCtrl = [True] : Optional Bool
+      , withCtrl = [] : Optional Bool
       , help = ["Mark the selected relation as slink"] : Optional Text }
     , _2 = simple {name = "MkSLink"}
     }
@@ -191,7 +191,7 @@ in
       { keyCmd = [] : Optional ./KeyboardShortcut.typ
       , lineCmd = ["tlink"] : Optional Text
       , menuCmd = ["TLink"] : Optional Text
-      , withCtrl = [True] : Optional Bool
+      , withCtrl = [] : Optional Bool
       , help = ["Mark the selected relation as tlink"] : Optional Text }
     , _2 = simple {name = "MkTLink"}
     }
