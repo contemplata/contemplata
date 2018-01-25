@@ -143,17 +143,19 @@ viewLinkDir model (posInTop, posInBot) (from, to) =
         (treeId, _) = addr
         getTreeId foc = M.getReprId foc (M.selectWin foc model).tree model
       in
-        if treeId == getTreeId C.Top
-        then posInTop addr
-        else if treeId == getTreeId C.Bot
-             then posInBot addr
+        if treeId == getTreeId C.Bot
+        then posInBot addr
+        else if treeId == getTreeId C.Top
+             then posInTop addr
              else Nothing
 
   in
     case (posInTop from, posInBot to) of
       (Just p, Just q) ->
         let
-          trimLine = trimBeg Cfg.linkTailDist << trimEnd Cfg.linkHeadDist
+          trimLine =
+              trimBeg (toFloat Cfg.linkTailDist) <<
+              trimEnd (toFloat Cfg.linkHeadDist)
           midCirc = {x = (p.x + q.x) // 2, y = (p.y + q.y) // 2}
           lin1 = trimLine <| {beg=p, end=midCirc}
           lin2 = trimLine <| {beg=midCirc, end=q}
@@ -167,9 +169,9 @@ viewLinkDir model (posInTop, posInBot) (from, to) =
               in  L.filterMap (Maybe.map process << anchorPos) anchors
         in
           [ Tree.viewLine lineCfg lin1.beg lin1.end
-          , Tree.viewLine lineCfg lin2.beg lin2.end
           , drawLinkCircle model (from, to) midCirc ]
-          ++ List.map (\lin3 -> Tree.viewLine secLineCfg lin3.beg lin3.end) lin3Many
+          ++ viewDirLine lineCfg lin2.beg lin2.end
+          ++ List.concatMap (\lin3 -> viewDirLine secLineCfg lin3.beg lin3.end) lin3Many
       _ -> []
 
 
@@ -208,7 +210,7 @@ viewSecLink model (posInTop, posInBot) (from, to) =
 
   in
     case (posInTop from, posInBot to) of
-      (Just p, Just q) -> [Tree.viewLine lineCfg p q]
+      (Just p, Just q) -> viewDirLine lineCfg p q
       _ -> []
 
 
@@ -238,6 +240,19 @@ drawLinkCircle model link at =
       -- , Atts.attribute "tabindex" "1"
       ]
       []
+
+
+-- | Draw a directed line.
+viewDirLine lineCfg p q =
+    let
+        shorten v = trimEnd (length v - toFloat Cfg.linkArrowSize) v
+        c1 = shorten <| rotate Cfg.linkArrowAngle    {beg=q, end=p}
+        c2 = shorten <| rotate (-Cfg.linkArrowAngle) {beg=q, end=p}
+    in
+        [ Tree.viewLine lineCfg p q
+        , Tree.viewLine lineCfg c1.beg c1.end
+        , Tree.viewLine lineCfg c2.beg c2.end
+        ]
 
 
 ---------------------------------------------------
@@ -338,10 +353,10 @@ inverse {beg, end} = {beg=end, end=beg}
 
 
 -- | Shorten the end of a given vector by a given length.
-trimEnd : Int -> Vect -> Vect
+trimEnd : Float -> Vect -> Vect
 trimEnd trim ({beg, end} as v) =
   let
-    trimProp = toFloat trim / length v
+    trimProp = trim / length v
     restProp = 1.0 - trimProp
     x = beg.x + round (toFloat (end.x - beg.x) * restProp)
     y = beg.y + round (toFloat (end.y - beg.y) * restProp)
@@ -350,8 +365,25 @@ trimEnd trim ({beg, end} as v) =
 
 
 -- | Shorten the beinning of a given vector by a given length.
-trimBeg : Int -> Vect -> Vect
+trimBeg : Float -> Vect -> Vect
 trimBeg trim v = inverse <| trimEnd trim <| inverse v
+
+
+-- | Rotate the given vector by the given angle.
+rotate : Float -> Vect -> Vect
+rotate th v =
+    let
+        x = toFloat (v.end.x - v.beg.x)
+        y = toFloat (v.end.y - v.beg.y)
+        xp = (x * cos th) - (y * sin th)
+        yp = (x * sin th) + (y * cos th)
+    in
+        { beg = v.beg
+        , end =
+            { x = v.beg.x + round xp
+            , y = v.beg.y + round yp
+            }
+        }
 
 
 ---------------------------------------------------

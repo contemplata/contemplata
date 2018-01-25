@@ -9,6 +9,7 @@ module Config exposing
   , linkCircleOpacity, linkCircleColor, linkCircleRadius
   , linkCircleSelectColor, linkSelectWidth
   , linkHeadSize, linkHeadDist, linkHeadDist2, linkTailDist
+  , linkArrowSize, linkArrowAngle
   -- , socketServer, socketServerAlt
   -- Main menu
   , menuMaxWidth
@@ -195,6 +196,16 @@ linkHeadDist2 = 20
 
 linkTailDist : Int
 linkTailDist = 15
+
+
+-- | The angle of the arrow head of a link.
+linkArrowAngle : Float
+linkArrowAngle = pi / 12
+
+
+-- | The size of the arrow head of a link.
+linkArrowSize : Int
+linkArrowSize = 30
 
 
 linkCircleOpacity : String
