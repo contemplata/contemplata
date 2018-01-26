@@ -929,20 +929,9 @@ deleteLinks win delLinks model =
 --     -- _ -> Debug.crash "ALALALAL"
 
 
--- | Make relation.
+-- | Create a relation between the two main selected nodes.
 mkRelationSel : AnnoCfg.Entity -> Model -> Model
-mkRelationSel entCfg model =
-  case model.selLink of
-    Nothing ->
-        connectNodes entCfg model
-    Just link -> model
-        -- connectLink link entCfg model
-        -- -- connectSignal link model.focus model
-
-
--- | Add links.
-connectNodes : AnnoCfg.Entity -> Model -> Model
-connectNodes entCfg model = model |>
+mkRelationSel entCfg model = model |>
   case ( Lens.get (windowLens Top => selMain) model
        , Lens.get (windowLens Bot => selMain) model ) of
     (Just topNode, Just botNode) ->

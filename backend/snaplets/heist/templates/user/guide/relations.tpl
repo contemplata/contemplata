@@ -27,21 +27,6 @@
       solution allows to avoid unnecessary clutter which would arise when many
       relations hold between the trees in focus.
     </p>
-    <h4 id="attributes">Attributes</h4>
-    <p>
-      Just as temporal entities, temporal relations can have attributes. To see
-      and/or change the values of the attributes of a particular relation, click
-      on the circle placed in the middle of the relation and switch to the
-      <em>Edit</em> mode in the current workspace (or via the <a
-      href=user/guide#syntax#edit>Edit</a> command), as shown below.
-    </p>
-    <p>
-      TODO: an example!
-    </p>
-    <p>
-      The selected relation has a priority over the selected node when it comes
-      to the display of the attributes in the context window.
-    </p>
     <h4 id="delete">Delete</h4>
     <p>
       To delete the selected relation, you can use the <b>d</b> keyboard
@@ -53,7 +38,7 @@
       are selected, the relation will be removed first by the <b>Delete</b>
       command.
     </p>
-    <h4 id="delete">Switching</h4>
+    <h4 id="switch">Switching</h4>
     <p>
       When you create a relation linking node A with node B, a circle will
       appear on the left of both nodes.
@@ -76,5 +61,27 @@
       workspace. It allows to switch between the relations <em>ingoing</em> to
       the node.</li>
     </ul>
+    <h4 id="attributes">Attributes</h4>
+    <p>
+      Just as temporal entities, temporal relations can have attributes. To see
+      and/or change the values of the attributes of a particular relation, click
+      on the circle placed in the middle of the relation and switch to the
+      <em>Edit</em> mode in the current workspace (or via the <a
+      href=user/guide#syntax#edit>Edit</a> command), as shown below.
+    </p>
+    <p>
+      TODO: an example!
+    </p>
+    <p>
+      The selected relation has a priority over the selected node when it comes
+      to the display of the attributes in the context window.
+    </p>
+    <h4 id="anchor">Anchoring</h4>
+    <p>
+      The attributes related to temporal relations are typed, just as the
+      attributes related to temporal entities. Some of these attributes
+      represent anchors, which can be created similarly as in <a
+      href=user/guide#entities#anchor>the case of entities</a>.
+    </p>
   </div>
 </div>

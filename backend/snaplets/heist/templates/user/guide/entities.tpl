@@ -35,7 +35,7 @@
       use the corresponding menu command (or keyboard shortcut) again.
     </p>
 
-    <h4>Anchoring</h4>
+    <h4 id="anchor">Anchoring</h4>
     <p>
       Most of the attributes have a prescribed, closed set of possible values.
       These values can be changer via the <a
