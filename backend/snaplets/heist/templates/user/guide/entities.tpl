@@ -52,12 +52,12 @@
     <p>
       Two ways of setting the anchor of the selected node are available:
     </p>
-      <ul>
-        <li>Select a single additional node in the same tree and click the
-        <em>Create</em> button next to the anchor attribute.</li>
-        <li>Select a main node in the alternative workspace and click
-        <em>Create</em>.</li>
-      </ul>
+    <ul>
+      <li>Select a single additional node in the same tree and click the
+      <em>Create</em> button next to the anchor attribute.</li>
+      <li>Select a main node in the alternative workspace and click
+      <em>Create</em>.</li>
+    </ul>
     <p>
       Note that there can be other attributes of the anchor type. For instance,
       the <em>Begin</em> and <em>End</em> attributes of a Timex (when its type

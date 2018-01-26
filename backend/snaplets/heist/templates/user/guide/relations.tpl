@@ -5,14 +5,16 @@
     <p>
       Contemplata allows to draw typed relations between tree nodes. In the
       Temporal@ODIL project, two (TODO: four) types of relations can be created:
-      SLink and TLink. To each type the corresponding command can be found in
-      the menu (the <b>Temporal</b> section).
+      SLink and TLink. The commands responsible for creating the relations of
+      each of these types can be found in the menu (the <em>Temporal</em>
+      section).
     </p>
     <h4 id="create">Create</h4>
     <p>
       To create a new relation, select a main node in each of the two workspaces
-      and use one of the related commands. The new relation will lead from the
-      node selected in the top window to the one in the bottom window.
+      and use one of the related commands (<em>SLink</em>, <em>TLink</em>,
+      etc.). The new relation will lead from the node selected in the top window
+      to the one in the bottom window.
     </p>
     <h4 id="swap">Swap workspaces</h4>
     <p>
@@ -21,9 +23,9 @@
       command, which swaps the top workspace with the bottom one.
     </p>
     <p>
-      While the relations could be shown in the other direction as well, we the
-      one-directional solution should allow to avoid unnecessary clutter, when
-      many relations are present between the two trees in focus.
+      While relations could be shown in both directions, the one-directional
+      solution allows to avoid unnecessary clutter which would arise when many
+      relations hold between the trees in focus.
     </p>
     <h4 id="attributes">Attributes</h4>
     <p>
@@ -36,6 +38,10 @@
     <p>
       TODO: an example!
     </p>
+    <p>
+      The selected relation has a priority over the selected node when it comes
+      to the display of the attributes in the context window.
+    </p>
     <h4 id="delete">Delete</h4>
     <p>
       To delete the selected relation, you can use the <b>d</b> keyboard
@@ -44,10 +50,31 @@
     </p>
     <p>
       Note that, if both a relation <em>and</em> a node in the current window
-      are selected, the relation will be removed first in case of the
-      <b>Delete</b> command. Also, the selected relation has a priority over the
-      selected node when it comes to the display of the attributes in the
-      context window.
+      are selected, the relation will be removed first by the <b>Delete</b>
+      command.
     </p>
+    <h4 id="delete">Switching</h4>
+    <p>
+      When you create a relation linking node A with node B, a circle will
+      appear on the left of both nodes.
+    </p>
+    <ul>
+      <li>The top-left circle tells that there is at least one relation ingoing
+      to the node.</li>
+      <li>The bottom-left circle tells that there is at least one relation
+      outgoing from the node.</li>
+    </ul>
+    <p>
+      The circles not only tell about the ingoing and outgoing relations linking
+      the given node, but also serve to switch between the individual relations.
+    </p>
+    <ul>
+      <li>The <em>bottom-left</em> circle is only clickable in the top
+      workspace. It allows to switch between the relations <em>outgoing</em>
+      from the node.</li>
+      <li>The <em>top-left</em> circle is only clickable in the bottom
+      workspace. It allows to switch between the relations <em>ingoing</em> to
+      the node.</li>
+    </ul>
   </div>
 </div>

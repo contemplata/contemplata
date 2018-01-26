@@ -52,7 +52,6 @@
     </div>
   </div>
 
-
   <script>
     $(window).on('hashchange', function(e){
       var url = document.location.toString();
@@ -65,8 +64,8 @@
           // console.log("eleID: " + eleID.toString());
           document.getElementById(eleID).scrollIntoView();
         }
-      } 
+      }
     });
-  </script> 
+  </script>
 
 </apply>
