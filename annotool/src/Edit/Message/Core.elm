@@ -169,6 +169,8 @@ msgDecoder =
         -- , simple Connect "Connect"
         , simple (MkRelation "SLink") "MkSLink"
         , simple (MkRelation "TLink") "MkTLink"
+        , simple (MkRelation "ALink") "MkALink"
+        , simple (MkRelation "MLink") "MkMLink"
         , simple Compare "Compare"
         , simple Join "Join"
         , simple ConcatWords "ConcatWords"

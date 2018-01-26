@@ -5,7 +5,7 @@ in let
 in let
   anchor = ./Attr/anchor.fun
 in
-  { name = "SLink"
+  { name = "ALink"
   
     -- Possible types
   , typ =

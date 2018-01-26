@@ -7,8 +7,10 @@
     ] : List ./Anno/Entity.typ
 -- Allowed types of relation annotations
 , relations =
-    [ ./Anno/slink.val
-    , ./Anno/tlink.val
+    [ ./Anno/tlink.val
+    , ./Anno/slink.val
+    , ./Anno/alink.val
+    , ./Anno/mlink.val
     ] : List ./Anno/Entity.typ
 
 -- Phrasal and part-of-speech tags

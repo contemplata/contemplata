@@ -196,6 +196,22 @@ in
     , _2 = simple {name = "MkTLink"}
     }
   , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["alink"] : Optional Text
+      , menuCmd = ["ALink"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Mark the selected relation as alink"] : Optional Text }
+    , _2 = simple {name = "MkALink"}
+    }
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["mlink"] : Optional Text
+      , menuCmd = ["MLink"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Mark the selected relation as mlink"] : Optional Text }
+    , _2 = simple {name = "MkMLink"}
+    }
+  , { _1 =
       { keyCmd = [{char="w"}] : Optional ./KeyboardShortcut.typ
       , lineCmd = ["swap"] : Optional Text
       , menuCmd = ["Swap"] : Optional Text

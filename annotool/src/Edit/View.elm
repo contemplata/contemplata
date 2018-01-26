@@ -690,8 +690,10 @@ viewMenu model = -- fileName =
         [ MkEntity "Event"
         , MkEntity "Signal"
         , MkEntity "Timex"
-        , MkRelation "SLink"
         , MkRelation "TLink"
+        , MkRelation "SLink"
+        , MkRelation "ALink"
+        , MkRelation "MLink"
         ]
 
     levelElem level = Html.div
