@@ -2,17 +2,22 @@
 
   <div class="well"><em>
     <p>This is a guide to annotation of the ODIL files with Contemplata.</p>
-
     <p>
-      Annotation is performed at several levels:
-      <a href="user/guide#syntax">syntax</a>,
-      <a href="user/guide#entities">termporal entities</a>, and
-      <a href="user/guide#relations">termporal relations</a>.
-      A section dedicated to each of these levels can be found below.
-
+      Annotation is performed at several levels: <a
+      href="user/guide#syntax">syntax</a>, <a
+      href="user/guide#entities">termporal entities</a>, and <a
+      href="user/guide#relations">termporal relations</a>. A section dedicated
+      to each of these levels can be found below.
+    </p>
+    <p>
       Besides, some <a href="user/guide#preprocessing">preprocessing</a>-related
       steps (merging speech turns, modifying tokenization, etc.) might be
       necessary before syntactic annotation can be started.
+    </p>
+    <p>
+      Finally, Contemplata allows to compare annotations present in different
+      trees/files, you can find more information about this functionality in the
+      <a href="user/guide#comparison">comparison</a> section.
     </p>
   </em></div>
 
@@ -32,6 +37,9 @@
     <li role="presentation">
       <a href="user/guide#relations"><b>Temporal relations</b></a>
     </li>
+    <li role="presentation">
+      <a href="user/guide#comparison"><b>Comparison</b></a>
+    </li>
   </ul>
 
   <div class="tab-content">
@@ -49,6 +57,9 @@
     </div>
     <div class="tab-pane" id="relations">
       <apply template="guide/relations"/>
+    </div>
+    <div class="tab-pane" id="comparison">
+      <apply template="guide/comparison"/>
     </div>
   </div>
 
