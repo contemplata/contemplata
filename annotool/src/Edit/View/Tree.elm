@@ -207,7 +207,6 @@ drawInternal cfg node at mark =
   let
     width = intWidth node
     height = Cfg.nodeHeight
-    -- nodeId = Lens.get M.nodeId node
     nodeId = node.nodeId
 
     hasType x =

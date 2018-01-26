@@ -8,6 +8,7 @@ import List as L
 import Dict as D
 import Html as Html
 import Html.Events as Events
+import Html.Attributes as Atts
 import Focus as Lens
 import Focus exposing ((=>))
 import Mouse exposing (Position)
@@ -216,30 +217,48 @@ viewSecLink model (posInTop, posInBot) (from, to) =
 
 -- | Draw the circle which represents the relation.
 drawLinkCircle
-    : M.Model
+    :  M.Model
     -> C.Link
     -> Position
     -> Html.Html Msg
 drawLinkCircle model link at =
   let
-    defCircleCfg = Circle.defCircleCfg
-    cfg0 = { defCircleCfg
-      | opacity = Cfg.linkCircleOpacity
-      , color = Cfg.linkCircleColor
-      , height = Cfg.linkCircleRadius
-      , width = Cfg.linkCircleRadius }
-    cfg = if model.selLink == Just link
-      then {cfg0 | color = Cfg.linkCircleSelectColor}
-      else cfg0
+    linkTyp =
+        case D.get link (Lens.get (M.fileLens C.Top => M.linkMap) model) of
+            Nothing -> "???"
+            Just ent -> ent.name
+    width = max 30 <| String.length linkTyp * 11
+    height = Cfg.linkCircleRadius
+    nodeColor =
+        if model.selLink == Just link
+        then Cfg.linkCircleSelectColor
+        else Cfg.linkCircleColor
+
   in
     Html.div
-      [ Circle.circleStyle cfg at
-      , Events.onClick (SelectLink link)
+      -- See also `Edit.View.Tree.drawInternal`
+      [ Events.onClick (SelectLink link)
+      , Atts.class "noselect"
+      , Atts.style
+          [ "cursor" :> "pointer"
+          , "background-color" :> nodeColor
+          , "border" :> "none"
 
-      -- @tabindex required to make the div register keyboard events
-      -- , Atts.attribute "tabindex" "1"
+          , "width" :> px width
+          , "height" :> px height
+          , "border-radius" :> "40%" -- "4px"
+          , "position" :> "absolute"
+
+          , "left" :> px (at.x - width // 2)
+          , "top" :> px (at.y - height // 2)
+
+          , "color" :> "white"
+          , "display" :> "flex"
+          , "align-items" :> "center"
+          , "justify-content" :> "center"
+          ]
       ]
-      []
+      [Html.p [] [Html.text linkTyp]]
 
 
 -- | Draw a directed line.
@@ -389,6 +408,15 @@ rotate th v =
 ---------------------------------------------------
 -- Utils
 ---------------------------------------------------
+
+
+(:>) : a -> b -> (a, b)
+(:>) = (,)
+
+
+px : Int -> String
+px number =
+  toString number ++ "px"
 
 
 -- | Retrieve all the anchors of the given annotation entity.
