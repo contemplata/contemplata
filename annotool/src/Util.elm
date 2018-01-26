@@ -5,6 +5,8 @@ module Util exposing
     , encodeMaybe
     -- * Dict
     , fromListWith
+    -- * HTML
+    , (:>)
     )
 
 
@@ -189,3 +191,13 @@ fromListWith f xs =
             [] -> D.empty
             (key, val) :: tl ->
                 D.update key (update val) (fromListWith f tl)
+
+
+---------------------------------------------------
+-- HTML style
+---------------------------------------------------
+
+
+-- | Useful for defining HTML styles.
+(:>) : a -> b -> (a, b)
+(:>) = (,)

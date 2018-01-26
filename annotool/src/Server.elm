@@ -1,3 +1,6 @@
+-- | A WebSocket server-related code.
+
+
 module Server exposing
     ( Request(..), Answer(..)
     , answerDecoder, encodeReq, sendWS, listenWS
@@ -29,8 +32,6 @@ type alias Pos = String
 
 
 type Request
-  -- = GetFiles C.AnnoName
-    -- ^ Obtain the list of files for a given annotator
   = GetFile C.AnnoName C.FileId
     -- ^ Request the contents of the given file
   | GetFiles C.AnnoName (List C.FileId)
@@ -71,10 +72,6 @@ encodeReq = Encode.encode 0 << encodeReqToVal
 
 encodeReqToVal : Request -> Encode.Value
 encodeReqToVal req = case req of
---   GetFiles annoName -> Encode.object
---     [ ("tag", Encode.string "GetFiles")
---     , ("contents", Encode.string annoName)
---     ]
   GetFile annoName id -> Encode.object
     [ ("tag", Encode.string "GetFile")
     -- , ("contents", Encode.string id)
@@ -209,25 +206,9 @@ encodeReqToVal req = case req of
             )
           ]
 
---   ParseSentCons fileId treeId parTyp cons ws -> Encode.object
---     [ ("tag", Encode.string "ParseSentCons")
---     , ("contents", Encode.list
---          [ Encode.string fileId
---          , Encode.int treeId
---          , Encode.string (toString parTyp)
---          , Encode.list (List.map (encodePair Encode.int) cons)
---          , Encode.list (List.map (encodePair Encode.string) ws) ]
---       )
---     ]
-
-
 type Answer
-  = Files (List C.FileId)
-    -- ^ The list of files
-  | NewFile C.FileId M.File
+  = NewFile C.FileId M.File
     -- ^ New file to edit
---   | NewFile2 C.FileId M.File C.FileId M.File
---     -- ^ New pair of files to edit
   | NewFiles (List (C.FileId, M.File))
     -- ^ New list of files to annotate
   | Config Edit.Config.Config
@@ -245,20 +226,13 @@ type Answer
 answerDecoder : Decode.Decoder Answer
 answerDecoder =
     Decode.oneOf
-        [ filesDecoder
-        , newFileDecoder
+        [ newFileDecoder
         , newFilesDecoder
         , configDecoder
         , parseResultDecoder
         , parseResultListDecoder
         , diffFilesDecoder
         , notificationDecoder]
-
-
-filesDecoder : Decode.Decoder Answer
-filesDecoder =
-  Decode.map Files
-    (Decode.field "files" <| Decode.list C.fileIdDecoder)
 
 
 newFileDecoder : Decode.Decoder Answer

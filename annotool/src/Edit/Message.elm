@@ -28,7 +28,6 @@ import Edit.Popup as Popup
 import Edit.Compare as Compare
 import Edit.Message.Core exposing (..)
 import Edit.Command as Command
-import Menu
 import Server
 import Server.Core as Server
 import Server.Core exposing (ParseReq(..))

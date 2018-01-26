@@ -1,14 +1,11 @@
--- import Html exposing (beginnerProgram, div, button, text)
--- import Html exposing (..)
+-- | The main module of the Contemplata front-end application.
+
+
 import Html as Html
--- import Dom as Dom
 import Mouse exposing (Position)
--- import List as L
 import Set as S
 import Dict as D
 import String as String
--- import Focus exposing ((=>))
--- import Focus as Lens
 import Task as Task
 
 import WebSocket
@@ -18,9 +15,8 @@ import Json.Decode as Decode
 import Rose as R
 import Config as Cfg
 
-
 import Server
-import Menu
+import Entry
 import Edit.Core
 import Edit.Config as AnnoCfg
 import Edit.Model
@@ -38,9 +34,13 @@ import Edit.Popup as Popup
 ---------------------------------------------------
 
 
+-- | The application can be in either of the two states: the entry page, or the
+-- actually file editing mode.
 type Switch a b
   = Edit a
-  | Menu b
+    -- ^ File editing state (see the `Edit` subdirectory)
+  | Entry b
+    -- ^ Entry page (see the `Entry.elm` file)
 
 
 getEdit : Switch a b -> Maybe a
@@ -61,22 +61,22 @@ editLens : MayLens (Switch a b) a
 editLens = (getEdit, setEdit)
 
 
-getMenu : Switch a b -> Maybe b
-getMenu top =
+getEntry : Switch a b -> Maybe b
+getEntry top =
   case top of
-    Menu x -> Just x
+    Entry x -> Just x
     _ -> Nothing
 
 
-setMenu : b -> Switch a b -> Switch a b
-setMenu mod top =
+setEntry : b -> Switch a b -> Switch a b
+setEntry mod top =
   case top of
-    Menu _ -> Menu mod
+    Entry _ -> Entry mod
     _ -> top
 
 
-menuLens : MayLens (Switch a b) b
-menuLens = (getMenu, setMenu)
+entryLens : MayLens (Switch a b) b
+entryLens = (getEntry, setEntry)
 
 
 ---------------------------------------------------
@@ -86,16 +86,20 @@ menuLens = (getMenu, setMenu)
 
 type alias Flags =
     { userName : String
+      -- ^ Annotator's name
     , fileIds : List String
-    -- , compId : String
+      -- ^ The IDs of the files to annotated
     , websocketServer : String
-    , websocketServerAlt : String }
+      -- ^ The main WebSocket server (for realtime communication with the
+      -- backend)
+    , websocketServerAlt : String
+      -- ^ The alternative WebSocket server (OBSLETE)
+    }
 
 
--- main : Program Never TopModel TopMsg
+-- | The application's entry point.
 main : Program Flags TopModel TopMsg
 main =
-  -- Html.program
   Html.programWithFlags
     { init = topInit
     , view = topView
@@ -110,23 +114,19 @@ main =
 
 
 -- | Top-level model.
-type Either a b
-  = Left a
-  | Right b
-
-
--- | Top-level model.
-type alias TopModel = Switch Edit.Model.Model Menu.Model
+type alias TopModel = Switch Edit.Model.Model Entry.Model
 
 
 -- | Top- or sub-level message.
-type alias TopMsg = Either (Switch Edit.Message.Core.Msg Menu.Msg) Msg
+type alias TopMsg = Either (Switch Edit.Message.Core.Msg Entry.Msg) Msg
 
 
 -- | Top-level message.
 type Msg
-  = ServerMsg Server.Answer -- ^ Get message from the websocket
-  | Error String  -- ^ An error message
+  = ServerMsg Server.Answer
+    -- ^ An answer received via WebSocket
+  | Error String
+    -- ^ An error message
 
 
 -- | Make a top-level message from an edit message.
@@ -134,9 +134,9 @@ editMsg : Edit.Message.Core.Msg -> TopMsg
 editMsg = Left << Edit
 
 
--- | Make a top-level message from a menu message.
-menuMsg : Menu.Msg -> TopMsg
-menuMsg = Left << Menu
+-- | Make a top-level message from an entry message.
+entryMsg : Entry.Msg -> TopMsg
+entryMsg = Left << Entry
 
 
 -- | Make a top-level message from a top message.
@@ -144,30 +144,18 @@ topMsg : Msg -> TopMsg
 topMsg = Right
 
 
+-- | Get the configuration.
 topCfg : TopModel -> Cfg.Config
 topCfg top = case top of
   Edit mod -> mod.config
-  Menu mod -> mod.config
+  Entry mod -> mod.config
 
 
+-- | Get the annotation configuration.
 topAnnoCfg : TopModel -> Maybe AnnoCfg.Config
 topAnnoCfg top = case top of
   Edit mod -> Just mod.annoConfig
-  Menu mod -> mod.annoConfig
-
-
--- -- | Get the name of the current user.
--- currentUser : TopModel -> String
--- currentUser top = case top of
---   Edit mod -> mod.user
---   Menu mod -> mod.user
---
---
--- -- | Get the name of the current user.
--- currentProxy : TopModel -> Bool
--- currentProxy top = case top of
---   Edit mod -> mod.wsUseProxy
---   Menu mod -> mod.wsUseProxy
+  Entry mod -> mod.annoConfig
 
 
 ---------------------------------------------------
@@ -175,10 +163,11 @@ topAnnoCfg top = case top of
 ---------------------------------------------------
 
 
+-- | Top view method: selects the view of the currect (entry or edit) mode.
 topView : TopModel -> Html.Html TopMsg
 topView top = case top of
   Edit mod -> Html.map editMsg <| Edit.View.view mod
-  Menu mod -> Html.map menuMsg <| Menu.view mod
+  Entry mod -> Html.map entryMsg <| Entry.view mod
 
 
 ---------------------------------------------------
@@ -186,11 +175,18 @@ topView top = case top of
 ---------------------------------------------------
 
 
+-- | Top message handler.
 topUpdate : TopMsg -> TopModel -> ( TopModel, Cmd TopMsg )
 topUpdate topMsg =
   case topMsg of
+
+    -- Some editing mode messages need to be handled at the top-level.
     Left (Edit msg) -> case msg of
+      -- Exit the frontend application and go to the main menu (it's the Snap
+      -- server which is responsible for the main menu).
       Edit.Message.Core.Files -> \model -> (model, Navigation.load ".")
+      -- Not pretty, but we need to handle the `Many` message in case there are
+      -- some messages to be handled at the top-leve inside.
       Edit.Message.Core.Many msgs -> \model ->
         let f msg (mdl0, cmds) =
           let (mdl, cmd) = topUpdate (Left <| Edit msg) mdl0
@@ -198,27 +194,31 @@ topUpdate topMsg =
         in
           let (mdl, cmds) = List.foldl f (model, []) msgs
           in  (mdl, Cmd.batch cmds)
+      -- All the remaining messages are handled by the editing-specific handler.
       _ -> updateOn editLens editMsg (Edit.Message.update msg)
-    Left (Menu msg) ->
-      updateOn menuLens menuMsg (Menu.update msg)
+
+    -- All the entry-related messages are pushed downstream to the entry's
+    -- message handler.
+    Left (Entry msg) ->
+      updateOn entryLens entryMsg (Entry.update msg)
+
+    -- Top-level WebSocket messages, delegated to one of the downstream handlers
+    -- (depending on the particular message).
     Right (ServerMsg ans) -> case ans of
-      Server.Files xs -> Debug.crash "Server.Files not implemented"
       Server.Config annoCfg ->
-        let upd = Menu.setAnnoConfig (Debug.log "annoCfg" annoCfg)
-        in  updateOn menuLens menuMsg upd
+        let upd = Entry.setAnnoConfig annoCfg
+        in  updateOn entryLens entryMsg upd
       Server.NewFile fileId file -> \model_ ->
         case topAnnoCfg model_ of
           Nothing -> Debug.crash "Server.NewFile: annoConfig not set!"
           Just annoCfg ->
-              let (edit, cmd) =
-                      Edit.Init.mkEdit (topCfg model_) annoCfg [(fileId, file)]
+              let (edit, cmd) = Edit.Init.mkEdit (topCfg model_) annoCfg [(fileId, file)]
               in  (Edit edit, Cmd.map editMsg cmd)
       Server.NewFiles fileList -> \model_ ->
         case topAnnoCfg model_ of
           Nothing -> Debug.crash "Server.NewFile: annoConfig not set!"
           Just annoCfg ->
-              let (edit, cmd) =
-                      Edit.Init.mkEdit (topCfg model_) annoCfg fileList
+              let (edit, cmd) = Edit.Init.mkEdit (topCfg model_) annoCfg fileList
               in  (Edit edit, Cmd.map editMsg cmd)
       Server.DiffFiles fileIds ->
         let task = Task.succeed (Edit.Message.Core.Popup (Popup.Files (Just fileIds)) Nothing)
@@ -231,7 +231,6 @@ topUpdate topMsg =
             updSent = case sentMay of
                           Nothing -> identity
                           Just sent -> Edit.Model.setSentCheck fileId treeId sent
-            -- upd model = (Edit.Model.setTreeCheck fileId treeId tree model, Cmd.none)
             upd model = (updSent <| updTree model, Cmd.none)
         in  updateOn editLens editMsg upd
       Server.ParseResultList fileId treeId mayForest ->
@@ -243,7 +242,7 @@ topUpdate topMsg =
         in  updateOn editLens editMsg log
     Right (Error err) -> Debug.crash err
 --     Right (Error err) -> \model -> case model of
---       Menu _ -> Debug.crash err
+--       Entry _ -> Debug.crash err
 --       Edit _ -> updateOn
 --         editLens editMsg
 --         (Edit.Message.update msg) model
@@ -254,6 +253,8 @@ topUpdate topMsg =
 ---------------------------------------------------
 
 
+-- | At the top-level, Contemplata subscribes for WebSocket messages and for the
+-- subordinate subscriptions (i.e., depending on the current application mode).
 topSubscriptions : TopModel -> Sub TopMsg
 topSubscriptions top =
   let
@@ -262,11 +263,11 @@ topSubscriptions top =
       Err err -> Error err
     cfg = case top of
       Edit mod -> mod.config
-      Menu mod -> mod.config
+      Entry mod -> mod.config
     listen = Server.listenWS cfg getMsg
     subordinate = case top of
       Edit mod -> Sub.map editMsg <| Edit.Subs.editSubscriptions mod
-      Menu mod -> Sub.map menuMsg <| Menu.subscriptions mod
+      Entry mod -> Sub.map entryMsg <| Entry.subscriptions mod
   in
     Sub.batch [Sub.map topMsg listen, subordinate]
 
@@ -284,55 +285,28 @@ topInit r =
           , socketServer=r.websocketServer
           , socketServerAlt=r.websocketServerAlt }
       (model, cmd) =
-          Menu.mkMenu cfg (List.filterMap Edit.Core.decodeFileId r.fileIds)
-  in  (Menu model, Cmd.map menuMsg cmd)
-
-
--- editInit : (Edit.Model.Model, Cmd Edit.Message.Msg)
--- editInit =
---   let
---     top = win "t1"
---     bot = win "t2"
---     win name =
---       { tree = name
---       , pos = Position 400 50
---       , selMain = Nothing
---       , selAux = S.empty
---       , drag = Nothing
---       }
---     dim =
---       { width = 0
---       , height = 0
---       , heightProp = 50
---       }
---     model =
---       { trees = D.fromList
---           [ ("t1", Cfg.testTree3)
---           , ("t2", Cfg.testTree2)
---           , ("t3", Cfg.testTree1)
---           , ("t4", Cfg.testTree4)
---           , ("t5", Cfg.testTree5)
---           ]
---       , top = top
---       , bot = bot
---       , focus = Edit.Model.Top
---       , links = S.fromList
---           [ (("t4", 3), ("t5", 9))
---           , (("t1", 1), ("t1", 2))
---           ]
---       , dim = dim
---       , ctrl = False
---       , testInput = ""
---       }
---     initHeight = Task.perform Edit.Message.Resize Window.size
---   in
---     -- (model, Cmd.none)
---     (model, initHeight)
+          Entry.mkEntry cfg (List.filterMap Edit.Core.decodeFileId r.fileIds)
+  in  (Entry model, Cmd.map entryMsg cmd)
 
 
 ---------------------------------------------
 -- Utils
 ---------------------------------------------------
+
+
+-- | The standard Either data type.
+type Either a b
+  = Left a
+  | Right b
+
+
+-- | Custom lenses
+type alias MayLens big small =
+  ( big -> Maybe small
+    -- ^ Get maybe
+  , small -> big -> big
+    -- ^ Set
+  )
 
 
 -- | Perform update over the given element of the model.
@@ -352,29 +326,3 @@ updateOn (get, set) bigCmd upd = \big ->
       let (smallPrim, cmds) = upd small
       in  (set smallPrim big, Cmd.map bigCmd cmds)
     Nothing -> (big, Cmd.none)
-
-
--- -- | Perform update over the given element of the model.
--- updateOn
---   : Lens.Focus b a
---   -> (msg -> a -> (a, cmd))
---   -> (msg -> b -> (b, cmd))
--- updateOn lens upd = \msg big ->
---   let
---     small = Lens.get lens big
---     (smallPrim, cmds) = upd msg small
---   in
---     (Lens.set lens smallPrim big, cmds)
-
-
----------------------------------------------------
--- Custom lenses
----------------------------------------------------
-
-
-type alias MayLens big small =
-  ( big -> Maybe small
-    -- ^ Get maybe
-  , small -> big -> big
-    -- ^ Set
-  )

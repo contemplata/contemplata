@@ -17,6 +17,7 @@ import Either as Either
 
 import Rose as R
 import Util as Util
+import Util exposing ((:>))
 import Config as Cfg
 import Edit.Anno as Anno
 import Edit.Anno.Core as Anno
@@ -1663,10 +1664,6 @@ popupKeyDownEvents tagger =
 ---------------------------------------------------
 -- Utils
 ---------------------------------------------------
-
-
-(:>) : a -> b -> (a, b)
-(:>) = (,)
 
 
 px : Int -> String
