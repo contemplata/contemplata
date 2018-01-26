@@ -247,7 +247,6 @@ mkMenuElem cfg isCtrl menuMsg =
             _ -> Nothing
 
 
-
 -- | Create a menu item for given attributes.
 mkMenuItem
     : Msg
@@ -257,9 +256,18 @@ mkMenuItem
     -> Html.Html Msg
        -- ^ Menu name (in HTML)
     -> Html.Html Msg
-mkMenuItem msg hint  name =
+mkMenuItem msg hint name =
+  let
+    -- A version of `Events.onClick` which blocks propagation
+    onClick =
+        Events.onWithOptions
+            "mousedown"
+            (let default = Events.defaultOptions
+             in {default | stopPropagation=True, preventDefault=True})
+            (Decode.succeed msg)
+  in
     Html.div
-        ( [ Events.onClick msg
+        ( [ onClick
           , Atts.style menuItemStyle
           ] ++ case hint of
                    Nothing -> []

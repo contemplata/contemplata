@@ -696,8 +696,14 @@ viewMenu model = -- fileName =
         , MkRelation "MLink"
         ]
 
+    onClick msg =
+        Events.onWithOptions
+            "mousedown"
+            (let default = Events.defaultOptions
+             in {default | stopPropagation=True, preventDefault=True})
+            (Decode.succeed msg)
     levelElem level = Html.div
-        [ Events.onClick (ChangeAnnoLevelTo level)
+        [ onClick (ChangeAnnoLevelTo level)
         , Atts.style Cmd.menuItemStyle
         , Atts.title <| "Switch to the " ++ toString level ++ " annotation level" ]
         [ if model.annoLevel == level
