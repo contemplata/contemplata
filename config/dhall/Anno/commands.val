@@ -1,5 +1,7 @@
 let
   simple = ./Message/simple.fun
+in let
+  oneArg = ./Message/oneArg.fun
 in
   [ { _1 =
       { keyCmd = [{char="d"}] : Optional ./KeyboardShortcut.typ
@@ -156,62 +158,6 @@ in
     , _2 = simple {name = "Dummy"}
     }
   , { _1 =
-      { keyCmd = [{char="s"}] : Optional ./KeyboardShortcut.typ
-      , lineCmd = [] : Optional Text
-      , menuCmd = ["Signal"] : Optional Text
-      , withCtrl = [] : Optional Bool
-      , help = ["Mark the selected node as signal"] : Optional Text }
-    , _2 = simple {name = "MkSignal"}
-    }
-  , { _1 =
-      { keyCmd = [{char="t"}] : Optional ./KeyboardShortcut.typ
-      , lineCmd = [] : Optional Text
-      , menuCmd = ["Timex"] : Optional Text
-      , withCtrl = [] : Optional Bool
-      , help = ["Mark the selected node as timex"] : Optional Text }
-    , _2 = simple {name = "MkTimex"}
-    }
-  , { _1 =
-      { keyCmd = [{char="v"}] : Optional ./KeyboardShortcut.typ
-      , lineCmd = [] : Optional Text
-      , menuCmd = ["Event"] : Optional Text
-      , withCtrl = [] : Optional Bool
-      , help = ["Mark the selected node as event"] : Optional Text }
-    , _2 = simple {name = "MkEvent"}
-    }
-  , { _1 =
-      { keyCmd = [] : Optional ./KeyboardShortcut.typ
-      , lineCmd = ["slink"] : Optional Text
-      , menuCmd = ["SLink"] : Optional Text
-      , withCtrl = [] : Optional Bool
-      , help = ["Mark the selected relation as slink"] : Optional Text }
-    , _2 = simple {name = "MkSLink"}
-    }
-  , { _1 =
-      { keyCmd = [] : Optional ./KeyboardShortcut.typ
-      , lineCmd = ["tlink"] : Optional Text
-      , menuCmd = ["TLink"] : Optional Text
-      , withCtrl = [] : Optional Bool
-      , help = ["Mark the selected relation as tlink"] : Optional Text }
-    , _2 = simple {name = "MkTLink"}
-    }
-  , { _1 =
-      { keyCmd = [] : Optional ./KeyboardShortcut.typ
-      , lineCmd = ["alink"] : Optional Text
-      , menuCmd = ["ALink"] : Optional Text
-      , withCtrl = [] : Optional Bool
-      , help = ["Mark the selected relation as alink"] : Optional Text }
-    , _2 = simple {name = "MkALink"}
-    }
-  , { _1 =
-      { keyCmd = [] : Optional ./KeyboardShortcut.typ
-      , lineCmd = ["mlink"] : Optional Text
-      , menuCmd = ["MLink"] : Optional Text
-      , withCtrl = [] : Optional Bool
-      , help = ["Mark the selected relation as mlink"] : Optional Text }
-    , _2 = simple {name = "MkMLink"}
-    }
-  , { _1 =
       { keyCmd = [{char="w"}] : Optional ./KeyboardShortcut.typ
       , lineCmd = ["swap"] : Optional Text
       , menuCmd = ["Swap"] : Optional Text
@@ -227,5 +173,63 @@ in
       , withCtrl = [True] : Optional Bool
       , help = ["Swap the files in both workspaces (adjudication mode)"] : Optional Text }
     , _2 = simple {name = "SwapFiles"}
+    }
+
+  , { _1 =
+      { keyCmd = [{char="s"}] : Optional ./KeyboardShortcut.typ
+      , lineCmd = [] : Optional Text
+      , menuCmd = ["Signal"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Mark the selected node as signal"] : Optional Text }
+    , _2 = oneArg {name = "MkEntity", arg = "Signal"}
+    }
+  , { _1 =
+      { keyCmd = [{char="t"}] : Optional ./KeyboardShortcut.typ
+      , lineCmd = [] : Optional Text
+      , menuCmd = ["Timex"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Mark the selected node as timex"] : Optional Text }
+    , _2 = oneArg {name = "MkEntity", arg = "Timex"}
+    }
+  , { _1 =
+      { keyCmd = [{char="v"}] : Optional ./KeyboardShortcut.typ
+      , lineCmd = [] : Optional Text
+      , menuCmd = ["Event"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Mark the selected node as event"] : Optional Text }
+    , _2 = oneArg {name = "MkEntity", arg = "Event"}
+    }
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["slink"] : Optional Text
+      , menuCmd = ["SLink"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Mark the selected relation as slink"] : Optional Text }
+    , _2 = oneArg {name = "MkRelation", arg = "SLink"}
+    }
+
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["tlink"] : Optional Text
+      , menuCmd = ["TLink"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Mark the selected relation as tlink"] : Optional Text }
+    , _2 = oneArg {name = "MkRelation", arg = "TLink"}
+    }
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["alink"] : Optional Text
+      , menuCmd = ["ALink"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Mark the selected relation as alink"] : Optional Text }
+    , _2 = oneArg {name = "MkRelation", arg = "ALink"}
+    }
+  , { _1 =
+      { keyCmd = [] : Optional ./KeyboardShortcut.typ
+      , lineCmd = ["mlink"] : Optional Text
+      , menuCmd = ["MLink"] : Optional Text
+      , withCtrl = [] : Optional Bool
+      , help = ["Mark the selected relation as mlink"] : Optional Text }
+    , _2 = oneArg {name = "MkRelation", arg = "MLink"}
     }
   ]

@@ -1,8 +1,8 @@
 { 
 -- Allowed types of node annotations
   entities =
-    [ ./Anno/timex.val
-    , ./Anno/event.val
+    [ ./Anno/event.val
+    , ./Anno/timex.val
     , ./Anno/signal.val
     ] : List ./Anno/Entity.typ
 -- Allowed types of relation annotations

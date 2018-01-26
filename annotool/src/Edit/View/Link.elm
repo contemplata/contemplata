@@ -228,7 +228,7 @@ drawLinkCircle model link at =
             Nothing -> "???"
             Just ent -> ent.name
     width = max 30 <| String.length linkTyp * 11
-    height = Cfg.linkCircleRadius
+    height = Cfg.linkCircleHeight
     nodeColor =
         if model.selLink == Just link
         then Cfg.linkCircleSelectColor

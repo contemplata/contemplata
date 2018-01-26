@@ -16,7 +16,7 @@ data Message
     -- ^ A simple Elm message, without any arguments
   | OneArg
     { name :: Text
-    , arg1 :: Text }
+    , arg  :: Text }
     -- ^ One-argument Elm message
   deriving (Generic, Show)
 

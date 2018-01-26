@@ -1,2 +1,2 @@
 { name : Text
-, arg1 : Text }
+, arg  : Text }

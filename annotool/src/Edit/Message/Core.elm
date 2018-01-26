@@ -143,8 +143,8 @@ type NodeAttr
 ---------------------------------------------------
 -- JSON Decoding
 --
--- We need it so that commands can be configured on
--- the server side (via Dhall).
+-- We need it so that commands can be referred to
+-- on the backend side (via Dhall).
 ---------------------------------------------------
 
 
@@ -152,7 +152,9 @@ type NodeAttr
 msgDecoder : Decode.Decoder Msg
 msgDecoder =
     Decode.oneOf
-        [ simple Delete "Delete"
+        [
+        -- The basic commands
+          simple Delete "Delete"
         , simple DeleteTree "DeleteTree"
         , simple Add "Add"
         , simple SaveFile "SaveFile"
@@ -166,20 +168,24 @@ msgDecoder =
         , simple ApplyRules "ApplyRules"
         , simple SplitTree "SplitTree"
         , simple SplitBegin "SplitBegin"
-        -- , simple Connect "Connect"
-        , simple (MkRelation "SLink") "MkSLink"
-        , simple (MkRelation "TLink") "MkTLink"
-        , simple (MkRelation "ALink") "MkALink"
-        , simple (MkRelation "MLink") "MkMLink"
         , simple Compare "Compare"
         , simple Join "Join"
         , simple ConcatWords "ConcatWords"
         , simple Dummy "Dummy"
-        , simple (MkEntity "Signal") "MkSignal"
-        , simple (MkEntity "Timex") "MkTimex"
-        , simple (MkEntity "Event") "MkEvent"
         , simple SwapWorkspaces "SwapWorkspaces"
         , simple SwapFiles "SwapFiles"
+
+        -- The annotation related commands
+        , oneArg MkEntity "MkEntity"
+        , oneArg MkRelation "MkRelation"
+--         , simple (MkEntity "Signal") "MkSignal"
+--         , simple (MkEntity "Timex") "MkTimex"
+--         , simple (MkEntity "Event") "MkEvent"
+--         , simple (MkRelation "SLink") "MkSLink"
+--         , simple (MkRelation "TLink") "MkTLink"
+--         , simple (MkRelation "ALink") "MkALink"
+--         , simple (MkRelation "MLink") "MkMLink"
+
         , Decode.value |> Decode.andThen
             ( \val ->
                   let msg = "Unknown message: " ++ Encode.encode 0 val
@@ -194,20 +200,31 @@ msgDecoder =
 ---------------------------------------------------
 
 
--- -- | Decode a message withtout arguments.
--- justTag : Msg -> String -> Decode.Decoder Msg
--- justTag msg str =
---     Decode.map
---         (always msg)
---         (tag str)
-
-
--- | Tag field with a given value.
-simple : Msg -> String -> Decode.Decoder Msg
+-- | A simple message decoder. The encoded message is represented as a string.
+simple
+    : Msg
+    -- ^ The message
+    -> String
+    -- ^ Its encoding
+    -> Decode.Decoder Msg
 simple msg str =
   Decode.map2 (\_ _ -> msg)
     (Decode.field "tag" (isString "Simple"))
     (Decode.field "name" (isString str))
+
+
+-- | A single-argument message decoder.
+oneArg
+    : (String -> Msg)
+    -- ^ The string-parametrized message
+    -> String
+    -- ^ The name of the encoded data constructor; the encoded argument is free
+    -> Decode.Decoder Msg
+oneArg msg str =
+  Decode.map3 (\_ _ arg -> msg arg)
+    (Decode.field "tag" (isString "OneArg"))
+    (Decode.field "name" (isString str))
+    (Decode.field "arg" Decode.string)
 
 
 -- | Tag field with a given value.

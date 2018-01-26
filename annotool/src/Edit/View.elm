@@ -618,60 +618,9 @@ viewPopupMostGen cmdSize popupHtml commandList defaultCommand =
 
 viewMenu
     : M.Model
-    -- : String -- File name
     -> Html.Html Msg
-viewMenu model = -- fileName =
+viewMenu model =
   let
-
---     menuElem onClick txt hint =
---         Html.div
---           ( [ Events.onClick onClick
---             , Atts.style
---                 [ "cursor" :> "pointer"
---                 , "margin-left" :> px 10
---                 , "margin-right" :> px 10
---                 -- | To make the list of commands wrap
---                 , "display" :> "inline-block"
---                 ]
---             ] ++ case hint of
---                      Nothing -> []
---                      Just x  -> [Atts.title x]
---           )
---         [ txt ]
-
-    annoLevel = toString model.annoLevel
---     annoLevelPadded =
---         let
---             len = String.length (toString M.Segmentation) + 2
---         in
---             String.pad len '-' annoLevel
-
---     mkMenuItem = Cmd.mkMenuCommand model.ctrl
---
---     segmentationCommands =
---       [ ( plainText "Split tree", SplitTree
---         , Just "Split the current tree into several sentences at the selected terminal nodes" )
---       , ( plainText "Split word", SplitBegin
---         , Just "Split the current word in two" )
---       , ( plainText "Concatenate words", ConcatWords
---         , Just "Concatenate the tokens corresponding to selected terminals" )
---       ]
---
---     syntaxCommands =
---       [ ( plainText "POS tag and parse", ParseSent Server.Stanford
---         , Just "POS tag and parse the current sentence with the Stanford parser" )
---       , ( plainText "Parse", ParseSentPos Server.Stanford
---         , Just "Parse the current sentence with the Stanford parser, without changing the selected part-of-speech tags" )
---       , mkMenuItem "Delete" Delete <|
---           Just "Delete the selected nodes and, with CTRL, their subtrees"
---       , mkMenuItem "Add node" Add <|
---           Just "Add (a) new node(s) over the selected node(s)"
---       ]
---
---     temporalCommands =
---       [ (emphasize 1 "Event", MkEvent, Just "Mark (or unmark) the selected node as event")
---       , (emphasize 0 "Signal", MkSignal, Just "Mark (or unmark) the selected node as signal")
---       , (emphasize 0 "Timex", MkTimex, Just "Mark (or unmark) the selected node as timex") ]
 
     mkMenuElem = Cmd.mkMenuElem model.annoConfig model.ctrl
     mkMenuCommands = Util.catMaybes << List.map mkMenuElem
@@ -686,15 +635,10 @@ viewMenu model = -- fileName =
         , ParseSentPos Server.Stanford
         , Delete, DeleteTree, Add
         ]
+
     temporalCommands =
-        [ MkEntity "Event"
-        , MkEntity "Signal"
-        , MkEntity "Timex"
-        , MkRelation "TLink"
-        , MkRelation "SLink"
-        , MkRelation "ALink"
-        , MkRelation "MLink"
-        ]
+        (List.map (MkEntity << .name) model.annoConfig.entities) ++
+        (List.map (MkRelation << .name) model.annoConfig.relations)
 
     onClick msg =
         Events.onWithOptions
