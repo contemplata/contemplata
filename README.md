@@ -172,6 +172,8 @@ cd $odil
 contemplata createdb -d DB
 ```
 
+**TODO**: More info about the DB directory.
+
 Then you can copy the (a) initial configuration files, (b) webserver templates,
 and (c) the JavaScript file generated with Elm (see the [front-end](#front-end)
 section), using the following commands:
@@ -206,7 +208,59 @@ steps described in the [setup](#setup) section).
 
 To start annotating, you will have to log in as administrator (login = `admin`,
 password = `admin`), change the password, create annotator accounts, upload
-files, and assign the files to the individual annotators.
+files, and assign the files to the individual annotators, as explained below.
+
+## Administration
+
+After you [setup](#setup) a local Contemplata instance and [run](#running) the
+corresponding web-server, you will need to log in at
+[http://localhost:8000](http://localhost:8000) as an administrator to prepare
+the annotation enviroment. Initially, login = `admin` and password = `admin`.
+You can change the password straight away at the **Password** subpage (reachable
+via the top navigation bar).
+
+### Annotators
+
+At first, two Contemplata accounts are set up: `admin` and `guest`. Both
+accounts are intended for special use-cases: `admin` for administravie tasks,
+`guest` to give access to non-annotators to selected documents and Contemplata
+user's guide.
+
+To add actual annotator accounts, go to the **Users** subpage. It contains the
+list of current annotators and a form to add new ones.
+
+##### Passwords
+
+Forgotten passwords cannot be restored, but as an administrator you can set up a
+new password for any given user in the **Users** subpage. Use the same form
+which servers to add new annotators.
+
+### Upload
+
+**TODO**
+
+### Files
+
+The list of files stocked in the database can be found in the **Files** subpage.
+Click on a file of your choosing to see more information about it.
+
+##### Assign annotators
+
+**TODO**
+
+##### Download JSON
+
+**TODO**
+
+##### Copy
+
+**TODO**
+
+##### Remove
+
+**TODO**
+
+
 
 ## Command-line tool
 
