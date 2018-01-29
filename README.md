@@ -224,42 +224,86 @@ via the top navigation bar).
 At first, two Contemplata accounts are set up: `admin` and `guest`. Both
 accounts are intended for special use-cases: `admin` for administravie tasks,
 `guest` to give access to non-annotators to selected documents and Contemplata
-user's guide.
+user guide.
 
-To add actual annotator accounts, go to the **Users** subpage. It contains the
-list of current annotators and a form to add new ones.
+To add actual annotator accounts, go to the **Users** subpage, which contains
+the list of the current annotators and a form to add new annotators.
 
 ##### Passwords
 
 Forgotten passwords cannot be restored, but as an administrator you can set up a
-new password for any given user in the **Users** subpage. Use the same form
-which servers to add new annotators.
+new password for any given user in the **Users** subpage via the same form which
+serves to add new annotators.
 
 ### Upload
 
-**TODO**
+Initially, the annotation database is empty. To add new files for annotation,
+use the form present at the **Upload** subpage.
+
+##### File IDs
+
+When you upload a file, you will need to specify:
+
+* The *name* of the file, e.g., the original name under which the file was
+  stored.
+* The annotation *level* of the file, which allows to distinguish the various
+  copies of (originally) the same file annotated at different levels (syntax,
+  semantic, etc.). The set of levels can be specified in Contemplata's
+  [configuration](config/README.md#Dhall), you can change it to serve your own
+  needs better.
+* The *ID* of the file, to distinguish several copies of the same file annotated
+  at the same level. You can use fill it, e.g., with the name of the file's
+  annotator.
+
+##### Formats
+  
+At the moment, two upload formats are supported: generic JSON files, respecting
+the appropriate [formatting rules](#format), and [ANCOR][ancor] files. For the
+latter, the tool automatically certain pre-processing operations. Notably, it
+removes the social obligations-related expressions, a step which can be avoided
+by unchecking the appropriate checkbox during the file's upload.
 
 ### Files
 
-The list of files stocked in the database can be found in the **Files** subpage.
-Click on a file of your choosing to see more information about it.
+The list of files stocked in the database can be found at the **Files** subpage.
+Click on a file of your choosing to see more information about it, assign
+annotators to it, download its JSON representation, and so on.
 
 ##### Assign annotators
 
-**TODO**
+The list of the annotators having access to the file can be found in the
+*Annotators* section of the corresponding subpage. Each annotator can either
+read or read-and-write the file. To change the annotator's modification rights,
+click on the corresponding link in the *Can modify?* column.
 
 ##### Download JSON
 
-**TODO**
+The *Show JSON* link, which allows to download the JSON version of the annotated
+file, can be found in the *General information* section.
 
 ##### Copy
 
-**TODO**
+The *Copy* form, which allows to create a copy of the file, can be found at the
+bottom of the corresponding subpage. It can be useful when annotation of the
+file at a given level (e.g., syntax) is finished and you want to create a copy
+to annotate higher levels (e.g., semantic).
 
 ##### Remove
 
-**TODO**
+The *Remove* link, which allows to completely remove the file from the database,
+can be found in the *General information* section.
 
+##### Status
+
+Each file in the database is assigned a *status*, which tells whether the file is:
+
+* *new* -- freshly added to the database
+* *touched* -- its annotation has been commenced
+* *done* -- its annotation has been finished
+
+Normally the status of the file is updated automatically, based on the action of
+its annotator(s). The aministrator can nevertheless change it manually, by
+clicking on the corresponding link in the *General information* section.
 
 
 ## Command-line tool

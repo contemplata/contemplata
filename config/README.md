@@ -49,6 +49,7 @@ file. It contains, notably:
   different syntactic trees.
 * Definitions of annotation command invocations: the corresponding menu items,
   command-line instructions, keyboard shortcutes, help messages, and so on.
+* Definitions of *annotation levels* (e.g., syntax, termporal, etc.).
 
 ## User accounts and passwords
 

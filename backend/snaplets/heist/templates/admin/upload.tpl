@@ -5,7 +5,7 @@
     <div class="panel-body">
 
       <div class="well"><em>
-        Use this form to upload a file.  <b>Only the JSON format is supported for the moment</b>.
+	Use this form to upload a new file to the annotation database.
       </em></div>
 
 
