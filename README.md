@@ -172,8 +172,6 @@ cd $odil
 contemplata createdb -d DB
 ```
 
-**TODO**: More info about the DB directory.
-
 Then you can copy the (a) initial configuration files, (b) webserver templates,
 and (c) the JavaScript file generated with Elm (see the [front-end](#front-end)
 section), using the following commands:
@@ -223,17 +221,17 @@ via the top navigation bar).
 
 At first, two Contemplata accounts are set up: `admin` and `guest`. Both
 accounts are intended for special use-cases: `admin` for administravie tasks,
-`guest` to give access to non-annotators to selected documents and Contemplata
-user guide.
+`guest` to give access to non-annotators to selected documents and to the
+Contemplata's user guide.
 
-To add actual annotator accounts, go to the **Users** subpage, which contains
+You can add actual annotator accounts via the **Users** subpage, which contains
 the list of the current annotators and a form to add new annotators.
 
 ##### Passwords
 
-Forgotten passwords cannot be restored, but as an administrator you can set up a
-new password for any given user in the **Users** subpage via the same form which
-serves to add new annotators.
+Forgotten passwords cannot be restored, but as an administrator you can change
+the password of an existing user. To this end, go to the **Users** subpage and
+use the form which also serves to add new annotators.
 
 ### Upload
 
@@ -249,8 +247,8 @@ When you upload a file, you will need to specify:
 * The annotation *level* of the file, which allows to distinguish the various
   copies of (originally) the same file annotated at different levels (syntax,
   semantic, etc.). The set of levels can be specified in Contemplata's
-  [configuration](config/README.md#Dhall), you can change it to serve your own
-  needs better.
+  [Dhall configuration](config/README.md#dhall), you can change them to serve
+  your annotation needs better.
 * The *ID* of the file, to distinguish several copies of the same file annotated
   at the same level. You can use fill it, e.g., with the name of the file's
   annotator.
@@ -259,14 +257,14 @@ When you upload a file, you will need to specify:
   
 At the moment, two upload formats are supported: generic JSON files, respecting
 the appropriate [formatting rules](#format), and [ANCOR][ancor] files. For the
-latter, the tool automatically certain pre-processing operations. Notably, it
-removes the social obligations-related expressions, a step which can be avoided
-by unchecking the appropriate checkbox during the file's upload.
+latter, the tool automatically performs certain pre-processing operations.
+Notably, it removes the social obligations-related expressions, a step which can
+be avoided by unchecking the corresponding checkbox during the file's upload.
 
 ### Files
 
 The list of files stocked in the database can be found at the **Files** subpage.
-Click on a file of your choosing to see more information about it, assign
+Click on the file of your choosing to see more information about it, assign
 annotators to it, download its JSON representation, and so on.
 
 ##### Assign annotators
@@ -274,7 +272,9 @@ annotators to it, download its JSON representation, and so on.
 The list of the annotators having access to the file can be found in the
 *Annotators* section of the corresponding subpage. Each annotator can either
 read or read-and-write the file. To change the annotator's modification rights,
-click on the corresponding link in the *Can modify?* column.
+click on the corresponding link in the *Can modify?* column. You can also add
+new annotators for the file using the form below, or remove the annotator from
+the file using the *remove* link.
 
 ##### Download JSON
 
@@ -284,9 +284,9 @@ file, can be found in the *General information* section.
 ##### Copy
 
 The *Copy* form, which allows to create a copy of the file, can be found at the
-bottom of the corresponding subpage. It can be useful when annotation of the
-file at a given level (e.g., syntax) is finished and you want to create a copy
-to annotate higher levels (e.g., semantic).
+bottom of the subpage. It can be useful, e.g., when annotation of the file at a
+given level (e.g., syntax) is finished and you want to create a copy to annotate
+higher levels (e.g., semantic).
 
 ##### Remove
 
@@ -299,10 +299,10 @@ Each file in the database is assigned a *status*, which tells whether the file i
 
 * *new* -- freshly added to the database
 * *touched* -- its annotation has been commenced
-* *done* -- its annotation has been finished
+* *done* -- its annotation (at the given level) has been finished
 
-Normally the status of the file is updated automatically, based on the action of
-its annotator(s). The aministrator can nevertheless change it manually, by
+Normally, the status of the file is updated automatically, based on the actions
+of its annotator(s). The aministrator can nevertheless change it manually, by
 clicking on the corresponding link in the *General information* section.
 
 
