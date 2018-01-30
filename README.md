@@ -240,10 +240,10 @@ use the form present at the **Upload** subpage.
 
 ##### File IDs
 
-When you upload a file, you will need to specify:
+When you upload a file, you need to specify the name of the file which consists
+of three parts:
 
-* The *name* of the file, e.g., the original name under which the file was
-  stored.
+* The *base name* under which the file will be stocked in the database.
 * The annotation *level* of the file, which allows to distinguish the various
   copies of (originally) the same file annotated at different levels (syntax,
   semantic, etc.). The set of levels can be specified in Contemplata's
@@ -252,6 +252,10 @@ When you upload a file, you will need to specify:
 * The *ID* of the file, to distinguish several copies of the same file annotated
   at the same level. You can use fill it, e.g., with the name of the file's
   annotator.
+
+Contentionally, Contemplata uses the `BASE-NAME:LEVEL:ID` format (i.e. with all
+the parts of the name separated with `:`) to refer to the file with the
+corresponding `BASE-NAME`, `LEVEL`, and `ID`.
 
 ##### Formats
   

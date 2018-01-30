@@ -14,7 +14,7 @@
     </div>
 
     <div class="panel panel-default">
-      <div class="panel-heading">New user</div>
+      <div class="panel-heading">New user / Change user password</div>
       <div class="panel-body">
         <dfForm id="add-user-form">
     
