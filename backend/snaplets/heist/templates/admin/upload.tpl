@@ -14,17 +14,25 @@
 
       <dfForm id="upload-file-form">
         <h3>File to upload</h3>
+        <hr/>
         <div class="form-group">
-          <dfLabel for="file-path">File to upload:</dfLabel>
+          <!--dfLabel for="file-path">File to upload:</dfLabel-->
+          <dfLabel for="file-path">Select the file in UTF-8:</dfLabel>
           <dfInputFile ref="file-path" id="file-path" required/>
         </div>
+        <!--p><b>IMPORTANT:</b> The uploaded file must be encoded in UTF-8.</p-->
         <div class="form-group">
           <dfLabel for="ancor">
             <dfInputCheckbox ref="ancor" id="ancor"/>
             Upload a file in the ANCOR format
           </dfLabel>
+          <p><b>WARNING:</b> Uploading an ANCOR file can take some time. Each
+          phrase in the file is processed with a syntactic parser in this
+          case.</p>
         </div>
+
         <h3>Annotation file</h3>
+        <hr/>
         <div class="form-group">
           <dfLabel for="file-name">Base name:</dfLabel>
           <dfInputText ref="file-name" id="file-name" class="form-control" required/>
@@ -37,7 +45,9 @@
           <dfLabel for="file-id">ID:</dfLabel>
           <dfInputText ref="file-id" id="file-id" class="form-control" required/>
         </div>
+
         <h3>Upload options</h3>
+        <hr/>
         <div class="form-group">
           <dfLabel for="enforce">
             <dfInputCheckbox ref="enforce" id="enforce"/>

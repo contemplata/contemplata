@@ -238,6 +238,8 @@ use the form which also serves to add new annotators.
 Initially, the annotation database is empty. To add new files for annotation,
 use the form present at the **Upload** subpage.
 
+**WARNING**: upload only works with UTF-8-encoded files.
+
 ##### File IDs
 
 When you upload a file, you need to specify the name of the file which consists
