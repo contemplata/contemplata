@@ -2,6 +2,20 @@
   <!--div class="panel-heading">Temporal entities</div-->
   <div class="panel-body">
 
+    <h4>Deepen</h4>
+    <p>
+      Before you start annotating temporal entities and relations, you should
+      deepen the syntactic structure, i.e., add intermediary syntactic nodes
+      which will serve as support for temporal annotation. To this end,
+      Contemplata provides the <b>deepen</b> command, which can be invoked from
+      <a href="user/guide#general#command-line">command line</a>.
+    </p>
+    <p>
+      Contemplata implements a simple rule-based engine for adding new nodes in
+      appropriate places. Please refer to the annotation guidelines for more
+      information about the deepening rules.
+    </p>
+
     <h4>Temporal unitizing: defining events, signals, and temporal expressions</h4>
     <p>
       To annotate the selected node as an event, use the <b>E<u>v</u>ent</b> <a

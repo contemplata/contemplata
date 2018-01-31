@@ -190,7 +190,7 @@
       the syntactic annotation level can be run with the <b>p</b> keyboard
       shortcut.
     </p>
-    <h5><em>Command line</em></h5>
+    <h5 id="command-line"><em>Command line</em></h5>
     <p>
       The third type of commands can be run via command line. After pressing
       <b>Space</b>, you will see the list of available commands of this type at
