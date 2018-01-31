@@ -1,16 +1,18 @@
 # Contemplata
 
-*Contemplata* is an annotation tool developed specifically for the purpose of
-the [Temporal@ODIL][temporal-odil] project. The ultimate goal of this project is
-to annotate a portion of the [ANCOR][ancor] spoken French corpus with semantic
-(more precisely, temporal) information. To this end, Contemplata allows:
+*Contemplata* is a web-based annotation tool developed specifically for the
+purpose of the [Temporal@ODIL][temporal-odil] project. The ultimate goal of this
+project is to annotate a portion of the [ANCOR][ancor] spoken French corpus with
+semantic (more precisely, temporal) information. To this end, Contemplata
+allows:
 
 * Merging/splitting speech turns into syntactically coherent units,
 * Removing (either automatically or manually) selected expressions,
   uninteresting from the semantic point of view (e.g., social
   obligations-related expressions)
 * Correcting constituency trees, obtained with a syntactic parser plugged into
-  Contemplata,
+  Contemplata (it can be thus used as a purely syntactic annotation tool,
+  regardless of its temporal annotation functionnalities),
 * Annotating temporal entities on top of the syntactic structures,
 * Linking the entities with temporal relations.
 
@@ -39,7 +41,8 @@ explained below.
 ## Back-end
 
 To install the back-end, you will need to download and install the
-[Haskell Tool Stack][stack] on your machine beforehand.
+[Haskell Tool Stack][stack] on your machine beforehand. You can use the latest
+stable version of the tool.
 
 Then, move to the `backend` directory and run the installation process with
 `stack`.
