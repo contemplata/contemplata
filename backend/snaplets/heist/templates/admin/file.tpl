@@ -47,13 +47,14 @@
     <div class="panel-body">
 
       <div class="well"><em>
-        Use this form to create and store in the database a copy of the file.
+        Use this form to create and store in the database a copy of
+        <b><fileName/></b>. Below, you need to specify the name of the copy.
       </em></div>
 
       <!--copyForm id="copy-file-form" class="navbar-form navbar-left"-->
       <copyForm id="copy-file-form">
         <div class="form-group">
-          <label for="file-name">Name:</label>
+          <label for="file-name">Base name:</label>
           <!--input type="email" class="form-control" id="email"-->
           <copyInputText ref="file-name" id="file-name" class="form-control" required/>
         </div>

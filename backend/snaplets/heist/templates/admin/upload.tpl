@@ -6,7 +6,7 @@
 
       <div class="well"><em>
 	      Use this form to upload a new file to the annotation database. Two
-        formats are available: JSON and ANCOR (see <a
+        formats are available: JSON and GLOZZ corpus (`.ac`) format (see <a
         href="https://github.com/kawu/contemplata#formats">README</a> for more
         information).
       </em></div>
@@ -24,9 +24,9 @@
         <div class="form-group">
           <dfLabel for="ancor">
             <dfInputCheckbox ref="ancor" id="ancor"/>
-            Upload a file in the ANCOR format
+            Upload a file in the GLOZZ format
           </dfLabel>
-          <p><b>WARNING:</b> Uploading an ANCOR file can take some time. Each
+          <p><b>WARNING:</b> Uploading a GLOZZ file can take some time. Each
           phrase in the file is processed with a syntactic parser in this
           case.</p>
         </div>
@@ -58,7 +58,8 @@
         <div class="form-group">
           <dfLabel for="rmPhatics">
             <dfInputCheckbox ref="rmPhatics" id="rmPhatics"/>
-            Remove phatic (social obligations-related) expressions when uploading an ANCOR file 
+            Remove phatic (social obligations-related) expressions when
+            uploading a GLOZZ file
           </dfLabel>
         </div>
         <successMessage/>

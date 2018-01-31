@@ -21,7 +21,10 @@
       bottom workspaces. As a result of the operation, all the nodes that are
       present in one tree but not the other (or have a different set of
       attributes) will be highlighted in red (i.e. selected), as exemplified
-      below. If the two trees are identical, the tool automatically searches for
+      below.
+    </p>
+    <p>
+      If the two trees are identical, the tool automatically searches for
       differences in the subsequent trees.
     </p>
     <div class="row">
@@ -40,7 +43,7 @@
       The comparison operation searches for the differences not only at the
       segmentation and syntactic levels, but also at the levels of temporal
       entities and relations. When two trees are identical at all levels but the
-      level of relations, the nodes with different sets of ingoing and/or
+      level of relations, the nodes with different sets of incoming and/or
       outgoing relations will be selected.
       <!--The attributes assigned to the relations, as well as attributes'
       values, are also taken into account when searching for differences.-->

@@ -54,7 +54,7 @@ type AnnoLevel = T.Text
 -- | ID of a file.
 data FileId = FileId
   { fileName  :: FileName
-    -- ^ The name of the file (typically, the original name)
+    -- ^ The base name of the file
   , annoLevel :: AnnoLevel
     -- ^ The level at which the file is being annotated
   , copyId    :: T.Text

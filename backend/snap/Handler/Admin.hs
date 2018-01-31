@@ -91,6 +91,8 @@ import           Application
 import           Handler.Utils (liftDB)
 import           Util.Digestive (runForm)
 
+import Debug.Trace (trace)
+
 
 ---------------------------------------
 -- Handlers
@@ -175,7 +177,7 @@ fileHandler = ifAdmin $ do
   (copyView, copyName) <- runForm
     "copy-file-form"
     "copy_button"
-    (copyFileForm levels)
+    (copyFileForm (Just fileId) levels)
 
   case copyName of
     Nothing -> return ()
@@ -278,13 +280,25 @@ addAnnoForm anns =
 
 
 -- | Copy file form.
-copyFileForm :: [T.Text] -> Form T.Text AppHandler FileId
-copyFileForm levels = FileId
-  <$> "file-name" .: D.text Nothing
-  <*> "file-level" .: D.choice (map double levels) Nothing
+copyFileForm
+  :: Maybe FileId
+     -- ^ The source file ID (if any)
+  -> [T.Text]
+     -- ^ The list of annotation levels
+  -> Form T.Text AppHandler FileId
+copyFileForm fileId levels = FileId
+  <$> "file-name" .: D.text (fileName <$> fileId)
+  -- TODO: setting the default annotation level does not seem to work.
+  -- Nor the commented out version below.
+  <*> "file-level" .: D.choice (map double levels) (annoLevel <$> fileId)
+--   <*> "file-level" .: D.choice'
+--     (log $ map double levels)
+--     (log $ levelIndex =<< annoLevel <$> fileId)
   <*> "file-id" .: D.text Nothing
   where
     double x = (x, x)
+--     levelIndex level = L.findIndex (==level) levels
+--     log x = trace (show x) x
 
 
 ---------------------------------------
@@ -397,7 +411,7 @@ uploadFileForm
   -> Form T.Text AppHandler (Upload File)
 uploadFileForm levels =
   finalize $ Upload
-    <$> copyFileForm levels
+    <$> copyFileForm Nothing levels
     <*> "file-path" .: D.validate checkFile D.file
     <*> "enforce" .: D.bool (Just False)
     <*> "ancor" .: D.bool (Just False)

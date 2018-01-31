@@ -265,10 +265,14 @@ corresponding `BASE-NAME`, `LEVEL`, and `ID`.
 ##### Formats
   
 At the moment, two upload formats are supported: generic JSON files, respecting
-the appropriate [formatting rules](#format), and [ANCOR][ancor] files. For the
-latter, the tool automatically performs certain pre-processing operations.
-Notably, it removes the social obligations-related expressions, a step which can
-be avoided by unchecking the corresponding checkbox during the file's upload.
+the appropriate [formatting rules](#format), and the corpus format (.ac XML
+files) of the [GLOZZ annotation platform](#glozz), which is also handled by the
+ANNODIS annotation tool.
+
+For the latter format, the tool automatically performs certain pre-processing
+operations. Notably, it removes the social obligations-related expressions, a
+step which can be avoided by unchecking the corresponding checkbox during the
+file's upload.
 
 ### Files
 
@@ -293,9 +297,11 @@ file, can be found in the *General information* section.
 ##### Copy
 
 The *Copy* form, which allows to create a copy of the file, can be found at the
-bottom of the subpage. It can be useful, e.g., when annotation of the file at a
-given level (e.g., syntax) is finished and you want to create a copy to annotate
-higher levels (e.g., semantic).
+bottom of the subpage. It can be useful, e.g.:
+
+* To create a copy of the file for another user to annotate.
+* When annotation of the file at a given level (e.g., syntax) is finished and
+  you want to create a copy to annotate higher levels (e.g., semantic).
 
 ##### Remove
 
@@ -399,3 +405,4 @@ contemplata penn2json < <file.ptb> > <file.json>
 [temporal-odil]: https://hal.archives-ouvertes.fr/hal-01627261 "Temporal@ODIL"
 [ancor]: https://hal.archives-ouvertes.fr/hal-01075679 "ANCOR"
 [corenlp]: https://stanfordnlp.github.io/CoreNLP/ "CoreNLP"
+[glozz]: http://glozz.free.fr/ "GLOZZ"

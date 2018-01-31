@@ -13,8 +13,8 @@
     </p>
     <p>
       Contemplata uses the convention that relations are always created and
-      drawn from the top to the bottom workspace, even those which are internal
-      to a single tree.
+      displayed from the top to the bottom workspace, even those which are
+      internal to a single tree.
 
       While relations could be shown in both directions, showing relations
       between two windows allows to avoid unnecessary clutter which would arise
@@ -43,9 +43,38 @@
     </p>
     <h4 id="swap">Swap workspaces</h4>
     <p>
-      Relations are always drawn from the top to the bottom workspace. If you
-      wish to see the relations in the other direction, use the <b>Swap</b> menu
-      command, which swaps the top workspace with the bottom one.
+      Relations are always displayed from the top to the bottom workspace. If
+      you wish to see the relations in the other direction, use the <b>Swap</b>
+      menu command, which swaps the top workspace with the bottom one.
+    </p>
+    <h4 id="attributes">Attributes</h4>
+    <p>
+      Just as temporal entities, temporal relations can have attributes. To see
+      and/or change the values of the attributes of a particular relation, click
+      on the circle placed in the middle of the relation and switch to the <a
+      href=user/guide#syntax#edit>Edit</a> mode in the current workspace, as
+      shown below.
+    </p>
+    <p>
+      TODO: an example!
+    </p>
+    <p>
+      A syntactic node and a relation node can be selected separately and
+      simultaneously. The selected relation has priority over the selected node
+      when it comes to the display of the attributes in the context window.
+
+      Since modifications at the temporal relations level are not propagated
+      back to the lower levels of annotation, it is most likely that no
+      modifications on the syntactic or temporal nodes will occur when working
+      on the temporal relations annotation.
+    </p>
+    <h4 id="anchor">Anchoring</h4>
+    <p>
+      The attributes related to temporal relations are typed, just as the
+      attributes related to temporal entities. Some of these attributes
+      represent anchors (i.e., references to other tree nodes), which can be
+      created similarly as in <a href=user/guide#entities#anchor>the case of
+      entities</a>.
     </p>
     <h4 id="delete">Delete</h4>
     <p>
@@ -62,8 +91,20 @@
     <h4 id="switch">Switching</h4>
     <p>
       When you create a relation linking node A with node B, a circle will
-      appear on the left of both nodes.
+      appear on the left of both nodes, as shown below. 
     </p>
+    <div class="row">
+      <div class="col-sm-3"/>
+      <div class="col-sm-6">
+        <figure><center>
+          <img src="public/img/guide/temporal/circles.png" alt="Circles" style="width:100%">
+          <figcaption>Circles on the left of the selected node inform that
+          incoming and outgoing relations linked with this node
+          exist.</figcaption>
+        </center></figure>
+      </div>
+      <div class="col-sm-3"/>
+    </div>
     <ul>
       <li>The top-left circle tells that there is at least one relation incoming
       to the node.</li>
@@ -82,27 +123,5 @@
       workspace. It allows to switch between the relations <em>incoming</em> to
       the node.</li>
     </ul>
-    <h4 id="attributes">Attributes</h4>
-    <p>
-      Just as temporal entities, temporal relations can have attributes. To see
-      and/or change the values of the attributes of a particular relation, click
-      on the circle placed in the middle of the relation and switch to the
-      <em>Edit</em> mode in the current workspace (or via the <a
-      href=user/guide#syntax#edit>Edit</a> command), as shown below.
-    </p>
-    <p>
-      TODO: an example!
-    </p>
-    <p>
-      The selected relation has a priority over the selected node when it comes
-      to the display of the attributes in the context window.
-    </p>
-    <h4 id="anchor">Anchoring</h4>
-    <p>
-      The attributes related to temporal relations are typed, just as the
-      attributes related to temporal entities. Some of these attributes
-      represent anchors, which can be created similarly as in <a
-      href=user/guide#entities#anchor>the case of entities</a>.
-    </p>
   </div>
 </div>

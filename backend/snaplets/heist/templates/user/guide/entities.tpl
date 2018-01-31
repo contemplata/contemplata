@@ -2,7 +2,7 @@
   <!--div class="panel-heading">Temporal entities</div-->
   <div class="panel-body">
 
-    <h4>Temporal annotation: defining events, signals, and temporal expressions</h4>
+    <h4>Temporal unitizing: defining events, signals, and temporal expressions</h4>
     <p>
       To annotate the selected node as an event, use the <b>E<u>v</u>ent</b> <a
       href="user/guide#general#menu-command"> menu command</a>.
