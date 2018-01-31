@@ -3,29 +3,49 @@
   <div class="panel-body">
     <h4 id="types">Types</h4>
     <p>
-      Contemplata allows to draw typed relations between tree nodes. In the
-      Temporal@ODIL project, two (TODO: four) types of relations can be created:
-      SLink and TLink. The commands responsible for creating the relations of
+      Contemplata allows to draw typed relations between tree nodes. Following
+      the ISO TimeML recommandation, In the Temporal@ODIL project, four types of
+      relations can be created: TLink, SLink, ALink and MLink (please refer to
+      the annotation guidelines or the ISO TimeML norm for details on these
+      relations types). The commands responsible for creating the relations of
       each of these types can be found in the menu (the <em>Temporal</em>
       section).
+    </p>
+    <p>
+      Contemplata uses the convention that relations are always created and
+      drawn from the top to the bottom workspace, even those which are internal
+      to a single tree.
+
+      While relations could be shown in both directions, showing relations
+      between two windows allows to avoid unnecessary clutter which would arise
+      when many relations hold between the trees in focus.
     </p>
     <h4 id="create">Create</h4>
     <p>
       To create a new relation, select a main node in each of the two workspaces
       and use one of the related commands (<em>SLink</em>, <em>TLink</em>,
-      etc.). The new relation will lead from the node selected in the top window
-      to the one in the bottom window.
+      etc.). Be aware that the temporal relations are directed one. You must
+      therefore be careful to the order of the related nodes. The new relation
+      you create will lead from (origin) the node selected in the top workspace
+      to (target) the one the bottom workspace.
+    </p>
+    <p>
+      The resulting relation is represented with a dashed line, with a grey node
+      in the middle of the line indicating its type. This node allows to select
+      the relation for the subsequent operations (e.g., <a
+      href=user/guide#relations#attributes>defining/modification of attribute
+      values</a>).
+    </p>
+    <p>
+      <b>WARNING:</b> the above procedure (i.e., selecting a main node in each
+      workspace to create a relation) has to be used also when both nodes belong
+      to the same tree.
     </p>
     <h4 id="swap">Swap workspaces</h4>
     <p>
       Relations are always drawn from the top to the bottom workspace. If you
       wish to see the relations in the other direction, use the <b>Swap</b> menu
       command, which swaps the top workspace with the bottom one.
-    </p>
-    <p>
-      While relations could be shown in both directions, the one-directional
-      solution allows to avoid unnecessary clutter which would arise when many
-      relations hold between the trees in focus.
     </p>
     <h4 id="delete">Delete</h4>
     <p>
@@ -34,9 +54,10 @@
       menu command, also available in the <em>Syntax</em> menu section).
     </p>
     <p>
-      Note that, if both a relation <em>and</em> a node in the current window
-      are selected, the relation will be removed first by the <b>Delete</b>
-      command.
+      Syntactic/Temporal entity nodes and relation nodes can be selected
+      separately and simultaneously. Note that, if both a relation <em>and</em>
+      a node in the current window are selected, the relation will be removed
+      first by the <b>Delete</b> command.
     </p>
     <h4 id="switch">Switching</h4>
     <p>
@@ -44,13 +65,13 @@
       appear on the left of both nodes.
     </p>
     <ul>
-      <li>The top-left circle tells that there is at least one relation ingoing
+      <li>The top-left circle tells that there is at least one relation incoming
       to the node.</li>
       <li>The bottom-left circle tells that there is at least one relation
       outgoing from the node.</li>
     </ul>
     <p>
-      The circles not only tell about the ingoing and outgoing relations linking
+      The circles not only tell about the incoming and outgoing relations linking
       the given node, but also serve to switch between the individual relations.
     </p>
     <ul>
@@ -58,7 +79,7 @@
       workspace. It allows to switch between the relations <em>outgoing</em>
       from the node.</li>
       <li>The <em>top-left</em> circle is only clickable in the bottom
-      workspace. It allows to switch between the relations <em>ingoing</em> to
+      workspace. It allows to switch between the relations <em>incoming</em> to
       the node.</li>
     </ul>
     <h4 id="attributes">Attributes</h4>

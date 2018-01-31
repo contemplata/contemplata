@@ -2,7 +2,7 @@
   <!--div class="panel-heading">Temporal entities</div-->
   <div class="panel-body">
 
-    <h4>Marking events, signals, and temporal expressions</h4>
+    <h4>Temporal annotation: defining events, signals, and temporal expressions</h4>
     <p>
       To annotate the selected node as an event, use the <b>E<u>v</u>ent</b> <a
       href="user/guide#general#menu-command"> menu command</a>.
@@ -37,26 +37,36 @@
 
     <h4 id="anchor">Anchoring</h4>
     <p>
-      Most of the attributes have a prescribed, closed set of possible values.
-      These values can be changer via the <a
-      href="user/guide#syntax#edit">Edit</a> side window, which can be quickly
-      reached via the <b>e</b> keyboard shortcut.
-
-      However, some temporal entities have attributes which perform the function
-      of relations between the selected node and another node. For instance,
-      each Timex can be anchored at another temporal entity, as shown below.
+      Most of the attributes related to a temporal entity have a prescribed,
+      closed set of possible values. These values can be defined/modified via
+      the <a href="user/guide#syntax#edit">Edit</a> side window, which can be
+      quickly reached via the <b>e</b> keyboard shortcut.
     </p>
     <p>
-      TODO: need a good example!
+      A different situation is met with the anchoring attributes, which describe
+      anchoring relations. These relations are used when a temporal expression
+      provides a temporal reference (or anchor) from which other events or
+      temporal expressions can be evaluated. For instance, in the expression
+      "TWO WEEKS from MONDAY", MONDAY is the anchor of the duration "TWO WEEKS".
+      An optional anchor attribute of the TWO WEEKS timex has then to be filled
+      to define its MONDAY anchor.
+    </p>
+    <p>
+      Three types of anchor have been defined in the ISO TimeML norm, which all
+      correspond to distinct attributes : ANCHOR, BEGIN and AND. Please refer to
+      the annotation guidelines for more details on this point.
     </p>
     <p>
       Two ways of setting the anchor of the selected node are available:
     </p>
     <ul>
-      <li>Select a single additional node in the same tree and click the
-      <em>Create</em> button next to the anchor attribute.</li>
-      <li>Select a main node in the alternative workspace and click
-      <em>Create</em>.</li>
+      <li>Select a single <a href="user/guide#general#selection">additional</a>
+      node (via CTRL click) in the same tree and click the <em>Create</em>
+      button next to the anchor attribute.</li>
+      <li>Select a <a href="user/guide#general#selection">main</a> node in the
+      alternative workspace and click <em>Create</em>. By the <em>alternative
+      workspace</em> we mean the bottom window if the node to be anchored is in
+      the top window, and the top window otherwise.</li>
     </ul>
     <p>
       Note that there can be other attributes of the anchor type. For instance,

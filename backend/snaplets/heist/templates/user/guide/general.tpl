@@ -125,7 +125,7 @@
       pressed.
     </p>
 
-    <h4>Node selection</h4>
+    <h4 id="selection">Node selection</h4>
     <p>
       There are two types of selection: <b>main selection</b> and <b>additional
       selection</b>. Additional selection allows to select several nodes at the
