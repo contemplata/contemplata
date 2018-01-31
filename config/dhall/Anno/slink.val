@@ -7,15 +7,22 @@ in let
 in
   { name = "SLink"
   
-    -- Possible types
+    -- Possible types; `relType` in ISO-TimeML
   , typ =
-      { among = ["TODO"]
-      , def = ["TODO"] : Optional Text
+      { among =
+        ["Intensional", "Factive", "CounterFactive", "Evidential", "NegEvidential"]
+      , def = [] : Optional Text
       }
   
     -- Attributes
-  , attributes = [] : List
-      {_1 : Text, _2 : ./Attr.typ}
+    --
+    -- NOTE: the `eventID` and `subordinateEvent` ISO-TimeML attributes are
+    -- represented by the relation's source and target nodes
+  , attributes =
+      [ { _1 = "Signal" -- `signalID` in ISO-TimeML
+        , _2 = anchor {=}
+        }
+      ] : List {_1 : Text, _2 : ./Attr.typ}
 
     -- Type-dependent attributes
   , attributesOnType = [] : List 

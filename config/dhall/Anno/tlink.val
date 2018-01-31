@@ -7,73 +7,25 @@ in let
 in
   { name = "TLink"
   
-    -- Possible types
+    -- Possible types; `relType` in ISO-TimeML
   , typ =
-      { among = ["Date", "Time", "Duration", "Set"]
-      , def = ["Time"] : Optional Text
+      { among =
+         ["Before", "After", "Includes", "IsIncluded", "During", "DuringInv", "Simultaneous", "Iafter", "Ibefore", "Identity", "Begins", "Ends", "BegunBy", "EndedBy"]
+      , def = [] : Optional Text
       }
   
     -- Attributes
+    --
+    -- NOTE: the `eventID`, `relatedToEvent`, `relatedToTime` ISO-TimeML
+    -- attributes are represented by the relation's source and target nodes
   , attributes =
-      [ { _1 = "Calendar"
-        , _2 = closed
-          { among = ["ISO", "Gregor", "Jour", "Unix", "RD", "Hebr", "Islam", "MayaCirc", "MayaLon", "Pers", "JulJD", "JulAN", "JulMOD", "Copt", "Ethiop", "Egypt", "Armen", "Ind", "HindSol", "HindSolAN", "HindLun", "HindLunAN", "Chinv", "Roman", "Revolut", "Postitiv", "Balines", "BahaiOcc", "BahaiFut", "Other"]
-          , def = ["ISO"] : Optional Text
-          , required = True }
-        }
-      , { _1 = "Function"
-        , _2 = closed
-          { among = ["CreationTime", "ExpirationTime", "ModificationTime", "PublicationTime", "ReleaseTime", "ReceptionTime"]
-          , def = [] : Optional Text
-          , required = False }
-        }
-      , { _1 = "Pred"
-        , _2 = free {def = [] : Optional Text}
-        }
-      , { _1 = "TemporalFun"
-        , _2 = closed
-          { among = ["S", "R"]
-          , def = [] : Optional Text
-          , required = False }
-        }
-      , { _1 = "LingValue"
-        , _2 = free {def = [] : Optional Text}
-        }
-      , { _1 = "Value"
-        , _2 = free {def = [] : Optional Text}
-        }
-      , { _1 = "Mod"
-        , _2 = closed
-          { among = ["Before", "After", "OnOrBefore", "OnOrAfter", "LessThan", "MoreThan", "EqualOrLess", "EqualOrMore", "StartX", "MidX", "EndX", "Approx"]
-          , def = [] : Optional Text
-          , required = False }
-        }
-      , { _1 = "Anchor"
+      [ { _1 = "Signal" -- `signalID` in ISO-TimeML
         , _2 = anchor {=}
         }
-      ]
+      ] : List {_1 : Text, _2 : ./Attr.typ}
 
     -- Type-dependent attributes
-  , attributesOnType =
-      [ { key = "Duration"
-        , val =
-          [ { _1 = "Begin"
-            , _2 = anchor {=}
-            }
-          , { _1 = "End"
-            , _2 = anchor {=}
-            }
-          ]
-	}
-      , { key = "Set"
-        , val =
-          [ { _1 = "Quant"
-            , _2 = free {def = [] : Optional Text}
-            }
-          , { _1 = "Freq"
-            , _2 = free {def = [] : Optional Text}
-            }
-          ]
-	}
-      ]
+  , attributesOnType = [] : List 
+      { key : Text
+      , val : List {_1 : Text, _2 : ./Attr.typ} }
   } : ./Entity.typ
