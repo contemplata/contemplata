@@ -61,6 +61,19 @@ directory to your `$PATH`, or use the full path to run `contemplata-server`:
 ~/.local/bin/contemplata-server --help
 ```
 
+#### Protocol buffers
+
+If you encounter the following error during compilation:
+
+```
+protoc: callProcess: runInteractiveProcess: exec: does not exist
+```
+
+Then you need to install [Protocol
+Buffers](https://developers.google.com/protocol-buffers/) and retry with `stack
+install`.
+
+
 #### Avoid recompilation of protocol buffer files
 
 By default, the setup tool will generate Haskell files from the protocol buffer
@@ -92,8 +105,18 @@ obtain this behavior.
 ## Front-end
 
 To install the front-end application, you will need to install [Elm][elm]
-beforehand. Then, move to the `annotool` directory and generate the JavaScript
-application file.
+beforehand.
+
+**WARNING**: Contemplata requires Elm version 0.18 (and not the latest version
+0.19 which introduced several breaking changes).  Elm 0.18 can be installed
+with `npm` using the following command:
+
+```bash
+npm install -g elm@0.18
+```
+
+Once you have Elm installed, move to the `annotool` directory and generate the
+JavaScript application file.
 
 ```bash
 cd annotool
