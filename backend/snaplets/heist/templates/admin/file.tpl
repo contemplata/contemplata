@@ -67,7 +67,7 @@
           <label for="file-id">ID:</label>
           <copyInputText ref="file-id" id="file-id" class="form-control" required/>
         </div>
-
+        <copyChildErrorList class="alert alert-danger"/>
         <copyInputSubmit class="btn btn-primary" name="copy_button" value="Create copy"/>
       </copyForm>
     </div>

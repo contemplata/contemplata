@@ -39,6 +39,7 @@ import qualified Control.Error as Err
 import qualified Control.Exception as Exc
 
 import qualified Data.Maybe as Maybe
+import qualified Data.Char as C
 import qualified Data.Set as S
 import qualified Data.List as L
 import qualified Data.Vector as V
@@ -174,10 +175,15 @@ fileHandler = ifAdmin $ do
     Just cfgPath <- Cfg.lookup snapCfg "anno-config"
     cfg <- Dhall.input Dhall.auto cfgPath
     return . map TL.toStrict . V.toList . AnnoCfg.annoLevels $ cfg
+  let checkNewFileId fileId = liftDB $ do
+        DB.hasFile fileId >>= return . \case
+          True -> DT.Error "File ID already exists in the database"
+          False -> DT.Success fileId
   (copyView, copyName) <- runForm
     "copy-file-form"
     "copy_button"
-    (copyFileForm (Just fileId) levels)
+    ( D.validateM checkNewFileId
+    $ copyFileForm (Just fileId) levels )
 
   case copyName of
     Nothing -> return ()
@@ -286,7 +292,7 @@ copyFileForm
   -> [T.Text]
      -- ^ The list of annotation levels
   -> Form T.Text AppHandler FileId
-copyFileForm fileId levels = FileId
+copyFileForm fileId levels = finalize $ FileId
   <$> "file-name" .: D.text (fileName <$> fileId)
   -- TODO: setting the default annotation level does not seem to work.
   -- Nor the commented out version below.
@@ -296,6 +302,16 @@ copyFileForm fileId levels = FileId
 --     (log $ levelIndex =<< annoLevel <$> fileId)
   <*> "file-id" .: D.text Nothing
   where
+    finalize
+      = D.validate checkColons
+    checkColons fileId@FileId{..} = 
+      if all correct [fileName, annoLevel, copyId]
+         then DT.Success fileId
+         else DT.Error $ T.unwords
+           [ "File name components (base name, ID) can only"
+           , "contain alphanumeric characters, '_', and '-'" ]
+    -- hasColon = Maybe.isJust . T.find (==':')
+    correct = T.all (\c -> C.isAlphaNum c || c `elem` ['_', '-'])
     double x = (x, x)
 --     levelIndex level = L.findIndex (==level) levels
 --     log x = trace (show x) x
