@@ -12,12 +12,12 @@ To convert the current (as of 16/01/2018) version of the
 format, use the following command:
 
 ```bash
-odil ftb2penn -f <FTB-XML-FILE>
+contemplata ftb2penn -f <FTB-XML-FILE>
 ```
 
 where:
 
-* `odil` is a tool installed together with Contemplata; it can be found in
+* `contemplata` is a tool installed together with Contemplata; it can be found in
   `~/.local/bin`,
 * `FTB-XML-FILE` is a file with constituency trees stored in the FTB specific
   XML format and encoded in UTF-8.
@@ -29,7 +29,7 @@ below.
 (SENT (ADV Ailleurs) (NP (DET l') (NC année) (NC record) (PP (P de) (NP (DET la) (NC sécheresse)))) (VN (V reste)) (ADV souvent) (NP (NC 1921)))
 ```
   
-Run `odil ftb2penn --help` to see more conversion option.
+Run `contemplata ftb2penn --help` to see more conversion option.
 
 The options we used in the Temporal@ODIL project to obtain a CoreNLP model
 better adapted to spoken transcribed texts are:
