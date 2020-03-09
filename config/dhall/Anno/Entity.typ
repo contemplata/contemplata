@@ -1,7 +1,7 @@
 { name : Text
 , typ : ./EntityType.typ
-, attributes : List {_1 : Text, _2 : ./Attr.typ}
+, attributes : List {name : Text, value : ./Attr.typ}
 , attributesOnType : List 
-    { key : Text
-    , val : List {_1 : Text, _2 : ./Attr.typ} }
+    { typ : Text
+    , attributes : List {name : Text, value : ./Attr.typ} }
 }

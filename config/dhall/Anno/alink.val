@@ -17,13 +17,13 @@ in
     -- NOTE: the `eventID` and `relatedToEvent` ISO-TimeML attributes are
     -- represented by the relation's source and target nodes
   , attributes =
-      [ { _1 = "Signal" -- `signalID` in ISO-TimeML
-        , _2 = Anchor
+      [ { name = "Signal" -- `signalID` in ISO-TimeML
+        , value = Anchor
         }
-      ] : List {_1 : Text, _2 : Attr}
+      ]
 
     -- Type-dependent attributes
   , attributesOnType = [] : List 
-      { key : Text
-      , val : List {_1 : Text, _2 : Attr} }
+      { typ : Text
+      , attributes : List {name : Text, value : ./Attr.typ} }
   } : ./Entity.typ

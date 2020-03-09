@@ -30,6 +30,8 @@ library
                      , Contemplata.Config.Attr
                      , Contemplata.Config.Entity
                      , Contemplata.Config.Entity.Type
+                     , Contemplata.Config.Entity.AttrMap
+                     , Contemplata.Config.Entity.AttsMap
                      , Contemplata.Config.Message
                      , Contemplata.Config.Command
 

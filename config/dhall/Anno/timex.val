@@ -12,68 +12,68 @@ in
     -- Possible types
   , typ =
       { among = ["Date", "Time", "Duration", "Set"]
-      , def = ["Time"] : Optional Text
+      , def = Some "Time"
       }
   
     -- Attributes
   , attributes =
-      [ { _1 = "Calendar"
-        , _2 = Closed
+      [ { name = "Calendar"
+        , value = Closed
           { among = ["ISO", "Gregor", "Jour", "Unix", "RD", "Hebr", "Islam", "MayaCirc", "MayaLon", "Pers", "JulJD", "JulAN", "JulMOD", "Copt", "Ethiop", "Egypt", "Armen", "Ind", "HindSol", "HindSolAN", "HindLun", "HindLunAN", "Chinv", "Roman", "Revolut", "Postitiv", "Balines", "BahaiOcc", "BahaiFut", "Other"]
-          , def = ["ISO"] : Optional Text
+          , def = Some "ISO"
           , required = True }
         }
-      , { _1 = "Function"
-        , _2 = Closed
+      , { name = "Function"
+        , value = Closed
           { among = ["CreationTime", "ExpirationTime", "ModificationTime", "PublicationTime", "ReleaseTime", "ReceptionTime"]
-          , def = [] : Optional Text
+          , def = None Text
           , required = False }
         }
-      , { _1 = "Pred"
-        , _2 = Free {def = [] : Optional Text}
+      , { name = "Pred"
+        , value = Free {def = None Text}
         }
-      , { _1 = "TemporalFun"
-        , _2 = Closed
+      , { name = "TemporalFun"
+        , value = Closed
           { among = ["S", "R"]
-          , def = [] : Optional Text
+          , def = None Text
           , required = False }
         }
-      , { _1 = "LingValue"
-        , _2 = Free {def = [] : Optional Text}
+      , { name = "LingValue"
+        , value = Free {def = None Text}
         }
-      , { _1 = "Value"
-        , _2 = Free {def = [] : Optional Text}
+      , { name = "Value"
+        , value = Free {def = None Text}
         }
-      , { _1 = "Mod"
-        , _2 = Closed
+      , { name = "Mod"
+        , value = Closed
           { among = ["Before", "After", "OnOrBefore", "OnOrAfter", "LessThan", "MoreThan", "EqualOrLess", "EqualOrMore", "StartX", "MidX", "EndX", "Approx"]
-          , def = [] : Optional Text
+          , def = None Text
           , required = False }
         }
-      , { _1 = "Anchor"
-        , _2 = Anchor
+      , { name = "Anchor"
+        , value = Anchor
         }
       ]
 
     -- Type-dependent attributes
   , attributesOnType =
-      [ { key = "Duration"
-        , val =
-          [ { _1 = "Begin"
-            , _2 = Anchor
+      [ { typ = "Duration"
+        , attributes =
+          [ { name = "Begin"
+            , value = Anchor
             }
-          , { _1 = "End"
-            , _2 = Anchor
+          , { name = "End"
+            , value = Anchor
             }
           ]
 	}
-      , { key = "Set"
-        , val =
-          [ { _1 = "Quant"
-            , _2 = Free {def = [] : Optional Text}
+      , { typ = "Set"
+        , attributes =
+          [ { name = "Quant"
+            , value = Free {def = None Text}
             }
-          , { _1 = "Freq"
-            , _2 = Free {def = [] : Optional Text}
+          , { name = "Freq"
+            , value = Free {def = None Text}
             }
           ]
 	}

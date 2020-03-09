@@ -17,64 +17,64 @@ in
   
     -- Attributes
   , attributes = 
-      [ { _1 = "Class"
-        , _2 = Closed
+      [ { name = "Class"
+        , value = Closed
           { among = ["Occurrence", "Perception", "Reporting", "Aspectual", "State", "IState", "IAction", "Cause", "EventContainer"]
           , def = ["Occurrence"] : Optional Text
           , required = True }
         }
-      , { _1 = "Inquisit"
-        , _2 = Closed
+      , { name = "Inquisit"
+        , value = Closed
           { among = ["TQuest", "Quest", "Order", "TOrder", "Decl"]
           , def = ["Decl"] : Optional Text
           , required = True }
         }
-      , { _1 = "Time"
-        , _2 = Closed
+      , { name = "Time"
+        , value = Closed
           { among = ["Future", "Past", "Present", "Omni", "Zero"]
           , def = ["Present"] : Optional Text
           , required = False }
         }
-      , { _1 = "Aspect"
-        , _2 = Closed
+      , { name = "Aspect"
+        , value = Closed
           { among = ["Progressive", "Perfective", "Prospective", "Imperfective"]
           , def = [] : Optional Text
           , required = False }
         }
-      , { _1 = "Polarity"
-        , _2 = Closed
+      , { name = "Polarity"
+        , value = Closed
           { among = ["Pos", "Neg"]
           , def = ["Pos"] : Optional Text
           , required = True }
         }
-      , { _1 = "Mood"
-        , _2 = Closed
+      , { name = "Mood"
+        , value = Closed
           { among = ["Subjunctive", "Conditional"]
           , def = [] : Optional Text
           , required = False }
         }
-      , { _1 = "Modality"
-        , _2 = Closed
+      , { name = "Modality"
+        , value = Closed
           { among = ["Certainty", "Conjectural", "Necessity", "Obligation", "Permission", "Possibility", "Probability"]
           , def = [] : Optional Text
           , required = False }
         }
-      , { _1 = "Cardinality"
-        , _2 = Free {def = [] : Optional Text}
+      , { name = "Cardinality"
+        , value = Free {def = [] : Optional Text}
         }
-      , { _1 = "Mod"
-        , _2 = Closed
+      , { name = "Mod"
+        , value = Closed
           { among = ["Start", "Mid", "End"]
           , def = [] : Optional Text
           , required = False }
         }
-      , { _1 = "Pred"
-        , _2 = Free {def = [] : Optional Text}
+      , { name = "Pred"
+        , value = Free {def = [] : Optional Text}
         }
       ]
 
     -- Type-dependent attributes
   , attributesOnType = [] : List
-      { key : Text
-      , val : List {_1 : Text, _2 : ./Attr.typ} }
+      { typ : Text
+      , attributes : List {name : Text, value : ./Attr.typ} }
   } : ./Entity.typ
