@@ -1,9 +1,5 @@
 let
-  free = ./Attr/free.fun
-in let
-  closed = ./Attr/closed.fun
-in let
-  anchor = ./Attr/anchor.fun
+  Attr = ./Attr.typ
 in
   { name = "MLink"
   
@@ -15,10 +11,10 @@ in
   
     -- Attributes
   , attributes = [] : List
-      {_1 : Text, _2 : ./Attr.typ}
+      {_1 : Text, _2 : Attr}
 
     -- Type-dependent attributes
   , attributesOnType = [] : List 
       { key : Text
-      , val : List {_1 : Text, _2 : ./Attr.typ} }
+      , val : List {_1 : Text, _2 : Attr} }
   } : ./Entity.typ

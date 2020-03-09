@@ -2,6 +2,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE LambdaCase #-}
 
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+
 
 -- | A simple Stanford parser client (for French). Relies on the standard
 -- CoreNLP server (see "edu.stanford.nlp.pipeline.StanfordCoreNLPServer"),
@@ -49,14 +53,17 @@ import qualified Data.Bytes.Serial as Byte
 import qualified Data.Bytes.Put as Byte
 import qualified Data.Bytes.Get as Byte
 
+
 import qualified Network.Wreq as Wreq
-import Control.Lens ((^?), (^..))
 import qualified Data.Aeson as Aeson
-import Data.Aeson.Lens (key, nth, _String, values)
+import           Control.Lens ((^..), (^.), (&), (.~))  -- (^?), 
+import           Data.Aeson.Lens (key, nth, _String, values)
+-- import           Microlens ((^.))
 
 import qualified Contemplata.Format.Penn as Penn
 
 import qualified Data.ProtoLens as Proto
+import           Data.ProtoLens.Field (field)
 import qualified Proto.Contemplata.Parser.Stanford.CoreNLP as CoreNLP
 
 
@@ -226,72 +233,98 @@ posTagFR sent = Exc.handle ignoreException $ do
 -- | Create a Stanford document from a list of words and their POS tags.
 docFromRaw :: T.Text -> CoreNLP.Document
 docFromRaw text =
-  Proto.def
-  { CoreNLP._Document'text = text
-  }
+  Proto.defMessage
+    & field @"text" .~ text
+--   { CoreNLP._Document'text = text
+--   }
 
 
 -- | Create a Stanford document from a list of words and their POS tags.
 docFromPos :: [(Orth, Maybe Pos)] -> CoreNLP.Document
 docFromPos xs =
 
-  Proto.def
-  { CoreNLP._Document'text = text
-  , CoreNLP._Document'sentence = [sentence]
-  }
+  Proto.defMessage
+    & field @"text" .~ text
+    & field @"sentence" .~ [sentence]
+--   { CoreNLP._Document'text = text
+--   , CoreNLP._Document'sentence = [sentence]
+--   }
 
   where
 
     text = T.unwords (map fst xs)
 
-    sentence = Proto.def
-      { CoreNLP._Sentence'token = tokens
-      , CoreNLP._Sentence'tokenOffsetBegin = 0
-      , CoreNLP._Sentence'tokenOffsetEnd = fromIntegral (length xs)
-      , CoreNLP._Sentence'sentenceIndex = Just 0
-      , CoreNLP._Sentence'characterOffsetBegin = Just 0
-      -- NOTE: not sure if info below is 100% correct (encoding?)
-      , CoreNLP._Sentence'characterOffsetEnd = Just (fromIntegral $ T.length text)
-      , CoreNLP._Sentence'hasRelationAnnotations = Just False
-      , CoreNLP._Sentence'hasNumerizedTokensAnnotation = Just False
-      , CoreNLP._Sentence'hasCorefMentionsAnnotation = Just False
-      }
+    sentence = Proto.defMessage
+--       { CoreNLP._Sentence'token = tokens
+      & field @"token" .~ tokens
+--       , CoreNLP._Sentence'tokenOffsetBegin = 0
+      & field @"tokenOffsetBegin" .~ 0
+--       , CoreNLP._Sentence'tokenOffsetEnd = fromIntegral (length xs)
+      & field @"tokenOffsetEnd" .~ fromIntegral (length xs)
+--       , CoreNLP._Sentence'sentenceIndex = Just 0
+      & field @"sentenceIndex" .~ 0
+--       , CoreNLP._Sentence'characterOffsetBegin = Just 0
+      & field @"characterOffsetBegin" .~ 0
+--       -- NOTE: not sure if info below is 100% correct (encoding?)
+--       , CoreNLP._Sentence'characterOffsetEnd = Just (fromIntegral $ T.length text)
+      & field @"characterOffsetEnd" .~ (fromIntegral $ T.length text)
+--       , CoreNLP._Sentence'hasRelationAnnotations = Just False
+      & field @"hasRelationAnnotations" .~ False
+--       , CoreNLP._Sentence'hasNumerizedTokensAnnotation = Just False
+      & field @"hasNumerizedTokensAnnotation" .~ False
+--       , CoreNLP._Sentence'hasCorefMentionsAnnotation = Just False
+      & field @"hasCorefMentionsAnnotation" .~ False
+--       }
+
 
     tokens = calcOffsets . trimLast . trimFirst $
-      [ Proto.def
-        { CoreNLP._Token'word = Just orth
-        , CoreNLP._Token'pos = pos
-        -- , CoreNLP._Token'pos = Just pos
---         , CoreNLP._Token'pos = case pos of
---             "" -> Nothing
---             _  -> Just pos
-        , CoreNLP._Token'value = Just orth
-        , CoreNLP._Token'before = Just " "
-        , CoreNLP._Token'after = Just " "
-        , CoreNLP._Token'originalText = Just orth
-        , CoreNLP._Token'hasXmlContext = Just False
-        }
+      [ Proto.defMessage
+--         { CoreNLP._Token'word = Just orth
+          & field @"word" .~ orth
+--         , CoreNLP._Token'pos = pos
+          & field @"maybe'pos" .~ pos
+--         , CoreNLP._Token'value = Just orth
+          & field @"value" .~ orth
+--         , CoreNLP._Token'before = Just " "
+          & field @"before" .~ " "
+--         , CoreNLP._Token'after = Just " "
+          & field @"after" .~ " "
+--         , CoreNLP._Token'originalText = Just orth
+          & field @"originalText" .~ orth
+--         , CoreNLP._Token'hasXmlContext = Just False
+          & field @"hasXmlContext" .~ False
+--         }
       | (orth, pos) <- xs ]
 
     trimFirst =
       let go [] = []
-          go (x:xs) = x {CoreNLP._Token'before = Just ""} : xs
+          go (x:xs)
+            -- = x {CoreNLP._Token'before = Just ""} 
+            = (x & field @"before" .~ "")
+            : xs
       in  go
     trimLast =
       let go [] = []
-          go (x:xs) = x {CoreNLP._Token'after = Just ""} : xs
+          go (x:xs) 
+--             = x {CoreNLP._Token'after = Just ""}
+            = (x & field @"after" .~ "")
+            : xs
       in  reverse . go . reverse
 
     calcOffsets =
       let go off [] = []
           go off (x:xs)
-            = x
-              { CoreNLP._Token'beginChar = Just off
-              , CoreNLP._Token'endChar = Just (off + shift)
-              }
+            = ( x
+                  & field @"beginChar" .~ off
+                  & field @"endChar" .~ (off + shift)
+              )
             : go (off + shift + 1) xs
             where
-              shift = maybe 0 (fromIntegral . T.length) (CoreNLP._Token'word x)
+              shift = (fromIntegral . T.length) (x ^. field @"word")
+--               shift = maybe 0
+--                 (fromIntegral . T.length)
+-- --                 (CoreNLP._Token'word x)
+--                 (x ^. field @"maybe'word")
       in  go 0
 
 
@@ -347,9 +380,12 @@ restoreSpaces signatures =
   where
     go (R.Node x ts) = case ts of
       [] -> do
-        (sign : signs) <- State.get
-        State.put signs
-        return $ R.Node (applySignature sign x) []
+        all_signs <- State.get
+        case all_signs of
+          sign : signs -> do
+            State.put signs
+            return $ R.Node (applySignature sign x) []
+          [] -> error "restoreSpaces: case not handled"
       _ -> R.Node x <$> mapM go ts
 
 

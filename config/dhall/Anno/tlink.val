@@ -1,9 +1,11 @@
 let
-  free = ./Attr/free.fun
+  Attr = ./Attr.typ
 in let
-  closed = ./Attr/closed.fun
+  Free = Attr.Free
 in let
-  anchor = ./Attr/anchor.fun
+  Closed = Attr.Closed
+in let
+  Anchor = Attr.Anchor
 in
   { name = "TLink"
   
@@ -20,7 +22,7 @@ in
     -- attributes are represented by the relation's source and target nodes
   , attributes =
       [ { _1 = "Signal" -- `signalID` in ISO-TimeML
-        , _2 = anchor {=}
+        , _2 = Anchor
         }
       ] : List {_1 : Text, _2 : ./Attr.typ}
 

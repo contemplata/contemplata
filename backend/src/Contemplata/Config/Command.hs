@@ -75,9 +75,13 @@ instance Interpret Char where
 dhallChar :: Type Char
 dhallChar = Type {..}
   where
-    extract (Dhall.Core.TextLit t) =
-      case LT.uncons (Data.Text.Lazy.Builder.toLazyText t) of
-        Just (c, "") -> pure c
+--     extract (Dhall.Core.TextLit t) =
+--       case LT.uncons (Data.Text.Lazy.Builder.toLazyText t) of
+--         Just (c, "") -> pure c
+--         _ -> empty
+    extract (Dhall.Core.TextLit (Dhall.Core.Chunks [] t)) =
+      case T.unpack t of
+        [c] -> pure c
         _ -> empty
     extract _ =
       empty

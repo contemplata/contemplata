@@ -1,9 +1,7 @@
 let
-  free = ./Attr/free.fun
+  Attr = ./Attr.typ
 in let
-  closed = ./Attr/closed.fun
-in let
-  anchor = ./Attr/anchor.fun
+  Anchor = Attr.Anchor
 in
   { name = "SLink"
   
@@ -20,12 +18,12 @@ in
     -- represented by the relation's source and target nodes
   , attributes =
       [ { _1 = "Signal" -- `signalID` in ISO-TimeML
-        , _2 = anchor {=}
+        , _2 = Anchor
         }
-      ] : List {_1 : Text, _2 : ./Attr.typ}
+      ] : List {_1 : Text, _2 : Attr}
 
     -- Type-dependent attributes
   , attributesOnType = [] : List 
       { key : Text
-      , val : List {_1 : Text, _2 : ./Attr.typ} }
+      , val : List {_1 : Text, _2 : Attr} }
   } : ./Entity.typ

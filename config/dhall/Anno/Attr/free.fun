@@ -1,2 +1,5 @@
-\(r : ./Free.typ) ->
-  <Free = r | Closed : ./Closed.typ | Anchor : ./Anchor.typ>
+let
+  Attr = ./Attr
+in
+  \(r : ./Free.typ) ->
+    Attr.Free r

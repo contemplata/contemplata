@@ -91,9 +91,11 @@ mergeToks x y = Token
       else ""
 
 
+instance Semigroup Token where
+  (<>) = mergeToks
+
 instance Monoid Token where
   mempty = emptyTok
-  mappend = mergeToks
 
 
 ----------------------

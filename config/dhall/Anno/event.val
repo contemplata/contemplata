@@ -1,9 +1,11 @@
 let
-  free = ./Attr/free.fun
+  Attr = ./Attr.typ
 in let
-  closed = ./Attr/closed.fun
+  Free = Attr.Free
 in let
-  anchor = ./Attr/anchor.fun
+  Closed = Attr.Closed
+in let
+  Anchor = Attr.Anchor
 in
   { name = "Event"
   
@@ -16,58 +18,58 @@ in
     -- Attributes
   , attributes = 
       [ { _1 = "Class"
-        , _2 = closed
+        , _2 = Closed
           { among = ["Occurrence", "Perception", "Reporting", "Aspectual", "State", "IState", "IAction", "Cause", "EventContainer"]
           , def = ["Occurrence"] : Optional Text
           , required = True }
         }
       , { _1 = "Inquisit"
-        , _2 = closed
+        , _2 = Closed
           { among = ["TQuest", "Quest", "Order", "TOrder", "Decl"]
           , def = ["Decl"] : Optional Text
           , required = True }
         }
       , { _1 = "Time"
-        , _2 = closed
+        , _2 = Closed
           { among = ["Future", "Past", "Present", "Omni", "Zero"]
           , def = ["Present"] : Optional Text
           , required = False }
         }
       , { _1 = "Aspect"
-        , _2 = closed
+        , _2 = Closed
           { among = ["Progressive", "Perfective", "Prospective", "Imperfective"]
           , def = [] : Optional Text
           , required = False }
         }
       , { _1 = "Polarity"
-        , _2 = closed
+        , _2 = Closed
           { among = ["Pos", "Neg"]
           , def = ["Pos"] : Optional Text
           , required = True }
         }
       , { _1 = "Mood"
-        , _2 = closed
+        , _2 = Closed
           { among = ["Subjunctive", "Conditional"]
           , def = [] : Optional Text
           , required = False }
         }
       , { _1 = "Modality"
-        , _2 = closed
+        , _2 = Closed
           { among = ["Certainty", "Conjectural", "Necessity", "Obligation", "Permission", "Possibility", "Probability"]
           , def = [] : Optional Text
           , required = False }
         }
       , { _1 = "Cardinality"
-        , _2 = free {def = [] : Optional Text}
+        , _2 = Free {def = [] : Optional Text}
         }
       , { _1 = "Mod"
-        , _2 = closed
+        , _2 = Closed
           { among = ["Start", "Mid", "End"]
           , def = [] : Optional Text
           , required = False }
         }
       , { _1 = "Pred"
-        , _2 = free {def = [] : Optional Text}
+        , _2 = Free {def = [] : Optional Text}
         }
       ]
 

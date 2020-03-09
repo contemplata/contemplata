@@ -174,7 +174,7 @@ fileHandler = ifAdmin $ do
   levels <- liftIO $ do
     Just cfgPath <- Cfg.lookup snapCfg "anno-config"
     cfg <- Dhall.input Dhall.auto cfgPath
-    return . map TL.toStrict . V.toList . AnnoCfg.annoLevels $ cfg
+    return . V.toList . AnnoCfg.annoLevels $ cfg
   let checkNewFileId fileId = liftDB $ do
         DB.hasFile fileId >>= return . \case
           True -> DT.Error "File ID already exists in the database"
@@ -379,7 +379,7 @@ fileUploadHandler = ifAdmin $ do
   levels <- liftIO $ do
     Just cfgPath <- Cfg.lookup snapCfg "anno-config"
     cfg <- Dhall.input Dhall.auto cfgPath
-    return . map TL.toStrict . V.toList . AnnoCfg.annoLevels $ cfg
+    return . V.toList . AnnoCfg.annoLevels $ cfg
 
   let mb32 = (2 ^ (20::Int)) * 32 -- 32 MB
   (uploadView, uploadData) <- D.runFormWith

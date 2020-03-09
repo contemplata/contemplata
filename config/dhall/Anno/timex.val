@@ -1,9 +1,11 @@
 let
-  free = ./Attr/free.fun
+  Attr = ./Attr.typ
 in let
-  closed = ./Attr/closed.fun
+  Free = Attr.Free
 in let
-  anchor = ./Attr/anchor.fun
+  Closed = Attr.Closed
+in let
+  Anchor = Attr.Anchor
 in
   { name = "Timex"
   
@@ -16,40 +18,40 @@ in
     -- Attributes
   , attributes =
       [ { _1 = "Calendar"
-        , _2 = closed
+        , _2 = Closed
           { among = ["ISO", "Gregor", "Jour", "Unix", "RD", "Hebr", "Islam", "MayaCirc", "MayaLon", "Pers", "JulJD", "JulAN", "JulMOD", "Copt", "Ethiop", "Egypt", "Armen", "Ind", "HindSol", "HindSolAN", "HindLun", "HindLunAN", "Chinv", "Roman", "Revolut", "Postitiv", "Balines", "BahaiOcc", "BahaiFut", "Other"]
           , def = ["ISO"] : Optional Text
           , required = True }
         }
       , { _1 = "Function"
-        , _2 = closed
+        , _2 = Closed
           { among = ["CreationTime", "ExpirationTime", "ModificationTime", "PublicationTime", "ReleaseTime", "ReceptionTime"]
           , def = [] : Optional Text
           , required = False }
         }
       , { _1 = "Pred"
-        , _2 = free {def = [] : Optional Text}
+        , _2 = Free {def = [] : Optional Text}
         }
       , { _1 = "TemporalFun"
-        , _2 = closed
+        , _2 = Closed
           { among = ["S", "R"]
           , def = [] : Optional Text
           , required = False }
         }
       , { _1 = "LingValue"
-        , _2 = free {def = [] : Optional Text}
+        , _2 = Free {def = [] : Optional Text}
         }
       , { _1 = "Value"
-        , _2 = free {def = [] : Optional Text}
+        , _2 = Free {def = [] : Optional Text}
         }
       , { _1 = "Mod"
-        , _2 = closed
+        , _2 = Closed
           { among = ["Before", "After", "OnOrBefore", "OnOrAfter", "LessThan", "MoreThan", "EqualOrLess", "EqualOrMore", "StartX", "MidX", "EndX", "Approx"]
           , def = [] : Optional Text
           , required = False }
         }
       , { _1 = "Anchor"
-        , _2 = anchor {=}
+        , _2 = Anchor
         }
       ]
 
@@ -58,20 +60,20 @@ in
       [ { key = "Duration"
         , val =
           [ { _1 = "Begin"
-            , _2 = anchor {=}
+            , _2 = Anchor
             }
           , { _1 = "End"
-            , _2 = anchor {=}
+            , _2 = Anchor
             }
           ]
 	}
       , { key = "Set"
         , val =
           [ { _1 = "Quant"
-            , _2 = free {def = [] : Optional Text}
+            , _2 = Free {def = [] : Optional Text}
             }
           , { _1 = "Freq"
-            , _2 = free {def = [] : Optional Text}
+            , _2 = Free {def = [] : Optional Text}
             }
           ]
 	}

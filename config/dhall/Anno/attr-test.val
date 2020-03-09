@@ -1,8 +1,10 @@
 let
-  free = ./Attr/free.fun
-in let
-  closed = ./Attr/closed.fun
+  Attr = ./Attr.typ
+let
+  Closed = Attr.Closed
 in
-  closed
+  Closed
   { among = ["ISO", "Gregor"]
-  , def = ["ISO"] : Optional Text } : ./Attr.typ
+  , def = ["ISO"] : Optional Text
+  , required = True
+  } : ./Attr.typ
