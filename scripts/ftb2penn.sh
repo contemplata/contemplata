@@ -19,5 +19,5 @@ input=$1
 for filename in "$input"/*.xml; do
     # echo "$filename"
     # odil ftb2penn -f "$filename" >> "$output"
-    odil ftb2penn -f "$filename" $PARAMS
+    contemplata ftb2penn -f "$filename" $PARAMS
 done
