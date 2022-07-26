@@ -5,7 +5,7 @@ import Data.ProtoLens.Setup
 -- | A hard-coded parameter which tells whether the setup tool should generate
 -- Haskell files from the protobuffer protocol files.
 buildProtos :: Bool
-buildProtos = False
+buildProtos = True
 
 
 main :: IO ()
